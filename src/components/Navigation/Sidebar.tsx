@@ -1,7 +1,9 @@
+
 import { useState } from "react";
 import { NavLink } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { BarChart2, Package, Users, ClipboardCheck, Truck, ShoppingCart, Layers, Settings, ChevronRight, ChevronLeft, Home, FileCheck, Bell, Calendar, Plus, Check, Search, X, Archive, FileText, User, Database, UserPlus } from "lucide-react";
+
 interface NavItemProps {
   to: string;
   icon: React.ReactNode;
@@ -14,6 +16,7 @@ interface NavItemProps {
     badge?: number;
   }[];
 }
+
 const NavItem = ({
   to,
   icon,
@@ -23,12 +26,14 @@ const NavItem = ({
   subItems
 }: NavItemProps) => {
   const [expanded, setExpanded] = useState(false);
+  
   const handleExpandClick = (e: React.MouseEvent) => {
     if (subItems?.length) {
       e.preventDefault();
       setExpanded(!expanded);
     }
   };
+  
   return <li>
       <NavLink to={to} className={({
       isActive
@@ -60,8 +65,10 @@ const NavItem = ({
         </ul>}
     </li>;
 };
+
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
+  
   return <div className={cn("bg-sidebar h-screen flex flex-col transition-all duration-300 border-r border-sidebar-border", collapsed ? "w-16" : "w-64")}>
       <div className="flex items-center h-14 px-3 border-b border-sidebar-border">
         {!collapsed ? <div className="flex items-center">
@@ -93,6 +100,7 @@ export function Sidebar() {
           
           <NavItem to="/inventory" icon={<Package size={20} />} label="Store" collapsed={collapsed} />
           <NavItem to="/production" icon={<BarChart2 size={20} />} label="Production" collapsed={collapsed} />
+          <NavItem to="/finished-goods" icon={<Layers size={20} />} label="Finished Goods" collapsed={collapsed} />
           
           <NavItem to="/quality" icon={<ClipboardCheck size={20} />} label="Quality Control" collapsed={collapsed} subItems={[{
           to: "/quality/iqc",
@@ -117,7 +125,7 @@ export function Sidebar() {
           <div className="h-px bg-sidebar-border mx-1" /> {/* Divider */}
           
           {!collapsed && <div className="text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/70 px-3 py-1">
-              Management
+              MANAGEMENT
             </div>}
           
           <ul className="space-y-1">

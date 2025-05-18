@@ -14,6 +14,7 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select";
+import { format, addMonths } from "date-fns";
 
 // Mock data for customers and products
 const mockCustomers = [
@@ -33,11 +34,28 @@ const mockProducts = [
   "Soundbar SB100"
 ];
 
+// Generate the next 12 months
+const generateMonths = () => {
+  const months = [];
+  const today = new Date();
+  
+  for (let i = 0; i < 12; i++) {
+    const date = addMonths(today, i);
+    const monthYear = format(date, "MMM yyyy");
+    const value = format(date, "yyyy-MM");
+    months.push({ label: monthYear, value });
+  }
+  
+  return months;
+};
+
+const months = generateMonths();
+
 // Mock data for projections
 const mockProjections = [
-  { id: "1", customer: "AudioTech Inc", product: "Speaker A300", quantity: 5000, deliveryDate: "2025-06-15", status: "New" },
-  { id: "2", customer: "SoundMaster", product: "Subwoofer S200", quantity: 2000, deliveryDate: "2025-06-30", status: "Confirmed" },
-  { id: "3", customer: "EchoSystems", product: "Tweeter T100", quantity: 10000, deliveryDate: "2025-07-10", status: "New" },
+  { id: "1", customer: "AudioTech Inc", product: "Speaker A300", quantity: 5000, deliveryMonth: "2025-06", status: "New" },
+  { id: "2", customer: "SoundMaster", product: "Subwoofer S200", quantity: 2000, deliveryMonth: "2025-06", status: "Confirmed" },
+  { id: "3", customer: "EchoSystems", product: "Tweeter T100", quantity: 10000, deliveryMonth: "2025-07", status: "New" },
 ];
 
 const Projection = () => {
@@ -46,7 +64,7 @@ const Projection = () => {
     customer: "",
     product: "",
     quantity: "",
-    deliveryDate: "",
+    deliveryMonth: "",
   });
   const { toast } = useToast();
 
@@ -67,7 +85,7 @@ const Projection = () => {
 
   const handleAddProjection = () => {
     // Validate inputs
-    if (!newProjection.customer || !newProjection.product || !newProjection.quantity || !newProjection.deliveryDate) {
+    if (!newProjection.customer || !newProjection.product || !newProjection.quantity || !newProjection.deliveryMonth) {
       toast({
         title: "Missing fields",
         description: "Please fill in all required fields",
@@ -91,13 +109,19 @@ const Projection = () => {
       customer: "",
       product: "",
       quantity: "",
-      deliveryDate: "",
+      deliveryMonth: "",
     });
 
     toast({
       title: "Projection added",
       description: "New customer projection has been added successfully",
     });
+  };
+
+  // Format month for display
+  const formatMonth = (monthValue: string) => {
+    const month = months.find(m => m.value === monthValue);
+    return month ? month.label : monthValue;
   };
 
   return (
@@ -176,19 +200,24 @@ const Projection = () => {
                 />
               </div>
               <div>
-                <label htmlFor="deliveryDate" className="text-sm font-medium mb-1 block">
-                  Delivery Date
+                <label htmlFor="deliveryMonth" className="text-sm font-medium mb-1 block">
+                  Delivery Month
                 </label>
-                <div className="relative">
-                  <Input
-                    id="deliveryDate"
-                    name="deliveryDate"
-                    type="date"
-                    value={newProjection.deliveryDate}
-                    onChange={handleInputChange}
-                  />
-                  <Calendar className="absolute right-3 top-2.5 h-4 w-4 text-muted-foreground pointer-events-none" />
-                </div>
+                <Select
+                  value={newProjection.deliveryMonth}
+                  onValueChange={(value) => handleSelectChange("deliveryMonth", value)}
+                >
+                  <SelectTrigger id="deliveryMonth">
+                    <SelectValue placeholder="Select month" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {months.map((month) => (
+                      <SelectItem key={month.value} value={month.value}>
+                        {month.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="md:col-span-2 lg:col-span-4 flex justify-end mt-2">
                 <Button onClick={handleAddProjection}>Add Projection</Button>
@@ -208,7 +237,7 @@ const Projection = () => {
                   <TableHead>Customer</TableHead>
                   <TableHead>Product</TableHead>
                   <TableHead>Quantity</TableHead>
-                  <TableHead>Delivery Date</TableHead>
+                  <TableHead>Delivery Month</TableHead>
                   <TableHead>Status</TableHead>
                 </TableRow>
               </TableHeader>
@@ -218,7 +247,7 @@ const Projection = () => {
                     <TableCell className="font-medium">{projection.customer}</TableCell>
                     <TableCell>{projection.product}</TableCell>
                     <TableCell>{projection.quantity.toLocaleString()}</TableCell>
-                    <TableCell>{new Date(projection.deliveryDate).toLocaleDateString()}</TableCell>
+                    <TableCell>{formatMonth(projection.deliveryMonth)}</TableCell>
                     <TableCell>
                       <span className={`px-2 py-1 rounded-full text-xs ${
                         projection.status === "New" ? "bg-blue-100 text-blue-800" : 

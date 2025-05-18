@@ -36,15 +36,15 @@
 
     --radius: 0.5rem;
 
-    /* We can keep these variables but they won't be used anymore since we're directly using hex colors */
-    --sidebar-background: 222 47% 11%;
-    --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 221 83% 53%;
-    --sidebar-primary-foreground: 210 40% 98%;
-    --sidebar-accent: 223 47% 20%;
-    --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 223 47% 20%;
-    --sidebar-ring: 221 83% 53%;
+    /* Custom sidebar colors */
+    --sidebar-background: 0 0% 100%; /* Light background for readability */
+    --sidebar-foreground: 215 28% 17%;
+    --sidebar-primary: 186 44% 27%; /* #255d65 */
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 186 44% 22%; /* Slightly darker for hover */
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 210 40% 96%;
+    --sidebar-ring: 186 44% 27%;
   }
 
   .dark {
@@ -90,11 +90,11 @@
 
 @layer components {
   .nav-link {
-    @apply flex items-center gap-3 px-3 py-2 rounded-md hover:bg-[#3c9a40] transition-colors;
+    @apply flex items-center gap-3 px-3 py-2 rounded-md hover:bg-[#255d65] hover:bg-opacity-90 transition-colors;
   }
   
   .nav-link.active {
-    @apply bg-[#3c9a40] font-medium;
+    @apply bg-[#255d65] font-medium;
   }
 
   .card-hover {
