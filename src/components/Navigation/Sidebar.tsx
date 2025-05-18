@@ -1,14 +1,7 @@
-
 import { useState } from "react";
 import { NavLink } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { 
-  BarChart2, Package, Users, ClipboardCheck, Truck, ShoppingCart, 
-  Layers, Settings, ChevronRight, ChevronLeft, Home, FileCheck, 
-  Bell, Calendar, Plus, Check, Search, X, Archive, FileText, 
-  User, Database, UserPlus 
-} from "lucide-react";
-
+import { BarChart2, Package, Users, ClipboardCheck, Truck, ShoppingCart, Layers, Settings, ChevronRight, ChevronLeft, Home, FileCheck, Bell, Calendar, Plus, Check, Search, X, Archive, FileText, User, Database, UserPlus } from "lucide-react";
 interface NavItemProps {
   to: string;
   icon: React.ReactNode;
@@ -21,7 +14,6 @@ interface NavItemProps {
     badge?: number;
   }[];
 }
-
 const NavItem = ({
   to,
   icon,
@@ -68,27 +60,14 @@ const NavItem = ({
         </ul>}
     </li>;
 };
-
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   return <div className={cn("bg-sidebar h-screen flex flex-col transition-all duration-300 border-r border-sidebar-border", collapsed ? "w-16" : "w-64")}>
       <div className="flex items-center h-14 px-3 border-b border-sidebar-border">
-        {!collapsed ? (
-          <div className="flex items-center">
-            <img 
-              src="https://grammyelectronics.com/wp-content/uploads/2023/10/logo-1.png" 
-              alt="Grammy Electronics Logo" 
-              className="h-10 mr-2"
-            />
+        {!collapsed ? <div className="flex items-center">
+            <img alt="Grammy Electronics Logo" src="https://grammyelectronics.com/wp-content/uploads/2021/04/grammy-logo@2x-1-1.png" className="h-10 mr-2 object-scale-down" />
             <h1 className="font-bold text-lg text-sidebar-foreground">ERP</h1>
-          </div>
-        ) : (
-          <img 
-            src="https://grammyelectronics.com/wp-content/uploads/2023/10/logo-1.png" 
-            alt="Grammy Electronics Logo" 
-            className="h-8 mx-auto"
-          />
-        )}
+          </div> : <img src="https://grammyelectronics.com/wp-content/uploads/2023/10/logo-1.png" alt="Grammy Electronics Logo" className="h-8 mx-auto" />}
         <button onClick={() => setCollapsed(!collapsed)} className="ml-auto p-1.5 rounded-md hover:bg-sidebar-accent text-sidebar-foreground">
           {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
         </button>
@@ -99,32 +78,34 @@ export function Sidebar() {
           <NavItem to="/" icon={<Home size={20} />} label="Dashboard" collapsed={collapsed} />
           <NavItem to="/projection" icon={<Plus size={20} />} label="Add Projection" collapsed={collapsed} />
           
-          <NavItem 
-            to="/planning" 
-            icon={<Calendar size={20} />} 
-            label="PPC" 
-            collapsed={collapsed} 
-            subItems={[
-              { to: "/planning", label: "Planning" },
-              { to: "/purchase", label: "Purchase" },
-              { to: "/grn", label: "GRN", badge: 3 }
-            ]} 
-          />
+          <NavItem to="/planning" icon={<Calendar size={20} />} label="PPC" collapsed={collapsed} subItems={[{
+          to: "/planning",
+          label: "Planning"
+        }, {
+          to: "/purchase",
+          label: "Purchase"
+        }, {
+          to: "/grn",
+          label: "GRN",
+          badge: 3
+        }]} />
           
           <NavItem to="/inventory" icon={<Package size={20} />} label="Store" collapsed={collapsed} />
           <NavItem to="/production" icon={<BarChart2 size={20} />} label="Production" collapsed={collapsed} />
           
-          <NavItem 
-            to="/quality" 
-            icon={<ClipboardCheck size={20} />} 
-            label="Quality Control" 
-            collapsed={collapsed} 
-            subItems={[
-              { to: "/quality/iqc", label: "IQC", badge: 3 },
-              { to: "/quality/pqc", label: "PQC", badge: 2 },
-              { to: "/quality/oqc", label: "OQC", badge: 1 }
-            ]} 
-          />
+          <NavItem to="/quality" icon={<ClipboardCheck size={20} />} label="Quality Control" collapsed={collapsed} subItems={[{
+          to: "/quality/iqc",
+          label: "IQC",
+          badge: 3
+        }, {
+          to: "/quality/pqc",
+          label: "PQC",
+          badge: 2
+        }, {
+          to: "/quality/oqc",
+          label: "OQC",
+          badge: 1
+        }]} />
           
           <NavItem to="/dispatch" icon={<Truck size={20} />} label="Dispatch" collapsed={collapsed} />
           <NavItem to="/spare-orders" icon={<Archive size={20} />} label="Spare Orders" collapsed={collapsed} />
@@ -134,11 +115,9 @@ export function Sidebar() {
         <div className={cn("space-y-2", !collapsed && "px-2 pt-3")}>
           <div className="h-px bg-sidebar-border mx-1" /> {/* Divider */}
           
-          {!collapsed && 
-            <div className="text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/70 px-3 py-1">
+          {!collapsed && <div className="text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/70 px-3 py-1">
               Management
-            </div>
-          }
+            </div>}
           
           <ul className="space-y-1">
             <NavItem to="/management/products" icon={<FileText size={20} />} label="Add New Product" collapsed={collapsed} />
