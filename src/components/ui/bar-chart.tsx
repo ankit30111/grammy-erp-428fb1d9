@@ -48,7 +48,7 @@ export function BarChart({
         <Tooltip 
           content={(props) => (
             <ChartTooltipContent 
-              {...props} 
+              {...props as any} 
               formatter={(value) => valueFormatter(Number(value))}
             />
           )}
