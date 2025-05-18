@@ -15,7 +15,7 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select";
-import { BarChart } from "@/components/ui/chart";
+import { BarChart } from "@/components/ui/bar-chart";
 import { format } from "date-fns";
 
 // Mock data for active production

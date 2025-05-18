@@ -1,10 +1,9 @@
-
 import { useState } from "react";
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Clock, FileCheck, Search, Check } from "lucide-react";
+import { Clock, FileCheck, Upload, Search, X as XIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -374,7 +373,7 @@ const OQC = () => {
                           variant="destructive"
                           onClick={() => handleOQCApproval(false)}
                         >
-                          <X className="h-4 w-4 mr-2" />
+                          <XIcon className="h-4 w-4 mr-2" />
                           Reject
                         </Button>
                       </div>
