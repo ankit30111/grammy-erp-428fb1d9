@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import { 
   BarChart2, Package, Users, ClipboardCheck, 
   Truck, ShoppingCart, Layers, Settings, ChevronRight, 
-  ChevronLeft, Home, FileText, Bell, Calendar
+  ChevronLeft, Home, FileText, Bell, Calendar, Plus
 } from "lucide-react";
 
 interface NavItemProps {
@@ -62,11 +62,13 @@ export function Sidebar() {
       <nav className="flex-1 py-4 px-2 space-y-6 overflow-y-auto">
         <ul className="space-y-1">
           <NavItem to="/" icon={<Home size={20} />} label="Dashboard" collapsed={collapsed} />
+          <NavItem to="/projection" icon={<Plus size={20} />} label="Add Projection" collapsed={collapsed} badge={2} />
+          <NavItem to="/planning" icon={<Calendar size={20} />} label="Planning (PPC)" collapsed={collapsed} badge={2} />
           <NavItem to="/production" icon={<BarChart2 size={20} />} label="Production" collapsed={collapsed} badge={3} />
           <NavItem to="/quality" icon={<ClipboardCheck size={20} />} label="Quality Control" collapsed={collapsed} badge={5} />
           <NavItem to="/inventory" icon={<Package size={20} />} label="Inventory" collapsed={collapsed} />
-          <NavItem to="/planning" icon={<Calendar size={20} />} label="Planning" collapsed={collapsed} badge={2} />
           <NavItem to="/purchase" icon={<ShoppingCart size={20} />} label="Purchase" collapsed={collapsed} />
+          <NavItem to="/grn" icon={<Package size={20} />} label="GRN" collapsed={collapsed} badge={3} />
           <NavItem to="/dispatch" icon={<Truck size={20} />} label="Dispatch" collapsed={collapsed} />
         </ul>
 
