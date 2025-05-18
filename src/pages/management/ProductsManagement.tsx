@@ -101,7 +101,7 @@ const ProductsManagement = () => {
   const location = useLocation();
   const [products, setProducts] = useState(SAMPLE_PRODUCTS);
   const [searchQuery, setSearchQuery] = useState("");
-  const [filterCategory, setFilterCategory] = useState("");
+  const [filterCategory, setFilterCategory] = useState("all");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [newProduct, setNewProduct] = useState({
     name: "",
@@ -127,7 +127,7 @@ const ProductsManagement = () => {
   const filteredProducts = products.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
                          product.model.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = filterCategory === "" || product.category === filterCategory;
+    const matchesCategory = filterCategory === "all" || product.category === filterCategory;
     return matchesSearch && matchesCategory;
   });
 
@@ -240,7 +240,7 @@ const ProductsManagement = () => {
                   <SelectValue placeholder="All Categories" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Categories</SelectItem>
+                  <SelectItem value="all">All Categories</SelectItem>
                   {PRODUCT_CATEGORIES.map((category) => (
                     <SelectItem key={category} value={category}>{category}</SelectItem>
                   ))}
