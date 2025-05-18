@@ -1,7 +1,8 @@
+
 import { useState } from "react";
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 import { 
-  Card, CardContent, CardHeader, CardTitle 
+  Card, CardContent, CardHeader, CardTitle, CardFooter 
 } from "@/components/ui/card";
 import { 
   Table, TableHeader, TableBody, TableRow, TableHead, TableCell 
@@ -15,104 +16,91 @@ import {
 import { 
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter 
 } from "@/components/ui/dialog";
-import { 
-  Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter, SheetClose, SheetTrigger
-} from "@/components/ui/sheet";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Search, Plus, FileText } from "lucide-react";
 
-// Department options
+// Departments
 const DEPARTMENTS = [
   "Production",
-  "Quality",
-  "Store",
-  "Purchase",
-  "Engineering",
+  "Quality Control",
+  "Logistics",
   "Administration",
-  "HR",
+  "Engineering",
   "Maintenance"
+];
+
+// Skill levels
+const SKILL_LEVELS = [
+  "Beginner",
+  "Intermediate",
+  "Advanced",
+  "Expert"
 ];
 
 // Sample data for demonstration
 const SAMPLE_EMPLOYEES = [
   {
-    id: "EMP001",
-    name: "John Smith",
+    id: "1",
+    name: "John Doe",
     department: "Production",
-    position: "Line Supervisor",
-    skills: ["Assembly", "Quality Check", "Machine Operation"],
-    trainingStatus: "Completed",
-    hasTrainingRecords: true
+    position: "Line Operator",
+    joinDate: "2022-05-10",
+    skills: [
+      { name: "Assembly", level: "Expert" },
+      { name: "Quality Check", level: "Advanced" },
+      { name: "Machine Operation", level: "Expert" }
+    ],
+    trainings: [
+      { name: "Safety Training", completionDate: "2022-06-15", status: "Completed" },
+      { name: "Quality Standards", completionDate: "2022-07-20", status: "Completed" }
+    ]
   },
   {
-    id: "EMP002",
-    name: "Maria Garcia",
-    department: "Quality",
+    id: "2",
+    name: "Jane Smith",
+    department: "Quality Control",
     position: "QC Inspector",
-    skills: ["IQC", "PQC", "Documentation"],
-    trainingStatus: "In Progress",
-    hasTrainingRecords: true
+    joinDate: "2021-08-15",
+    skills: [
+      { name: "Product Testing", level: "Expert" },
+      { name: "Documentation", level: "Advanced" },
+      { name: "Statistical Analysis", level: "Intermediate" }
+    ],
+    trainings: [
+      { name: "Advanced Quality Control", completionDate: "2021-10-05", status: "Completed" },
+      { name: "ISO 9001 Standards", completionDate: "", status: "Pending" }
+    ]
   },
   {
-    id: "EMP003",
-    name: "Raj Patel",
+    id: "3",
+    name: "Robert Johnson",
     department: "Engineering",
     position: "Product Engineer",
-    skills: ["PCB Design", "Testing", "Troubleshooting"],
-    trainingStatus: "Completed",
-    hasTrainingRecords: true
-  },
-  {
-    id: "EMP004",
-    name: "Sarah Johnson",
-    department: "Store",
-    position: "Inventory Manager",
-    skills: ["Stock Management", "ERP Systems", "Documentation"],
-    trainingStatus: "Pending",
-    hasTrainingRecords: false
-  },
-  {
-    id: "EMP005",
-    name: "Li Wei",
-    department: "Purchase",
-    position: "Procurement Specialist",
-    skills: ["Negotiation", "Supplier Management", "Cost Analysis"],
-    trainingStatus: "Completed",
-    hasTrainingRecords: true
+    joinDate: "2020-03-22",
+    skills: [
+      { name: "Product Design", level: "Expert" },
+      { name: "CAD Software", level: "Expert" },
+      { name: "Prototyping", level: "Advanced" }
+    ],
+    trainings: [
+      { name: "Advanced CAD", completionDate: "2020-05-10", status: "Completed" },
+      { name: "Project Management", completionDate: "2021-02-15", status: "Completed" }
+    ]
   }
 ];
-
-// Skill levels for skill matrix
-const SKILL_MATRIX = {
-  "Assembly": {
-    "John Smith": 5,
-    "Maria Garcia": 3,
-    "Raj Patel": 2
-  },
-  "Quality Check": {
-    "John Smith": 4,
-    "Maria Garcia": 5,
-    "Sarah Johnson": 2
-  },
-  "PCB Design": {
-    "Raj Patel": 5,
-    "Li Wei": 1
-  }
-};
 
 const HRManagement = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [employees, setEmployees] = useState(SAMPLE_EMPLOYEES);
   const [searchQuery, setSearchQuery] = useState("");
-  const [filterDepartment, setFilterDepartment] = useState("");
+  const [filterDepartment, setFilterDepartment] = useState("all");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [newEmployee, setNewEmployee] = useState({
     name: "",
     department: "",
-    position: "",
-    trainingStatus: "Pending"
+    position: ""
   });
 
   // Handle navigation between management tabs
@@ -132,29 +120,24 @@ const HRManagement = () => {
   // Filter employees based on search and department
   const filteredEmployees = employees.filter(employee => {
     const matchesSearch = employee.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                         employee.id.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesDepartment = filterDepartment === "" || employee.department === filterDepartment;
+                         employee.position.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesDepartment = filterDepartment === "all" || employee.department === filterDepartment;
     return matchesSearch && matchesDepartment;
   });
 
   const handleAddEmployee = () => {
     const employee = {
-      id: `EMP${String(employees.length + 1).padStart(3, '0')}`,
+      id: (employees.length + 1).toString(),
       name: newEmployee.name,
       department: newEmployee.department,
       position: newEmployee.position,
+      joinDate: new Date().toISOString().split('T')[0],
       skills: [],
-      trainingStatus: newEmployee.trainingStatus,
-      hasTrainingRecords: false
+      trainings: []
     };
     
     setEmployees([...employees, employee]);
-    setNewEmployee({
-      name: "",
-      department: "",
-      position: "",
-      trainingStatus: "Pending"
-    });
+    setNewEmployee({ name: "", department: "", position: "" });
     setIsAddDialogOpen(false);
   };
 
@@ -174,7 +157,7 @@ const HRManagement = () => {
         </Tabs>
 
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold">Human Resources</h2>
+          <h2 className="text-2xl font-bold">Human Resources Management</h2>
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
               <Button>
@@ -206,9 +189,9 @@ const HRManagement = () => {
                       <SelectValue placeholder="Select department" />
                     </SelectTrigger>
                     <SelectContent>
-                      {DEPARTMENTS.map((dept) => (
-                        <SelectItem key={dept} value={dept}>
-                          {dept}
+                      {DEPARTMENTS.map((department) => (
+                        <SelectItem key={department} value={department}>
+                          {department}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -222,22 +205,6 @@ const HRManagement = () => {
                     onChange={(e) => setNewEmployee({...newEmployee, position: e.target.value})}
                     className="col-span-3" 
                   />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="trainingStatus" className="text-right">Training Status</Label>
-                  <Select 
-                    value={newEmployee.trainingStatus} 
-                    onValueChange={(value) => setNewEmployee({...newEmployee, trainingStatus: value})}
-                  >
-                    <SelectTrigger id="trainingStatus" className="col-span-3">
-                      <SelectValue placeholder="Select status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Pending">Pending</SelectItem>
-                      <SelectItem value="In Progress">In Progress</SelectItem>
-                      <SelectItem value="Completed">Completed</SelectItem>
-                    </SelectContent>
-                  </Select>
                 </div>
               </div>
               <DialogFooter>
@@ -264,9 +231,9 @@ const HRManagement = () => {
                   <SelectValue placeholder="All Departments" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Departments</SelectItem>
-                  {DEPARTMENTS.map((dept) => (
-                    <SelectItem key={dept} value={dept}>{dept}</SelectItem>
+                  <SelectItem value="all">All Departments</SelectItem>
+                  {DEPARTMENTS.map((department) => (
+                    <SelectItem key={department} value={department}>{department}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -276,128 +243,43 @@ const HRManagement = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle>Employees List</CardTitle>
+            <CardTitle>Employee List</CardTitle>
           </CardHeader>
           <CardContent>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>ID</TableHead>
-                  <TableHead>Name</TableHead>
+                  <TableHead>Employee Name</TableHead>
                   <TableHead>Department</TableHead>
                   <TableHead>Position</TableHead>
-                  <TableHead>Training Status</TableHead>
-                  <TableHead className="text-center">Records</TableHead>
+                  <TableHead>Join Date</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredEmployees.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-6 text-muted-foreground">
+                    <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
                       No employees found. Try adjusting your search or filter.
                     </TableCell>
                   </TableRow>
                 ) : (
                   filteredEmployees.map((employee) => (
                     <TableRow key={employee.id}>
-                      <TableCell>{employee.id}</TableCell>
                       <TableCell className="font-medium">{employee.name}</TableCell>
                       <TableCell>{employee.department}</TableCell>
                       <TableCell>{employee.position}</TableCell>
-                      <TableCell>
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          employee.trainingStatus === "Completed" ? "bg-status-approved text-status-approved-foreground" : 
-                          employee.trainingStatus === "In Progress" ? "bg-status-pending text-status-pending-foreground" : 
-                          "bg-muted text-muted-foreground"
-                        }`}>
-                          {employee.trainingStatus}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <Button
-                          variant={employee.hasTrainingRecords ? "default" : "outline"}
-                          size="sm"
-                          title="Training Records"
-                        >
-                          <FileText className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
+                      <TableCell>{employee.joinDate}</TableCell>
                       <TableCell className="text-right">
-                        <Sheet>
-                          <SheetTrigger asChild>
-                            <Button variant="outline" size="sm">Details</Button>
-                          </SheetTrigger>
-                          <SheetContent>
-                            <SheetHeader>
-                              <SheetTitle>{employee.name} - {employee.id}</SheetTitle>
-                            </SheetHeader>
-                            <div className="py-4">
-                              <h3 className="font-semibold mb-2">Employee Information</h3>
-                              <div className="grid grid-cols-2 gap-2 mb-4">
-                                <span className="text-muted-foreground">Department:</span>
-                                <span>{employee.department}</span>
-                                <span className="text-muted-foreground">Position:</span>
-                                <span>{employee.position}</span>
-                                <span className="text-muted-foreground">Training Status:</span>
-                                <span>{employee.trainingStatus}</span>
-                              </div>
-                              
-                              <h3 className="font-semibold mt-4 mb-2">Skill Matrix</h3>
-                              <div className="space-y-2">
-                                {employee.skills.map((skill, index) => (
-                                  <div key={index} className="flex items-center justify-between">
-                                    <span>{skill}</span>
-                                    <div className="flex space-x-1">
-                                      {Array.from({ length: 5 }, (_, i) => (
-                                        <div
-                                          key={i}
-                                          className={`h-3 w-3 rounded-full ${
-                                            (SKILL_MATRIX[skill]?.[employee.name] || 0) > i 
-                                              ? "bg-primary" 
-                                              : "bg-muted"
-                                          }`}
-                                        />
-                                      ))}
-                                    </div>
-                                  </div>
-                                ))}
-                                {employee.skills.length === 0 && (
-                                  <div className="text-center text-muted-foreground py-2">
-                                    No skill matrix data available
-                                  </div>
-                                )}
-                              </div>
-                              
-                              <h3 className="font-semibold mt-4 mb-2">Training Records</h3>
-                              {employee.hasTrainingRecords ? (
-                                <div className="space-y-2">
-                                  <div className="flex items-center justify-between">
-                                    <span>Onboarding Training</span>
-                                    <Button size="sm" variant="outline">View</Button>
-                                  </div>
-                                  <div className="flex items-center justify-between">
-                                    <span>Safety Procedures</span>
-                                    <Button size="sm" variant="outline">View</Button>
-                                  </div>
-                                  <div className="flex items-center justify-between">
-                                    <span>Technical Skills</span>
-                                    <Button size="sm" variant="outline">View</Button>
-                                  </div>
-                                </div>
-                              ) : (
-                                <div className="text-center text-muted-foreground py-2">
-                                  No training records available
-                                </div>
-                              )}
-                            </div>
-                            <SheetFooter className="pt-2">
-                              <SheetClose asChild>
-                                <Button variant="outline">Close</Button>
-                              </SheetClose>
-                            </SheetFooter>
-                          </SheetContent>
-                        </Sheet>
+                        <div className="flex justify-end gap-2">
+                          <Button variant="outline" size="sm">
+                            View Skills
+                          </Button>
+                          <Button variant="outline" size="sm">
+                            <FileText className="h-4 w-4 mr-1" />
+                            Training Records
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))
