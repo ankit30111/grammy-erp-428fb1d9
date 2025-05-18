@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Check, CalendarIcon, Clock, AlertTriangle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 interface PlannedDate {
   overbooked?: boolean;
@@ -105,12 +106,16 @@ const PPC = () => {
   const [quantity, setQuantity] = useState<string>("");
   const [materialShortages, setMaterialShortages] = useState<RawMaterialShortage[]>([]);
   const [isMaterialsAvailable, setIsMaterialsAvailable] = useState<boolean>(true);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState<boolean>(false);
+  const [selectedDateDetails, setSelectedDateDetails] = useState<string | null>(null);
 
   const handleDateSelect = (selectedDate: Date | undefined) => {
     setDate(selectedDate);
     if (selectedDate) {
       const formattedDate = format(selectedDate, 'yyyy-MM-dd');
       checkMaterialAvailabilityForDate(formattedDate);
+      setSelectedDateDetails(formattedDate);
+      setIsDetailModalOpen(true);
     }
   };
 
@@ -289,17 +294,17 @@ const PPC = () => {
   };
 
   // Get productions for selected date
-  const getProductionsForDate = () => {
-    if (!date) return [];
-    const formattedDate = format(date, 'yyyy-MM-dd');
-    return plannedDates[formattedDate]?.productions || [];
+  const getProductionsForDate = (specificDate?: string) => {
+    const dateToUse = specificDate || (date ? format(date, 'yyyy-MM-dd') : null);
+    if (!dateToUse) return [];
+    return plannedDates[dateToUse]?.productions || [];
   };
 
   // Check if we have material shortages for the selected date
-  const getMaterialStatusForDate = () => {
-    if (!date) return null;
-    const formattedDate = format(date, 'yyyy-MM-dd');
-    return plannedDates[formattedDate]?.materialStatus;
+  const getMaterialStatusForDate = (specificDate?: string) => {
+    const dateToUse = specificDate || (date ? format(date, 'yyyy-MM-dd') : null);
+    if (!dateToUse) return null;
+    return plannedDates[dateToUse]?.materialStatus;
   };
 
   // When a new projection is selected, update the quantity field
@@ -315,6 +320,16 @@ const PPC = () => {
     }
   }, [selectedProjection]);
 
+  const getUnscheduledProjections = () => {
+    // A projection is considered scheduled if its product appears in any of the planned productions
+    const scheduledProducts = Object.values(plannedDates)
+      .flatMap(date => date.productions || [])
+      .map(prod => prod.product);
+    
+    // Return projections that aren't in the scheduled products list
+    return projections.filter(proj => !scheduledProducts.includes(proj.product));
+  };
+
   return (
     <DashboardLayout>
       <div className="container mx-auto py-6">
@@ -326,6 +341,55 @@ const PPC = () => {
             <Clock className="h-4 w-4 text-muted-foreground" />
           </div>
         </div>
+
+        {/* Unscheduled Projections Card */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>Unscheduled Projections</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>ID</TableHead>
+                  <TableHead>Customer</TableHead>
+                  <TableHead>Product</TableHead>
+                  <TableHead>Quantity</TableHead>
+                  <TableHead>Due Date</TableHead>
+                  <TableHead>Action</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {getUnscheduledProjections().length > 0 ? (
+                  getUnscheduledProjections().map((proj) => (
+                    <TableRow key={proj.id}>
+                      <TableCell className="font-medium">{proj.id}</TableCell>
+                      <TableCell>{proj.customer}</TableCell>
+                      <TableCell>{proj.product}</TableCell>
+                      <TableCell>{proj.quantity}</TableCell>
+                      <TableCell>{new Date(proj.dueDate).toLocaleDateString()}</TableCell>
+                      <TableCell>
+                        <Button 
+                          size="sm" 
+                          onClick={() => setSelectedProjection(proj.id)}
+                          variant="outline"
+                        >
+                          Schedule
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-4 text-muted-foreground">
+                      All projections have been scheduled
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Calendar Card */}
@@ -560,10 +624,114 @@ const PPC = () => {
                     ))}
                   </TableBody>
                 </Table>
+
+                <div className="mt-4 flex justify-end">
+                  <Button variant="outline" size="sm">
+                    View Kit Composition
+                  </Button>
+                </div>
               </div>
             ) : null}
           </CardContent>
         </Card>
+
+        {/* Date Details Modal */}
+        <Dialog open={isDetailModalOpen} onOpenChange={setIsDetailModalOpen}>
+          <DialogContent className="sm:max-w-[700px]">
+            <DialogHeader>
+              <DialogTitle>
+                {selectedDateDetails ? `Production Details: ${format(new Date(selectedDateDetails), 'PPP')}` : 'Production Details'}
+              </DialogTitle>
+              <DialogDescription>
+                All scheduled production and material status for this date.
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium">Scheduled Production</h3>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Product</TableHead>
+                    <TableHead>Customer</TableHead>
+                    <TableHead>Quantity</TableHead>
+                    <TableHead>Line</TableHead>
+                    <TableHead>Materials</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {selectedDateDetails && getProductionsForDate(selectedDateDetails).length > 0 ? (
+                    getProductionsForDate(selectedDateDetails).map((prod) => (
+                      <TableRow key={prod.id}>
+                        <TableCell className="font-medium">{prod.product}</TableCell>
+                        <TableCell>{prod.customer}</TableCell>
+                        <TableCell>{prod.quantity}</TableCell>
+                        <TableCell>{prod.line}</TableCell>
+                        <TableCell>
+                          <Badge 
+                            variant="outline" 
+                            className={getMaterialStatusForDate(selectedDateDetails)?.available === false ?
+                              "bg-amber-100 text-amber-800 hover:bg-amber-100" :
+                              "bg-green-100 text-green-800 hover:bg-green-100"
+                            }
+                          >
+                            {getMaterialStatusForDate(selectedDateDetails)?.available === false ?
+                              "Shortage" : "Available"}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center">No production scheduled</TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+
+              {selectedDateDetails && getMaterialStatusForDate(selectedDateDetails)?.shortages.length ? (
+                <div className="mt-4">
+                  <h3 className="text-lg font-medium mb-2">Material Shortages</h3>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Part Code</TableHead>
+                        <TableHead>Description</TableHead>
+                        <TableHead>Required</TableHead>
+                        <TableHead>Available</TableHead>
+                        <TableHead>Shortage</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {getMaterialStatusForDate(selectedDateDetails)?.shortages.map((shortage, idx) => (
+                        <TableRow key={idx}>
+                          <TableCell className="font-mono">{shortage.partCode}</TableCell>
+                          <TableCell>{shortage.description}</TableCell>
+                          <TableCell>{shortage.required}</TableCell>
+                          <TableCell>{shortage.available}</TableCell>
+                          <TableCell className="text-red-600 font-medium">{shortage.shortage}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+
+                  <div className="mt-4 flex justify-end">
+                    <Button variant="outline" size="sm">
+                      View Kit Composition
+                    </Button>
+                  </div>
+                </div>
+              ) : selectedDateDetails && (
+                <div className="p-4 bg-green-50 border border-green-200 rounded-md">
+                  <p className="text-green-800 flex items-center">
+                    <Check className="mr-2 h-4 w-4" />
+                    All materials are available for production on this date
+                  </p>
+                </div>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );
