@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -215,7 +214,7 @@ const IQC = () => {
       toast({
         title: "Quantity mismatch detected",
         description: `Received ${qty} units but GRN shows ${grnQty} units. Purchase department will be notified.`,
-        variant: "warning",
+        variant: "destructive",
       });
     } else {
       toast({
