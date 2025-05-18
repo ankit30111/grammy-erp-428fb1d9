@@ -4,7 +4,8 @@ import { StatCard } from "@/components/Dashboard/StatCard";
 import { ActivityFeed } from "@/components/Dashboard/ActivityFeed";
 import { StatusBadge } from "@/components/ui/custom/StatusBadge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BarChart2, Package, Truck, AlertTriangle, Clock } from "lucide-react";
+import { BarChart2, Package, Truck, AlertTriangle, Clock, ClipboardCheck } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 // Mock data - in a real app this would come from your backend/database
 const activities = [

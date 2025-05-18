@@ -7,9 +7,6 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 
-// Fix the missing import
-import { ClipboardCheck } from "lucide-react";
-
 const queryClient = new QueryClient();
 
 const App = () => (
