@@ -68,14 +68,14 @@ export default {
                     purchase: '#ec4899'
                 },
 				sidebar: {
-					DEFAULT: 'hsl(var(--sidebar-background))',
-					foreground: 'hsl(var(--sidebar-foreground))',
-					primary: 'hsl(var(--sidebar-primary))',
-					'primary-foreground': 'hsl(var(--sidebar-primary-foreground))',
-					accent: 'hsl(var(--sidebar-accent))',
-					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
-					border: 'hsl(var(--sidebar-border))',
-					ring: 'hsl(var(--sidebar-ring))'
+					DEFAULT: '#222222',
+					foreground: '#FFFFFF',
+					primary: '#4CAF50',
+					'primary-foreground': '#FFFFFF',
+					accent: '#3c9a40',
+					'accent-foreground': '#FFFFFF',
+					border: '#333333',
+					ring: '#4CAF50'
 				}
 			},
 			borderRadius: {

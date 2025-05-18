@@ -2,7 +2,12 @@
 import { useState } from "react";
 import { NavLink } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { BarChart2, Package, Users, ClipboardCheck, Truck, ShoppingCart, Layers, Settings, ChevronRight, ChevronLeft, Home, FileCheck, Bell, Calendar, Plus, Check, Search, X } from "lucide-react";
+import { 
+  BarChart2, Package, Users, ClipboardCheck, Truck, ShoppingCart, 
+  Layers, Settings, ChevronRight, ChevronLeft, Home, FileCheck, 
+  Bell, Calendar, Plus, Check, Search, X, Archive, FileText, 
+  User, Database, UserPlus 
+} from "lucide-react";
 
 interface NavItemProps {
   to: string;
@@ -68,7 +73,22 @@ export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   return <div className={cn("bg-sidebar h-screen flex flex-col transition-all duration-300 border-r border-sidebar-border", collapsed ? "w-16" : "w-64")}>
       <div className="flex items-center h-14 px-3 border-b border-sidebar-border">
-        {!collapsed && <h1 className="font-bold text-xl text-sidebar-foreground">GRAMMY ERP</h1>}
+        {!collapsed ? (
+          <div className="flex items-center">
+            <img 
+              src="https://grammyelectronics.com/wp-content/uploads/2023/10/logo-1.png" 
+              alt="Grammy Electronics Logo" 
+              className="h-10 mr-2"
+            />
+            <h1 className="font-bold text-lg text-sidebar-foreground">ERP</h1>
+          </div>
+        ) : (
+          <img 
+            src="https://grammyelectronics.com/wp-content/uploads/2023/10/logo-1.png" 
+            alt="Grammy Electronics Logo" 
+            className="h-8 mx-auto"
+          />
+        )}
         <button onClick={() => setCollapsed(!collapsed)} className="ml-auto p-1.5 rounded-md hover:bg-sidebar-accent text-sidebar-foreground">
           {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
         </button>
@@ -77,45 +97,54 @@ export function Sidebar() {
       <nav className="flex-1 py-4 px-2 space-y-6 overflow-y-auto">
         <ul className="space-y-1">
           <NavItem to="/" icon={<Home size={20} />} label="Dashboard" collapsed={collapsed} />
-          <NavItem to="/projection" icon={<Plus size={20} />} label="Add Projection" collapsed={collapsed} badge={2} />
-          <NavItem to="/planning" icon={<Calendar size={20} />} label="Planning (PPC)" collapsed={collapsed} badge={2} />
-          <NavItem to="/production" icon={<BarChart2 size={20} />} label="Production" collapsed={collapsed} badge={3} />
-          <NavItem to="/quality" icon={<ClipboardCheck size={20} />} label="Quality Control" collapsed={collapsed} badge={5} subItems={[{
-          to: "/quality/iqc",
-          label: "IQC",
-          badge: 3
-        }, {
-          to: "/quality/pqc",
-          label: "PQC",
-          badge: 2
-        }, {
-          to: "/quality/oqc",
-          label: "OQC",
-          badge: 1
-        }]} />
-          <NavItem to="/inventory" icon={<Package size={20} />} label="Inventory" collapsed={collapsed} />
-          <NavItem to="/purchase" icon={<ShoppingCart size={20} />} label="Purchase" collapsed={collapsed} />
-          <NavItem to="/grn" icon={<FileCheck size={20} />} label="GRN" collapsed={collapsed} badge={3} />
+          <NavItem to="/projection" icon={<Plus size={20} />} label="Add Projection" collapsed={collapsed} />
+          
+          <NavItem 
+            to="/planning" 
+            icon={<Calendar size={20} />} 
+            label="PPC" 
+            collapsed={collapsed} 
+            subItems={[
+              { to: "/planning", label: "Planning" },
+              { to: "/purchase", label: "Purchase" },
+              { to: "/grn", label: "GRN", badge: 3 }
+            ]} 
+          />
+          
+          <NavItem to="/inventory" icon={<Package size={20} />} label="Store" collapsed={collapsed} />
+          <NavItem to="/production" icon={<BarChart2 size={20} />} label="Production" collapsed={collapsed} />
+          
+          <NavItem 
+            to="/quality" 
+            icon={<ClipboardCheck size={20} />} 
+            label="Quality Control" 
+            collapsed={collapsed} 
+            subItems={[
+              { to: "/quality/iqc", label: "IQC", badge: 3 },
+              { to: "/quality/pqc", label: "PQC", badge: 2 },
+              { to: "/quality/oqc", label: "OQC", badge: 1 }
+            ]} 
+          />
+          
           <NavItem to="/dispatch" icon={<Truck size={20} />} label="Dispatch" collapsed={collapsed} />
+          <NavItem to="/spare-orders" icon={<Archive size={20} />} label="Spare Orders" collapsed={collapsed} />
+          <NavItem to="/resources" icon={<Users size={20} />} label="Human Resources" collapsed={collapsed} />
         </ul>
 
-        <div className={cn(!collapsed && "px-3 pt-2")}>
-          {!collapsed && <div className="text-xs font-semibold text-sidebar-foreground/70 mb-2">MANAGEMENT</div>}
+        <div className={cn("space-y-2", !collapsed && "px-2 pt-3")}>
+          <div className="h-px bg-sidebar-border mx-1" /> {/* Divider */}
+          
+          {!collapsed && 
+            <div className="text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/70 px-3 py-1">
+              Management
+            </div>
+          }
+          
           <ul className="space-y-1">
-            <NavItem to="/resources" icon={<Users size={20} />} label="Human Resources" collapsed={collapsed} />
-            <NavItem to="/management" icon={<Layers size={20} />} label="Management" collapsed={collapsed} subItems={[{
-              to: "/management/products",
-              label: "Products"
-            }, {
-              to: "/management/raw-materials",
-              label: "Raw Materials"
-            }, {
-              to: "/management/human-resources",
-              label: "HR Management"
-            }]} />
-            <NavItem to="/bom" icon={<Layers size={20} />} label="BOM Management" collapsed={collapsed} />
-            <NavItem to="/reports" icon={<Search size={20} />} label="Reports" collapsed={collapsed} />
-            <NavItem to="/notifications" icon={<Bell size={20} />} label="Notifications" collapsed={collapsed} badge={12} />
+            <NavItem to="/management/products" icon={<FileText size={20} />} label="Add New Product" collapsed={collapsed} />
+            <NavItem to="/management/raw-materials" icon={<Layers size={20} />} label="Add New Raw Material" collapsed={collapsed} />
+            <NavItem to="/vendors" icon={<ShoppingCart size={20} />} label="Add New Vendor" collapsed={collapsed} />
+            <NavItem to="/management/human-resources" icon={<UserPlus size={20} />} label="User Management" collapsed={collapsed} />
           </ul>
         </div>
       </nav>
