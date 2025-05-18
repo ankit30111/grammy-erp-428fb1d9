@@ -21,7 +21,8 @@ import {
   ArrowRight, 
   Layers, 
   CheckCircle,
-  Package
+  Package,
+  X
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
