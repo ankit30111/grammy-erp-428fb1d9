@@ -4,7 +4,7 @@ import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Clock, FileCheck, Upload, X } from "lucide-react";
+import { Clock, FileCheck, Upload, X, CheckCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
@@ -62,7 +62,8 @@ const completedInspections = [
     status: "Accepted",
     remarks: "Meets all specifications",
     inspector: "John Doe",
-    documentUrl: "#"
+    documentUrl: "#",
+    storeStatus: "Pending"
   },
   {
     id: "IQC-002",
@@ -73,7 +74,8 @@ const completedInspections = [
     status: "Rejected",
     remarks: "Solder quality below standard",
     inspector: "Jane Smith",
-    documentUrl: "#"
+    documentUrl: "#",
+    storeStatus: null
   },
   {
     id: "IQC-003",
@@ -84,7 +86,35 @@ const completedInspections = [
     status: "Segregated",
     remarks: "Minor surface scratches on 20% of units",
     inspector: "Robert Johnson",
-    documentUrl: "#"
+    documentUrl: "#",
+    storeStatus: null
+  },
+  {
+    id: "IQC-004",
+    date: "2025-05-11",
+    grnId: "GRN-001",
+    partCode: "PCB-123",
+    description: "Main PCB",
+    status: "Accepted",
+    remarks: "All specifications met",
+    inspector: "John Doe",
+    documentUrl: "#",
+    storeStatus: "Accepted",
+    receivedQuantity: 1000
+  },
+  {
+    id: "IQC-005",
+    date: "2025-05-10",
+    grnId: "GRN-001",
+    partCode: "SPK-A44",
+    description: "Speaker Driver",
+    status: "Accepted",
+    remarks: "All specifications met",
+    inspector: "Jane Smith",
+    documentUrl: "#",
+    storeStatus: "Quantity Mismatch",
+    receivedQuantity: 1950,
+    grn_quantity: 2000
   }
 ];
 
@@ -121,11 +151,14 @@ const IQC = () => {
   const [inspectionStatus, setInspectionStatus] = useState("");
   const [remarks, setRemarks] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [receivedQuantity, setReceivedQuantity] = useState("");
+  const [selectedInspection, setSelectedInspection] = useState<string | null>(null);
   const { toast } = useToast();
 
   // Find the selected GRN and material details
   const selectedGRNDetails = pendingGRNs.find(grn => grn.id === selectedGRN);
   const selectedMaterialDetails = selectedGRNDetails?.materials.find(m => m.id === selectedMaterial);
+  const selectedInspectionDetails = completedInspections.find(insp => insp.id === selectedInspection);
 
   // Handle file selection
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -158,6 +191,44 @@ const IQC = () => {
     setSelectedFile(null);
   };
 
+  // Handle store acceptance
+  const handleStoreAcceptance = () => {
+    if (!selectedInspection || !receivedQuantity) {
+      toast({
+        title: "Missing information",
+        description: "Please select an inspection and enter received quantity",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const qty = parseInt(receivedQuantity);
+    const grnQty = pendingGRNs.find(grn => 
+      grn.id === selectedInspectionDetails?.grnId
+    )?.materials.find(m => 
+      m.partCode === selectedInspectionDetails?.partCode
+    )?.quantity || 0;
+
+    let status = "Accepted";
+    if (qty !== grnQty) {
+      status = "Quantity Mismatch";
+      toast({
+        title: "Quantity mismatch detected",
+        description: `Received ${qty} units but GRN shows ${grnQty} units. Purchase department will be notified.`,
+        variant: "warning",
+      });
+    } else {
+      toast({
+        title: "Material accepted by store",
+        description: `${selectedInspectionDetails?.partCode} has been received in store with quantity: ${qty}`,
+      });
+    }
+
+    // Reset form
+    setSelectedInspection(null);
+    setReceivedQuantity("");
+  };
+
   return (
     <DashboardLayout>
       <div className="grid gap-4 md:gap-6">
@@ -171,9 +242,10 @@ const IQC = () => {
         </div>
 
         <Tabs value={selectedTab} onValueChange={setSelectedTab}>
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="pending">Pending Inspection</TabsTrigger>
             <TabsTrigger value="completed">Completed Inspections</TabsTrigger>
+            <TabsTrigger value="store">Store Acceptance</TabsTrigger>
             <TabsTrigger value="capa">CAPA Tracking</TabsTrigger>
           </TabsList>
           
@@ -380,12 +452,193 @@ const IQC = () => {
                                 CAPA
                               </Button>
                             )}
+                            {inspection.status === "Accepted" && inspection.storeStatus === "Pending" && (
+                              <Button variant="outline" size="sm" onClick={() => setSelectedTab("store")}>
+                                To Store
+                              </Button>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
+          <TabsContent value="store">
+            <Card>
+              <CardHeader>
+                <CardTitle>Store Acceptance of IQC Approved Materials</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                  <Card className="lg:col-span-2">
+                    <CardHeader>
+                      <CardTitle>Pending Store Acceptance</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead></TableHead>
+                            <TableHead>GRN ID</TableHead>
+                            <TableHead>Part Code</TableHead>
+                            <TableHead>Description</TableHead>
+                            <TableHead>IQC Status</TableHead>
+                            <TableHead>Store Status</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {completedInspections
+                            .filter(inspection => 
+                              inspection.status === "Accepted" && 
+                              (inspection.storeStatus === "Pending" || inspection.storeStatus === null)
+                            )
+                            .map((inspection) => (
+                              <TableRow 
+                                key={inspection.id}
+                                className={selectedInspection === inspection.id ? "bg-accent" : ""}
+                              >
+                                <TableCell>
+                                  <input 
+                                    type="radio" 
+                                    name="inspection" 
+                                    checked={selectedInspection === inspection.id}
+                                    onChange={() => setSelectedInspection(inspection.id)} 
+                                  />
+                                </TableCell>
+                                <TableCell>{inspection.grnId}</TableCell>
+                                <TableCell className="font-mono">{inspection.partCode}</TableCell>
+                                <TableCell>{inspection.description}</TableCell>
+                                <TableCell>
+                                  <Badge variant="outline" className="bg-green-100 text-green-800">
+                                    Accepted
+                                  </Badge>
+                                </TableCell>
+                                <TableCell>
+                                  <Badge variant="outline" className="bg-amber-100 text-amber-800">
+                                    {inspection.storeStatus || "Pending"}
+                                  </Badge>
+                                </TableCell>
+                              </TableRow>
+                          ))}
+                          {completedInspections.filter(inspection => 
+                              inspection.status === "Accepted" && 
+                              (inspection.storeStatus === "Pending" || inspection.storeStatus === null)
+                            ).length === 0 && (
+                            <TableRow>
+                              <TableCell colSpan={6} className="text-center py-4 text-muted-foreground">
+                                No materials pending store acceptance
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </TableBody>
+                      </Table>
+                    </CardContent>
+                  </Card>
+
+                  {selectedInspection && (
+                    <Card className="lg:col-span-1">
+                      <CardHeader>
+                        <CardTitle>Store Acceptance</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-4">
+                          <h3 className="font-medium">Material Details</h3>
+                          <div className="space-y-1">
+                            <p><span className="font-medium">GRN: </span>{selectedInspectionDetails?.grnId}</p>
+                            <p><span className="font-medium">Part Code: </span>{selectedInspectionDetails?.partCode}</p>
+                            <p><span className="font-medium">Description: </span>{selectedInspectionDetails?.description}</p>
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <label htmlFor="quantity" className="text-sm font-medium">
+                              Received Quantity
+                            </label>
+                            <Input
+                              id="quantity"
+                              type="number"
+                              value={receivedQuantity}
+                              onChange={(e) => setReceivedQuantity(e.target.value)}
+                              placeholder="Enter actual quantity received"
+                            />
+                          </div>
+                          
+                          <Button 
+                            className="w-full mt-4"
+                            onClick={handleStoreAcceptance}
+                          >
+                            <CheckCircle className="h-4 w-4 mr-2" />
+                            Confirm Receipt
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
+
+                <Card className="mt-4">
+                  <CardHeader>
+                    <CardTitle>Processed Store Receipts</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Date</TableHead>
+                          <TableHead>GRN ID</TableHead>
+                          <TableHead>Part Code</TableHead>
+                          <TableHead>Description</TableHead>
+                          <TableHead>GRN Quantity</TableHead>
+                          <TableHead>Received Quantity</TableHead>
+                          <TableHead>Status</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {completedInspections
+                          .filter(inspection => 
+                            inspection.status === "Accepted" && 
+                            inspection.storeStatus !== "Pending" &&
+                            inspection.storeStatus !== null
+                          )
+                          .map((inspection) => (
+                            <TableRow key={inspection.id}>
+                              <TableCell>{new Date(inspection.date).toLocaleDateString()}</TableCell>
+                              <TableCell>{inspection.grnId}</TableCell>
+                              <TableCell className="font-mono">{inspection.partCode}</TableCell>
+                              <TableCell>{inspection.description}</TableCell>
+                              <TableCell>{inspection.grn_quantity || "-"}</TableCell>
+                              <TableCell>{inspection.receivedQuantity || "-"}</TableCell>
+                              <TableCell>
+                                <Badge 
+                                  variant="outline" 
+                                  className={
+                                    inspection.storeStatus === "Accepted" ? "bg-green-100 text-green-800" :
+                                    "bg-yellow-100 text-yellow-800"
+                                  }
+                                >
+                                  {inspection.storeStatus}
+                                </Badge>
+                              </TableCell>
+                            </TableRow>
+                        ))}
+                        {completedInspections.filter(inspection => 
+                          inspection.status === "Accepted" && 
+                          inspection.storeStatus !== "Pending" &&
+                          inspection.storeStatus !== null
+                        ).length === 0 && (
+                          <TableRow>
+                            <TableCell colSpan={7} className="text-center py-4 text-muted-foreground">
+                              No processed store receipts
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
               </CardContent>
             </Card>
           </TabsContent>
