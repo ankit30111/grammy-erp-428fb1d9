@@ -7,6 +7,31 @@ import { Button } from "@/components/ui/button";
 import { Calendar, Clock, Plus } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
+
+// Mock data for customers and products
+const mockCustomers = [
+  "AudioTech Inc",
+  "SoundMaster",
+  "EchoSystems",
+  "BassBoost Audio",
+  "ClearSound Ltd"
+];
+
+const mockProducts = [
+  "Speaker A300",
+  "Subwoofer S200",
+  "Tweeter T100",
+  "Amplifier AM500",
+  "Bluetooth Speaker B400",
+  "Soundbar SB100"
+];
 
 // Mock data for projections
 const mockProjections = [
@@ -27,6 +52,13 @@ const Projection = () => {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
+    setNewProjection((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const handleSelectChange = (name: string, value: string) => {
     setNewProjection((prev) => ({
       ...prev,
       [name]: value,
@@ -93,25 +125,41 @@ const Projection = () => {
                 <label htmlFor="customer" className="text-sm font-medium mb-1 block">
                   Customer
                 </label>
-                <Input
-                  id="customer"
-                  name="customer"
+                <Select
                   value={newProjection.customer}
-                  onChange={handleInputChange}
-                  placeholder="Customer name"
-                />
+                  onValueChange={(value) => handleSelectChange("customer", value)}
+                >
+                  <SelectTrigger id="customer">
+                    <SelectValue placeholder="Select customer" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {mockCustomers.map((customer) => (
+                      <SelectItem key={customer} value={customer}>
+                        {customer}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div>
                 <label htmlFor="product" className="text-sm font-medium mb-1 block">
                   Product
                 </label>
-                <Input
-                  id="product"
-                  name="product"
+                <Select
                   value={newProjection.product}
-                  onChange={handleInputChange}
-                  placeholder="Product code/name"
-                />
+                  onValueChange={(value) => handleSelectChange("product", value)}
+                >
+                  <SelectTrigger id="product">
+                    <SelectValue placeholder="Select product" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {mockProducts.map((product) => (
+                      <SelectItem key={product} value={product}>
+                        {product}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div>
                 <label htmlFor="quantity" className="text-sm font-medium mb-1 block">

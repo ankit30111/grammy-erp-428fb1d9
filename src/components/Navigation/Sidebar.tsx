@@ -5,7 +5,8 @@ import { cn } from "@/lib/utils";
 import { 
   BarChart2, Package, Users, ClipboardCheck, 
   Truck, ShoppingCart, Layers, Settings, ChevronRight, 
-  ChevronLeft, Home, FileText, Bell, Calendar, Plus
+  ChevronLeft, Home, FileCheck, Bell, Calendar, Plus,
+  Check, Search, X
 } from "lucide-react";
 
 interface NavItemProps {
@@ -14,28 +15,76 @@ interface NavItemProps {
   label: string;
   collapsed: boolean;
   badge?: number;
+  subItems?: {
+    to: string;
+    label: string;
+    badge?: number;
+  }[];
 }
 
-const NavItem = ({ to, icon, label, collapsed, badge }: NavItemProps) => (
-  <li>
-    <NavLink 
-      to={to} 
-      className={({ isActive }) => 
-        cn("nav-link", isActive && "active")
-      }
-    >
-      <span className="text-sidebar-foreground">{icon}</span>
-      {!collapsed && (
-        <span className="text-sidebar-foreground">{label}</span>
+const NavItem = ({ to, icon, label, collapsed, badge, subItems }: NavItemProps) => {
+  const [expanded, setExpanded] = useState(false);
+  
+  const handleExpandClick = (e: React.MouseEvent) => {
+    if (subItems?.length) {
+      e.preventDefault();
+      setExpanded(!expanded);
+    }
+  };
+
+  return (
+    <li>
+      <NavLink 
+        to={to} 
+        className={({ isActive }) => 
+          cn("nav-link", isActive && !subItems?.length && "active")
+        }
+        onClick={subItems?.length ? handleExpandClick : undefined}
+        end={!subItems?.length}
+      >
+        <span className="text-sidebar-foreground">{icon}</span>
+        {!collapsed && (
+          <>
+            <span className="text-sidebar-foreground">{label}</span>
+            {subItems?.length && (
+              <span className="ml-auto">
+                {expanded ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+              </span>
+            )}
+          </>
+        )}
+        {!collapsed && badge !== undefined && (
+          <span className="ml-auto bg-sidebar-primary text-sidebar-primary-foreground text-xs rounded-full px-2 py-0.5">
+            {badge > 99 ? "99+" : badge}
+          </span>
+        )}
+      </NavLink>
+      
+      {!collapsed && expanded && subItems?.length && (
+        <ul className="ml-8 space-y-1 mt-1">
+          {subItems.map((item, index) => (
+            <li key={index}>
+              <NavLink 
+                to={item.to} 
+                className={({ isActive }) => 
+                  cn("nav-link text-sm py-1.5", isActive && "active")
+                }
+              >
+                <div className="w-1 h-1 rounded-full bg-current" />
+                <span className="text-sidebar-foreground">{item.label}</span>
+                {item.badge !== undefined && (
+                  <span className="ml-auto bg-sidebar-primary text-sidebar-primary-foreground text-xs rounded-full px-2 py-0.5">
+                    {item.badge > 99 ? "99+" : item.badge}
+                  </span>
+                )}
+              </NavLink>
+            </li>
+          ))}
+        </ul>
       )}
-      {!collapsed && badge !== undefined && (
-        <span className="ml-auto bg-sidebar-primary text-sidebar-primary-foreground text-xs rounded-full px-2 py-0.5">
-          {badge > 99 ? "99+" : badge}
-        </span>
-      )}
-    </NavLink>
-  </li>
-);
+    </li>
+  );
+};
 
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
@@ -65,10 +114,21 @@ export function Sidebar() {
           <NavItem to="/projection" icon={<Plus size={20} />} label="Add Projection" collapsed={collapsed} badge={2} />
           <NavItem to="/planning" icon={<Calendar size={20} />} label="Planning (PPC)" collapsed={collapsed} badge={2} />
           <NavItem to="/production" icon={<BarChart2 size={20} />} label="Production" collapsed={collapsed} badge={3} />
-          <NavItem to="/quality" icon={<ClipboardCheck size={20} />} label="Quality Control" collapsed={collapsed} badge={5} />
+          <NavItem 
+            to="/quality" 
+            icon={<ClipboardCheck size={20} />} 
+            label="Quality Control" 
+            collapsed={collapsed} 
+            badge={5} 
+            subItems={[
+              { to: "/quality/iqc", label: "IQC", badge: 3 },
+              { to: "/quality/pqc", label: "PQC", badge: 2 },
+              { to: "/quality/oqc", label: "OQC", badge: 1 }
+            ]}
+          />
           <NavItem to="/inventory" icon={<Package size={20} />} label="Inventory" collapsed={collapsed} />
           <NavItem to="/purchase" icon={<ShoppingCart size={20} />} label="Purchase" collapsed={collapsed} />
-          <NavItem to="/grn" icon={<Package size={20} />} label="GRN" collapsed={collapsed} badge={3} />
+          <NavItem to="/grn" icon={<FileCheck size={20} />} label="GRN" collapsed={collapsed} badge={3} />
           <NavItem to="/dispatch" icon={<Truck size={20} />} label="Dispatch" collapsed={collapsed} />
         </ul>
 
@@ -77,7 +137,7 @@ export function Sidebar() {
           <ul className="space-y-1">
             <NavItem to="/resources" icon={<Users size={20} />} label="Resources" collapsed={collapsed} />
             <NavItem to="/bom" icon={<Layers size={20} />} label="BOM Management" collapsed={collapsed} />
-            <NavItem to="/reports" icon={<FileText size={20} />} label="Reports" collapsed={collapsed} />
+            <NavItem to="/reports" icon={<Search size={20} />} label="Reports" collapsed={collapsed} />
             <NavItem to="/notifications" icon={<Bell size={20} />} label="Notifications" collapsed={collapsed} badge={12} />
           </ul>
         </div>

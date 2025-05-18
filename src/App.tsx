@@ -11,6 +11,10 @@ import PPC from "./pages/PPC";
 import Purchase from "./pages/Purchase";
 import Inventory from "./pages/Inventory";
 import GRN from "./pages/GRN";
+import Quality from "./pages/Quality";
+import IQC from "./pages/quality/IQC";
+import PQC from "./pages/quality/PQC";
+import OQC from "./pages/quality/OQC";
 
 const queryClient = new QueryClient();
 
@@ -24,7 +28,10 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/projection" element={<Projection />} />
           <Route path="/production" element={<Index />} />
-          <Route path="/quality" element={<Index />} />
+          <Route path="/quality" element={<Quality />} />
+          <Route path="/quality/iqc" element={<IQC />} />
+          <Route path="/quality/pqc" element={<PQC />} />
+          <Route path="/quality/oqc" element={<OQC />} />
           <Route path="/inventory" element={<Inventory />} />
           <Route path="/planning" element={<PPC />} />
           <Route path="/purchase" element={<Purchase />} />
