@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 import { 
@@ -17,11 +16,11 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter 
 } from "@/components/ui/dialog";
 import { 
-  Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter, SheetClose 
+  Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter, SheetClose, SheetTrigger
 } from "@/components/ui/sheet";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Users, FileText, Search, Plus } from "lucide-react";
+import { Search, Plus, FileText } from "lucide-react";
 
 // Department options
 const DEPARTMENTS = [

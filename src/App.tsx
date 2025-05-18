@@ -19,42 +19,45 @@ import Management from "./pages/Management";
 import ProductsManagement from "./pages/management/ProductsManagement";
 import RawMaterialsManagement from "./pages/management/RawMaterialsManagement";
 import HRManagement from "./pages/management/HRManagement";
+import React from "react";
 
 const queryClient = new QueryClient();
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/projection" element={<Projection />} />
-          <Route path="/production" element={<Index />} />
-          <Route path="/quality" element={<Quality />} />
-          <Route path="/quality/iqc" element={<IQC />} />
-          <Route path="/quality/pqc" element={<PQC />} />
-          <Route path="/quality/oqc" element={<OQC />} />
-          <Route path="/inventory" element={<Inventory />} />
-          <Route path="/planning" element={<PPC />} />
-          <Route path="/purchase" element={<Purchase />} />
-          <Route path="/dispatch" element={<Index />} />
-          <Route path="/resources" element={<Index />} />
-          <Route path="/management" element={<Management />} />
-          <Route path="/management/products" element={<ProductsManagement />} />
-          <Route path="/management/raw-materials" element={<RawMaterialsManagement />} />
-          <Route path="/management/human-resources" element={<HRManagement />} />
-          <Route path="/bom" element={<Index />} />
-          <Route path="/reports" element={<Index />} />
-          <Route path="/notifications" element={<Index />} />
-          <Route path="/settings" element={<Index />} />
-          <Route path="/grn" element={<GRN />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
+  <React.StrictMode>
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/projection" element={<Projection />} />
+            <Route path="/production" element={<Index />} />
+            <Route path="/quality" element={<Quality />} />
+            <Route path="/quality/iqc" element={<IQC />} />
+            <Route path="/quality/pqc" element={<PQC />} />
+            <Route path="/quality/oqc" element={<OQC />} />
+            <Route path="/inventory" element={<Inventory />} />
+            <Route path="/planning" element={<PPC />} />
+            <Route path="/purchase" element={<Purchase />} />
+            <Route path="/dispatch" element={<Index />} />
+            <Route path="/resources" element={<Index />} />
+            <Route path="/management" element={<Management />} />
+            <Route path="/management/products" element={<ProductsManagement />} />
+            <Route path="/management/raw-materials" element={<RawMaterialsManagement />} />
+            <Route path="/management/human-resources" element={<HRManagement />} />
+            <Route path="/bom" element={<Index />} />
+            <Route path="/reports" element={<Index />} />
+            <Route path="/notifications" element={<Index />} />
+            <Route path="/settings" element={<Index />} />
+            <Route path="/grn" element={<GRN />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  </React.StrictMode>
 );
 
 export default App;
