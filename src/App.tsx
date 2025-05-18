@@ -15,6 +15,10 @@ import Quality from "./pages/Quality";
 import IQC from "./pages/quality/IQC";
 import PQC from "./pages/quality/PQC";
 import OQC from "./pages/quality/OQC";
+import Management from "./pages/Management";
+import ProductsManagement from "./pages/management/ProductsManagement";
+import RawMaterialsManagement from "./pages/management/RawMaterialsManagement";
+import HRManagement from "./pages/management/HRManagement";
 
 const queryClient = new QueryClient();
 
@@ -37,6 +41,10 @@ const App = () => (
           <Route path="/purchase" element={<Purchase />} />
           <Route path="/dispatch" element={<Index />} />
           <Route path="/resources" element={<Index />} />
+          <Route path="/management" element={<Management />} />
+          <Route path="/management/products" element={<ProductsManagement />} />
+          <Route path="/management/raw-materials" element={<RawMaterialsManagement />} />
+          <Route path="/management/human-resources" element={<HRManagement />} />
           <Route path="/bom" element={<Index />} />
           <Route path="/reports" element={<Index />} />
           <Route path="/notifications" element={<Index />} />

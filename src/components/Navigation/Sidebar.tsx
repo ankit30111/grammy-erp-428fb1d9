@@ -1,7 +1,9 @@
+
 import { useState } from "react";
 import { NavLink } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { BarChart2, Package, Users, ClipboardCheck, Truck, ShoppingCart, Layers, Settings, ChevronRight, ChevronLeft, Home, FileCheck, Bell, Calendar, Plus, Check, Search, X } from "lucide-react";
+
 interface NavItemProps {
   to: string;
   icon: React.ReactNode;
@@ -14,6 +16,7 @@ interface NavItemProps {
     badge?: number;
   }[];
 }
+
 const NavItem = ({
   to,
   icon,
@@ -60,6 +63,7 @@ const NavItem = ({
         </ul>}
     </li>;
 };
+
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   return <div className={cn("bg-sidebar h-screen flex flex-col transition-all duration-300 border-r border-sidebar-border", collapsed ? "w-16" : "w-64")}>
@@ -98,7 +102,17 @@ export function Sidebar() {
         <div className={cn(!collapsed && "px-3 pt-2")}>
           {!collapsed && <div className="text-xs font-semibold text-sidebar-foreground/70 mb-2">MANAGEMENT</div>}
           <ul className="space-y-1">
-            <NavItem to="/resources" icon={<Users size={20} />} label="Resources" collapsed={collapsed} />
+            <NavItem to="/resources" icon={<Users size={20} />} label="Human Resources" collapsed={collapsed} />
+            <NavItem to="/management" icon={<Layers size={20} />} label="Management" collapsed={collapsed} subItems={[{
+              to: "/management/products",
+              label: "Products"
+            }, {
+              to: "/management/raw-materials",
+              label: "Raw Materials"
+            }, {
+              to: "/management/human-resources",
+              label: "HR Management"
+            }]} />
             <NavItem to="/bom" icon={<Layers size={20} />} label="BOM Management" collapsed={collapsed} />
             <NavItem to="/reports" icon={<Search size={20} />} label="Reports" collapsed={collapsed} />
             <NavItem to="/notifications" icon={<Bell size={20} />} label="Notifications" collapsed={collapsed} badge={12} />
