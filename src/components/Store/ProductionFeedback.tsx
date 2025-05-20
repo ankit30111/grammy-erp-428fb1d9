@@ -39,7 +39,7 @@ export default function ProductionFeedback({
               <SelectValue placeholder="Select voucher" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Vouchers</SelectItem>
+              <SelectItem value="all">All Vouchers</SelectItem>
               {productions
                 .filter(prod => prod.kitStatus === "KIT SENT")
                 .map(prod => (
