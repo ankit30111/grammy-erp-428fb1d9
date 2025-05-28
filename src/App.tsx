@@ -24,6 +24,7 @@ import Resources from "./pages/Resources";
 import Vendors from "./pages/Vendors";
 import FinishedGoods from "./pages/FinishedGoods";
 import Dispatch from "./pages/Dispatch";
+import SpareOrders from "./pages/SpareOrders";
 import React from "react";
 
 const queryClient = new QueryClient();
@@ -48,7 +49,7 @@ const App = () => (
             <Route path="/purchase" element={<Purchase />} />
             <Route path="/grn" element={<GRN />} />
             <Route path="/dispatch" element={<Dispatch />} />
-            <Route path="/spare-orders" element={<Index />} />
+            <Route path="/spare-orders" element={<SpareOrders />} />
             <Route path="/resources" element={<Resources />} />
             <Route path="/finished-goods" element={<FinishedGoods />} />
             <Route path="/vendors" element={<Vendors />} />
