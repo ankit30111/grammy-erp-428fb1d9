@@ -57,6 +57,188 @@ export type Database = {
           },
         ]
       }
+      customer_warehouses: {
+        Row: {
+          address: string
+          contact_number: string | null
+          contact_person: string | null
+          created_at: string
+          customer_id: string
+          id: string
+          is_active: boolean
+          updated_at: string
+          warehouse_name: string
+        }
+        Insert: {
+          address: string
+          contact_number?: string | null
+          contact_person?: string | null
+          created_at?: string
+          customer_id: string
+          id?: string
+          is_active?: boolean
+          updated_at?: string
+          warehouse_name: string
+        }
+        Update: {
+          address?: string
+          contact_number?: string | null
+          contact_person?: string | null
+          created_at?: string
+          customer_id?: string
+          id?: string
+          is_active?: boolean
+          updated_at?: string
+          warehouse_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_warehouses_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customers: {
+        Row: {
+          address: string
+          contact_number: string
+          created_at: string
+          created_by: string | null
+          customer_code: string
+          email: string
+          gst_number: string | null
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          address: string
+          contact_number: string
+          created_at?: string
+          created_by?: string | null
+          customer_code: string
+          email: string
+          gst_number?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          address?: string
+          contact_number?: string
+          created_at?: string
+          created_by?: string | null
+          customer_code?: string
+          email?: string
+          gst_number?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      dispatch_order_items: {
+        Row: {
+          created_at: string
+          dispatch_order_id: string
+          id: string
+          lot_number: string | null
+          product_id: string
+          quantity: number
+        }
+        Insert: {
+          created_at?: string
+          dispatch_order_id: string
+          id?: string
+          lot_number?: string | null
+          product_id: string
+          quantity: number
+        }
+        Update: {
+          created_at?: string
+          dispatch_order_id?: string
+          id?: string
+          lot_number?: string | null
+          product_id?: string
+          quantity?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dispatch_order_items_dispatch_order_id_fkey"
+            columns: ["dispatch_order_id"]
+            isOneToOne: false
+            referencedRelation: "dispatch_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dispatch_order_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dispatch_orders: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          customer_id: string
+          customer_warehouse_id: string
+          dispatch_date: string
+          dispatch_order_number: string
+          id: string
+          notes: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          customer_id: string
+          customer_warehouse_id: string
+          dispatch_date?: string
+          dispatch_order_number: string
+          id?: string
+          notes?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string
+          customer_warehouse_id?: string
+          dispatch_date?: string
+          dispatch_order_number?: string
+          id?: string
+          notes?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dispatch_orders_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dispatch_orders_customer_warehouse_id_fkey"
+            columns: ["customer_warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "customer_warehouses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       products: {
         Row: {
           category: string
@@ -235,7 +417,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      generate_dispatch_order_number: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
     }
     Enums: {
       bom_type: "main_assembly" | "sub_assembly" | "accessory"

@@ -131,6 +131,7 @@ export function Sidebar() {
           <ul className="space-y-1">
             <NavItem to="/management/products" icon={<FileText size={20} />} label="Products" collapsed={collapsed} />
             <NavItem to="/management/raw-materials" icon={<Layers size={20} />} label="Raw Materials" collapsed={collapsed} />
+            <NavItem to="/management/customers" icon={<UserPlus size={20} />} label="Customers" collapsed={collapsed} />
             <NavItem to="/vendors" icon={<Building2 size={20} />} label="Vendors" collapsed={collapsed} />
           </ul>
         </div>

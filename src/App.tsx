@@ -19,9 +19,11 @@ import OQC from "./pages/quality/OQC";
 import Management from "./pages/Management";
 import ProductsManagement from "./pages/management/ProductsManagement";
 import RawMaterialsManagement from "./pages/management/RawMaterialsManagement";
+import CustomersManagement from "./pages/management/CustomersManagement";
 import Resources from "./pages/Resources";
 import Vendors from "./pages/Vendors";
 import FinishedGoods from "./pages/FinishedGoods";
+import Dispatch from "./pages/Dispatch";
 import React from "react";
 
 const queryClient = new QueryClient();
@@ -45,7 +47,7 @@ const App = () => (
             <Route path="/inventory" element={<Inventory />} />
             <Route path="/purchase" element={<Purchase />} />
             <Route path="/grn" element={<GRN />} />
-            <Route path="/dispatch" element={<Index />} />
+            <Route path="/dispatch" element={<Dispatch />} />
             <Route path="/spare-orders" element={<Index />} />
             <Route path="/resources" element={<Resources />} />
             <Route path="/finished-goods" element={<FinishedGoods />} />
@@ -53,6 +55,7 @@ const App = () => (
             <Route path="/management" element={<Management />} />
             <Route path="/management/products" element={<ProductsManagement />} />
             <Route path="/management/raw-materials" element={<RawMaterialsManagement />} />
+            <Route path="/management/customers" element={<CustomersManagement />} />
             <Route path="/settings" element={<Index />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
