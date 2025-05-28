@@ -1,5 +1,4 @@
-
-export type KitStatus = "KIT SCHEDULED" | "KIT VERIFIED" | "KIT SENT" | "KIT SHORTAGE";
+export type KitStatus = "KIT SCHEDULED" | "KIT VERIFIED" | "KIT SENT" | "KIT SHORTAGE" | "KIT READY" | "YET TO PLANNED";
 
 export interface ScheduledProduction {
   id: string;
