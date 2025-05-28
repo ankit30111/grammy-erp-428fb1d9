@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { NavLink } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -188,7 +189,7 @@ export function Sidebar() {
           <NavItem to="/spare-orders" icon={<Wrench size={20} />} label="Spare Orders" collapsed={collapsed} allowedTabs={allowedTabs} />
           
           <NavItem
-            to="/planning"
+            to="#"
             icon={<Calendar size={20} />}
             label="PPC"
             collapsed={collapsed}
