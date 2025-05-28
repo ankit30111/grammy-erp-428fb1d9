@@ -40,7 +40,7 @@ export function PerformanceReviews() {
         .eq('status', 'active');
       
       if (error) throw error;
-      return data;
+      return data || [];
     }
   });
 
@@ -50,14 +50,27 @@ export function PerformanceReviews() {
       const { data, error } = await supabase
         .from('performance_reviews')
         .select(`
-          *,
-          employee:employee_id (first_name, last_name, employee_code, position),
-          reviewer:reviewer_id (first_name, last_name)
+          id,
+          review_period_start,
+          review_period_end,
+          overall_rating,
+          technical_skills_rating,
+          communication_rating,
+          teamwork_rating,
+          punctuality_rating,
+          created_at,
+          employees!employee_id (
+            id,
+            first_name,
+            last_name,
+            employee_code,
+            position
+          )
         `)
         .order('created_at', { ascending: false });
       
       if (error) throw error;
-      return data;
+      return data || [];
     }
   });
 
@@ -136,8 +149,8 @@ export function PerformanceReviews() {
     { value: 'unsatisfactory', label: 'Unsatisfactory' }
   ];
 
-  // Calculate performance statistics
-  const avgRating = reviews?.reduce((sum, review) => {
+  // Calculate performance statistics safely
+  const avgRating = reviews && reviews.length > 0 ? reviews.reduce((sum, review) => {
     const ratings = [
       review.overall_rating,
       review.technical_skills_rating,
@@ -158,7 +171,7 @@ export function PerformanceReviews() {
     });
     
     return sum + (numericRatings.reduce((a, b) => a + b, 0) / numericRatings.length);
-  }, 0) / (reviews?.length || 1);
+  }, 0) / reviews.length : 0;
 
   return (
     <div className="space-y-6">
@@ -372,9 +385,9 @@ export function PerformanceReviews() {
                 {reviews?.map((review) => (
                   <TableRow key={review.id}>
                     <TableCell>
-                      {review.employee?.employee_code} - {review.employee?.first_name} {review.employee?.last_name}
+                      {review.employees?.employee_code} - {review.employees?.first_name} {review.employees?.last_name}
                     </TableCell>
-                    <TableCell>{review.employee?.position}</TableCell>
+                    <TableCell>{review.employees?.position}</TableCell>
                     <TableCell>
                       {new Date(review.review_period_start).toLocaleDateString()} - {' '}
                       {new Date(review.review_period_end).toLocaleDateString()}
