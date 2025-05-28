@@ -79,7 +79,7 @@ const UserManagement = () => {
         const { data: authUsers } = await supabase.auth.admin.listUsers();
         
         const usersWithEmails = profiles.map(profile => {
-          const authUser = authUsers?.users.find(u => u.id === profile.id);
+          const authUser = authUsers?.users?.find(u => u.id === profile.id);
           return {
             id: profile.id,
             username: profile.username,
