@@ -33,6 +33,11 @@ interface User {
   permissions: string[];
 }
 
+interface AuthUser {
+  id: string;
+  email?: string;
+}
+
 const AVAILABLE_MODULES = [
   'store',
   'quality',
@@ -76,10 +81,10 @@ const UserManagement = () => {
         `) as { data: ProfileWithPermissions[] | null };
 
       if (profiles) {
-        const { data: authUsers } = await supabase.auth.admin.listUsers();
+        const { data: authUsersResponse } = await supabase.auth.admin.listUsers();
         
         const usersWithEmails = profiles.map(profile => {
-          const authUser = authUsers?.users?.find(u => u.id === profile.id);
+          const authUser = authUsersResponse?.users?.find((u: AuthUser) => u.id === profile.id);
           return {
             id: profile.id,
             username: profile.username,
