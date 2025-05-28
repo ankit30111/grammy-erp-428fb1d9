@@ -3,551 +3,199 @@ import { useState } from "react";
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { 
-  Plus, 
-  Calendar, 
+  Package, 
+  Search, 
+  TrendingUp, 
+  TrendingDown, 
   Clock, 
-  ArrowRight, 
-  Layers, 
+  MapPin, 
+  AlertTriangle,
   CheckCircle,
-  Package,
-  X
+  Filter
 } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-
-// Mock data for sub-assemblies
-const mockSubAssemblies = [
-  {
-    id: "SA-001",
-    name: "PCBA Main Board",
-    description: "Main PCB Assembly for Speaker A300",
-    parentProduct: "Speaker A300",
-    totalRequired: 1000,
-    produced: 800,
-    inStore: 700,
-    issued: 500
-  },
-  {
-    id: "SA-002",
-    name: "Amplifier Module",
-    description: "Amplifier Module for Speaker A300",
-    parentProduct: "Speaker A300",
-    totalRequired: 1000,
-    produced: 600,
-    inStore: 500,
-    issued: 450
-  },
-  {
-    id: "SA-003",
-    name: "Power Supply Unit",
-    description: "PSU for Subwoofer S200",
-    parentProduct: "Subwoofer S200",
-    totalRequired: 500,
-    produced: 300,
-    inStore: 300,
-    issued: 200
-  },
-  {
-    id: "SA-004",
-    name: "Crossover Network",
-    description: "Crossover for Subwoofer S200",
-    parentProduct: "Subwoofer S200",
-    totalRequired: 500,
-    produced: 450,
-    inStore: 400,
-    issued: 300
-  }
-];
-
-// Mock data for raw materials for BOM
-const mockRawMaterials = [
-  { id: "RM-001", code: "PCB-123", name: "Main PCB Board", uom: "Pcs" },
-  { id: "RM-002", code: "IC-456", name: "Amplifier IC", uom: "Pcs" },
-  { id: "RM-003", code: "RES-789", name: "Resistor 10K", uom: "Pcs" },
-  { id: "RM-004", code: "CAP-012", name: "Capacitor 100nF", uom: "Pcs" },
-  { id: "RM-005", code: "CON-345", name: "Header Connector", uom: "Pcs" }
-];
-
-// Mock data for sub-assembly BOMs
-const mockSubAssemblyBoms = [
-  {
-    id: "SA-001",
-    name: "PCBA Main Board",
-    items: [
-      { materialId: "RM-001", materialCode: "PCB-123", materialName: "Main PCB Board", quantity: 1 },
-      { materialId: "RM-002", materialCode: "IC-456", materialName: "Amplifier IC", quantity: 2 },
-      { materialId: "RM-003", materialCode: "RES-789", materialName: "Resistor 10K", quantity: 20 },
-      { materialId: "RM-004", materialCode: "CAP-012", materialName: "Capacitor 100nF", quantity: 15 }
-    ]
-  },
-  {
-    id: "SA-002",
-    name: "Amplifier Module",
-    items: [
-      { materialId: "RM-001", materialCode: "PCB-123", materialName: "Main PCB Board", quantity: 1 },
-      { materialId: "RM-002", materialCode: "IC-456", materialName: "Amplifier IC", quantity: 1 },
-      { materialId: "RM-005", materialCode: "CON-345", materialName: "Header Connector", quantity: 2 }
-    ]
-  }
-];
-
-// Mock production batches
-const mockProductionBatches = [
-  {
-    id: "PB-001",
-    subAssemblyId: "SA-001",
-    subAssemblyName: "PCBA Main Board",
-    quantity: 200,
-    startDate: "2025-05-19",
-    status: "Completed",
-    sentToStore: true
-  },
-  {
-    id: "PB-002",
-    subAssemblyId: "SA-002",
-    subAssemblyName: "Amplifier Module",
-    quantity: 150,
-    startDate: "2025-05-18",
-    status: "In Progress",
-    sentToStore: false
-  },
-  {
-    id: "PB-003",
-    subAssemblyId: "SA-003",
-    subAssemblyName: "Power Supply Unit",
-    quantity: 100,
-    startDate: "2025-05-17",
-    status: "In Progress",
-    sentToStore: false
-  }
-];
+import { 
+  mockFinishedGoodsInventory, 
+  mockFinishedGoodsMovements, 
+  groupInventoryByModel,
+  FinishedGoodsInventory,
+  FinishedGoodsMovement 
+} from "@/types/finishedGoods";
+import { format } from "date-fns";
 
 const FinishedGoods = () => {
-  const [activeTab, setActiveTab] = useState("sub-assemblies");
-  const [newSubAssembly, setNewSubAssembly] = useState({
-    name: "",
-    description: "",
-    parentProduct: ""
-  });
-  const [newBomItems, setNewBomItems] = useState<{materialId: string, quantity: string}[]>([
-    { materialId: "", quantity: "1" }
-  ]);
-  const [showNewForm, setShowNewForm] = useState(false);
-  const [selectedSubAssembly, setSelectedSubAssembly] = useState<string | null>(null);
-  const [newBatchQuantity, setNewBatchQuantity] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedModel, setSelectedModel] = useState<string | null>(null);
+  const [filterStatus, setFilterStatus] = useState<string>("ALL");
+
+  const modelStocks = groupInventoryByModel(mockFinishedGoodsInventory);
   
-  const { toast } = useToast();
+  const filteredInventory = mockFinishedGoodsInventory.filter(item => {
+    const matchesSearch = 
+      item.modelName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.lotNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.location.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesFilter = filterStatus === "ALL" || item.status === filterStatus;
+    const matchesModel = !selectedModel || item.modelName === selectedModel;
+    
+    return matchesSearch && matchesFilter && matchesModel;
+  });
 
-  // Calculate completion percentages for sub-assemblies
-  const getCompletionPercentage = (produced: number, total: number) => {
-    return Math.round((produced / total) * 100);
+  const totalModels = modelStocks.length;
+  const totalQuantity = modelStocks.reduce((sum, model) => sum + model.totalQuantity, 0);
+  const availableQuantity = modelStocks.reduce((sum, model) => sum + model.availableQuantity, 0);
+  const averageAge = Math.round(modelStocks.reduce((sum, model) => sum + model.averageAge, 0) / modelStocks.length);
+
+  const getStatusBadge = (status: FinishedGoodsInventory["status"]) => {
+    switch (status) {
+      case "AVAILABLE":
+        return <Badge className="bg-green-100 text-green-800">Available</Badge>;
+      case "RESERVED":
+        return <Badge className="bg-blue-100 text-blue-800">Reserved</Badge>;
+      case "EXPIRED":
+        return <Badge className="bg-red-100 text-red-800">Expired</Badge>;
+      case "QUARANTINE":
+        return <Badge className="bg-yellow-100 text-yellow-800">Quarantine</Badge>;
+    }
   };
 
-  const handleNewSubAssemblyChange = (field: string, value: string) => {
-    setNewSubAssembly({
-      ...newSubAssembly,
-      [field]: value
-    });
-  };
-
-  const handleAddBomItem = () => {
-    setNewBomItems([...newBomItems, { materialId: "", quantity: "1" }]);
-  };
-
-  const handleBomItemChange = (index: number, field: string, value: string) => {
-    const updatedItems = [...newBomItems];
-    updatedItems[index] = {
-      ...updatedItems[index],
-      [field]: value
+  const getGradeBadge = (grade: FinishedGoodsInventory["qualityGrade"]) => {
+    const colors = {
+      A: "bg-green-100 text-green-800",
+      B: "bg-yellow-100 text-yellow-800",
+      C: "bg-orange-100 text-orange-800"
     };
-    setNewBomItems(updatedItems);
+    return <Badge className={colors[grade]}>Grade {grade}</Badge>;
   };
 
-  const handleRemoveBomItem = (index: number) => {
-    const updatedItems = [...newBomItems];
-    updatedItems.splice(index, 1);
-    setNewBomItems(updatedItems);
+  const getAgeColor = (age: number) => {
+    if (age <= 7) return "text-green-600";
+    if (age <= 14) return "text-yellow-600";
+    return "text-red-600";
   };
 
-  const handleCreateSubAssembly = () => {
-    // Validation
-    if (!newSubAssembly.name || !newSubAssembly.parentProduct || 
-        newBomItems.some(item => !item.materialId || !item.quantity)) {
-      toast({
-        title: "Missing information",
-        description: "Please fill in all required fields for the sub-assembly and BOM items",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    // Would normally save to database here
-    toast({
-      title: "Sub-Assembly Created",
-      description: `${newSubAssembly.name} has been created successfully`
-    });
-    
-    // Reset form
-    setNewSubAssembly({
-      name: "",
-      description: "",
-      parentProduct: ""
-    });
-    setNewBomItems([{ materialId: "", quantity: "1" }]);
-    setShowNewForm(false);
-  };
-
-  const handleCreateBatch = () => {
-    if (!selectedSubAssembly || !newBatchQuantity) {
-      toast({
-        title: "Missing information",
-        description: "Please select a sub-assembly and enter quantity",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    const subAssembly = mockSubAssemblies.find(sa => sa.id === selectedSubAssembly);
-    
-    if (subAssembly) {
-      toast({
-        title: "Production Batch Created",
-        description: `New batch of ${newBatchQuantity} ${subAssembly.name} created`
-      });
-      
-      setSelectedSubAssembly(null);
-      setNewBatchQuantity("");
-    }
-  };
-
-  const handleSendToStore = (batchId: string) => {
-    toast({
-      title: "Batch Sent to Store",
-      description: `Production batch ${batchId} has been sent to store`
-    });
+  const getMovementIcon = (type: FinishedGoodsMovement["type"]) => {
+    return type === "INBOUND" ? 
+      <TrendingUp className="h-4 w-4 text-green-600" /> : 
+      <TrendingDown className="h-4 w-4 text-red-600" />;
   };
 
   return (
     <DashboardLayout>
       <div className="container mx-auto py-6">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold">Finished Goods & Sub-Assemblies</h1>
+          <div className="flex items-center space-x-4">
+            <Package className="h-8 w-8 text-primary" />
+            <h1 className="text-2xl font-bold">Finished Goods Inventory</h1>
+          </div>
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">Last updated:</span>
-            <span className="text-sm font-medium">Today, {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+            <span className="text-sm font-medium">
+              {format(new Date(), "MMM dd, yyyy HH:mm")}
+            </span>
             <Clock className="h-4 w-4 text-muted-foreground" />
           </div>
         </div>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <div className="flex justify-between items-center mb-4">
-            <TabsList>
-              <TabsTrigger value="sub-assemblies">Sub-Assemblies</TabsTrigger>
-              <TabsTrigger value="production">Production Batches</TabsTrigger>
-              <TabsTrigger value="bom">BOM Management</TabsTrigger>
-            </TabsList>
-            
-            {activeTab === "sub-assemblies" && !showNewForm && (
-              <Button onClick={() => setShowNewForm(true)}>
-                <Plus className="mr-1 h-4 w-4" />
-                Create New Sub-Assembly
-              </Button>
-            )}
-            
-            {activeTab === "production" && (
-              <Button>
-                <Plus className="mr-1 h-4 w-4" />
-                Create Production Batch
-              </Button>
-            )}
-          </div>
+        {/* Summary Cards */}
+        <div className="grid grid-cols-4 gap-4 mb-6">
+          <Card>
+            <CardContent className="flex items-center p-6">
+              <Package className="h-8 w-8 text-blue-600" />
+              <div className="ml-4">
+                <p className="text-sm text-gray-600">Total Models</p>
+                <p className="text-2xl font-bold">{totalModels}</p>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="flex items-center p-6">
+              <CheckCircle className="h-8 w-8 text-green-600" />
+              <div className="ml-4">
+                <p className="text-sm text-gray-600">Total Stock</p>
+                <p className="text-2xl font-bold">{totalQuantity.toLocaleString()}</p>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="flex items-center p-6">
+              <TrendingUp className="h-8 w-8 text-green-600" />
+              <div className="ml-4">
+                <p className="text-sm text-gray-600">Available</p>
+                <p className="text-2xl font-bold text-green-600">{availableQuantity.toLocaleString()}</p>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="flex items-center p-6">
+              <Clock className="h-8 w-8 text-orange-600" />
+              <div className="ml-4">
+                <p className="text-sm text-gray-600">Avg. Age</p>
+                <p className="text-2xl font-bold">{averageAge} days</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
-          <TabsContent value="sub-assemblies" className="space-y-4">
-            {showNewForm ? (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <Plus size={18} className="mr-2" />
-                    Create New Sub-Assembly
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label htmlFor="name" className="text-sm font-medium block mb-1">Sub-Assembly Name</label>
-                        <Input
-                          id="name"
-                          value={newSubAssembly.name}
-                          onChange={(e) => handleNewSubAssemblyChange("name", e.target.value)}
-                          placeholder="e.g., PCBA Main Board"
-                        />
-                      </div>
-                      
-                      <div>
-                        <label htmlFor="parentProduct" className="text-sm font-medium block mb-1">Parent Product</label>
-                        <Select
-                          value={newSubAssembly.parentProduct}
-                          onValueChange={(value) => handleNewSubAssemblyChange("parentProduct", value)}
-                        >
-                          <SelectTrigger id="parentProduct">
-                            <SelectValue placeholder="Select parent product" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Speaker A300">Speaker A300</SelectItem>
-                            <SelectItem value="Subwoofer S200">Subwoofer S200</SelectItem>
-                            <SelectItem value="Tweeter T100">Tweeter T100</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                    
-                    <div>
-                      <label htmlFor="description" className="text-sm font-medium block mb-1">Description</label>
-                      <Input
-                        id="description"
-                        value={newSubAssembly.description}
-                        onChange={(e) => handleNewSubAssemblyChange("description", e.target.value)}
-                        placeholder="Brief description of the sub-assembly"
-                      />
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <label className="text-sm font-medium">Bill of Materials</label>
-                        <Button variant="outline" size="sm" onClick={handleAddBomItem}>
-                          <Plus className="h-3 w-3 mr-1" />
-                          Add Item
-                        </Button>
-                      </div>
-                      
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Material</TableHead>
-                            <TableHead className="w-28">Quantity</TableHead>
-                            <TableHead className="w-20"></TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {newBomItems.map((item, index) => (
-                            <TableRow key={index}>
-                              <TableCell>
-                                <Select
-                                  value={item.materialId}
-                                  onValueChange={(value) => handleBomItemChange(index, "materialId", value)}
-                                >
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="Select material" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {mockRawMaterials.map((material) => (
-                                      <SelectItem key={material.id} value={material.id}>
-                                        {material.code} - {material.name}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              </TableCell>
-                              <TableCell>
-                                <Input
-                                  type="number"
-                                  min="1"
-                                  value={item.quantity}
-                                  onChange={(e) => handleBomItemChange(index, "quantity", e.target.value)}
-                                />
-                              </TableCell>
-                              <TableCell>
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm" 
-                                  onClick={() => handleRemoveBomItem(index)}
-                                  disabled={newBomItems.length === 1}
-                                  className="h-8 w-8 p-0"
-                                >
-                                  <X className="h-4 w-4" />
-                                </Button>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
-                    
-                    <div className="flex justify-end space-x-2 pt-4">
-                      <Button variant="outline" onClick={() => setShowNewForm(false)}>
-                        Cancel
-                      </Button>
-                      <Button onClick={handleCreateSubAssembly}>
-                        Create Sub-Assembly
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ) : (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Sub-Assembly List</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>ID</TableHead>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Parent Product</TableHead>
-                        <TableHead>Required</TableHead>
-                        <TableHead>Produced</TableHead>
-                        <TableHead>In Store</TableHead>
-                        <TableHead>Status</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {mockSubAssemblies.map((subAssembly) => (
-                        <TableRow key={subAssembly.id}>
-                          <TableCell className="font-mono">{subAssembly.id}</TableCell>
-                          <TableCell className="font-medium">{subAssembly.name}</TableCell>
-                          <TableCell>{subAssembly.parentProduct}</TableCell>
-                          <TableCell>{subAssembly.totalRequired}</TableCell>
-                          <TableCell>{subAssembly.produced}</TableCell>
-                          <TableCell>{subAssembly.inStore}</TableCell>
-                          <TableCell>
-                            <div className="flex flex-col gap-1">
-                              <div className="flex items-center gap-2">
-                                <div className="bg-gray-200 h-2 w-24 rounded-full overflow-hidden">
-                                  <div 
-                                    className="bg-green-500 h-full" 
-                                    style={{ width: `${getCompletionPercentage(subAssembly.produced, subAssembly.totalRequired)}%` }}
-                                  ></div>
-                                </div>
-                                <span className="text-xs text-muted-foreground">
-                                  {getCompletionPercentage(subAssembly.produced, subAssembly.totalRequired)}%
-                                </span>
-                              </div>
-                              <Badge variant="outline" className={
-                                getCompletionPercentage(subAssembly.produced, subAssembly.totalRequired) === 100
-                                  ? "bg-green-100 text-green-800 hover:bg-green-100"
-                                  : "bg-blue-100 text-blue-800 hover:bg-blue-100"
-                              }>
-                                {getCompletionPercentage(subAssembly.produced, subAssembly.totalRequired) === 100
-                                  ? "Complete"
-                                  : "In Production"
-                                }
-                              </Badge>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
+        <Tabs defaultValue="overview" className="space-y-4">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="overview">Model Overview</TabsTrigger>
+            <TabsTrigger value="inventory">Lot Details</TabsTrigger>
+            <TabsTrigger value="movements">Stock Movements</TabsTrigger>
+            <TabsTrigger value="aging">Aging Analysis</TabsTrigger>
+          </TabsList>
 
-          <TabsContent value="production" className="space-y-4">
+          <TabsContent value="overview" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle>Create Production Batch</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                  <div>
-                    <label htmlFor="subAssemblyId" className="text-sm font-medium block mb-1">Sub-Assembly</label>
-                    <Select
-                      value={selectedSubAssembly || ""}
-                      onValueChange={setSelectedSubAssembly}
-                    >
-                      <SelectTrigger id="subAssemblyId">
-                        <SelectValue placeholder="Select sub-assembly" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {mockSubAssemblies.map((sa) => (
-                          <SelectItem key={sa.id} value={sa.id}>
-                            {sa.name} - {sa.parentProduct}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  <div>
-                    <label htmlFor="quantity" className="text-sm font-medium block mb-1">Quantity</label>
-                    <Input
-                      id="quantity"
-                      type="number"
-                      min="1"
-                      value={newBatchQuantity}
-                      onChange={(e) => setNewBatchQuantity(e.target.value)}
-                      placeholder="Enter quantity"
-                    />
-                  </div>
-                  
-                  <div className="flex items-end">
-                    <Button onClick={handleCreateBatch} className="w-full">
-                      <Plus className="mr-1 h-4 w-4" />
-                      Create Batch
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader>
-                <CardTitle>Production Batches</CardTitle>
+                <CardTitle>Stock by Model (FIFO Order)</CardTitle>
               </CardHeader>
               <CardContent>
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Batch ID</TableHead>
-                      <TableHead>Sub-Assembly</TableHead>
-                      <TableHead>Quantity</TableHead>
-                      <TableHead>Start Date</TableHead>
-                      <TableHead>Status</TableHead>
+                      <TableHead>Model Name</TableHead>
+                      <TableHead>Total Qty</TableHead>
+                      <TableHead>Available</TableHead>
+                      <TableHead>Reserved</TableHead>
+                      <TableHead>Oldest Lot</TableHead>
+                      <TableHead>Avg. Age</TableHead>
+                      <TableHead>Lots Count</TableHead>
                       <TableHead>Action</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {mockProductionBatches.map((batch) => (
-                      <TableRow key={batch.id}>
-                        <TableCell className="font-mono">{batch.id}</TableCell>
-                        <TableCell className="font-medium">{batch.subAssemblyName}</TableCell>
-                        <TableCell>{batch.quantity}</TableCell>
-                        <TableCell>{new Date(batch.startDate).toLocaleDateString()}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className={
-                            batch.status === "Completed" 
-                              ? "bg-green-100 text-green-800 hover:bg-green-100" 
-                              : "bg-blue-100 text-blue-800 hover:bg-blue-100"
-                          }>
-                            {batch.status}
-                          </Badge>
-                          {batch.sentToStore && (
-                            <Badge variant="outline" className="bg-purple-100 text-purple-800 hover:bg-purple-100 ml-2">
-                              In Store
-                            </Badge>
-                          )}
+                    {modelStocks.map((model) => (
+                      <TableRow key={model.modelName}>
+                        <TableCell className="font-medium">{model.modelName}</TableCell>
+                        <TableCell className="font-bold">{model.totalQuantity.toLocaleString()}</TableCell>
+                        <TableCell className="text-green-600 font-medium">
+                          {model.availableQuantity.toLocaleString()}
                         </TableCell>
+                        <TableCell className="text-blue-600">
+                          {model.reservedQuantity.toLocaleString()}
+                        </TableCell>
+                        <TableCell>{format(new Date(model.oldestLotDate), "MMM dd")}</TableCell>
+                        <TableCell className={getAgeColor(model.averageAge)}>
+                          {model.averageAge} days
+                        </TableCell>
+                        <TableCell>{model.lots.length}</TableCell>
                         <TableCell>
-                          {batch.status === "Completed" && !batch.sentToStore && (
-                            <Button size="sm" onClick={() => handleSendToStore(batch.id)}>
-                              <ArrowRight className="h-3 w-3 mr-1" /> Send to Store
-                            </Button>
-                          )}
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => setSelectedModel(model.modelName)}
+                          >
+                            View Lots
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -557,54 +205,209 @@ const FinishedGoods = () => {
             </Card>
           </TabsContent>
 
-          <TabsContent value="bom" className="space-y-4">
+          <TabsContent value="inventory" className="space-y-4">
+            <div className="flex justify-between items-center">
+              <div className="flex space-x-2">
+                <div className="relative w-64">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search lots, models, locations..." 
+                    className="pl-9"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
+                <Button 
+                  variant={filterStatus === "ALL" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setFilterStatus("ALL")}
+                >
+                  All
+                </Button>
+                <Button 
+                  variant={filterStatus === "AVAILABLE" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setFilterStatus("AVAILABLE")}
+                >
+                  Available
+                </Button>
+                <Button 
+                  variant={filterStatus === "RESERVED" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setFilterStatus("RESERVED")}
+                >
+                  Reserved
+                </Button>
+              </div>
+              {selectedModel && (
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline">Filtered: {selectedModel}</Badge>
+                  <Button size="sm" variant="ghost" onClick={() => setSelectedModel(null)}>
+                    Clear
+                  </Button>
+                </div>
+              )}
+            </div>
+
             <Card>
               <CardHeader>
-                <CardTitle>Sub-Assembly BOM Management</CardTitle>
+                <CardTitle>Inventory Lots (FIFO Order)</CardTitle>
               </CardHeader>
               <CardContent>
-                <Select>
-                  <SelectTrigger className="max-w-sm mb-4">
-                    <SelectValue placeholder="Select sub-assembly to view BOM" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {mockSubAssemblyBoms.map((bom) => (
-                      <SelectItem key={bom.id} value={bom.id}>
-                        {bom.name}
-                      </SelectItem>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Lot Number</TableHead>
+                      <TableHead>Model</TableHead>
+                      <TableHead>Quantity</TableHead>
+                      <TableHead>OQC Date</TableHead>
+                      <TableHead>Age</TableHead>
+                      <TableHead>Grade</TableHead>
+                      <TableHead>Location</TableHead>
+                      <TableHead>Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredInventory
+                      .sort((a, b) => new Date(a.oqcApprovedDate).getTime() - new Date(b.oqcApprovedDate).getTime())
+                      .map((item) => (
+                      <TableRow key={item.id}>
+                        <TableCell className="font-mono font-medium">{item.lotNumber}</TableCell>
+                        <TableCell>{item.modelName}</TableCell>
+                        <TableCell className="font-medium">{item.quantity.toLocaleString()}</TableCell>
+                        <TableCell>{format(new Date(item.oqcApprovedDate), "MMM dd, yyyy")}</TableCell>
+                        <TableCell className={getAgeColor(item.inventoryAge)}>
+                          {item.inventoryAge} days
+                        </TableCell>
+                        <TableCell>{getGradeBadge(item.qualityGrade)}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center space-x-1">
+                            <MapPin className="h-4 w-4 text-gray-500" />
+                            <span className="text-sm">{item.location}</span>
+                            <span className="text-xs text-gray-500">({item.bin})</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>{getStatusBadge(item.status)}</TableCell>
+                      </TableRow>
                     ))}
-                  </SelectContent>
-                </Select>
-                
-                {mockSubAssemblyBoms.map((bom) => (
-                  <div key={bom.id} className="mb-6">
-                    <div className="flex items-center gap-2 mb-2">
-                      <h3 className="text-lg font-medium">{bom.name}</h3>
-                      <Badge variant="outline" className="bg-blue-100 text-blue-800">
-                        {bom.items.length} items
-                      </Badge>
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="movements" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Recent Stock Movements</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Model</TableHead>
+                      <TableHead>Lot Number</TableHead>
+                      <TableHead>Quantity</TableHead>
+                      <TableHead>Reference</TableHead>
+                      <TableHead>Notes</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {mockFinishedGoodsMovements
+                      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                      .map((movement) => (
+                      <TableRow key={movement.id}>
+                        <TableCell>
+                          <div className="flex items-center space-x-2">
+                            {getMovementIcon(movement.type)}
+                            <span className={movement.type === "INBOUND" ? "text-green-600" : "text-red-600"}>
+                              {movement.type}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell>{format(new Date(movement.date), "MMM dd, yyyy")}</TableCell>
+                        <TableCell>{movement.modelName}</TableCell>
+                        <TableCell className="font-mono">{movement.lotNumber}</TableCell>
+                        <TableCell className="font-medium">
+                          {movement.type === "INBOUND" ? "+" : "-"}{movement.quantity}
+                        </TableCell>
+                        <TableCell className="text-sm">{movement.reference}</TableCell>
+                        <TableCell className="text-sm text-gray-600">{movement.notes}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="aging" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Inventory Aging Analysis</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-3 gap-4 mb-6">
+                  <div className="text-center p-4 bg-green-50 rounded-lg">
+                    <div className="text-2xl font-bold text-green-600">
+                      {mockFinishedGoodsInventory.filter(item => item.inventoryAge <= 7).length}
                     </div>
-                    
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Part Code</TableHead>
-                          <TableHead>Description</TableHead>
-                          <TableHead>Quantity</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {bom.items.map((item, idx) => (
-                          <TableRow key={idx}>
-                            <TableCell className="font-mono">{item.materialCode}</TableCell>
-                            <TableCell>{item.materialName}</TableCell>
-                            <TableCell>{item.quantity}</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+                    <div className="text-sm text-green-700">Fresh (≤ 7 days)</div>
                   </div>
-                ))}
+                  <div className="text-center p-4 bg-yellow-50 rounded-lg">
+                    <div className="text-2xl font-bold text-yellow-600">
+                      {mockFinishedGoodsInventory.filter(item => item.inventoryAge > 7 && item.inventoryAge <= 14).length}
+                    </div>
+                    <div className="text-sm text-yellow-700">Aging (8-14 days)</div>
+                  </div>
+                  <div className="text-center p-4 bg-red-50 rounded-lg">
+                    <div className="text-2xl font-bold text-red-600">
+                      {mockFinishedGoodsInventory.filter(item => item.inventoryAge > 14).length}
+                    </div>
+                    <div className="text-sm text-red-700">Old (> 14 days)</div>
+                  </div>
+                </div>
+
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Lot Number</TableHead>
+                      <TableHead>Model</TableHead>
+                      <TableHead>Quantity</TableHead>
+                      <TableHead>Age</TableHead>
+                      <TableHead>OQC Date</TableHead>
+                      <TableHead>Risk Level</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {mockFinishedGoodsInventory
+                      .sort((a, b) => b.inventoryAge - a.inventoryAge)
+                      .map((item) => (
+                      <TableRow key={item.id}>
+                        <TableCell className="font-mono">{item.lotNumber}</TableCell>
+                        <TableCell>{item.modelName}</TableCell>
+                        <TableCell>{item.quantity.toLocaleString()}</TableCell>
+                        <TableCell className={getAgeColor(item.inventoryAge)}>
+                          {item.inventoryAge} days
+                        </TableCell>
+                        <TableCell>{format(new Date(item.oqcApprovedDate), "MMM dd, yyyy")}</TableCell>
+                        <TableCell>
+                          {item.inventoryAge <= 7 && (
+                            <Badge className="bg-green-100 text-green-800">Low</Badge>
+                          )}
+                          {item.inventoryAge > 7 && item.inventoryAge <= 14 && (
+                            <Badge className="bg-yellow-100 text-yellow-800">Medium</Badge>
+                          )}
+                          {item.inventoryAge > 14 && (
+                            <Badge className="bg-red-100 text-red-800">High</Badge>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               </CardContent>
             </Card>
           </TabsContent>
