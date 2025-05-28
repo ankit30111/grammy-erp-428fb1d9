@@ -7,18 +7,33 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertTriangle, Package, Plus } from "lucide-react";
-import { mockMaterialRequests } from "@/types/production";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
 
 const MaterialRequests = () => {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newRequest, setNewRequest] = useState({
-    voucherNumber: '',
-    partCode: '',
-    description: '',
-    requiredQuantity: 0,
-    reason: 'SHORT_MATERIAL' as 'SHORT_MATERIAL' | 'DAMAGED_MATERIAL',
-    notes: ''
+    productionOrderId: '',
+    rawMaterialId: '',
+    requestedQuantity: 0,
+    reason: ''
+  });
+
+  const { data: materialRequests = [] } = useQuery({
+    queryKey: ["material-requests"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("material_requests")
+        .select(`
+          *,
+          production_orders!inner(voucher_number),
+          raw_materials!inner(name, material_code)
+        `)
+        .order("created_at", { ascending: false });
+      
+      return data || [];
+    },
   });
 
   const getStatusColor = (status: string) => {
@@ -31,7 +46,7 @@ const MaterialRequests = () => {
   };
 
   const getReasonIcon = (reason: string) => {
-    return reason === 'SHORT_MATERIAL' ? 
+    return reason === 'shortage' ? 
       <Package className="h-4 w-4" /> : 
       <AlertTriangle className="h-4 w-4" />;
   };
@@ -42,7 +57,7 @@ const MaterialRequests = () => {
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="flex items-center gap-2">
             <AlertTriangle className="h-5 w-5" />
-            Material Requests ({mockMaterialRequests.length})
+            Material Requests ({materialRequests.length})
           </CardTitle>
           <Button onClick={() => setShowCreateForm(!showCreateForm)} className="gap-2">
             <Plus className="h-4 w-4" />
@@ -56,67 +71,42 @@ const MaterialRequests = () => {
                 <CardTitle>Create Material Request</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-4">
                   <div>
-                    <label className="text-sm font-medium">Voucher Number</label>
+                    <label className="text-sm font-medium">Production Order</label>
                     <Input
-                      value={newRequest.voucherNumber}
-                      onChange={(e) => setNewRequest(prev => ({ ...prev, voucherNumber: e.target.value }))}
-                      placeholder="e.g., 05-01"
+                      value={newRequest.productionOrderId}
+                      onChange={(e) => setNewRequest(prev => ({ ...prev, productionOrderId: e.target.value }))}
+                      placeholder="Select production order"
                     />
                   </div>
+                  
                   <div>
-                    <label className="text-sm font-medium">Part Code</label>
+                    <label className="text-sm font-medium">Raw Material</label>
                     <Input
-                      value={newRequest.partCode}
-                      onChange={(e) => setNewRequest(prev => ({ ...prev, partCode: e.target.value }))}
-                      placeholder="e.g., PCB-123"
+                      value={newRequest.rawMaterialId}
+                      onChange={(e) => setNewRequest(prev => ({ ...prev, rawMaterialId: e.target.value }))}
+                      placeholder="Select raw material"
                     />
                   </div>
-                </div>
-                
-                <div>
-                  <label className="text-sm font-medium">Description</label>
-                  <Input
-                    value={newRequest.description}
-                    onChange={(e) => setNewRequest(prev => ({ ...prev, description: e.target.value }))}
-                    placeholder="Component description"
-                  />
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
+                  
                   <div>
-                    <label className="text-sm font-medium">Required Quantity</label>
+                    <label className="text-sm font-medium">Requested Quantity</label>
                     <Input
                       type="number"
-                      value={newRequest.requiredQuantity}
-                      onChange={(e) => setNewRequest(prev => ({ ...prev, requiredQuantity: parseInt(e.target.value) || 0 }))}
+                      value={newRequest.requestedQuantity}
+                      onChange={(e) => setNewRequest(prev => ({ ...prev, requestedQuantity: parseInt(e.target.value) || 0 }))}
                     />
                   </div>
+                  
                   <div>
                     <label className="text-sm font-medium">Reason</label>
-                    <Select
+                    <Textarea
                       value={newRequest.reason}
-                      onValueChange={(value: 'SHORT_MATERIAL' | 'DAMAGED_MATERIAL') => setNewRequest(prev => ({ ...prev, reason: value }))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="SHORT_MATERIAL">Short Material</SelectItem>
-                        <SelectItem value="DAMAGED_MATERIAL">Damaged Material</SelectItem>
-                      </SelectContent>
-                    </Select>
+                      onChange={(e) => setNewRequest(prev => ({ ...prev, reason: e.target.value }))}
+                      placeholder="Reason for material request"
+                    />
                   </div>
-                </div>
-                
-                <div>
-                  <label className="text-sm font-medium">Notes</label>
-                  <Textarea
-                    value={newRequest.notes}
-                    onChange={(e) => setNewRequest(prev => ({ ...prev, notes: e.target.value }))}
-                    placeholder="Additional details about the request"
-                  />
                 </div>
                 
                 <div className="flex justify-end gap-4">
@@ -131,56 +121,53 @@ const MaterialRequests = () => {
             </Card>
           )}
           
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Request ID</TableHead>
-                <TableHead>Voucher</TableHead>
-                <TableHead>Part Code</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead>Quantity</TableHead>
-                <TableHead>Reason</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {mockMaterialRequests.map((request) => (
-                <TableRow key={request.id}>
-                  <TableCell className="font-medium">{request.id}</TableCell>
-                  <TableCell>{request.voucherNumber}</TableCell>
-                  <TableCell>{request.partCode}</TableCell>
-                  <TableCell>{request.description}</TableCell>
-                  <TableCell>{request.requiredQuantity}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      {getReasonIcon(request.reason)}
-                      {request.reason === 'SHORT_MATERIAL' ? 'Short Material' : 'Damaged Material'}
-                    </div>
-                  </TableCell>
-                  <TableCell>{new Date(request.requestDate).toLocaleDateString()}</TableCell>
-                  <TableCell>
-                    <Badge variant={getStatusColor(request.status) as any}>
-                      {request.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    {request.status === 'PENDING' && (
-                      <Button size="sm" variant="outline">
-                        Edit
-                      </Button>
-                    )}
-                    {request.status === 'APPROVED' && (
-                      <Button size="sm" variant="outline">
-                        View
-                      </Button>
-                    )}
-                  </TableCell>
+          {materialRequests.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              No material requests found
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Request ID</TableHead>
+                  <TableHead>Production Order</TableHead>
+                  <TableHead>Material</TableHead>
+                  <TableHead>Quantity</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {materialRequests.map((request) => (
+                  <TableRow key={request.id}>
+                    <TableCell className="font-medium">{request.id.slice(0, 8)}</TableCell>
+                    <TableCell>{request.production_orders?.voucher_number}</TableCell>
+                    <TableCell>{request.raw_materials?.name}</TableCell>
+                    <TableCell>{request.requested_quantity}</TableCell>
+                    <TableCell>
+                      <Badge variant={getStatusColor(request.status) as any}>
+                        {request.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>{new Date(request.created_at).toLocaleDateString()}</TableCell>
+                    <TableCell>
+                      {request.status === 'PENDING' && (
+                        <Button size="sm" variant="outline">
+                          Edit
+                        </Button>
+                      )}
+                      {request.status === 'APPROVED' && (
+                        <Button size="sm" variant="outline">
+                          View
+                        </Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
     </div>

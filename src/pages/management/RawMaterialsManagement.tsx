@@ -20,6 +20,8 @@ import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter, SheetClose, SheetTrigger
 } from "@/components/ui/sheet";
 import { Search, Plus, Layers, FileText, Package } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 // Raw Material categories
 const MATERIAL_CATEGORIES = [
@@ -34,56 +36,7 @@ const MATERIAL_CATEGORIES = [
   "Others"
 ];
 
-// Sample vendors data
-const SAMPLE_VENDORS = [
-  { id: "1", vendor_code: "VND001", name: "Electronics Suppliers Ltd" },
-  { id: "2", vendor_code: "VND002", name: "Plastic Components Co" },
-  { id: "3", vendor_code: "VND003", name: "Metal Works Inc" }
-];
-
-// Sample data for demonstration
-const SAMPLE_MATERIALS = [
-  {
-    id: "RM001",
-    name: "ABS Plastic Shell",
-    category: "Plastic",
-    specification: "Grade A, Fire Resistant",
-    vendor_id: "1",
-    vendor_name: "Electronics Suppliers Ltd",
-    hasDocuments: {
-      specification: true,
-      iqcInspection: true
-    }
-  },
-  {
-    id: "RM002",
-    name: "MDF Board",
-    category: "Wooden",
-    specification: "18mm Thickness, Grade 1",
-    vendor_id: "2",
-    vendor_name: "Plastic Components Co",
-    hasDocuments: {
-      specification: true,
-      iqcInspection: true
-    }
-  },
-  {
-    id: "RM003",
-    name: "Speaker Cable",
-    category: "Wire",
-    specification: "2.5mm², Copper Core",
-    vendor_id: "3",
-    vendor_name: "Metal Works Inc",
-    hasDocuments: {
-      specification: true,
-      iqcInspection: false
-    }
-  }
-];
-
 const RawMaterialsManagement = () => {
-  const [materials, setMaterials] = useState(SAMPLE_MATERIALS);
-  const [vendors] = useState(SAMPLE_VENDORS);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterCategory, setFilterCategory] = useState("all");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -94,32 +47,64 @@ const RawMaterialsManagement = () => {
     vendor_id: ""
   });
 
+  // Fetch raw materials from database
+  const { data: materials = [] } = useQuery({
+    queryKey: ["raw-materials"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("raw_materials")
+        .select(`
+          *,
+          vendors(name, vendor_code)
+        `)
+        .eq("is_active", true)
+        .order("created_at", { ascending: false });
+      
+      return data || [];
+    },
+  });
+
+  // Fetch vendors
+  const { data: vendors = [] } = useQuery({
+    queryKey: ["vendors"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("vendors")
+        .select("*")
+        .eq("is_active", true)
+        .order("name");
+      
+      return data || [];
+    },
+  });
+
   // Filter materials based on search and category
   const filteredMaterials = materials.filter(material => {
     const matchesSearch = material.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                         material.id.toLowerCase().includes(searchQuery.toLowerCase());
+                         material.material_code.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = filterCategory === "all" || material.category === filterCategory;
     return matchesSearch && matchesCategory;
   });
 
-  const handleAddMaterial = () => {
-    const selectedVendor = vendors.find(v => v.id === newMaterial.vendor_id);
-    const material = {
-      id: `RM${String(materials.length + 1).padStart(3, '0')}`,
-      name: newMaterial.name,
-      category: newMaterial.category,
-      specification: newMaterial.specification,
-      vendor_id: newMaterial.vendor_id,
-      vendor_name: selectedVendor?.name || "",
-      hasDocuments: {
-        specification: false,
-        iqcInspection: false
-      }
-    };
-    
-    setMaterials([...materials, material]);
-    setNewMaterial({ name: "", category: "", specification: "", vendor_id: "" });
-    setIsAddDialogOpen(false);
+  const handleAddMaterial = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("raw_materials")
+        .insert([{
+          name: newMaterial.name,
+          category: newMaterial.category,
+          specification: newMaterial.specification,
+          vendor_id: newMaterial.vendor_id || null,
+          material_code: `RM${Date.now()}` // Generate a unique code
+        }]);
+
+      if (error) throw error;
+      
+      setNewMaterial({ name: "", category: "", specification: "", vendor_id: "" });
+      setIsAddDialogOpen(false);
+    } catch (error) {
+      console.error("Error adding material:", error);
+    }
   };
 
   return (
@@ -241,48 +226,29 @@ const RawMaterialsManagement = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Material ID</TableHead>
+                  <TableHead>Material Code</TableHead>
                   <TableHead>Material Name</TableHead>
                   <TableHead>Category</TableHead>
                   <TableHead>Vendor</TableHead>
                   <TableHead>Specification</TableHead>
-                  <TableHead className="text-center">Documents</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredMaterials.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-6 text-muted-foreground">
+                    <TableCell colSpan={6} className="text-center py-6 text-muted-foreground">
                       No materials found. Try adjusting your search or filter.
                     </TableCell>
                   </TableRow>
                 ) : (
                   filteredMaterials.map((material) => (
                     <TableRow key={material.id}>
-                      <TableCell className="font-medium">{material.id}</TableCell>
+                      <TableCell className="font-medium">{material.material_code}</TableCell>
                       <TableCell>{material.name}</TableCell>
                       <TableCell>{material.category}</TableCell>
-                      <TableCell>{material.vendor_name}</TableCell>
+                      <TableCell>{material.vendors?.name || 'No vendor assigned'}</TableCell>
                       <TableCell>{material.specification}</TableCell>
-                      <TableCell>
-                        <div className="flex justify-center gap-2">
-                          <Button
-                            variant={material.hasDocuments.specification ? "default" : "outline"}
-                            size="sm"
-                            title="Specification Sheet"
-                          >
-                            <FileText className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant={material.hasDocuments.iqcInspection ? "default" : "outline"}
-                            size="sm"
-                            title="IQC Inspection Sheet"
-                          >
-                            <Package className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
                       <TableCell className="text-right">
                         <Sheet>
                           <SheetTrigger asChild>
@@ -295,26 +261,14 @@ const RawMaterialsManagement = () => {
                             <div className="py-4">
                               <h3 className="font-semibold mb-2">Material Information</h3>
                               <div className="grid grid-cols-2 gap-2 mb-4">
-                                <span className="text-muted-foreground">ID:</span>
-                                <span>{material.id}</span>
+                                <span className="text-muted-foreground">Code:</span>
+                                <span>{material.material_code}</span>
                                 <span className="text-muted-foreground">Category:</span>
                                 <span>{material.category}</span>
                                 <span className="text-muted-foreground">Vendor:</span>
-                                <span>{material.vendor_name}</span>
+                                <span>{material.vendors?.name || 'Not assigned'}</span>
                                 <span className="text-muted-foreground">Specification:</span>
-                                <span>{material.specification}</span>
-                              </div>
-                              
-                              <h3 className="font-semibold mt-4 mb-2">Documents</h3>
-                              <div className="space-y-2">
-                                <div className="flex items-center justify-between">
-                                  <span>Specification Sheet</span>
-                                  <Button size="sm" variant="outline">View</Button>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                  <span>IQC Inspection Sheet</span>
-                                  <Button size="sm" variant="outline">View</Button>
-                                </div>
+                                <span>{material.specification || 'Not specified'}</span>
                               </div>
                             </div>
                             <SheetFooter className="pt-2">

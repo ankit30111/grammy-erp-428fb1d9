@@ -15,107 +15,59 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select";
-import { BarChart } from "@/components/ui/bar-chart";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
-
-// Mock data for active production
-const activeProduction = [
-  {
-    id: "PROD-001",
-    product: "Speaker A300",
-    customer: "AudioTech Inc",
-    line: "Line 1",
-    plannedQty: 1000,
-    completedQty: 250,
-    targetDate: "2025-06-10",
-    status: "In Progress",
-    checkpoints: [
-      { name: "PCB Assembly", status: "Completed" },
-      { name: "Speaker Mounting", status: "In Progress" },
-      { name: "Housing Assembly", status: "Pending" },
-      { name: "Final Testing", status: "Pending" }
-    ]
-  },
-  {
-    id: "PROD-002",
-    product: "Subwoofer S200",
-    customer: "SoundMaster",
-    line: "Line 2",
-    plannedQty: 500,
-    completedQty: 150,
-    targetDate: "2025-06-10",
-    status: "In Progress",
-    checkpoints: [
-      { name: "PCB Assembly", status: "Completed" },
-      { name: "Speaker Mounting", status: "Completed" },
-      { name: "Housing Assembly", status: "In Progress" },
-      { name: "Final Testing", status: "Pending" }
-    ]
-  }
-];
-
-// Mock data for completed production
-const completedProduction = [
-  {
-    id: "PROD-000",
-    product: "Tweeter T100",
-    customer: "EchoSystems",
-    line: "Line 3",
-    quantity: 10000,
-    completionDate: "2025-05-15",
-    defects: 120,
-    defectRate: 1.2,
-    reportUrl: "#"
-  },
-  {
-    id: "PROD-00A",
-    product: "Speaker A300",
-    customer: "AudioTech Inc",
-    line: "Line 1",
-    quantity: 5000,
-    completionDate: "2025-05-10",
-    defects: 75,
-    defectRate: 1.5,
-    reportUrl: "#"
-  }
-];
-
-// Mock data for defect types for charts
-const defectData = [
-  { name: "Solder Issues", count: 45 },
-  { name: "Component Alignment", count: 32 },
-  { name: "Missing Parts", count: 18 },
-  { name: "Housing Defects", count: 25 },
-  { name: "Testing Failures", count: 30 }
-];
 
 const PQC = () => {
   const [selectedTab, setSelectedTab] = useState("active");
   const [selectedProduction, setSelectedProduction] = useState<string | null>(null);
-  const [checklistItems, setChecklistItems] = useState([
-    { id: "1", description: "PCB assembly alignment check", result: "" },
-    { id: "2", description: "Solder quality inspection", result: "" },
-    { id: "3", description: "Component placement verification", result: "" },
-    { id: "4", description: "Wiring connection test", result: "" },
-    { id: "5", description: "Housing assembly inspection", result: "" }
-  ]);
 
-  // Find the selected production details
-  const selectedProductionDetails = activeProduction.find(p => p.id === selectedProduction);
+  // Fetch active production orders
+  const { data: activeProduction = [] } = useQuery({
+    queryKey: ["active-production"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("production_orders")
+        .select(`
+          *,
+          products!inner(name),
+          production_schedules!inner(
+            *,
+            projections!inner(
+              customers!inner(name)
+            )
+          )
+        `)
+        .eq("status", "IN_PROGRESS");
+      
+      return data || [];
+    },
+  });
 
-  // Calculate completion percentage
-  const getCompletionPercentage = (completed: number, planned: number) => {
-    return Math.round((completed / planned) * 100);
-  };
-
-  // Handle checklist item result change
-  const handleChecklistChange = (id: string, value: string) => {
-    setChecklistItems(items => 
-      items.map(item => 
-        item.id === id ? { ...item, result: value } : item
-      )
-    );
-  };
+  // Fetch completed production orders
+  const { data: completedProduction = [] } = useQuery({
+    queryKey: ["completed-production"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("production_orders")
+        .select(`
+          *,
+          products!inner(name),
+          production_schedules!inner(
+            *,
+            projections!inner(
+              customers!inner(name)
+            )
+          )
+        `)
+        .eq("status", "COMPLETED")
+        .order("updated_at", { ascending: false })
+        .limit(10);
+      
+      return data || [];
+    },
+  });
 
   return (
     <DashboardLayout>
@@ -137,161 +89,51 @@ const PQC = () => {
           </TabsList>
           
           <TabsContent value="active" className="space-y-4">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-              <Card className="lg:col-span-2">
-                <CardHeader>
-                  <CardTitle>Active Production Lines</CardTitle>
-                </CardHeader>
-                <CardContent>
+            <Card>
+              <CardHeader>
+                <CardTitle>Active Production Lines</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {activeProduction.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No active production orders found
+                  </div>
+                ) : (
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead></TableHead>
-                        <TableHead>ID</TableHead>
+                        <TableHead>Voucher</TableHead>
                         <TableHead>Product</TableHead>
                         <TableHead>Customer</TableHead>
-                        <TableHead>Line</TableHead>
-                        <TableHead>Progress</TableHead>
-                        <TableHead>Target Date</TableHead>
+                        <TableHead>Quantity</TableHead>
+                        <TableHead>Kit Status</TableHead>
+                        <TableHead>Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {activeProduction.map((prod) => (
-                        <TableRow key={prod.id} className={selectedProduction === prod.id ? "bg-accent" : ""}>
+                        <TableRow key={prod.id}>
+                          <TableCell className="font-medium">{prod.voucher_number}</TableCell>
+                          <TableCell>{prod.products?.name}</TableCell>
+                          <TableCell>{prod.production_schedules?.projections?.customers?.name}</TableCell>
+                          <TableCell>{prod.quantity}</TableCell>
                           <TableCell>
-                            <input 
-                              type="radio" 
-                              name="production" 
-                              checked={selectedProduction === prod.id}
-                              onChange={() => setSelectedProduction(prod.id)} 
-                            />
+                            <Badge variant="outline">
+                              {prod.kit_status?.replace('_', ' ')}
+                            </Badge>
                           </TableCell>
-                          <TableCell className="font-medium">{prod.id}</TableCell>
-                          <TableCell>{prod.product}</TableCell>
-                          <TableCell>{prod.customer}</TableCell>
-                          <TableCell>{prod.line}</TableCell>
                           <TableCell>
-                            <div className="flex items-center gap-2">
-                              <div className="w-36 bg-gray-200 rounded-full h-2.5">
-                                <div 
-                                  className="bg-primary h-2.5 rounded-full" 
-                                  style={{ width: `${getCompletionPercentage(prod.completedQty, prod.plannedQty)}%` }}
-                                ></div>
-                              </div>
-                              <span className="text-xs">
-                                {prod.completedQty} / {prod.plannedQty}
-                              </span>
-                            </div>
+                            <Button size="sm" variant="outline">
+                              Quality Check
+                            </Button>
                           </TableCell>
-                          <TableCell>{new Date(prod.targetDate).toLocaleDateString()}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
                   </Table>
-                </CardContent>
-              </Card>
-
-              {selectedProduction && selectedProductionDetails && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Production Stages</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <h3 className="font-medium">{selectedProductionDetails.product}</h3>
-                      
-                      <div className="space-y-2">
-                        {selectedProductionDetails.checkpoints.map((checkpoint, index) => (
-                          <div key={index} className="border rounded p-2">
-                            <div className="flex justify-between items-center">
-                              <span>{checkpoint.name}</span>
-                              <Badge 
-                                variant="outline" 
-                                className={
-                                  checkpoint.status === "Completed" ? "bg-green-100 text-green-800" :
-                                  checkpoint.status === "In Progress" ? "bg-blue-100 text-blue-800" :
-                                  "bg-gray-100 text-gray-800"
-                                }
-                              >
-                                {checkpoint.status}
-                              </Badge>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                      
-                      <div className="pt-2 border-t">
-                        <Button className="w-full">Quality Check</Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-            </div>
-
-            {selectedProduction && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>PQC Checklist</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead className="w-[50%]">Check Item</TableHead>
-                          <TableHead className="w-[30%]">Result</TableHead>
-                          <TableHead className="w-[20%]">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {checklistItems.map((item) => (
-                          <TableRow key={item.id}>
-                            <TableCell>{item.description}</TableCell>
-                            <TableCell>
-                              <Select
-                                value={item.result}
-                                onValueChange={(value) => handleChecklistChange(item.id, value)}
-                              >
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select result" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="Pass">Pass</SelectItem>
-                                  <SelectItem value="Fail">Fail</SelectItem>
-                                  <SelectItem value="N/A">N/A</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </TableCell>
-                            <TableCell>
-                              <Button variant="outline" size="sm" className="w-full">
-                                <Upload className="h-3 w-3 mr-1" />
-                                Photo
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="text-sm font-medium mb-1 block">
-                          Additional Notes
-                        </label>
-                        <Input placeholder="Enter any additional observations" />
-                      </div>
-                      <div className="flex items-end">
-                        <Button className="w-full">
-                          <FileCheck className="h-4 w-4 mr-2" />
-                          Submit PQC Report
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
           
           <TabsContent value="completed">
@@ -300,126 +142,60 @@ const PQC = () => {
                 <CardTitle>Completed Production</CardTitle>
                 <div className="relative w-full sm:w-64">
                   <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input placeholder="Search by ID or product" className="pl-8" />
+                  <Input placeholder="Search by voucher or product" className="pl-8" />
                 </div>
               </CardHeader>
               <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>ID</TableHead>
-                      <TableHead>Product</TableHead>
-                      <TableHead>Customer</TableHead>
-                      <TableHead>Line</TableHead>
-                      <TableHead>Quantity</TableHead>
-                      <TableHead>Completion Date</TableHead>
-                      <TableHead>Defect Rate</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {completedProduction.map((prod) => (
-                      <TableRow key={prod.id}>
-                        <TableCell className="font-medium">{prod.id}</TableCell>
-                        <TableCell>{prod.product}</TableCell>
-                        <TableCell>{prod.customer}</TableCell>
-                        <TableCell>{prod.line}</TableCell>
-                        <TableCell>{prod.quantity.toLocaleString()}</TableCell>
-                        <TableCell>{new Date(prod.completionDate).toLocaleDateString()}</TableCell>
-                        <TableCell>
-                          <Badge 
-                            variant="outline" 
-                            className={
-                              prod.defectRate < 1 ? "bg-green-100 text-green-800" :
-                              prod.defectRate < 2 ? "bg-amber-100 text-amber-800" :
-                              "bg-red-100 text-red-800"
-                            }
-                          >
-                            {prod.defectRate}%
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Button variant="outline" size="sm">
-                            <FileCheck className="h-3 w-3 mr-1" />
-                            Report
-                          </Button>
-                        </TableCell>
+                {completedProduction.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No completed production orders found
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Voucher</TableHead>
+                        <TableHead>Product</TableHead>
+                        <TableHead>Customer</TableHead>
+                        <TableHead>Quantity</TableHead>
+                        <TableHead>Completion Date</TableHead>
+                        <TableHead>Actions</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {completedProduction.map((prod) => (
+                        <TableRow key={prod.id}>
+                          <TableCell className="font-medium">{prod.voucher_number}</TableCell>
+                          <TableCell>{prod.products?.name}</TableCell>
+                          <TableCell>{prod.production_schedules?.projections?.customers?.name}</TableCell>
+                          <TableCell>{prod.quantity.toLocaleString()}</TableCell>
+                          <TableCell>{new Date(prod.updated_at).toLocaleDateString()}</TableCell>
+                          <TableCell>
+                            <Button variant="outline" size="sm">
+                              <FileCheck className="h-3 w-3 mr-1" />
+                              Report
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
           
           <TabsContent value="analytics">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Defect Type Distribution</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-[300px]">
-                    <BarChart
-                      data={defectData}
-                      index="name"
-                      categories={["count"]}
-                      colors={["blue"]}
-                      valueFormatter={(value) => `${value} defects`}
-                      yAxisWidth={48}
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardHeader>
-                  <CardTitle>Recent Issues Summary</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="border rounded-md p-3">
-                      <div className="font-medium">Solder Quality Issues</div>
-                      <div className="text-sm text-muted-foreground">
-                        45 occurrences identified in the last 30 days.
-                      </div>
-                      <div className="mt-2 flex items-center gap-2">
-                        <Badge variant="outline" className="bg-red-100 text-red-800">
-                          High Priority
-                        </Badge>
-                        <Badge variant="outline">Speaker A300</Badge>
-                      </div>
-                    </div>
-                    
-                    <div className="border rounded-md p-3">
-                      <div className="font-medium">Component Alignment</div>
-                      <div className="text-sm text-muted-foreground">
-                        32 occurrences identified in the last 30 days.
-                      </div>
-                      <div className="mt-2 flex items-center gap-2">
-                        <Badge variant="outline" className="bg-amber-100 text-amber-800">
-                          Medium Priority
-                        </Badge>
-                        <Badge variant="outline">Multiple Products</Badge>
-                      </div>
-                    </div>
-                    
-                    <div className="border rounded-md p-3">
-                      <div className="font-medium">Missing Parts</div>
-                      <div className="text-sm text-muted-foreground">
-                        18 occurrences identified in the last 30 days.
-                      </div>
-                      <div className="mt-2 flex items-center gap-2">
-                        <Badge variant="outline" className="bg-amber-100 text-amber-800">
-                          Medium Priority
-                        </Badge>
-                        <Badge variant="outline">Subwoofer S200</Badge>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+            <Card>
+              <CardHeader>
+                <CardTitle>Quality Analytics</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-8 text-muted-foreground">
+                  Analytics data will be available once production data is collected
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>

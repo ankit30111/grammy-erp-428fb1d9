@@ -5,14 +5,35 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Package, CheckCircle, AlertTriangle } from "lucide-react";
-import { mockReceivedKits } from "@/types/production";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
 
 const KitVerification = () => {
   const [selectedKit, setSelectedKit] = useState<string | null>(null);
   const [verificationData, setVerificationData] = useState<Record<string, number>>({});
 
-  const selectedKitDetails = mockReceivedKits.find(kit => kit.voucherNumber === selectedKit);
+  const { data: kits = [] } = useQuery({
+    queryKey: ["kit-verification"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("kit_preparation")
+        .select(`
+          *,
+          production_orders!inner(
+            voucher_number,
+            products!inner(name)
+          ),
+          kit_items(
+            *,
+            raw_materials!inner(name, material_code)
+          )
+        `)
+        .eq("status", "PREPARING");
+      
+      return data || [];
+    },
+  });
 
   const getVerificationStatusColor = (status: string) => {
     switch (status) {
@@ -30,13 +51,35 @@ const KitVerification = () => {
     }));
   };
 
+  if (kits.length === 0) {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Package className="h-5 w-5" />
+              Kit Verification (0 kits available)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-center py-8 text-muted-foreground">
+              No kits available for verification
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const selectedKitDetails = kits.find(kit => kit.id === selectedKit);
+
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Package className="h-5 w-5" />
-            Kit Verification ({mockReceivedKits.length} kits received)
+            Kit Verification ({kits.length} kits available)
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -44,45 +87,36 @@ const KitVerification = () => {
             <TableHeader>
               <TableRow>
                 <TableHead></TableHead>
+                <TableHead>Kit Number</TableHead>
                 <TableHead>Voucher</TableHead>
-                <TableHead>Model</TableHead>
-                <TableHead>Received Date</TableHead>
-                <TableHead>Verification Status</TableHead>
-                <TableHead>Assigned Line</TableHead>
+                <TableHead>Product</TableHead>
+                <TableHead>Status</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {mockReceivedKits.map((kit) => (
-                <TableRow key={kit.voucherNumber} className={selectedKit === kit.voucherNumber ? "bg-accent" : ""}>
+              {kits.map((kit) => (
+                <TableRow key={kit.id} className={selectedKit === kit.id ? "bg-accent" : ""}>
                   <TableCell>
                     <input 
                       type="radio" 
                       name="kit" 
-                      checked={selectedKit === kit.voucherNumber}
-                      onChange={() => setSelectedKit(kit.voucherNumber)} 
+                      checked={selectedKit === kit.id}
+                      onChange={() => setSelectedKit(kit.id)} 
                     />
                   </TableCell>
-                  <TableCell className="font-medium">{kit.voucherNumber}</TableCell>
-                  <TableCell>{kit.modelName}</TableCell>
-                  <TableCell>{new Date(kit.receivedDate).toLocaleDateString()}</TableCell>
+                  <TableCell className="font-medium">{kit.kit_number}</TableCell>
+                  <TableCell>{kit.production_orders?.voucher_number}</TableCell>
+                  <TableCell>{kit.production_orders?.products?.name}</TableCell>
                   <TableCell>
-                    <Badge variant={getVerificationStatusColor(kit.verificationStatus) as any}>
-                      {kit.verificationStatus}
+                    <Badge variant={getVerificationStatusColor(kit.status) as any}>
+                      {kit.status}
                     </Badge>
                   </TableCell>
-                  <TableCell>{kit.assignedLine || 'Not assigned'}</TableCell>
                   <TableCell>
-                    {kit.verificationStatus === 'PENDING' && (
-                      <Button size="sm" onClick={() => setSelectedKit(kit.voucherNumber)}>
-                        Verify Kit
-                      </Button>
-                    )}
-                    {kit.verificationStatus === 'VERIFIED' && (
-                      <Button size="sm" variant="outline">
-                        View Report
-                      </Button>
-                    )}
+                    <Button size="sm" onClick={() => setSelectedKit(kit.id)}>
+                      Verify Kit
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))}
@@ -96,41 +130,41 @@ const KitVerification = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <CheckCircle className="h-5 w-5" />
-              Kit Verification - {selectedKit} ({selectedKitDetails.modelName})
+              Kit Verification - {selectedKitDetails.kit_number}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Part Code</TableHead>
+                  <TableHead>Material Code</TableHead>
                   <TableHead>Description</TableHead>
-                  <TableHead>Expected Qty</TableHead>
-                  <TableHead>Received Qty</TableHead>
+                  <TableHead>Required Qty</TableHead>
+                  <TableHead>Actual Qty</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Verified</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {selectedKitDetails.bomItems.map((item) => (
-                  <TableRow key={item.partCode}>
-                    <TableCell className="font-medium">{item.partCode}</TableCell>
-                    <TableCell>{item.description}</TableCell>
-                    <TableCell>{item.expectedQuantity}</TableCell>
+                {selectedKitDetails.kit_items?.map((item: any) => (
+                  <TableRow key={item.id}>
+                    <TableCell className="font-medium">{item.raw_materials?.material_code}</TableCell>
+                    <TableCell>{item.raw_materials?.name}</TableCell>
+                    <TableCell>{item.required_quantity}</TableCell>
                     <TableCell>
                       <Input
                         type="number"
                         className="w-20"
-                        value={verificationData[item.partCode] || item.receivedQuantity || ''}
-                        onChange={(e) => handleVerificationChange(item.partCode, e.target.value)}
+                        value={verificationData[item.raw_materials?.material_code] || item.actual_quantity || ''}
+                        onChange={(e) => handleVerificationChange(item.raw_materials?.material_code, e.target.value)}
                         placeholder="Enter qty"
                       />
                     </TableCell>
                     <TableCell>
-                      {item.hasDiscrepancy ? (
+                      {item.actual_quantity < item.required_quantity ? (
                         <Badge variant="destructive" className="gap-1">
                           <AlertTriangle className="h-3 w-3" />
-                          Discrepancy
+                          Short
                         </Badge>
                       ) : (
                         <Badge variant="default" className="gap-1">
@@ -142,7 +176,7 @@ const KitVerification = () => {
                     <TableCell>
                       <input 
                         type="checkbox" 
-                        checked={item.verified} 
+                        checked={item.verified_by_production} 
                         readOnly
                       />
                     </TableCell>
