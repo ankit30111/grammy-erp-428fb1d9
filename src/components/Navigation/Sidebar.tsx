@@ -1,8 +1,13 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { NavLink } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { BarChart2, Package, Users, ClipboardCheck, Truck, ShoppingCart, Layers, Settings, ChevronRight, ChevronLeft, Home, FileCheck, Bell, Calendar, Plus, Check, Search, X, Archive, FileText, User, Database, UserPlus, Building2, Wrench, DollarSign } from "lucide-react";
+import { BarChart2, Package, Users, ClipboardCheck, Truck, ShoppingCart, Layers, Settings, ChevronRight, ChevronLeft, Home, FileCheck, Bell, Calendar, Plus, Check, Search, X, Archive, FileText, User, Database, UserPlus, Building2, Wrench, DollarSign, LogOut } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useUserPermissions } from "@/hooks/useUserPermissions";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 
 interface NavItemProps {
   to: string;
@@ -86,21 +91,43 @@ const NavItem = ({
 
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
+  const navigate = useNavigate();
   
-  // Demo: Mock user permissions based on department
-  // In a real app, this would come from your authentication context
-  const mockUserDepartment = "Admin"; // Changed from "PPC" to "Admin"
+  // Get current user ID
+  useEffect(() => {
+    const getCurrentUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUserId(user?.id || null);
+    };
+    
+    getCurrentUser();
+    
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setUserId(session?.user?.id || null);
+    });
+    
+    return () => subscription.unsubscribe();
+  }, []);
   
-  const departmentPermissions: { [key: string]: string[] } = {
-    "PPC": ["projection", "spare-orders", "planning", "inventory", "production", "finished-goods", "sales"],
-    "Store": ["inventory"],
-    "Production": ["production"],
-    "Quality": ["quality"],
-    "Human Resources": ["hr-management"],
-    "Admin": ["projection", "spare-orders", "planning", "purchase", "grn", "inventory", "production", "finished-goods", "quality", "sales", "dispatch", "hr-management", "user-management", "vendors", "management", "settings"]
+  // Get user permissions based on their department
+  const { data: userPermissions, isLoading } = useUserPermissions(userId);
+  const allowedTabs = userPermissions?.allowedTabs || [];
+  
+  const handleSignOut = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        toast.error("Error signing out");
+        return;
+      }
+      toast.success("Signed out successfully");
+      navigate("/auth");
+    } catch (error) {
+      console.error("Sign out error:", error);
+      toast.error("An unexpected error occurred");
+    }
   };
-  
-  const allowedTabs = departmentPermissions[mockUserDepartment] || [];
   
   return <div className={cn("bg-sidebar h-screen flex flex-col transition-all duration-300 border-r border-sidebar-border", collapsed ? "w-16" : "w-64")}>
       <div className="flex items-center h-14 px-3 border-b border-sidebar-border">
@@ -178,13 +205,22 @@ export function Sidebar() {
         </div>
       </nav>
 
-      <div className="p-2 mt-auto border-t border-sidebar-border">
+      <div className="p-2 mt-auto border-t border-sidebar-border space-y-2">
         <NavItem to="/settings" icon={<Settings size={20} />} label="Settings" collapsed={collapsed} allowedTabs={allowedTabs} />
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleSignOut}
+          className={cn("w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent", collapsed && "justify-center px-2")}
+        >
+          <LogOut size={20} />
+          {!collapsed && <span className="ml-2">Sign Out</span>}
+        </Button>
       </div>
       
-      {/* Demo department indicator */}
-      {!collapsed && <div className="p-2 text-xs text-sidebar-foreground/60 border-t border-sidebar-border">
-        Demo Department: {mockUserDepartment}
+      {/* Show current user department if not collapsed */}
+      {!collapsed && userPermissions && !isLoading && <div className="p-2 text-xs text-sidebar-foreground/60 border-t border-sidebar-border">
+        Department: {userPermissions.departmentName}
       </div>}
     </div>;
 }

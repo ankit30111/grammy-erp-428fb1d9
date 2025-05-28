@@ -4,8 +4,10 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { AuthGuard } from "@/components/Auth/AuthGuard";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
+import Auth from "./pages/Auth";
 import Projection from "./pages/Projection";
 import PPC from "./pages/PPC";
 import Purchase from "./pages/Purchase";
@@ -45,30 +47,31 @@ function App() {
         <Sonner />
         <BrowserRouter>
           <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/projection" element={<Projection />} />
-            <Route path="/spare-orders" element={<SpareOrders />} />
-            <Route path="/planning" element={<PPC />} />
-            <Route path="/production" element={<Production />} />
-            <Route path="/quality" element={<Quality />} />
-            <Route path="/quality/iqc" element={<IQC />} />
-            <Route path="/quality/pqc" element={<PQC />} />
-            <Route path="/quality/oqc" element={<OQC />} />
-            <Route path="/inventory" element={<Inventory />} />
-            <Route path="/purchase" element={<Purchase />} />
-            <Route path="/grn" element={<GRN />} />
-            <Route path="/sales" element={<Sales />} />
-            <Route path="/sales/spare-dispatch" element={<Sales />} />
-            <Route path="/dispatch" element={<Dispatch />} />
-            <Route path="/finished-goods" element={<FinishedGoods />} />
-            <Route path="/user-management" element={<UserManagement />} />
-            <Route path="/hr-management" element={<HRManagement />} />
-            <Route path="/vendors" element={<Vendors />} />
-            <Route path="/management" element={<Management />} />
-            <Route path="/management/products" element={<ProductsManagement />} />
-            <Route path="/management/raw-materials" element={<RawMaterialsManagement />} />
-            <Route path="/management/customers" element={<CustomersManagement />} />
-            <Route path="/settings" element={<Index />} />
+            <Route path="/auth" element={<Auth />} />
+            <Route path="/" element={<AuthGuard><Index /></AuthGuard>} />
+            <Route path="/projection" element={<AuthGuard><Projection /></AuthGuard>} />
+            <Route path="/spare-orders" element={<AuthGuard><SpareOrders /></AuthGuard>} />
+            <Route path="/planning" element={<AuthGuard><PPC /></AuthGuard>} />
+            <Route path="/production" element={<AuthGuard><Production /></AuthGuard>} />
+            <Route path="/quality" element={<AuthGuard><Quality /></AuthGuard>} />
+            <Route path="/quality/iqc" element={<AuthGuard><IQC /></AuthGuard>} />
+            <Route path="/quality/pqc" element={<AuthGuard><PQC /></AuthGuard>} />
+            <Route path="/quality/oqc" element={<AuthGuard><OQC /></AuthGuard>} />
+            <Route path="/inventory" element={<AuthGuard><Inventory /></AuthGuard>} />
+            <Route path="/purchase" element={<AuthGuard><Purchase /></AuthGuard>} />
+            <Route path="/grn" element={<AuthGuard><GRN /></AuthGuard>} />
+            <Route path="/sales" element={<AuthGuard><Sales /></AuthGuard>} />
+            <Route path="/sales/spare-dispatch" element={<AuthGuard><Sales /></AuthGuard>} />
+            <Route path="/dispatch" element={<AuthGuard><Dispatch /></AuthGuard>} />
+            <Route path="/finished-goods" element={<AuthGuard><FinishedGoods /></AuthGuard>} />
+            <Route path="/user-management" element={<AuthGuard><UserManagement /></AuthGuard>} />
+            <Route path="/hr-management" element={<AuthGuard><HRManagement /></AuthGuard>} />
+            <Route path="/vendors" element={<AuthGuard><Vendors /></AuthGuard>} />
+            <Route path="/management" element={<AuthGuard><Management /></AuthGuard>} />
+            <Route path="/management/products" element={<AuthGuard><ProductsManagement /></AuthGuard>} />
+            <Route path="/management/raw-materials" element={<AuthGuard><RawMaterialsManagement /></AuthGuard>} />
+            <Route path="/management/customers" element={<AuthGuard><CustomersManagement /></AuthGuard>} />
+            <Route path="/settings" element={<AuthGuard><Index /></AuthGuard>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
