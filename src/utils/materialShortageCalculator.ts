@@ -2,145 +2,132 @@
 import { supabase } from "@/integrations/supabase/client";
 
 export interface MaterialShortage {
-  raw_material_id: string;
   material_code: string;
   material_name: string;
   required_quantity: number;
   available_quantity: number;
   shortage_quantity: number;
-  vendor_id: string;
-  vendor_name: string;
+  vendor_info?: {
+    id: string;
+    name: string;
+    vendor_code: string;
+    is_primary: boolean;
+  };
 }
 
-export const calculateMaterialShortages = async (projectionIds: string[]): Promise<MaterialShortage[]> => {
-  console.log('Calculating material shortages for projections:', projectionIds);
-
-  // Get projections with product details
-  const { data: projections, error: projError } = await supabase
-    .from('projections')
-    .select(`
-      id,
-      quantity,
-      product_id,
-      products (
-        id,
-        name
-      )
-    `)
-    .in('id', projectionIds);
-
-  if (projError) throw projError;
-  if (!projections?.length) return [];
-
-  // Get BOM for all products
-  const productIds = projections.map(p => p.product_id);
-  const { data: bomData, error: bomError } = await supabase
-    .from('bom')
-    .select(`
-      product_id,
-      raw_material_id,
-      quantity,
-      raw_materials (
-        id,
-        name,
-        material_code,
-        vendor_id,
-        vendors (
-          id,
-          name
+export const calculateMaterialShortages = async (
+  productionOrders: any[]
+): Promise<MaterialShortage[]> => {
+  try {
+    // Get all raw materials with their vendor relationships
+    const { data: rawMaterials, error: materialsError } = await supabase
+      .from("raw_materials")
+      .select(`
+        *,
+        raw_material_vendors(
+          is_primary,
+          vendors(
+            id,
+            name,
+            vendor_code
+          )
         )
-      )
-    `)
-    .in('product_id', productIds);
+      `)
+      .eq("is_active", true);
 
-  if (bomError) throw bomError;
-  if (!bomData?.length) return [];
+    if (materialsError) {
+      console.error("Error fetching raw materials:", materialsError);
+      throw materialsError;
+    }
 
-  // Get current inventory
-  const { data: inventory, error: invError } = await supabase
-    .from('inventory')
-    .select('raw_material_id, quantity');
+    // Get all BOMs for the products in production orders
+    const productIds = productionOrders.map(order => order.product_id);
+    const { data: bomItems, error: bomError } = await supabase
+      .from("bom_items")
+      .select(`
+        *,
+        raw_materials(
+          id,
+          material_code,
+          name,
+          raw_material_vendors(
+            is_primary,
+            vendors(
+              id,
+              name,
+              vendor_code
+            )
+          )
+        )
+      `)
+      .in("product_id", productIds);
 
-  if (invError) throw invError;
+    if (bomError) {
+      console.error("Error fetching BOM items:", bomError);
+      throw bomError;
+    }
 
-  // Calculate material requirements
-  const materialRequirements = new Map<string, {
-    required: number;
-    material_code: string;
-    material_name: string;
-    vendor_id: string;
-    vendor_name: string;
-  }>();
+    // Get current inventory levels
+    const { data: inventory, error: inventoryError } = await supabase
+      .from("raw_material_inventory")
+      .select("*");
 
-  projections.forEach(projection => {
-    const productBOM = bomData.filter(bom => bom.product_id === projection.product_id);
-    
-    productBOM.forEach(bomItem => {
-      const materialId = bomItem.raw_material_id;
-      const requiredQty = bomItem.quantity * projection.quantity;
+    if (inventoryError) {
+      console.error("Error fetching inventory:", inventoryError);
+      throw inventoryError;
+    }
+
+    // Calculate total requirements by material
+    const materialRequirements = new Map<string, number>();
+
+    productionOrders.forEach(order => {
+      const orderBomItems = bomItems?.filter(item => item.product_id === order.product_id) || [];
       
-      if (materialRequirements.has(materialId)) {
-        materialRequirements.get(materialId)!.required += requiredQty;
-      } else {
-        materialRequirements.set(materialId, {
-          required: requiredQty,
-          material_code: bomItem.raw_materials?.material_code || '',
-          material_name: bomItem.raw_materials?.name || '',
-          vendor_id: bomItem.raw_materials?.vendor_id || '',
-          vendor_name: bomItem.raw_materials?.vendors?.name || '',
+      orderBomItems.forEach(bomItem => {
+        const materialId = bomItem.raw_material_id;
+        const requiredQty = bomItem.quantity * order.quantity;
+        
+        materialRequirements.set(
+          materialId,
+          (materialRequirements.get(materialId) || 0) + requiredQty
+        );
+      });
+    });
+
+    // Calculate shortages
+    const shortages: MaterialShortage[] = [];
+
+    materialRequirements.forEach((requiredQuantity, materialId) => {
+      const material = rawMaterials?.find(m => m.id === materialId);
+      if (!material) return;
+
+      const inventoryItem = inventory?.find(inv => inv.raw_material_id === materialId);
+      const availableQuantity = inventoryItem?.quantity || 0;
+      const shortageQuantity = Math.max(0, requiredQuantity - availableQuantity);
+
+      if (shortageQuantity > 0) {
+        // Get primary vendor info
+        const primaryVendor = material.raw_material_vendors?.find((rv: any) => rv.is_primary);
+        
+        shortages.push({
+          material_code: material.material_code,
+          material_name: material.name,
+          required_quantity: requiredQuantity,
+          available_quantity: availableQuantity,
+          shortage_quantity: shortageQuantity,
+          vendor_info: primaryVendor ? {
+            id: primaryVendor.vendors.id,
+            name: primaryVendor.vendors.name,
+            vendor_code: primaryVendor.vendors.vendor_code,
+            is_primary: true
+          } : undefined
         });
       }
     });
-  });
 
-  // Calculate shortages
-  const shortages: MaterialShortage[] = [];
-
-  materialRequirements.forEach((requirement, materialId) => {
-    const inventoryItem = inventory?.find(inv => inv.raw_material_id === materialId);
-    const availableQty = inventoryItem?.quantity || 0;
-    const shortageQty = Math.max(0, requirement.required - availableQty);
-
-    if (shortageQty > 0) {
-      shortages.push({
-        raw_material_id: materialId,
-        material_code: requirement.material_code,
-        material_name: requirement.material_name,
-        required_quantity: requirement.required,
-        available_quantity: availableQty,
-        shortage_quantity: shortageQty,
-        vendor_id: requirement.vendor_id,
-        vendor_name: requirement.vendor_name,
-      });
-    }
-  });
-
-  console.log('Calculated shortages:', shortages);
-  return shortages;
-};
-
-export const groupShortagesByVendor = (shortages: MaterialShortage[]) => {
-  const grouped = new Map<string, {
-    vendor_id: string;
-    vendor_name: string;
-    items: MaterialShortage[];
-    total_items: number;
-  }>();
-
-  shortages.forEach(shortage => {
-    if (!grouped.has(shortage.vendor_id)) {
-      grouped.set(shortage.vendor_id, {
-        vendor_id: shortage.vendor_id,
-        vendor_name: shortage.vendor_name,
-        items: [],
-        total_items: 0,
-      });
-    }
-    
-    const vendor = grouped.get(shortage.vendor_id)!;
-    vendor.items.push(shortage);
-    vendor.total_items++;
-  });
-
-  return Array.from(grouped.values());
+    return shortages;
+  } catch (error) {
+    console.error("Error calculating material shortages:", error);
+    return [];
+  }
 };
