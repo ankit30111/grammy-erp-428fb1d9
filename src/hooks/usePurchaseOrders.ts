@@ -38,10 +38,11 @@ export const useCreatePurchaseOrder = () => {
 
   return useMutation({
     mutationFn: async (orderData: any) => {
-      // Insert purchase order without po_number (let trigger generate it)
+      // Insert purchase order with empty po_number (let trigger generate it)
       const { data: poData, error: poError } = await supabase
         .from('purchase_orders')
         .insert({
+          po_number: '', // Empty string will be replaced by trigger
           vendor_id: orderData.vendor_id,
           status: 'PENDING',
           notes: orderData.notes,
