@@ -1623,13 +1623,16 @@ export type Database = {
           address: string
           bank_account_number: string
           contact_number: string
+          contact_person_name: string | null
           created_at: string
           created_by: string | null
           email: string
+          gst_certificate_url: string | null
           gst_number: string
           id: string
           ifsc_code: string
           is_active: boolean
+          msme_certificate_url: string | null
           name: string
           updated_at: string
           vendor_code: string
@@ -1638,13 +1641,16 @@ export type Database = {
           address: string
           bank_account_number: string
           contact_number: string
+          contact_person_name?: string | null
           created_at?: string
           created_by?: string | null
           email: string
+          gst_certificate_url?: string | null
           gst_number: string
           id?: string
           ifsc_code: string
           is_active?: boolean
+          msme_certificate_url?: string | null
           name: string
           updated_at?: string
           vendor_code: string
@@ -1653,13 +1659,16 @@ export type Database = {
           address?: string
           bank_account_number?: string
           contact_number?: string
+          contact_person_name?: string | null
           created_at?: string
           created_by?: string | null
           email?: string
+          gst_certificate_url?: string | null
           gst_number?: string
           id?: string
           ifsc_code?: string
           is_active?: boolean
+          msme_certificate_url?: string | null
           name?: string
           updated_at?: string
           vendor_code?: string
