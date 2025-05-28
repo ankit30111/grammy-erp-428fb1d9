@@ -1,0 +1,182 @@
+
+import { useState } from "react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Search, Package, MapPin, AlertTriangle, TrendingDown, TrendingUp } from "lucide-react";
+import { InventoryItem, mockInventory } from "@/types/store";
+import { format } from "date-fns";
+import { StatusBadge } from "@/components/ui/custom/StatusBadge";
+
+export default function InventoryManagement() {
+  const [inventory] = useState<InventoryItem[]>(mockInventory);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterStatus, setFilterStatus] = useState<string>("ALL");
+
+  const filteredInventory = inventory.filter(item => {
+    const matchesSearch = 
+      item.partCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.bin.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesFilter = filterStatus === "ALL" || item.status === filterStatus;
+    
+    return matchesSearch && matchesFilter;
+  });
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "IN_STOCK":
+        return "approved";
+      case "LOW_STOCK":
+        return "pending";
+      case "OUT_OF_STOCK":
+        return "rejected";
+      default:
+        return "pending";
+    }
+  };
+
+  const totalItems = inventory.length;
+  const lowStockItems = inventory.filter(item => item.status === "LOW_STOCK").length;
+  const outOfStockItems = inventory.filter(item => item.status === "OUT_OF_STOCK").length;
+  const totalValue = inventory.reduce((sum, item) => sum + item.quantity, 0);
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h3 className="text-lg font-medium">Raw Material Inventory</h3>
+        <div className="flex space-x-2">
+          <div className="relative w-64">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by part code, description, location..." 
+              className="pl-9"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          <Button 
+            variant={filterStatus === "ALL" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setFilterStatus("ALL")}
+          >
+            All
+          </Button>
+          <Button 
+            variant={filterStatus === "LOW_STOCK" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setFilterStatus("LOW_STOCK")}
+          >
+            Low Stock
+          </Button>
+          <Button 
+            variant={filterStatus === "OUT_OF_STOCK" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setFilterStatus("OUT_OF_STOCK")}
+          >
+            Out of Stock
+          </Button>
+        </div>
+      </div>
+
+      {/* Summary Cards */}
+      <div className="grid grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="flex items-center p-6">
+            <Package className="h-8 w-8 text-blue-600" />
+            <div className="ml-4">
+              <p className="text-sm text-gray-600">Total Items</p>
+              <p className="text-2xl font-bold">{totalItems}</p>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="flex items-center p-6">
+            <AlertTriangle className="h-8 w-8 text-yellow-600" />
+            <div className="ml-4">
+              <p className="text-sm text-gray-600">Low Stock</p>
+              <p className="text-2xl font-bold text-yellow-600">{lowStockItems}</p>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="flex items-center p-6">
+            <TrendingDown className="h-8 w-8 text-red-600" />
+            <div className="ml-4">
+              <p className="text-sm text-gray-600">Out of Stock</p>
+              <p className="text-2xl font-bold text-red-600">{outOfStockItems}</p>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="flex items-center p-6">
+            <TrendingUp className="h-8 w-8 text-green-600" />
+            <div className="ml-4">
+              <p className="text-sm text-gray-600">Total Quantity</p>
+              <p className="text-2xl font-bold">{totalValue.toLocaleString()}</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Inventory Table */}
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Part Code</TableHead>
+              <TableHead>Description</TableHead>
+              <TableHead>Current Stock</TableHead>
+              <TableHead>Minimum Stock</TableHead>
+              <TableHead>Location</TableHead>
+              <TableHead>Bin</TableHead>
+              <TableHead>Last Updated</TableHead>
+              <TableHead>Status</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filteredInventory.map((item, index) => (
+              <TableRow key={index}>
+                <TableCell className="font-mono font-medium">{item.partCode}</TableCell>
+                <TableCell>{item.description}</TableCell>
+                <TableCell className={`font-medium ${
+                  item.quantity <= item.minimumStock ? "text-red-600" : "text-green-600"
+                }`}>
+                  {item.quantity.toLocaleString()}
+                </TableCell>
+                <TableCell className="text-gray-600">{item.minimumStock}</TableCell>
+                <TableCell>
+                  <div className="flex items-center space-x-1">
+                    <MapPin className="h-4 w-4 text-gray-500" />
+                    <span>{item.location}</span>
+                  </div>
+                </TableCell>
+                <TableCell className="font-mono text-sm">{item.bin}</TableCell>
+                <TableCell>{format(new Date(item.lastUpdated), "MMM dd, yyyy")}</TableCell>
+                <TableCell>
+                  <StatusBadge status={getStatusColor(item.status)}>
+                    {item.status.replace("_", " ")}
+                  </StatusBadge>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+
+      {filteredInventory.length === 0 && (
+        <div className="text-center py-8 text-muted-foreground">
+          <Package className="mx-auto h-12 w-12 opacity-50 mb-4" />
+          <p>No inventory items found</p>
+          <p className="text-sm">Try adjusting your search or filter criteria</p>
+        </div>
+      )}
+    </div>
+  );
+}

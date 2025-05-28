@@ -2,9 +2,10 @@
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScheduledProduction as ScheduledProductionType, KitStatus, mockScheduledProductions, mockGRNs, mockMaterialRequests, GRNItem, MaterialRequest } from "@/types/store";
-import ScheduledProduction from "@/components/Store/ScheduledProduction";
-import GRNReceiving from "@/components/Store/GRNReceiving";
+import EnhancedScheduledProduction from "@/components/Store/EnhancedScheduledProduction";
+import EnhancedGRNReceiving from "@/components/Store/EnhancedGRNReceiving";
 import ProductionFeedback from "@/components/Store/ProductionFeedback";
+import InventoryManagement from "@/components/Store/InventoryManagement";
 import { useToast } from "@/hooks/use-toast";
 import { Layers } from "lucide-react";
 
@@ -86,19 +87,16 @@ export default function StoreDashboard() {
           : g
       )
     );
+  };
+
+  // Handler for GRN discrepancy reporting to purchase
+  const handleDiscrepancyReport = (grnId: string, expectedQty: number, receivedQty: number, poNumber: string) => {
+    console.log(`Discrepancy reported for GRN ${grnId}:`);
+    console.log(`PO: ${poNumber}, Expected: ${expectedQty}, Received: ${receivedQty}`);
+    console.log(`Purchase team notified. Vendor payment on hold.`);
     
-    if (hasDiscrepancy) {
-      toast({
-        title: "Discrepancy Detected",
-        description: `Received quantity (${quantity}) is less than expected quantity (${grn.expectedQuantity})`,
-        variant: "destructive"
-      });
-    } else {
-      toast({
-        title: "GRN Received Successfully",
-        description: `${quantity} units of ${grn.partCode} have been received into store`,
-      });
-    }
+    // This would typically send a notification to the Purchase module
+    // For now, we'll just log it
   };
 
   // Handlers for material requests
@@ -133,18 +131,19 @@ export default function StoreDashboard() {
     <div className="container mx-auto py-6">
       <div className="flex items-center space-x-4 mb-6">
         <Layers className="h-8 w-8 text-primary" />
-        <h1 className="text-2xl font-bold">Store Management</h1>
+        <h1 className="text-2xl font-bold">Store Management - Grammy Electronics</h1>
       </div>
 
-      <Tabs defaultValue="scheduled-production" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="scheduled-production">Scheduled Production</TabsTrigger>
-          <TabsTrigger value="grn-receiving">GRN Receiving</TabsTrigger>
+      <Tabs defaultValue="voucher-management" className="space-y-4">
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="voucher-management">Voucher Management</TabsTrigger>
+          <TabsTrigger value="material-receiving">Material Receiving</TabsTrigger>
           <TabsTrigger value="production-feedback">Production Feedback</TabsTrigger>
+          <TabsTrigger value="inventory">Inventory</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="scheduled-production" className="space-y-4">
-          <ScheduledProduction 
+        <TabsContent value="voucher-management" className="space-y-4">
+          <EnhancedScheduledProduction 
             productions={productions}
             onStatusChange={handleKitStatusChange}
             onKitReceivedChange={handleKitReceivedChange}
@@ -152,10 +151,11 @@ export default function StoreDashboard() {
           />
         </TabsContent>
 
-        <TabsContent value="grn-receiving" className="space-y-4">
-          <GRNReceiving 
+        <TabsContent value="material-receiving" className="space-y-4">
+          <EnhancedGRNReceiving 
             grns={grns}
             onReceiveGRN={handleReceiveGRN}
+            onDiscrepancyReport={handleDiscrepancyReport}
           />
         </TabsContent>
 
@@ -166,6 +166,10 @@ export default function StoreDashboard() {
             onApproveMaterialRequest={handleApproveMaterialRequest}
             onRejectMaterialRequest={handleRejectMaterialRequest}
           />
+        </TabsContent>
+
+        <TabsContent value="inventory" className="space-y-4">
+          <InventoryManagement />
         </TabsContent>
       </Tabs>
     </div>
