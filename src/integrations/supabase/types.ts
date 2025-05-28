@@ -190,6 +190,56 @@ export type Database = {
         }
         Relationships: []
       }
+      department_permissions: {
+        Row: {
+          created_at: string
+          department_id: string
+          id: string
+          tab_name: string
+        }
+        Insert: {
+          created_at?: string
+          department_id: string
+          id?: string
+          tab_name: string
+        }
+        Update: {
+          created_at?: string
+          department_id?: string
+          id?: string
+          tab_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "department_permissions_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      departments: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
       dispatch_order_items: {
         Row: {
           created_at: string
@@ -1176,6 +1226,7 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string | null
+          department_id: string | null
           email: string
           full_name: string | null
           id: string
@@ -1188,6 +1239,7 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by?: string | null
+          department_id?: string | null
           email: string
           full_name?: string | null
           id?: string
@@ -1200,6 +1252,7 @@ export type Database = {
         Update: {
           created_at?: string
           created_by?: string | null
+          department_id?: string | null
           email?: string
           full_name?: string | null
           id?: string
@@ -1209,7 +1262,15 @@ export type Database = {
           updated_at?: string
           username?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "user_accounts_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       vendors: {
         Row: {
