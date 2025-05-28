@@ -1,4 +1,3 @@
-
 export interface ProductionLine {
   id: string;
   name: string;
@@ -51,6 +50,18 @@ export interface OQCRejection {
   status: "PENDING_REWORK" | "REWORK_IN_PROGRESS" | "CAPA_UPLOADED" | "RESOLVED";
   capaDocument?: string;
   reworkNotes?: string;
+}
+
+export interface ScheduledProductionForProduction {
+  id: string;
+  voucherNumber: string;
+  modelName: string;
+  scheduledDate: string;
+  quantity: number;
+  kitStatus: "KIT SCHEDULED" | "KIT VERIFIED" | "KIT SENT" | "KIT SHORTAGE" | "KIT READY" | "YET TO PLANNED";
+  materialStatus: "AVAILABLE" | "PARTIAL" | "SHORTAGE";
+  assignedLine?: string;
+  productionStatus: "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED" | "ON_HOLD";
 }
 
 // Mock data for production lines
@@ -194,5 +205,50 @@ export const mockOQCRejections: OQCRejection[] = [
     rejectionReason: "Visual defects on housing",
     rejectedQuantity: 8,
     status: "PENDING_REWORK"
+  }
+];
+
+// Mock data for scheduled productions visible to production team
+export const mockScheduledProductionsForProduction: ScheduledProductionForProduction[] = [
+  {
+    id: "1",
+    voucherNumber: "05-01",
+    modelName: "Speaker A300",
+    scheduledDate: "2025-05-21",
+    quantity: 100,
+    kitStatus: "KIT SENT",
+    materialStatus: "AVAILABLE",
+    assignedLine: "Production Line 1",
+    productionStatus: "IN_PROGRESS"
+  },
+  {
+    id: "2",
+    voucherNumber: "05-02",
+    modelName: "Subwoofer S200",
+    scheduledDate: "2025-05-22",
+    quantity: 50,
+    kitStatus: "KIT SENT",
+    materialStatus: "AVAILABLE",
+    productionStatus: "NOT_STARTED"
+  },
+  {
+    id: "3",
+    voucherNumber: "05-03",
+    modelName: "Tweeter T100",
+    scheduledDate: "2025-05-23",
+    quantity: 200,
+    kitStatus: "KIT VERIFIED",
+    materialStatus: "AVAILABLE",
+    productionStatus: "NOT_STARTED"
+  },
+  {
+    id: "4",
+    voucherNumber: "05-04",
+    modelName: "Speaker A100",
+    scheduledDate: "2025-05-24",
+    quantity: 75,
+    kitStatus: "KIT SCHEDULED",
+    materialStatus: "PARTIAL",
+    productionStatus: "NOT_STARTED"
   }
 ];

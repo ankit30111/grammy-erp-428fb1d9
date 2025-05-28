@@ -2,6 +2,7 @@
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ProductionDashboard from "@/components/Production/ProductionDashboard";
+import ScheduledProductions from "@/components/Production/ScheduledProductions";
 import KitVerification from "@/components/Production/KitVerification";
 import MaterialRequests from "@/components/Production/MaterialRequests";
 import OQCRejections from "@/components/Production/OQCRejections";
@@ -17,8 +18,9 @@ export default function Production() {
         </div>
 
         <Tabs defaultValue="dashboard" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="dashboard">Production Lines</TabsTrigger>
+            <TabsTrigger value="scheduled">Scheduled Productions</TabsTrigger>
             <TabsTrigger value="kit-verification">Kit Verification</TabsTrigger>
             <TabsTrigger value="material-requests">Material Requests</TabsTrigger>
             <TabsTrigger value="oqc-rejections">OQC Rejections</TabsTrigger>
@@ -26,6 +28,10 @@ export default function Production() {
 
           <TabsContent value="dashboard" className="space-y-4">
             <ProductionDashboard />
+          </TabsContent>
+
+          <TabsContent value="scheduled" className="space-y-4">
+            <ScheduledProductions />
           </TabsContent>
 
           <TabsContent value="kit-verification" className="space-y-4">
