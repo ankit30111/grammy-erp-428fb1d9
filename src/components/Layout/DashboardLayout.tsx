@@ -1,86 +1,83 @@
-
 import { ReactNode, useState, useEffect } from "react";
 import { Sidebar } from "@/components/Navigation/Sidebar";
 import { Bell, User, Search, LogOut, Mail, Phone, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserPermissions } from "@/hooks/useUserPermissions";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
-
 interface DashboardLayoutProps {
   children: ReactNode;
 }
-
 interface UserProfile {
   full_name: string;
   email: string;
   mobile_number?: string;
   department_name?: string;
 }
-
-export function DashboardLayout({ children }: DashboardLayoutProps) {
+export function DashboardLayout({
+  children
+}: DashboardLayoutProps) {
   const [userId, setUserId] = useState<string | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const navigate = useNavigate();
-  
+
   // Get current user ID
   useEffect(() => {
     const getCurrentUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: {
+          user
+        }
+      } = await supabase.auth.getUser();
       setUserId(user?.id || null);
-      
       if (user) {
         // Fetch user profile from user_accounts table with department information
-        const { data: profile, error } = await supabase
-          .from("user_accounts")
-          .select(`
+        const {
+          data: profile,
+          error
+        } = await supabase.from("user_accounts").select(`
             full_name,
             email,
             departments!department_id (
               name
             )
-          `)
-          .eq("id", user.id)
-          .single();
-        
+          `).eq("id", user.id).single();
         if (error) {
           console.error("Error fetching user profile:", error);
         } else if (profile) {
           setUserProfile({
             full_name: profile.full_name || "User",
             email: profile.email || "",
-            mobile_number: "", // Not available in user_accounts table
+            mobile_number: "",
+            // Not available in user_accounts table
             department_name: profile.departments?.name || "N/A"
           });
         }
       }
     };
-    
     getCurrentUser();
-    
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const {
+      data: {
+        subscription
+      }
+    } = supabase.auth.onAuthStateChange((event, session) => {
       setUserId(session?.user?.id || null);
     });
-    
     return () => subscription.unsubscribe();
   }, []);
-  
+
   // Get user permissions based on their department
-  const { data: userPermissions } = useUserPermissions(userId);
-  
+  const {
+    data: userPermissions
+  } = useUserPermissions(userId);
   const handleSignOut = async () => {
     try {
-      const { error } = await supabase.auth.signOut();
+      const {
+        error
+      } = await supabase.auth.signOut();
       if (error) {
         toast.error("Error signing out");
         return;
@@ -92,9 +89,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       toast.error("An unexpected error occurred");
     }
   };
-  
-  return (
-    <div className="flex h-screen bg-background">
+  return <div className="flex h-screen bg-background">
       <Sidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
         <header className="bg-card border-b h-14 flex items-center px-4 gap-4">
@@ -105,10 +100,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           <div className="flex-1 flex justify-center">
             <div className="relative w-full max-w-md">
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search..."
-                className="pl-8 h-9"
-              />
+              <Input placeholder="Search..." className="pl-8 h-9" />
             </div>
           </div>
           
@@ -158,42 +150,10 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-64">
-                <DropdownMenuLabel>Profile</DropdownMenuLabel>
+                
                 <DropdownMenuSeparator />
                 
-                <div className="px-2 py-3 space-y-3">
-                  <div className="flex items-center gap-3">
-                    <User className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <p className="text-sm font-medium">{userProfile?.full_name || "N/A"}</p>
-                      <p className="text-xs text-muted-foreground">Name</p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-3">
-                    <Mail className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <p className="text-sm font-medium">{userProfile?.email || "N/A"}</p>
-                      <p className="text-xs text-muted-foreground">Email ID</p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-3">
-                    <Phone className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <p className="text-sm font-medium">{userProfile?.mobile_number || "N/A"}</p>
-                      <p className="text-xs text-muted-foreground">Mobile Number</p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-3">
-                    <Building2 className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <p className="text-sm font-medium">{userProfile?.department_name || "N/A"}</p>
-                      <p className="text-xs text-muted-foreground">Department</p>
-                    </div>
-                  </div>
-                </div>
+                
                 
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer text-destructive focus:text-destructive">
@@ -207,6 +167,5 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
         <main className="flex-1 overflow-auto p-6">{children}</main>
       </div>
-    </div>
-  );
+    </div>;
 }
