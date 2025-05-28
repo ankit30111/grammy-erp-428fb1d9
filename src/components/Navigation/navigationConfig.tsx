@@ -1,0 +1,53 @@
+
+import { Home, Plus, Wrench, Calendar, Package, BarChart2, Layers, ClipboardCheck, DollarSign, Users, FileText, UserPlus, Building2, User, Settings } from "lucide-react";
+
+export const navigationItems = [
+  { to: "/", icon: <Home size={20} />, label: "Dashboard" },
+  { to: "/projection", icon: <Plus size={20} />, label: "Add Projection" },
+  { to: "/spare-orders", icon: <Wrench size={20} />, label: "Spare Orders" },
+  {
+    to: "#",
+    icon: <Calendar size={20} />,
+    label: "PPC",
+    subItems: [
+      { to: "/planning", label: "Planning" },
+      { to: "/purchase", label: "Purchase" },
+      { to: "/grn", label: "GRN", badge: 3 }
+    ]
+  },
+  { to: "/inventory", icon: <Package size={20} />, label: "Store" },
+  { to: "/production", icon: <BarChart2 size={20} />, label: "Production" },
+  { to: "/finished-goods", icon: <Layers size={20} />, label: "Finished Goods" },
+  {
+    to: "/quality",
+    icon: <ClipboardCheck size={20} />,
+    label: "Quality Control",
+    subItems: [
+      { to: "/quality/iqc", label: "IQC", badge: 3 },
+      { to: "/quality/pqc", label: "PQC", badge: 2 },
+      { to: "/quality/oqc", label: "OQC", badge: 1 }
+    ]
+  },
+  {
+    to: "/sales",
+    icon: <DollarSign size={20} />,
+    label: "Sales",
+    subItems: [
+      { to: "/sales/spare-dispatch", label: "Spare Dispatch" },
+      { to: "/dispatch", label: "Regular Dispatch" }
+    ]
+  },
+  { to: "/hr-management", icon: <Users size={20} />, label: "Human Resources" }
+];
+
+export const managementItems = [
+  { to: "/management/products", icon: <FileText size={20} />, label: "Products" },
+  { to: "/management/raw-materials", icon: <Layers size={20} />, label: "Raw Materials" },
+  { to: "/management/customers", icon: <UserPlus size={20} />, label: "Customers" },
+  { to: "/vendors", icon: <Building2 size={20} />, label: "Vendors" },
+  { to: "/user-management", icon: <User size={20} />, label: "User Management" }
+];
+
+export const settingsItems = [
+  { to: "/settings", icon: <Settings size={20} />, label: "Settings" }
+];
