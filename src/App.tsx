@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -10,6 +9,7 @@ import Projection from "./pages/Projection";
 import PPC from "./pages/PPC";
 import Purchase from "./pages/Purchase";
 import Inventory from "./pages/Inventory";
+import Production from "./pages/Production";
 import GRN from "./pages/GRN";
 import Quality from "./pages/Quality";
 import IQC from "./pages/quality/IQC";
@@ -35,7 +35,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/projection" element={<Projection />} />
             <Route path="/planning" element={<PPC />} />
-            <Route path="/production" element={<Index />} />
+            <Route path="/production" element={<Production />} />
             <Route path="/quality" element={<Quality />} />
             <Route path="/quality/iqc" element={<IQC />} />
             <Route path="/quality/pqc" element={<PQC />} />
