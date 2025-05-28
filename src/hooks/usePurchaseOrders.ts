@@ -38,6 +38,7 @@ export const useCreatePurchaseOrder = () => {
 
   return useMutation({
     mutationFn: async (orderData: any) => {
+      // Insert purchase order without po_number (let trigger generate it)
       const { data: poData, error: poError } = await supabase
         .from('purchase_orders')
         .insert({
