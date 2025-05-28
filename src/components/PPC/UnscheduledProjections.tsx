@@ -1,19 +1,43 @@
 
-import { useState } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { projections } from "@/types/ppc";
+import { useProjections } from "@/hooks/useProjections";
+import { useProductionSchedules } from "@/hooks/useProductionSchedules";
 
 interface UnscheduledProjectionsProps {
-  getUnscheduledProjections: () => typeof projections;
   onScheduleClick: (projectionId: string) => void;
 }
 
 const UnscheduledProjections = ({ 
-  getUnscheduledProjections, 
   onScheduleClick 
 }: UnscheduledProjectionsProps) => {
+  const { data: projections, isLoading: projectionsLoading } = useProjections();
+  const { data: schedules, isLoading: schedulesLoading } = useProductionSchedules();
+
+  // Get unscheduled projections by checking which ones don't have production schedules
+  const getUnscheduledProjections = () => {
+    if (!projections || !schedules) return [];
+    
+    const scheduledProjectionIds = schedules.map(schedule => schedule.projection_id);
+    return projections.filter(proj => !scheduledProjectionIds.includes(proj.id));
+  };
+
+  const unscheduledProjections = getUnscheduledProjections();
+
+  if (projectionsLoading || schedulesLoading) {
+    return (
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>Unscheduled Projections</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-4">Loading projections...</div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card className="mb-6">
       <CardHeader>
@@ -27,19 +51,19 @@ const UnscheduledProjections = ({
               <TableHead>Customer</TableHead>
               <TableHead>Product</TableHead>
               <TableHead>Quantity</TableHead>
-              <TableHead>Due Date</TableHead>
+              <TableHead>Delivery Month</TableHead>
               <TableHead>Action</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {getUnscheduledProjections().length > 0 ? (
-              getUnscheduledProjections().map((proj) => (
+            {unscheduledProjections.length > 0 ? (
+              unscheduledProjections.map((proj) => (
                 <TableRow key={proj.id}>
-                  <TableCell className="font-medium">{proj.id}</TableCell>
-                  <TableCell>{proj.customer}</TableCell>
-                  <TableCell>{proj.product}</TableCell>
+                  <TableCell className="font-medium">{proj.id.slice(0, 8)}</TableCell>
+                  <TableCell>{proj.customers?.name}</TableCell>
+                  <TableCell>{proj.products?.name}</TableCell>
                   <TableCell>{proj.quantity}</TableCell>
-                  <TableCell>{new Date(proj.dueDate).toLocaleDateString()}</TableCell>
+                  <TableCell>{proj.delivery_month}</TableCell>
                   <TableCell>
                     <Button 
                       size="sm" 

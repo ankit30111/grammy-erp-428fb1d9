@@ -15,24 +15,9 @@ import {
   SelectValue 
 } from "@/components/ui/select";
 import { format, addMonths } from "date-fns";
-
-// Mock data for customers and products
-const mockCustomers = [
-  "AudioTech Inc",
-  "SoundMaster",
-  "EchoSystems",
-  "BassBoost Audio",
-  "ClearSound Ltd"
-];
-
-const mockProducts = [
-  "Speaker A300",
-  "Subwoofer S200",
-  "Tweeter T100",
-  "Amplifier AM500",
-  "Bluetooth Speaker B400",
-  "Soundbar SB100"
-];
+import { useCustomers } from "@/hooks/useCustomers";
+import { useProducts } from "@/hooks/useProducts";
+import { useProjections, useCreateProjection } from "@/hooks/useProjections";
 
 // Generate the next 12 months
 const generateMonths = () => {
@@ -51,22 +36,20 @@ const generateMonths = () => {
 
 const months = generateMonths();
 
-// Mock data for projections
-const mockProjections = [
-  { id: "1", customer: "AudioTech Inc", product: "Speaker A300", quantity: 5000, deliveryMonth: "2025-06", status: "New" },
-  { id: "2", customer: "SoundMaster", product: "Subwoofer S200", quantity: 2000, deliveryMonth: "2025-06", status: "Confirmed" },
-  { id: "3", customer: "EchoSystems", product: "Tweeter T100", quantity: 10000, deliveryMonth: "2025-07", status: "New" },
-];
-
 const Projection = () => {
-  const [projections, setProjections] = useState(mockProjections);
   const [newProjection, setNewProjection] = useState({
-    customer: "",
-    product: "",
+    customer_id: "",
+    product_id: "",
     quantity: "",
-    deliveryMonth: "",
+    delivery_month: "",
   });
   const { toast } = useToast();
+
+  // Fetch data from database
+  const { data: customers, isLoading: customersLoading } = useCustomers();
+  const { data: products, isLoading: productsLoading } = useProducts();
+  const { data: projections, isLoading: projectionsLoading } = useProjections();
+  const createProjection = useCreateProjection();
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -83,9 +66,9 @@ const Projection = () => {
     }));
   };
 
-  const handleAddProjection = () => {
+  const handleAddProjection = async () => {
     // Validate inputs
-    if (!newProjection.customer || !newProjection.product || !newProjection.quantity || !newProjection.deliveryMonth) {
+    if (!newProjection.customer_id || !newProjection.product_id || !newProjection.quantity || !newProjection.delivery_month) {
       toast({
         title: "Missing fields",
         description: "Please fill in all required fields",
@@ -94,28 +77,33 @@ const Projection = () => {
       return;
     }
 
-    // Add new projection
-    const projection = {
-      id: `${projections.length + 1}`,
-      ...newProjection,
-      quantity: parseInt(newProjection.quantity),
-      status: "New",
-    };
+    try {
+      await createProjection.mutateAsync({
+        customer_id: newProjection.customer_id,
+        product_id: newProjection.product_id,
+        quantity: parseInt(newProjection.quantity),
+        delivery_month: newProjection.delivery_month,
+      });
 
-    setProjections((prev) => [projection, ...prev]);
-    
-    // Reset form
-    setNewProjection({
-      customer: "",
-      product: "",
-      quantity: "",
-      deliveryMonth: "",
-    });
+      // Reset form
+      setNewProjection({
+        customer_id: "",
+        product_id: "",
+        quantity: "",
+        delivery_month: "",
+      });
 
-    toast({
-      title: "Projection added",
-      description: "New customer projection has been added successfully",
-    });
+      toast({
+        title: "Projection added",
+        description: "New customer projection has been added successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to add projection. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   // Format month for display
@@ -150,16 +138,17 @@ const Projection = () => {
                   Customer
                 </label>
                 <Select
-                  value={newProjection.customer}
-                  onValueChange={(value) => handleSelectChange("customer", value)}
+                  value={newProjection.customer_id}
+                  onValueChange={(value) => handleSelectChange("customer_id", value)}
+                  disabled={customersLoading}
                 >
                   <SelectTrigger id="customer">
-                    <SelectValue placeholder="Select customer" />
+                    <SelectValue placeholder={customersLoading ? "Loading..." : "Select customer"} />
                   </SelectTrigger>
                   <SelectContent>
-                    {mockCustomers.map((customer) => (
-                      <SelectItem key={customer} value={customer}>
-                        {customer}
+                    {customers?.map((customer) => (
+                      <SelectItem key={customer.id} value={customer.id}>
+                        {customer.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -170,16 +159,17 @@ const Projection = () => {
                   Product
                 </label>
                 <Select
-                  value={newProjection.product}
-                  onValueChange={(value) => handleSelectChange("product", value)}
+                  value={newProjection.product_id}
+                  onValueChange={(value) => handleSelectChange("product_id", value)}
+                  disabled={productsLoading}
                 >
                   <SelectTrigger id="product">
-                    <SelectValue placeholder="Select product" />
+                    <SelectValue placeholder={productsLoading ? "Loading..." : "Select product"} />
                   </SelectTrigger>
                   <SelectContent>
-                    {mockProducts.map((product) => (
-                      <SelectItem key={product} value={product}>
-                        {product}
+                    {products?.map((product) => (
+                      <SelectItem key={product.id} value={product.id}>
+                        {product.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -204,8 +194,8 @@ const Projection = () => {
                   Delivery Month
                 </label>
                 <Select
-                  value={newProjection.deliveryMonth}
-                  onValueChange={(value) => handleSelectChange("deliveryMonth", value)}
+                  value={newProjection.delivery_month}
+                  onValueChange={(value) => handleSelectChange("delivery_month", value)}
                 >
                   <SelectTrigger id="deliveryMonth">
                     <SelectValue placeholder="Select month" />
@@ -220,7 +210,12 @@ const Projection = () => {
                 </Select>
               </div>
               <div className="md:col-span-2 lg:col-span-4 flex justify-end mt-2">
-                <Button onClick={handleAddProjection}>Add Projection</Button>
+                <Button 
+                  onClick={handleAddProjection}
+                  disabled={createProjection.isPending}
+                >
+                  {createProjection.isPending ? "Adding..." : "Add Projection"}
+                </Button>
               </div>
             </div>
           </CardContent>
@@ -231,36 +226,42 @@ const Projection = () => {
             <CardTitle>Current Projections</CardTitle>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Customer</TableHead>
-                  <TableHead>Product</TableHead>
-                  <TableHead>Quantity</TableHead>
-                  <TableHead>Delivery Month</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {projections.map((projection) => (
-                  <TableRow key={projection.id}>
-                    <TableCell className="font-medium">{projection.customer}</TableCell>
-                    <TableCell>{projection.product}</TableCell>
-                    <TableCell>{projection.quantity.toLocaleString()}</TableCell>
-                    <TableCell>{formatMonth(projection.deliveryMonth)}</TableCell>
-                    <TableCell>
-                      <span className={`px-2 py-1 rounded-full text-xs ${
-                        projection.status === "New" ? "bg-blue-100 text-blue-800" : 
-                        projection.status === "Confirmed" ? "bg-green-100 text-green-800" : 
-                        "bg-gray-100 text-gray-800"
-                      }`}>
-                        {projection.status}
-                      </span>
-                    </TableCell>
+            {projectionsLoading ? (
+              <div className="text-center py-4">Loading projections...</div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Customer</TableHead>
+                    <TableHead>Product</TableHead>
+                    <TableHead>Quantity</TableHead>
+                    <TableHead>Delivery Month</TableHead>
+                    <TableHead>Status</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {projections?.map((projection) => (
+                    <TableRow key={projection.id}>
+                      <TableCell className="font-medium">
+                        {projection.customers?.name}
+                      </TableCell>
+                      <TableCell>{projection.products?.name}</TableCell>
+                      <TableCell>{projection.quantity.toLocaleString()}</TableCell>
+                      <TableCell>{formatMonth(projection.delivery_month)}</TableCell>
+                      <TableCell>
+                        <span className={`px-2 py-1 rounded-full text-xs ${
+                          projection.status === "New" ? "bg-blue-100 text-blue-800" : 
+                          projection.status === "Confirmed" ? "bg-green-100 text-green-800" : 
+                          "bg-gray-100 text-gray-800"
+                        }`}>
+                          {projection.status}
+                        </span>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
           </CardContent>
         </Card>
       </div>

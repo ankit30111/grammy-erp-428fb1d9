@@ -6,7 +6,15 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format } from "date-fns";
-import { projections, productionLines, RawMaterialShortage } from "@/types/ppc";
+import { useProjections } from "@/hooks/useProjections";
+import { useCreateProductionSchedule } from "@/hooks/useProductionSchedules";
+import { useToast } from "@/hooks/use-toast";
+
+const productionLines = [
+  { id: "L1", name: "Line 1", capacity: 300 },
+  { id: "L2", name: "Line 2", capacity: 400 },
+  { id: "L3", name: "Line 3", capacity: 250 }
+];
 
 interface ScheduleProductionFormProps {
   date: Date | undefined;
@@ -16,10 +24,6 @@ interface ScheduleProductionFormProps {
   setSelectedLine: (id: string) => void;
   quantity: string;
   setQuantity: (quantity: string) => void;
-  materialShortages: RawMaterialShortage[];
-  handleScheduleProduction: () => void;
-  getSelectedProjection: () => (typeof projections[0]) | undefined;
-  checkMaterialAvailability: (product: string, qty: number) => void;
 }
 
 const ScheduleProductionForm = ({
@@ -30,11 +34,61 @@ const ScheduleProductionForm = ({
   setSelectedLine,
   quantity,
   setQuantity,
-  materialShortages,
-  handleScheduleProduction,
-  getSelectedProjection,
-  checkMaterialAvailability
 }: ScheduleProductionFormProps) => {
+  const { data: projections } = useProjections();
+  const createSchedule = useCreateProductionSchedule();
+  const { toast } = useToast();
+
+  // Get selected projection details
+  const getSelectedProjection = () => {
+    return projections?.find(proj => proj.id === selectedProjection);
+  };
+
+  const handleScheduleProduction = async () => {
+    if (!date || !selectedProjection || !selectedLine || !quantity) {
+      toast({
+        title: "Missing Information",
+        description: "Please fill in all required fields",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      await createSchedule.mutateAsync({
+        projection_id: selectedProjection,
+        scheduled_date: format(date, 'yyyy-MM-dd'),
+        production_line: selectedLine,
+        quantity: parseInt(quantity),
+      });
+
+      // Reset form
+      setSelectedProjection(null);
+      setSelectedLine("");
+      setQuantity("");
+
+      toast({
+        title: "Production Scheduled",
+        description: "Production has been scheduled successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to schedule production. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // When a new projection is selected, update the quantity field
+  useEffect(() => {
+    if (selectedProjection) {
+      const projectionDetails = getSelectedProjection();
+      if (projectionDetails) {
+        setQuantity(projectionDetails.quantity.toString());
+      }
+    }
+  }, [selectedProjection]);
 
   return (
     <Card className="md:col-span-2">
@@ -61,9 +115,9 @@ const ScheduleProductionForm = ({
                     <SelectValue placeholder="Select projection" />
                   </SelectTrigger>
                   <SelectContent>
-                    {projections.map((proj) => (
+                    {projections?.map((proj) => (
                       <SelectItem key={proj.id} value={proj.id}>
-                        {proj.customer} - {proj.product} ({proj.quantity} pcs)
+                        {proj.customers?.name} - {proj.products?.name} ({proj.quantity} pcs)
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -76,15 +130,7 @@ const ScheduleProductionForm = ({
                   id="quantity"
                   type="number"
                   value={quantity}
-                  onChange={(e) => {
-                    setQuantity(e.target.value);
-                    if (selectedProjection) {
-                      const projectionDetails = getSelectedProjection();
-                      if (projectionDetails && e.target.value) {
-                        checkMaterialAvailability(projectionDetails.product, parseInt(e.target.value));
-                      }
-                    }
-                  }}
+                  onChange={(e) => setQuantity(e.target.value)}
                   placeholder="Enter quantity"
                 />
               </div>
@@ -108,31 +154,14 @@ const ScheduleProductionForm = ({
                 </Select>
               </div>
               
-              {selectedProjection && materialShortages.length > 0 && (
-                <div className="bg-amber-50 p-3 rounded-md border border-amber-200">
-                  <h4 className="flex items-center text-sm font-medium text-amber-800 mb-2">
-                    <AlertTriangle className="h-4 w-4 mr-1" />
-                    Material Shortage Detected
-                  </h4>
-                  <ul className="text-xs space-y-1 text-amber-800">
-                    {materialShortages.map((shortage, index) => (
-                      <li key={index}>
-                        {shortage.partCode}: Need {shortage.required}, have {shortage.available} 
-                        ({shortage.shortage} short)
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              
               <div className="pt-6">
                 <Button 
                   onClick={handleScheduleProduction}
-                  disabled={!date || !selectedProjection || !selectedLine || !quantity}
+                  disabled={!date || !selectedProjection || !selectedLine || !quantity || createSchedule.isPending}
                   className="w-full"
                 >
                   <Check className="mr-2 h-4 w-4" />
-                  Schedule Production
+                  {createSchedule.isPending ? "Scheduling..." : "Schedule Production"}
                 </Button>
               </div>
             </div>
