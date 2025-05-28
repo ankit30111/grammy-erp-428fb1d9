@@ -85,7 +85,7 @@ const RawMaterialsManagement = () => {
   const [materials, setMaterials] = useState(SAMPLE_MATERIALS);
   const [vendors] = useState(SAMPLE_VENDORS);
   const [searchQuery, setSearchQuery] = useState("");
-  const [filterCategory, setFilterCategory] = useState("");
+  const [filterCategory, setFilterCategory] = useState("all");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [newMaterial, setNewMaterial] = useState({
     name: "",
@@ -98,7 +98,7 @@ const RawMaterialsManagement = () => {
   const filteredMaterials = materials.filter(material => {
     const matchesSearch = material.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
                          material.id.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = filterCategory === "" || material.category === filterCategory;
+    const matchesCategory = filterCategory === "all" || material.category === filterCategory;
     return matchesSearch && matchesCategory;
   });
 
@@ -223,7 +223,7 @@ const RawMaterialsManagement = () => {
                   <SelectValue placeholder="All Categories" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Categories</SelectItem>
+                  <SelectItem value="all">All Categories</SelectItem>
                   {MATERIAL_CATEGORIES.map((category) => (
                     <SelectItem key={category} value={category}>{category}</SelectItem>
                   ))}
