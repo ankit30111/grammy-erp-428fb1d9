@@ -1,7 +1,21 @@
 
 import { Home, Plus, Wrench, Calendar, Package, BarChart2, Layers, ClipboardCheck, DollarSign, Users, FileText, UserPlus, Building2, User, Settings } from "lucide-react";
 
-export const navigationItems = [
+interface NavigationSubItem {
+  to: string;
+  label: string;
+  badge?: number;
+}
+
+interface NavigationItem {
+  to: string;
+  icon: React.ReactElement;
+  label: string;
+  badge?: number;
+  subItems?: NavigationSubItem[];
+}
+
+export const navigationItems: NavigationItem[] = [
   { to: "/", icon: <Home size={20} />, label: "Dashboard" },
   { to: "/projection", icon: <Plus size={20} />, label: "Add Projection" },
   { to: "/spare-orders", icon: <Wrench size={20} />, label: "Spare Orders" },
@@ -40,7 +54,7 @@ export const navigationItems = [
   { to: "/hr-management", icon: <Users size={20} />, label: "Human Resources" }
 ];
 
-export const managementItems = [
+export const managementItems: NavigationItem[] = [
   { to: "/management/products", icon: <FileText size={20} />, label: "Products" },
   { to: "/management/raw-materials", icon: <Layers size={20} />, label: "Raw Materials" },
   { to: "/management/customers", icon: <UserPlus size={20} />, label: "Customers" },
@@ -48,6 +62,6 @@ export const managementItems = [
   { to: "/user-management", icon: <User size={20} />, label: "User Management" }
 ];
 
-export const settingsItems = [
+export const settingsItems: NavigationItem[] = [
   { to: "/settings", icon: <Settings size={20} />, label: "Settings" }
 ];
