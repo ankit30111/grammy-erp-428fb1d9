@@ -27,6 +27,7 @@ import FinishedGoods from "./pages/FinishedGoods";
 import Dispatch from "./pages/Dispatch";
 import SpareOrders from "./pages/SpareOrders";
 import Sales from "./pages/Sales";
+import Resources from "./pages/Resources";
 import React from "react";
 
 const queryClient = new QueryClient();
