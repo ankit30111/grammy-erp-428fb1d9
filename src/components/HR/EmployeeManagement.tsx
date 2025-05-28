@@ -4,62 +4,41 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Edit, Trash2 } from "lucide-react";
-import type { Tables } from "@/integrations/supabase/types";
-
-const employeeSchema = z.object({
-  employee_code: z.string().min(1, "Employee code is required"),
-  first_name: z.string().min(1, "First name is required"),
-  last_name: z.string().min(1, "Last name is required"),
-  email: z.string().email("Invalid email address"),
-  phone_number: z.string().min(1, "Phone number is required"),
-  date_of_birth: z.string().optional(),
-  position: z.string().min(1, "Position is required"),
-  department: z.string().min(1, "Department is required"),
-  salary: z.string().optional(),
-  aadhar_number: z.string().optional(),
-  pan_number: z.string().optional(),
-  esic_number: z.string().optional(),
-  bank_name: z.string().optional(),
-  bank_account_number: z.string().optional(),
-  ifsc_code: z.string().optional(),
-  address: z.string().optional(),
-  city: z.string().optional(),
-  state: z.string().optional(),
-  pincode: z.string().optional(),
-});
-
-type EmployeeFormData = z.infer<typeof employeeSchema>;
+import { Plus, Edit } from "lucide-react";
 
 export function EmployeeManagement() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingEmployee, setEditingEmployee] = useState<Tables<'employees'> | null>(null);
+  const [editingEmployee, setEditingEmployee] = useState<any>(null);
+  const [formData, setFormData] = useState({
+    employee_code: "",
+    first_name: "",
+    last_name: "",
+    email: "",
+    phone_number: "",
+    date_of_birth: "",
+    position: "",
+    department: "",
+    salary: "",
+    aadhar_number: "",
+    pan_number: "",
+    esic_number: "",
+    bank_name: "",
+    bank_account_number: "",
+    ifsc_code: "",
+    address: "",
+    city: "",
+    state: "",
+    pincode: "",
+  });
+  
   const { toast } = useToast();
   const queryClient = useQueryClient();
-
-  const form = useForm<EmployeeFormData>({
-    resolver: zodResolver(employeeSchema),
-    defaultValues: {
-      employee_code: "",
-      first_name: "",
-      last_name: "",
-      email: "",
-      phone_number: "",
-      position: "",
-      department: "",
-    },
-  });
 
   const { data: employees, isLoading } = useQuery({
     queryKey: ['employees'],
@@ -75,12 +54,29 @@ export function EmployeeManagement() {
   });
 
   const createEmployeeMutation = useMutation({
-    mutationFn: async (data: EmployeeFormData) => {
+    mutationFn: async (data: any) => {
       const { error } = await supabase
         .from('employees')
         .insert([{
-          ...data,
+          employee_code: data.employee_code,
+          first_name: data.first_name,
+          last_name: data.last_name,
+          email: data.email,
+          phone_number: data.phone_number,
+          date_of_birth: data.date_of_birth || null,
+          position: data.position,
+          department: data.department,
           salary: data.salary ? parseFloat(data.salary) : null,
+          aadhar_number: data.aadhar_number || null,
+          pan_number: data.pan_number || null,
+          esic_number: data.esic_number || null,
+          bank_name: data.bank_name || null,
+          bank_account_number: data.bank_account_number || null,
+          ifsc_code: data.ifsc_code || null,
+          address: data.address || null,
+          city: data.city || null,
+          state: data.state || null,
+          pincode: data.pincode || null,
         }]);
       
       if (error) throw error;
@@ -89,20 +85,37 @@ export function EmployeeManagement() {
       queryClient.invalidateQueries({ queryKey: ['employees'] });
       toast({ title: "Employee created successfully" });
       setIsDialogOpen(false);
-      form.reset();
+      resetForm();
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast({ title: "Error creating employee", description: error.message, variant: "destructive" });
     }
   });
 
   const updateEmployeeMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: EmployeeFormData }) => {
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
       const { error } = await supabase
         .from('employees')
         .update({
-          ...data,
+          employee_code: data.employee_code,
+          first_name: data.first_name,
+          last_name: data.last_name,
+          email: data.email,
+          phone_number: data.phone_number,
+          date_of_birth: data.date_of_birth || null,
+          position: data.position,
+          department: data.department,
           salary: data.salary ? parseFloat(data.salary) : null,
+          aadhar_number: data.aadhar_number || null,
+          pan_number: data.pan_number || null,
+          esic_number: data.esic_number || null,
+          bank_name: data.bank_name || null,
+          bank_account_number: data.bank_account_number || null,
+          ifsc_code: data.ifsc_code || null,
+          address: data.address || null,
+          city: data.city || null,
+          state: data.state || null,
+          pincode: data.pincode || null,
         })
         .eq('id', id);
       
@@ -113,24 +126,54 @@ export function EmployeeManagement() {
       toast({ title: "Employee updated successfully" });
       setIsDialogOpen(false);
       setEditingEmployee(null);
-      form.reset();
+      resetForm();
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast({ title: "Error updating employee", description: error.message, variant: "destructive" });
     }
   });
 
-  const onSubmit = (data: EmployeeFormData) => {
+  const resetForm = () => {
+    setFormData({
+      employee_code: "",
+      first_name: "",
+      last_name: "",
+      email: "",
+      phone_number: "",
+      date_of_birth: "",
+      position: "",
+      department: "",
+      salary: "",
+      aadhar_number: "",
+      pan_number: "",
+      esic_number: "",
+      bank_name: "",
+      bank_account_number: "",
+      ifsc_code: "",
+      address: "",
+      city: "",
+      state: "",
+      pincode: "",
+    });
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.employee_code || !formData.first_name || !formData.last_name || !formData.email || !formData.phone_number || !formData.position || !formData.department) {
+      toast({ title: "Please fill all required fields", variant: "destructive" });
+      return;
+    }
+    
     if (editingEmployee) {
-      updateEmployeeMutation.mutate({ id: editingEmployee.id, data });
+      updateEmployeeMutation.mutate({ id: editingEmployee.id, data: formData });
     } else {
-      createEmployeeMutation.mutate(data);
+      createEmployeeMutation.mutate(formData);
     }
   };
 
-  const handleEdit = (employee: Tables<'employees'>) => {
+  const handleEdit = (employee: any) => {
     setEditingEmployee(employee);
-    form.reset({
+    setFormData({
       employee_code: employee.employee_code,
       first_name: employee.first_name,
       last_name: employee.last_name,
@@ -156,8 +199,12 @@ export function EmployeeManagement() {
 
   const handleAddNew = () => {
     setEditingEmployee(null);
-    form.reset();
+    resetForm();
     setIsDialogOpen(true);
+  };
+
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   return (
@@ -179,298 +226,212 @@ export function EmployeeManagement() {
               </DialogDescription>
             </DialogHeader>
             
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="employee_code">Employee Code *</Label>
+                  <Input
+                    id="employee_code"
+                    value={formData.employee_code}
+                    onChange={(e) => handleInputChange('employee_code', e.target.value)}
+                    required
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="email">Email *</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => handleInputChange('email', e.target.value)}
+                    required
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="first_name">First Name *</Label>
+                  <Input
+                    id="first_name"
+                    value={formData.first_name}
+                    onChange={(e) => handleInputChange('first_name', e.target.value)}
+                    required
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="last_name">Last Name *</Label>
+                  <Input
+                    id="last_name"
+                    value={formData.last_name}
+                    onChange={(e) => handleInputChange('last_name', e.target.value)}
+                    required
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="phone_number">Phone Number *</Label>
+                  <Input
+                    id="phone_number"
+                    value={formData.phone_number}
+                    onChange={(e) => handleInputChange('phone_number', e.target.value)}
+                    required
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="date_of_birth">Date of Birth</Label>
+                  <Input
+                    id="date_of_birth"
+                    type="date"
+                    value={formData.date_of_birth}
+                    onChange={(e) => handleInputChange('date_of_birth', e.target.value)}
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="position">Position *</Label>
+                  <Input
+                    id="position"
+                    value={formData.position}
+                    onChange={(e) => handleInputChange('position', e.target.value)}
+                    required
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="department">Department *</Label>
+                  <Input
+                    id="department"
+                    value={formData.department}
+                    onChange={(e) => handleInputChange('department', e.target.value)}
+                    required
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="salary">Salary</Label>
+                  <Input
+                    id="salary"
+                    type="number"
+                    step="0.01"
+                    value={formData.salary}
+                    onChange={(e) => handleInputChange('salary', e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium">Government IDs</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <Label htmlFor="aadhar_number">Aadhar Number</Label>
+                    <Input
+                      id="aadhar_number"
+                      value={formData.aadhar_number}
+                      onChange={(e) => handleInputChange('aadhar_number', e.target.value)}
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="pan_number">PAN Number</Label>
+                    <Input
+                      id="pan_number"
+                      value={formData.pan_number}
+                      onChange={(e) => handleInputChange('pan_number', e.target.value)}
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="esic_number">ESIC Number</Label>
+                    <Input
+                      id="esic_number"
+                      value={formData.esic_number}
+                      onChange={(e) => handleInputChange('esic_number', e.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium">Bank Details</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <Label htmlFor="bank_name">Bank Name</Label>
+                    <Input
+                      id="bank_name"
+                      value={formData.bank_name}
+                      onChange={(e) => handleInputChange('bank_name', e.target.value)}
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="bank_account_number">Account Number</Label>
+                    <Input
+                      id="bank_account_number"
+                      value={formData.bank_account_number}
+                      onChange={(e) => handleInputChange('bank_account_number', e.target.value)}
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="ifsc_code">IFSC Code</Label>
+                    <Input
+                      id="ifsc_code"
+                      value={formData.ifsc_code}
+                      onChange={(e) => handleInputChange('ifsc_code', e.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium">Address</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="employee_code"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Employee Code</FormLabel>
-                        <FormControl>
-                          <Input {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
-                    name="email"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Email</FormLabel>
-                        <FormControl>
-                          <Input type="email" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
-                    name="first_name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>First Name</FormLabel>
-                        <FormControl>
-                          <Input {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
-                    name="last_name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Last Name</FormLabel>
-                        <FormControl>
-                          <Input {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
-                    name="phone_number"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Phone Number</FormLabel>
-                        <FormControl>
-                          <Input {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
-                    name="date_of_birth"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Date of Birth</FormLabel>
-                        <FormControl>
-                          <Input type="date" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
-                    name="position"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Position</FormLabel>
-                        <FormControl>
-                          <Input {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
-                    name="department"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Department</FormLabel>
-                        <FormControl>
-                          <Input {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
-                    name="salary"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Salary</FormLabel>
-                        <FormControl>
-                          <Input type="number" step="0.01" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Government IDs</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="aadhar_number"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Aadhar Number</FormLabel>
-                          <FormControl>
-                            <Input {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
+                  <div className="md:col-span-2">
+                    <Label htmlFor="address">Address</Label>
+                    <Input
+                      id="address"
+                      value={formData.address}
+                      onChange={(e) => handleInputChange('address', e.target.value)}
                     />
-                    
-                    <FormField
-                      control={form.control}
-                      name="pan_number"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>PAN Number</FormLabel>
-                          <FormControl>
-                            <Input {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="city">City</Label>
+                    <Input
+                      id="city"
+                      value={formData.city}
+                      onChange={(e) => handleInputChange('city', e.target.value)}
                     />
-                    
-                    <FormField
-                      control={form.control}
-                      name="esic_number"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>ESIC Number</FormLabel>
-                          <FormControl>
-                            <Input {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="state">State</Label>
+                    <Input
+                      id="state"
+                      value={formData.state}
+                      onChange={(e) => handleInputChange('state', e.target.value)}
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="pincode">Pincode</Label>
+                    <Input
+                      id="pincode"
+                      value={formData.pincode}
+                      onChange={(e) => handleInputChange('pincode', e.target.value)}
                     />
                   </div>
                 </div>
+              </div>
 
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Bank Details</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="bank_name"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Bank Name</FormLabel>
-                          <FormControl>
-                            <Input {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="bank_account_number"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Account Number</FormLabel>
-                          <FormControl>
-                            <Input {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="ifsc_code"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>IFSC Code</FormLabel>
-                          <FormControl>
-                            <Input {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Address</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="address"
-                      render={({ field }) => (
-                        <FormItem className="md:col-span-2">
-                          <FormLabel>Address</FormLabel>
-                          <FormControl>
-                            <Input {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="city"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>City</FormLabel>
-                          <FormControl>
-                            <Input {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="state"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>State</FormLabel>
-                          <FormControl>
-                            <Input {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="pincode"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Pincode</FormLabel>
-                          <FormControl>
-                            <Input {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                </div>
-
-                <DialogFooter>
-                  <Button type="submit" disabled={createEmployeeMutation.isPending || updateEmployeeMutation.isPending}>
-                    {editingEmployee ? 'Update Employee' : 'Create Employee'}
-                  </Button>
-                </DialogFooter>
-              </form>
-            </Form>
+              <DialogFooter>
+                <Button type="submit" disabled={createEmployeeMutation.isPending || updateEmployeeMutation.isPending}>
+                  {editingEmployee ? 'Update Employee' : 'Create Employee'}
+                </Button>
+              </DialogFooter>
+            </form>
           </DialogContent>
         </Dialog>
       </div>

@@ -51,7 +51,7 @@ export function PerformanceReviews() {
         .from('performance_reviews')
         .select(`
           *,
-          employees:employee_id (first_name, last_name, employee_code, position),
+          employee:employee_id (first_name, last_name, employee_code, position),
           reviewer:reviewer_id (first_name, last_name)
         `)
         .order('created_at', { ascending: false });
@@ -88,7 +88,7 @@ export function PerformanceReviews() {
       setIsDialogOpen(false);
       resetForm();
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast({ title: "Error creating review", description: error.message, variant: "destructive" });
     }
   });
@@ -372,9 +372,9 @@ export function PerformanceReviews() {
                 {reviews?.map((review) => (
                   <TableRow key={review.id}>
                     <TableCell>
-                      {review.employees?.employee_code} - {review.employees?.first_name} {review.employees?.last_name}
+                      {review.employee?.employee_code} - {review.employee?.first_name} {review.employee?.last_name}
                     </TableCell>
-                    <TableCell>{review.employees?.position}</TableCell>
+                    <TableCell>{review.employee?.position}</TableCell>
                     <TableCell>
                       {new Date(review.review_period_start).toLocaleDateString()} - {' '}
                       {new Date(review.review_period_end).toLocaleDateString()}

@@ -27,48 +27,45 @@ import FinishedGoods from "./pages/FinishedGoods";
 import Dispatch from "./pages/Dispatch";
 import SpareOrders from "./pages/SpareOrders";
 import Sales from "./pages/Sales";
-import React from "react";
 
 const queryClient = new QueryClient();
 
 const App = () => (
-  <React.StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/projection" element={<Projection />} />
-            <Route path="/spare-orders" element={<SpareOrders />} />
-            <Route path="/planning" element={<PPC />} />
-            <Route path="/production" element={<Production />} />
-            <Route path="/quality" element={<Quality />} />
-            <Route path="/quality/iqc" element={<IQC />} />
-            <Route path="/quality/pqc" element={<PQC />} />
-            <Route path="/quality/oqc" element={<OQC />} />
-            <Route path="/inventory" element={<Inventory />} />
-            <Route path="/purchase" element={<Purchase />} />
-            <Route path="/grn" element={<GRN />} />
-            <Route path="/sales" element={<Sales />} />
-            <Route path="/sales/spare-dispatch" element={<Sales />} />
-            <Route path="/dispatch" element={<Dispatch />} />
-            <Route path="/finished-goods" element={<FinishedGoods />} />
-            <Route path="/user-management" element={<UserManagement />} />
-            <Route path="/hr-management" element={<HRManagement />} />
-            <Route path="/vendors" element={<Vendors />} />
-            <Route path="/management" element={<Management />} />
-            <Route path="/management/products" element={<ProductsManagement />} />
-            <Route path="/management/raw-materials" element={<RawMaterialsManagement />} />
-            <Route path="/management/customers" element={<CustomersManagement />} />
-            <Route path="/settings" element={<Index />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
-    </QueryClientProvider>
-  </React.StrictMode>
+  <QueryClientProvider client={queryClient}>
+    <TooltipProvider>
+      <Toaster />
+      <Sonner />
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<Index />} />
+          <Route path="/projection" element={<Projection />} />
+          <Route path="/spare-orders" element={<SpareOrders />} />
+          <Route path="/planning" element={<PPC />} />
+          <Route path="/production" element={<Production />} />
+          <Route path="/quality" element={<Quality />} />
+          <Route path="/quality/iqc" element={<IQC />} />
+          <Route path="/quality/pqc" element={<PQC />} />
+          <Route path="/quality/oqc" element={<OQC />} />
+          <Route path="/inventory" element={<Inventory />} />
+          <Route path="/purchase" element={<Purchase />} />
+          <Route path="/grn" element={<GRN />} />
+          <Route path="/sales" element={<Sales />} />
+          <Route path="/sales/spare-dispatch" element={<Sales />} />
+          <Route path="/dispatch" element={<Dispatch />} />
+          <Route path="/finished-goods" element={<FinishedGoods />} />
+          <Route path="/user-management" element={<UserManagement />} />
+          <Route path="/hr-management" element={<HRManagement />} />
+          <Route path="/vendors" element={<Vendors />} />
+          <Route path="/management" element={<Management />} />
+          <Route path="/management/products" element={<ProductsManagement />} />
+          <Route path="/management/raw-materials" element={<RawMaterialsManagement />} />
+          <Route path="/management/customers" element={<CustomersManagement />} />
+          <Route path="/settings" element={<Index />} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </BrowserRouter>
+    </TooltipProvider>
+  </QueryClientProvider>
 );
 
 export default App;
