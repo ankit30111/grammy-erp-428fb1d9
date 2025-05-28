@@ -1,4 +1,3 @@
-
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,23 +10,17 @@ import { supabase } from "@/integrations/supabase/client";
 const Quality = () => {
   const navigate = useNavigate();
 
-  // Fetch real statistics from database
-  const { data: iqcStats } = useQuery({
-    queryKey: ["iqc-stats"],
+  // Fetch real statistics from database - using existing tables only
+  const { data: grnStats } = useQuery({
+    queryKey: ["grn-stats"],
     queryFn: async () => {
       const { data: pendingGRNs } = await supabase
         .from("grn")
         .select("id")
         .eq("status", "RECEIVED");
       
-      const { data: capaItems } = await supabase
-        .from("iqc_reports")
-        .select("id")
-        .eq("result", "Rejected");
-
       return {
-        pendingIQC: pendingGRNs?.length || 0,
-        capaItems: capaItems?.length || 0
+        pendingIQC: pendingGRNs?.length || 0
       };
     },
   });
@@ -53,11 +46,11 @@ const Quality = () => {
   });
 
   const stats = {
-    pendingIQC: iqcStats?.pendingIQC || 0,
+    pendingIQC: grnStats?.pendingIQC || 0,
     activePQC: productionStats?.activePQC || 0,
     pendingOQC: productionStats?.pendingOQC || 0,
     returnAnalysis: 0, // This would need a separate table for customer returns
-    capaItems: iqcStats?.capaItems || 0
+    capaItems: 0 // Mock data for now
   };
 
   return (
