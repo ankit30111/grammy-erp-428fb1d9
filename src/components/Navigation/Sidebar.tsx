@@ -89,7 +89,7 @@ export function Sidebar() {
   
   // Demo: Mock user permissions based on department
   // In a real app, this would come from your authentication context
-  const mockUserDepartment = "PPC"; // Change this to test different departments
+  const mockUserDepartment = "Admin"; // Changed from "PPC" to "Admin"
   
   const departmentPermissions: { [key: string]: string[] } = {
     "PPC": ["projection", "spare-orders", "planning", "inventory", "production", "finished-goods", "sales"],
