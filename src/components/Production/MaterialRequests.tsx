@@ -16,12 +16,19 @@ export default function MaterialRequests() {
   const { toast } = useToast();
   const [requests, setRequests] = useState<MaterialShortageRequest[]>(mockMaterialRequests);
   const [showNewRequestForm, setShowNewRequestForm] = useState(false);
-  const [newRequest, setNewRequest] = useState({
+  const [newRequest, setNewRequest] = useState<{
+    voucherNumber: string;
+    partCode: string;
+    description: string;
+    requiredQuantity: number;
+    reason: "SHORT_MATERIAL" | "DAMAGED_MATERIAL";
+    notes: string;
+  }>({
     voucherNumber: "",
     partCode: "",
     description: "",
     requiredQuantity: 0,
-    reason: "SHORT_MATERIAL" as const,
+    reason: "SHORT_MATERIAL",
     notes: ""
   });
 
