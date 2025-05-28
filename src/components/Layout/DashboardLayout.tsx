@@ -1,7 +1,7 @@
 
-import { ReactNode, useState } from "react";
+import { ReactNode, useState, useEffect } from "react";
 import { Sidebar } from "@/components/Navigation/Sidebar";
-import { Bell, User, Search } from "lucide-react";
+import { Bell, User, Search, LogOut, Mail, Phone, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -12,12 +12,65 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { supabase } from "@/integrations/supabase/client";
+import { useUserPermissions } from "@/hooks/useUserPermissions";
+import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 
 interface DashboardLayoutProps {
   children: ReactNode;
 }
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
+  const [userId, setUserId] = useState<string | null>(null);
+  const [userProfile, setUserProfile] = useState<any>(null);
+  const navigate = useNavigate();
+  
+  // Get current user ID
+  useEffect(() => {
+    const getCurrentUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUserId(user?.id || null);
+      
+      if (user) {
+        // Fetch user profile from user_accounts table
+        const { data: profile } = await supabase
+          .from("user_accounts")
+          .select("name, email, mobile_number")
+          .eq("id", user.id)
+          .single();
+        
+        setUserProfile(profile);
+      }
+    };
+    
+    getCurrentUser();
+    
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setUserId(session?.user?.id || null);
+    });
+    
+    return () => subscription.unsubscribe();
+  }, []);
+  
+  // Get user permissions based on their department
+  const { data: userPermissions } = useUserPermissions(userId);
+  
+  const handleSignOut = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        toast.error("Error signing out");
+        return;
+      }
+      toast.success("Signed out successfully");
+      navigate("/auth");
+    } catch (error) {
+      console.error("Sign out error:", error);
+      toast.error("An unexpected error occurred");
+    }
+  };
+  
   return (
     <div className="flex h-screen bg-background">
       <Sidebar />
@@ -30,6 +83,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               className="pl-8 h-9"
             />
           </div>
+          
           <div className="flex items-center gap-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -72,16 +126,56 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="sm" className="gap-2">
                   <User className="h-5 w-5" />
-                  <span>Admin</span>
+                  <span>{userProfile?.name || "User"}</span>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuLabel>My Account</DropdownMenuLabel>
+              <DropdownMenuContent align="end" className="w-64">
+                <DropdownMenuLabel>Profile</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>Profile</DropdownMenuItem>
-                <DropdownMenuItem>Preferences</DropdownMenuItem>
+                
+                <div className="px-2 py-3 space-y-3">
+                  <div className="flex items-center gap-3">
+                    <User className="h-4 w-4 text-muted-foreground" />
+                    <div>
+                      <p className="text-sm font-medium">{userProfile?.name || "N/A"}</p>
+                      <p className="text-xs text-muted-foreground">Name</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-3">
+                    <Mail className="h-4 w-4 text-muted-foreground" />
+                    <div>
+                      <p className="text-sm font-medium">{userProfile?.email || "N/A"}</p>
+                      <p className="text-xs text-muted-foreground">Email</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-3">
+                    <Phone className="h-4 w-4 text-muted-foreground" />
+                    <div>
+                      <p className="text-sm font-medium">{userProfile?.mobile_number || "N/A"}</p>
+                      <p className="text-xs text-muted-foreground">Mobile Number</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-3">
+                    <Building2 className="h-4 w-4 text-muted-foreground" />
+                    <div>
+                      <p className="text-sm font-medium">
+                        {userPermissions && typeof userPermissions === 'object' && 'departmentName' in userPermissions 
+                          ? userPermissions.departmentName 
+                          : "N/A"}
+                      </p>
+                      <p className="text-xs text-muted-foreground">Department</p>
+                    </div>
+                  </div>
+                </div>
+                
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>Logout</DropdownMenuItem>
+                <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer text-destructive focus:text-destructive">
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Logout
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
