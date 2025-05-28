@@ -6,6 +6,7 @@ import EnhancedScheduledProduction from "@/components/Store/EnhancedScheduledPro
 import EnhancedGRNReceiving from "@/components/Store/EnhancedGRNReceiving";
 import ProductionFeedback from "@/components/Store/ProductionFeedback";
 import InventoryManagement from "@/components/Store/InventoryManagement";
+import SpareOrdersPacking from "@/components/Store/SpareOrdersPacking";
 import { useToast } from "@/hooks/use-toast";
 import { Layers } from "lucide-react";
 
@@ -135,9 +136,10 @@ export default function StoreDashboard() {
       </div>
 
       <Tabs defaultValue="voucher-management" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="voucher-management">Voucher Management</TabsTrigger>
           <TabsTrigger value="material-receiving">Material Receiving</TabsTrigger>
+          <TabsTrigger value="spare-orders">Spare Orders</TabsTrigger>
           <TabsTrigger value="production-feedback">Production Feedback</TabsTrigger>
           <TabsTrigger value="inventory">Inventory</TabsTrigger>
         </TabsList>
@@ -157,6 +159,10 @@ export default function StoreDashboard() {
             onReceiveGRN={handleReceiveGRN}
             onDiscrepancyReport={handleDiscrepancyReport}
           />
+        </TabsContent>
+
+        <TabsContent value="spare-orders" className="space-y-4">
+          <SpareOrdersPacking />
         </TabsContent>
 
         <TabsContent value="production-feedback" className="space-y-4">

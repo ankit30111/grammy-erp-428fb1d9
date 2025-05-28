@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { NavLink } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { BarChart2, Package, Users, ClipboardCheck, Truck, ShoppingCart, Layers, Settings, ChevronRight, ChevronLeft, Home, FileCheck, Bell, Calendar, Plus, Check, Search, X, Archive, FileText, User, Database, UserPlus, Building2 } from "lucide-react";
+import { BarChart2, Package, Users, ClipboardCheck, Truck, ShoppingCart, Layers, Settings, ChevronRight, ChevronLeft, Home, FileCheck, Bell, Calendar, Plus, Check, Search, X, Archive, FileText, User, Database, UserPlus, Building2, Wrench, DollarSign } from "lucide-react";
 
 interface NavItemProps {
   to: string;
@@ -85,6 +85,7 @@ export function Sidebar() {
         <ul className="space-y-1">
           <NavItem to="/" icon={<Home size={20} />} label="Dashboard" collapsed={collapsed} />
           <NavItem to="/projection" icon={<Plus size={20} />} label="Add Projection" collapsed={collapsed} />
+          <NavItem to="/spare-orders" icon={<Wrench size={20} />} label="Spare Orders" collapsed={collapsed} />
           
           <NavItem to="/planning" icon={<Calendar size={20} />} label="PPC" collapsed={collapsed} subItems={[{
           to: "/planning",
@@ -116,8 +117,14 @@ export function Sidebar() {
           badge: 1
         }]} />
           
-          <NavItem to="/dispatch" icon={<Truck size={20} />} label="Dispatch" collapsed={collapsed} />
-          <NavItem to="/spare-orders" icon={<Archive size={20} />} label="Spare Orders" collapsed={collapsed} />
+          <NavItem to="/sales" icon={<DollarSign size={20} />} label="Sales" collapsed={collapsed} subItems={[{
+          to: "/sales/spare-dispatch",
+          label: "Spare Dispatch"
+        }, {
+          to: "/dispatch",
+          label: "Regular Dispatch"
+        }]} />
+          
           <NavItem to="/resources" icon={<Users size={20} />} label="Human Resources" collapsed={collapsed} />
         </ul>
 
