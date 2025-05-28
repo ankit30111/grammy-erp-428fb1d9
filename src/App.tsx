@@ -30,118 +30,29 @@ import React from "react";
 const queryClient = new QueryClient();
 
 const AppContent = () => {
-  const { user, profile, loading } = useAuth();
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
-
-  if (!user || !profile) {
-    return <Auth />;
-  }
-
+  // Bypass authentication - always render routes directly
   return (
     <Routes>
       <Route path="/auth" element={<Navigate to="/" replace />} />
-      <Route path="/" element={
-        <ProtectedRoute>
-          <Index />
-        </ProtectedRoute>
-      } />
-      <Route path="/projection" element={
-        <ProtectedRoute requiredPermission="planning">
-          <Projection />
-        </ProtectedRoute>
-      } />
-      <Route path="/planning" element={
-        <ProtectedRoute requiredPermission="planning">
-          <PPC />
-        </ProtectedRoute>
-      } />
-      <Route path="/production" element={
-        <ProtectedRoute requiredPermission="production">
-          <Production />
-        </ProtectedRoute>
-      } />
-      <Route path="/quality" element={
-        <ProtectedRoute requiredPermission="quality">
-          <Quality />
-        </ProtectedRoute>
-      } />
-      <Route path="/quality/iqc" element={
-        <ProtectedRoute requiredPermission="quality">
-          <IQC />
-        </ProtectedRoute>
-      } />
-      <Route path="/quality/pqc" element={
-        <ProtectedRoute requiredPermission="quality">
-          <PQC />
-        </ProtectedRoute>
-      } />
-      <Route path="/quality/oqc" element={
-        <ProtectedRoute requiredPermission="quality">
-          <OQC />
-        </ProtectedRoute>
-      } />
-      <Route path="/inventory" element={
-        <ProtectedRoute requiredPermission="store">
-          <Inventory />
-        </ProtectedRoute>
-      } />
-      <Route path="/purchase" element={
-        <ProtectedRoute requiredPermission="purchase">
-          <Purchase />
-        </ProtectedRoute>
-      } />
-      <Route path="/grn" element={
-        <ProtectedRoute requiredPermission="purchase">
-          <GRN />
-        </ProtectedRoute>
-      } />
-      <Route path="/dispatch" element={
-        <ProtectedRoute requiredPermission="dispatch">
-          <Index />
-        </ProtectedRoute>
-      } />
-      <Route path="/finished-goods" element={
-        <ProtectedRoute requiredPermission="finished-goods">
-          <FinishedGoods />
-        </ProtectedRoute>
-      } />
-      <Route path="/management" element={
-        <ProtectedRoute adminOnly>
-          <Management />
-        </ProtectedRoute>
-      } />
-      <Route path="/management/products" element={
-        <ProtectedRoute adminOnly>
-          <ProductsManagement />
-        </ProtectedRoute>
-      } />
-      <Route path="/management/raw-materials" element={
-        <ProtectedRoute adminOnly>
-          <RawMaterialsManagement />
-        </ProtectedRoute>
-      } />
-      <Route path="/management/human-resources" element={
-        <ProtectedRoute adminOnly>
-          <HRManagement />
-        </ProtectedRoute>
-      } />
-      <Route path="/management/user-management" element={
-        <ProtectedRoute adminOnly>
-          <UserManagement />
-        </ProtectedRoute>
-      } />
-      <Route path="/settings" element={
-        <ProtectedRoute>
-          <Index />
-        </ProtectedRoute>
-      } />
+      <Route path="/" element={<Index />} />
+      <Route path="/projection" element={<Projection />} />
+      <Route path="/planning" element={<PPC />} />
+      <Route path="/production" element={<Production />} />
+      <Route path="/quality" element={<Quality />} />
+      <Route path="/quality/iqc" element={<IQC />} />
+      <Route path="/quality/pqc" element={<PQC />} />
+      <Route path="/quality/oqc" element={<OQC />} />
+      <Route path="/inventory" element={<Inventory />} />
+      <Route path="/purchase" element={<Purchase />} />
+      <Route path="/grn" element={<GRN />} />
+      <Route path="/dispatch" element={<Index />} />
+      <Route path="/finished-goods" element={<FinishedGoods />} />
+      <Route path="/management" element={<Management />} />
+      <Route path="/management/products" element={<ProductsManagement />} />
+      <Route path="/management/raw-materials" element={<RawMaterialsManagement />} />
+      <Route path="/management/human-resources" element={<HRManagement />} />
+      <Route path="/management/user-management" element={<UserManagement />} />
+      <Route path="/settings" element={<Index />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

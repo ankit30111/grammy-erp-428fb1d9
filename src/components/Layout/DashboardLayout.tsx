@@ -79,23 +79,21 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="sm" className="gap-2">
                   <User className="h-5 w-5" />
-                  <span>{profile?.username || 'User'}</span>
-                  {profile?.role === 'admin' && (
-                    <span className="bg-primary text-primary-foreground text-xs px-2 py-1 rounded">
-                      Admin
-                    </span>
-                  )}
+                  <span>{profile?.username || 'Guest User'}</span>
+                  <span className="bg-primary text-primary-foreground text-xs px-2 py-1 rounded">
+                    Demo Mode
+                  </span>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                <DropdownMenuLabel>Demo Account</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem>Profile</DropdownMenuItem>
                 <DropdownMenuItem>Preferences</DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleSignOut} className="text-destructive">
                   <LogOut className="mr-2 h-4 w-4" />
-                  Logout
+                  Exit Demo
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
