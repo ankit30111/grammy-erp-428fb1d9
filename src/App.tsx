@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -20,14 +19,12 @@ import Management from "./pages/Management";
 import ProductsManagement from "./pages/management/ProductsManagement";
 import RawMaterialsManagement from "./pages/management/RawMaterialsManagement";
 import CustomersManagement from "./pages/management/CustomersManagement";
-import UserManagement from "./pages/UserManagement";
-import HRManagement from "./pages/HRManagement";
+import Resources from "./pages/Resources";
 import Vendors from "./pages/Vendors";
 import FinishedGoods from "./pages/FinishedGoods";
 import Dispatch from "./pages/Dispatch";
 import SpareOrders from "./pages/SpareOrders";
 import Sales from "./pages/Sales";
-import Resources from "./pages/Resources";
 import React from "react";
 
 const queryClient = new QueryClient();
