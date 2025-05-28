@@ -10,8 +10,6 @@ import Projection from "./pages/Projection";
 import PPC from "./pages/PPC";
 import Purchase from "./pages/Purchase";
 import Inventory from "./pages/Inventory";
-import KitManagement from "./pages/store/KitManagement";
-import GRNReceivingPage from "./pages/store/GRNReceivingPage";
 import GRN from "./pages/GRN";
 import Quality from "./pages/Quality";
 import IQC from "./pages/quality/IQC";
@@ -43,8 +41,6 @@ const App = () => (
             <Route path="/quality/pqc" element={<PQC />} />
             <Route path="/quality/oqc" element={<OQC />} />
             <Route path="/inventory" element={<Inventory />} />
-            <Route path="/inventory/kit-management" element={<KitManagement />} />
-            <Route path="/inventory/grn-receiving" element={<GRNReceivingPage />} />
             <Route path="/purchase" element={<Purchase />} />
             <Route path="/grn" element={<GRN />} />
             <Route path="/dispatch" element={<Index />} />

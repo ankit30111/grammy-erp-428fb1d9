@@ -98,16 +98,7 @@ export function Sidebar() {
           badge: 3
         }]} />
           
-          <NavItem to="/inventory" icon={<Package size={20} />} label="Store" collapsed={collapsed} subItems={[{
-          to: "/inventory",
-          label: "Store Dashboard"
-        }, {
-          to: "/inventory/kit-management",
-          label: "Kit Management"
-        }, {
-          to: "/inventory/grn-receiving",
-          label: "GRN Receiving"
-        }]} />
+          <NavItem to="/inventory" icon={<Package size={20} />} label="Store" collapsed={collapsed} />
           <NavItem to="/production" icon={<BarChart2 size={20} />} label="Production" collapsed={collapsed} />
           <NavItem to="/finished-goods" icon={<Layers size={20} />} label="Finished Goods" collapsed={collapsed} />
           
