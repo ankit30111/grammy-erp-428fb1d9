@@ -57,36 +57,58 @@ const NavItem = ({
     }
   };
   
-  return <li>
-      <NavLink to={to} className={({
-      isActive
-    }) => cn("nav-link", isActive && !filteredSubItems?.length && "active")} onClick={filteredSubItems?.length ? handleExpandClick : undefined} end={!filteredSubItems?.length}>
+  return (
+    <li>
+      <NavLink
+        to={to}
+        className={({ isActive }) =>
+          cn("nav-link", isActive && !filteredSubItems?.length && "active")
+        }
+        onClick={filteredSubItems?.length ? handleExpandClick : undefined}
+        end={!filteredSubItems?.length}
+      >
         <span className="text-sidebar-foreground">{icon}</span>
-        {!collapsed && <>
+        {!collapsed && (
+          <>
             <span className="text-sidebar-foreground">{label}</span>
-            {filteredSubItems?.length && <span className="ml-auto">
+            {filteredSubItems?.length && (
+              <span className="ml-auto">
                 {expanded ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
-              </span>}
-          </>}
-        {!collapsed && badge !== undefined && <span className="ml-auto bg-sidebar-primary text-sidebar-primary-foreground text-xs rounded-full px-2 py-0.5">
+              </span>
+            )}
+          </>
+        )}
+        {!collapsed && badge !== undefined && (
+          <span className="ml-auto bg-sidebar-primary text-sidebar-primary-foreground text-xs rounded-full px-2 py-0.5">
             {badge > 99 ? "99+" : badge}
-          </span>}
+          </span>
+        )}
       </NavLink>
       
-      {!collapsed && expanded && filteredSubItems?.length && <ul className="ml-8 space-y-1 mt-1">
-          {filteredSubItems.map((item, index) => <li key={index}>
-              <NavLink to={item.to} className={({
-          isActive
-        }) => cn("nav-link text-sm py-1.5", isActive && "active")}>
+      {!collapsed && expanded && filteredSubItems?.length && (
+        <ul className="ml-8 space-y-1 mt-1">
+          {filteredSubItems.map((item, index) => (
+            <li key={index}>
+              <NavLink
+                to={item.to}
+                className={({ isActive }) =>
+                  cn("nav-link text-sm py-1.5", isActive && "active")
+                }
+              >
                 <div className="w-1 h-1 rounded-full bg-current" />
                 <span className="text-sidebar-foreground">{item.label}</span>
-                {item.badge !== undefined && <span className="ml-auto bg-sidebar-primary text-sidebar-primary-foreground text-xs rounded-full px-2 py-0.5">
+                {item.badge !== undefined && (
+                  <span className="ml-auto bg-sidebar-primary text-sidebar-primary-foreground text-xs rounded-full px-2 py-0.5">
                     {item.badge > 99 ? "99+" : item.badge}
-                  </span>}
+                  </span>
+                )}
               </NavLink>
-            </li>)}
-        </ul>}
-    </li>;
+            </li>
+          ))}
+        </ul>
+      )}
+    </li>
+  );
 };
 
 export function Sidebar() {
@@ -112,7 +134,11 @@ export function Sidebar() {
   
   // Get user permissions based on their department
   const { data: userPermissions, isLoading } = useUserPermissions(userId);
-  const allowedTabs = userPermissions?.allowedTabs || [];
+  
+  // Type guard to ensure userPermissions has the correct structure
+  const allowedTabs = userPermissions && typeof userPermissions === 'object' && 'allowedTabs' in userPermissions 
+    ? userPermissions.allowedTabs 
+    : [];
   
   const handleSignOut = async () => {
     try {
@@ -129,14 +155,29 @@ export function Sidebar() {
     }
   };
   
-  return <div className={cn("bg-sidebar h-screen flex flex-col transition-all duration-300 border-r border-sidebar-border", collapsed ? "w-16" : "w-64")}>
+  return (
+    <div className={cn("bg-sidebar h-screen flex flex-col transition-all duration-300 border-r border-sidebar-border", collapsed ? "w-16" : "w-64")}>
       <div className="flex items-center h-14 px-3 border-b border-sidebar-border">
-        {!collapsed ? <div className="flex items-center">
-            <img alt="Grammy Electronics Logo" src="https://grammyelectronics.com/wp-content/uploads/2021/04/grammy-logo@2x-1-1.png" className="h-10 mr-2 object-scale-down" />
-            <h1 className="font-bold text-lg text-sidebar-foreground">
-        </h1>
-          </div> : <img src="https://grammyelectronics.com/wp-content/uploads/2023/10/logo-1.png" alt="Grammy Electronics Logo" className="h-8 mx-auto" />}
-        <button onClick={() => setCollapsed(!collapsed)} className="ml-auto p-1.5 rounded-md hover:bg-sidebar-accent text-sidebar-foreground">
+        {!collapsed ? (
+          <div className="flex items-center">
+            <img
+              alt="Grammy Electronics Logo"
+              src="https://grammyelectronics.com/wp-content/uploads/2021/04/grammy-logo@2x-1-1.png"
+              className="h-10 mr-2 object-scale-down"
+            />
+            <h1 className="font-bold text-lg text-sidebar-foreground"></h1>
+          </div>
+        ) : (
+          <img
+            src="https://grammyelectronics.com/wp-content/uploads/2023/10/logo-1.png"
+            alt="Grammy Electronics Logo"
+            className="h-8 mx-auto"
+          />
+        )}
+        <button
+          onClick={() => setCollapsed(!collapsed)}
+          className="ml-auto p-1.5 rounded-md hover:bg-sidebar-accent text-sidebar-foreground"
+        >
           {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
         </button>
       </div>
@@ -147,43 +188,47 @@ export function Sidebar() {
           <NavItem to="/projection" icon={<Plus size={20} />} label="Add Projection" collapsed={collapsed} allowedTabs={allowedTabs} />
           <NavItem to="/spare-orders" icon={<Wrench size={20} />} label="Spare Orders" collapsed={collapsed} allowedTabs={allowedTabs} />
           
-          <NavItem to="/planning" icon={<Calendar size={20} />} label="PPC" collapsed={collapsed} allowedTabs={allowedTabs} subItems={[{
-          to: "/planning",
-          label: "Planning"
-        }, {
-          to: "/purchase",
-          label: "Purchase"
-        }, {
-          to: "/grn",
-          label: "GRN",
-          badge: 3
-        }]} />
+          <NavItem
+            to="/planning"
+            icon={<Calendar size={20} />}
+            label="PPC"
+            collapsed={collapsed}
+            allowedTabs={allowedTabs}
+            subItems={[
+              { to: "/planning", label: "Planning" },
+              { to: "/purchase", label: "Purchase" },
+              { to: "/grn", label: "GRN", badge: 3 }
+            ]}
+          />
           
           <NavItem to="/inventory" icon={<Package size={20} />} label="Store" collapsed={collapsed} allowedTabs={allowedTabs} />
           <NavItem to="/production" icon={<BarChart2 size={20} />} label="Production" collapsed={collapsed} allowedTabs={allowedTabs} />
           <NavItem to="/finished-goods" icon={<Layers size={20} />} label="Finished Goods" collapsed={collapsed} allowedTabs={allowedTabs} />
           
-          <NavItem to="/quality" icon={<ClipboardCheck size={20} />} label="Quality Control" collapsed={collapsed} allowedTabs={allowedTabs} subItems={[{
-          to: "/quality/iqc",
-          label: "IQC",
-          badge: 3
-        }, {
-          to: "/quality/pqc",
-          label: "PQC",
-          badge: 2
-        }, {
-          to: "/quality/oqc",
-          label: "OQC",
-          badge: 1
-        }]} />
+          <NavItem
+            to="/quality"
+            icon={<ClipboardCheck size={20} />}
+            label="Quality Control"
+            collapsed={collapsed}
+            allowedTabs={allowedTabs}
+            subItems={[
+              { to: "/quality/iqc", label: "IQC", badge: 3 },
+              { to: "/quality/pqc", label: "PQC", badge: 2 },
+              { to: "/quality/oqc", label: "OQC", badge: 1 }
+            ]}
+          />
           
-          <NavItem to="/sales" icon={<DollarSign size={20} />} label="Sales" collapsed={collapsed} allowedTabs={allowedTabs} subItems={[{
-          to: "/sales/spare-dispatch",
-          label: "Spare Dispatch"
-        }, {
-          to: "/dispatch",
-          label: "Regular Dispatch"
-        }]} />
+          <NavItem
+            to="/sales"
+            icon={<DollarSign size={20} />}
+            label="Sales"
+            collapsed={collapsed}
+            allowedTabs={allowedTabs}
+            subItems={[
+              { to: "/sales/spare-dispatch", label: "Spare Dispatch" },
+              { to: "/dispatch", label: "Regular Dispatch" }
+            ]}
+          />
 
           <NavItem to="/hr-management" icon={<Users size={20} />} label="Human Resources" collapsed={collapsed} allowedTabs={allowedTabs} />
         </ul>
@@ -191,9 +236,11 @@ export function Sidebar() {
         <div className={cn("space-y-2", !collapsed && "px-2 pt-3")}>
           <div className="h-px bg-sidebar-border mx-1" /> {/* Divider */}
           
-          {!collapsed && <div className="text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/70 px-3 py-1">
+          {!collapsed && (
+            <div className="text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/70 px-3 py-1">
               MANAGEMENT
-            </div>}
+            </div>
+          )}
           
           <ul className="space-y-1">
             <NavItem to="/management/products" icon={<FileText size={20} />} label="Products" collapsed={collapsed} allowedTabs={allowedTabs} />
@@ -219,8 +266,11 @@ export function Sidebar() {
       </div>
       
       {/* Show current user department if not collapsed */}
-      {!collapsed && userPermissions && !isLoading && <div className="p-2 text-xs text-sidebar-foreground/60 border-t border-sidebar-border">
-        Department: {userPermissions.departmentName}
-      </div>}
-    </div>;
+      {!collapsed && userPermissions && typeof userPermissions === 'object' && 'departmentName' in userPermissions && !isLoading && (
+        <div className="p-2 text-xs text-sidebar-foreground/60 border-t border-sidebar-border">
+          Department: {userPermissions.departmentName}
+        </div>
+      )}
+    </div>
+  );
 }
