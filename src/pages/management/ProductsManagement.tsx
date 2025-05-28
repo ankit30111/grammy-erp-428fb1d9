@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 import { 
   Card, CardContent, CardHeader, CardTitle 
@@ -18,26 +18,9 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter 
 } from "@/components/ui/dialog";
 import { Search, Plus, Package } from "lucide-react";
-
-// Sample data for demonstration
-const SAMPLE_PRODUCTS = [
-  {
-    id: "1",
-    product_code: "PRD001",
-    name: "Bluetooth Speaker",
-    category: "Electronics",
-    description: "Portable wireless speaker with enhanced bass",
-    specifications: "Power: 10W, Battery: 2000mAh, Range: 10m"
-  },
-  {
-    id: "2",
-    product_code: "PRD002", 
-    name: "Gaming Headset",
-    category: "Electronics",
-    description: "High-quality gaming headphones with microphone",
-    specifications: "Driver: 50mm, Frequency: 20Hz-20kHz, Cable: 1.5m"
-  }
-];
+import { supabase } from "@/integrations/supabase/client";
+import { BOMForm, BOMItem } from "@/components/BOM/BOMForm";
+import { useToast } from "@/hooks/use-toast";
 
 const PRODUCT_CATEGORIES = [
   "Electronics",
@@ -49,9 +32,12 @@ const PRODUCT_CATEGORIES = [
 ];
 
 const ProductsManagement = () => {
-  const [products, setProducts] = useState(SAMPLE_PRODUCTS);
+  const [products, setProducts] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [bomItems, setBomItems] = useState<BOMItem[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
   const [newProduct, setNewProduct] = useState({
     name: "",
     category: "",
@@ -59,32 +45,121 @@ const ProductsManagement = () => {
     specifications: ""
   });
 
+  useEffect(() => {
+    fetchProducts();
+  }, []);
+
+  const fetchProducts = async () => {
+    const { data, error } = await supabase
+      .from('products')
+      .select('*')
+      .eq('is_active', true)
+      .order('created_at', { ascending: false });
+    
+    if (error) {
+      console.error('Error fetching products:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch products",
+        variant: "destructive"
+      });
+    } else {
+      setProducts(data || []);
+    }
+  };
+
   const filteredProducts = products.filter(product => 
     product.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
     product.product_code.toLowerCase().includes(searchQuery.toLowerCase()) ||
     product.category.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const generateProductCode = () => {
-    const nextNumber = products.length + 1;
+  const generateProductCode = async () => {
+    const { count } = await supabase
+      .from('products')
+      .select('*', { count: 'exact', head: true });
+    
+    const nextNumber = (count || 0) + 1;
     return `PRD${String(nextNumber).padStart(3, '0')}`;
   };
 
-  const handleAddProduct = () => {
-    const product = {
-      id: String(products.length + 1),
-      product_code: generateProductCode(),
-      ...newProduct
-    };
+  const hasAllBOMTypes = () => {
+    const types = bomItems.map(item => item.bom_type);
+    return ["main_assembly", "sub_assembly", "accessory"].every(type => types.includes(type as any));
+  };
+
+  const handleAddProduct = async () => {
+    if (!hasAllBOMTypes()) {
+      toast({
+        title: "BOM Required",
+        description: "Please add at least one item for each BOM type (Main Assembly, Sub Assembly, Accessory)",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsLoading(true);
     
-    setProducts([...products, product]);
-    setNewProduct({
-      name: "",
-      category: "",
-      description: "",
-      specifications: ""
-    });
-    setIsAddDialogOpen(false);
+    try {
+      const productCode = await generateProductCode();
+      
+      // Insert product
+      const { data: productData, error: productError } = await supabase
+        .from('products')
+        .insert({
+          product_code: productCode,
+          name: newProduct.name,
+          category: newProduct.category,
+          description: newProduct.description,
+          specifications: newProduct.specifications
+        })
+        .select()
+        .single();
+
+      if (productError) throw productError;
+
+      // Insert BOM items
+      const bomInserts = bomItems.map(item => ({
+        product_id: productData.id,
+        raw_material_id: item.raw_material_id,
+        bom_type: item.bom_type,
+        quantity: item.quantity
+      }));
+
+      const { error: bomError } = await supabase
+        .from('bom')
+        .insert(bomInserts);
+
+      if (bomError) throw bomError;
+
+      // Reset form
+      setNewProduct({
+        name: "",
+        category: "",
+        description: "",
+        specifications: ""
+      });
+      setBomItems([]);
+      setIsAddDialogOpen(false);
+      
+      // Refresh products list
+      fetchProducts();
+      
+      toast({
+        title: "Success",
+        description: "Product created successfully with BOM"
+      });
+      
+    } catch (error) {
+      console.error('Error creating product:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create product",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -102,63 +177,80 @@ const ProductsManagement = () => {
                 Add New Product
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl">
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>Add New Product</DialogTitle>
+                <DialogTitle>Add New Product with BOM</DialogTitle>
               </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Product Name</Label>
-                    <Input 
-                      id="name" 
-                      value={newProduct.name} 
-                      onChange={(e) => setNewProduct({...newProduct, name: e.target.value})}
-                      placeholder="Enter product name"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="category">Category</Label>
-                    <Select 
-                      value={newProduct.category} 
-                      onValueChange={(value) => setNewProduct({...newProduct, category: value})}
-                    >
-                      <SelectTrigger id="category">
-                        <SelectValue placeholder="Select category" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {PRODUCT_CATEGORIES.map((category) => (
-                          <SelectItem key={category} value={category}>
-                            {category}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="description">Description</Label>
-                  <Textarea 
-                    id="description" 
-                    value={newProduct.description} 
-                    onChange={(e) => setNewProduct({...newProduct, description: e.target.value})}
-                    placeholder="Enter product description"
-                    rows={3}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="specifications">Specifications</Label>
-                  <Textarea 
-                    id="specifications" 
-                    value={newProduct.specifications} 
-                    onChange={(e) => setNewProduct({...newProduct, specifications: e.target.value})}
-                    placeholder="Enter technical specifications"
-                    rows={3}
-                  />
-                </div>
+              <div className="grid gap-6 py-4">
+                {/* Product Information */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Product Information</CardTitle>
+                  </CardHeader>
+                  <CardContent className="grid gap-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="name">Product Name</Label>
+                        <Input 
+                          id="name" 
+                          value={newProduct.name} 
+                          onChange={(e) => setNewProduct({...newProduct, name: e.target.value})}
+                          placeholder="Enter product name"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="category">Category</Label>
+                        <Select 
+                          value={newProduct.category} 
+                          onValueChange={(value) => setNewProduct({...newProduct, category: value})}
+                        >
+                          <SelectTrigger id="category">
+                            <SelectValue placeholder="Select category" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {PRODUCT_CATEGORIES.map((category) => (
+                              <SelectItem key={category} value={category}>
+                                {category}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="description">Description</Label>
+                      <Textarea 
+                        id="description" 
+                        value={newProduct.description} 
+                        onChange={(e) => setNewProduct({...newProduct, description: e.target.value})}
+                        placeholder="Enter product description"
+                        rows={3}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="specifications">Specifications</Label>
+                      <Textarea 
+                        id="specifications" 
+                        value={newProduct.specifications} 
+                        onChange={(e) => setNewProduct({...newProduct, specifications: e.target.value})}
+                        placeholder="Enter technical specifications"
+                        rows={3}
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* BOM Form */}
+                <BOMForm bomItems={bomItems} onBOMChange={setBomItems} />
               </div>
               <DialogFooter>
-                <Button type="submit" onClick={handleAddProduct}>Add Product</Button>
+                <Button 
+                  type="submit" 
+                  onClick={handleAddProduct}
+                  disabled={!hasAllBOMTypes() || isLoading}
+                >
+                  {isLoading ? "Creating..." : "Create Product"}
+                </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -208,7 +300,7 @@ const ProductsManagement = () => {
                       <TableCell>{product.category}</TableCell>
                       <TableCell className="max-w-md truncate">{product.description}</TableCell>
                       <TableCell className="text-right">
-                        <Button variant="outline" size="sm">Edit</Button>
+                        <Button variant="outline" size="sm">View BOM</Button>
                       </TableCell>
                     </TableRow>
                   ))

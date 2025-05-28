@@ -9,6 +9,93 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      bom: {
+        Row: {
+          bom_type: Database["public"]["Enums"]["bom_type"]
+          created_at: string
+          created_by: string | null
+          id: string
+          product_id: string
+          quantity: number
+          raw_material_id: string
+          updated_at: string
+        }
+        Insert: {
+          bom_type: Database["public"]["Enums"]["bom_type"]
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          product_id: string
+          quantity: number
+          raw_material_id: string
+          updated_at?: string
+        }
+        Update: {
+          bom_type?: Database["public"]["Enums"]["bom_type"]
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          product_id?: string
+          quantity?: number
+          raw_material_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bom_raw_material_id_fkey"
+            columns: ["raw_material_id"]
+            isOneToOne: false
+            referencedRelation: "raw_materials"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_bom_product_id"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      products: {
+        Row: {
+          category: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          product_code: string
+          specifications: string | null
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          product_code: string
+          specifications?: string | null
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          product_code?: string
+          specifications?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       raw_materials: {
         Row: {
           category: string
@@ -151,7 +238,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      bom_type: "main_assembly" | "sub_assembly" | "accessory"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -266,6 +353,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      bom_type: ["main_assembly", "sub_assembly", "accessory"],
+    },
   },
 } as const
