@@ -1,4 +1,3 @@
-
 export interface ProductionLine {
   id: string;
   name: string;
@@ -59,52 +58,37 @@ export interface ScheduledProductionForProduction {
   modelName: string;
   scheduledDate: string;
   quantity: number;
-  kitStatus: "KIT SCHEDULED" | "KIT VERIFIED" | "KIT SENT" | "KIT SHORTAGE" | "KIT READY" | "YET TO PLANNED";
+  kitStatus: "PREPARED" | "VERIFIED" | "SENT" | "SHORTAGE" | "READY" | "NOT_PREPARED";
   materialStatus: "AVAILABLE" | "PARTIAL" | "SHORTAGE";
   assignedLine?: string;
-  productionStatus: "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED" | "ON_HOLD";
+  productionStatus: "PENDING" | "IN_PROGRESS" | "COMPLETED" | "ON_HOLD";
 }
 
-// Mock data for production lines
+// Mock data for production lines - keeping minimal mock data for system status
 export const mockProductionLines: ProductionLine[] = [
   {
     id: "PL1",
     name: "Production Line 1",
-    status: "RUNNING",
-    currentVoucher: "05-01",
-    currentProduct: "Speaker A300",
-    progress: 65,
-    operator: "John Doe",
-    startTime: "08:00",
-    estimatedCompletion: "16:30"
+    status: "IDLE",
+    operator: "Available"
   },
   {
     id: "PL2",
-    name: "Production Line 2",
-    status: "SETUP",
-    currentVoucher: "05-02",
-    currentProduct: "Subwoofer S200",
-    progress: 0,
-    operator: "Jane Smith",
-    startTime: "09:00",
-    estimatedCompletion: "17:00"
+    name: "Production Line 2", 
+    status: "IDLE",
+    operator: "Available"
   },
   {
     id: "SA1",
     name: "Sub Assembly 1",
-    status: "RUNNING",
-    currentVoucher: "05-03",
-    currentProduct: "Tweeter T100",
-    progress: 45,
-    operator: "Mike Johnson",
-    startTime: "07:30",
-    estimatedCompletion: "15:30"
+    status: "IDLE",
+    operator: "Available"
   },
   {
     id: "SA2",
     name: "Sub Assembly 2",
     status: "IDLE",
-    operator: "Sarah Wilson"
+    operator: "Available"
   }
 ];
 

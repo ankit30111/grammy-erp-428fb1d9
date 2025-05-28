@@ -1,20 +1,63 @@
+
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Clock, ClipboardCheck, FileCheck, Layers } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 const Quality = () => {
   const navigate = useNavigate();
 
-  // Mock stats
+  // Fetch real statistics from database
+  const { data: iqcStats } = useQuery({
+    queryKey: ["iqc-stats"],
+    queryFn: async () => {
+      const { data: pendingGRNs } = await supabase
+        .from("grn")
+        .select("id")
+        .eq("status", "RECEIVED");
+      
+      const { data: capaItems } = await supabase
+        .from("iqc_reports")
+        .select("id")
+        .eq("result", "Rejected");
+
+      return {
+        pendingIQC: pendingGRNs?.length || 0,
+        capaItems: capaItems?.length || 0
+      };
+    },
+  });
+
+  const { data: productionStats } = useQuery({
+    queryKey: ["production-stats"],
+    queryFn: async () => {
+      const { data: activeProductions } = await supabase
+        .from("production_orders")
+        .select("id")
+        .eq("status", "IN_PROGRESS");
+      
+      const { data: pendingOQC } = await supabase
+        .from("production_orders")
+        .select("id")
+        .eq("status", "COMPLETED");
+
+      return {
+        activePQC: activeProductions?.length || 0,
+        pendingOQC: pendingOQC?.length || 0
+      };
+    },
+  });
+
   const stats = {
-    pendingIQC: 15,
-    activePQC: 8,
-    pendingOQC: 5,
-    returnAnalysis: 3,
-    capaItems: 7
+    pendingIQC: iqcStats?.pendingIQC || 0,
+    activePQC: productionStats?.activePQC || 0,
+    pendingOQC: productionStats?.pendingOQC || 0,
+    returnAnalysis: 0, // This would need a separate table for customer returns
+    capaItems: iqcStats?.capaItems || 0
   };
 
   return (
@@ -118,93 +161,70 @@ const Quality = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card>
             <CardHeader>
-              <CardTitle>Recent Quality Issues</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-start gap-4 pb-4 border-b">
-                  <div className="h-8 w-8 rounded-full bg-red-100 flex items-center justify-center">
-                    <span className="text-red-800 font-medium">H</span>
-                  </div>
-                  <div>
-                    <h3 className="font-medium">Solder Quality Issues</h3>
-                    <p className="text-sm text-muted-foreground">Identified during IQC for Speaker Driver components from vendor ABC Electronics.</p>
-                    <div className="mt-1">
-                      <span className="text-xs bg-red-100 text-red-800 px-2 py-1 rounded-full">High Priority</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-4 pb-4 border-b">
-                  <div className="h-8 w-8 rounded-full bg-amber-100 flex items-center justify-center">
-                    <span className="text-amber-800 font-medium">M</span>
-                  </div>
-                  <div>
-                    <h3 className="font-medium">Component Alignment</h3>
-                    <p className="text-sm text-muted-foreground">Found during PQC on Line 1 production of Speaker A300 model.</p>
-                    <div className="mt-1">
-                      <span className="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded-full">Medium Priority</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-4">
-                  <div className="h-8 w-8 rounded-full bg-amber-100 flex items-center justify-center">
-                    <span className="text-amber-800 font-medium">M</span>
-                  </div>
-                  <div>
-                    <h3 className="font-medium">Missing Parts</h3>
-                    <p className="text-sm text-muted-foreground">Customer return analysis found missing accessory items in packaging.</p>
-                    <div className="mt-1">
-                      <span className="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded-full">Medium Priority</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
               <CardTitle>Quality Performance</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">IQC Rejection Rate:</span>
-                  <span className="font-medium">3.2%</span>
+                  <span className="font-medium">-</span>
                 </div>
                 <div className="h-2 w-full bg-gray-200 rounded-full">
-                  <div className="h-2 rounded-full bg-amber-500" style={{ width: '3.2%' }}></div>
+                  <div className="h-2 rounded-full bg-green-500" style={{ width: '0%' }}></div>
                 </div>
                 
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">PQC Defect Rate:</span>
-                  <span className="font-medium">1.7%</span>
+                  <span className="font-medium">-</span>
                 </div>
                 <div className="h-2 w-full bg-gray-200 rounded-full">
-                  <div className="h-2 rounded-full bg-green-500" style={{ width: '1.7%' }}></div>
+                  <div className="h-2 rounded-full bg-green-500" style={{ width: '0%' }}></div>
                 </div>
                 
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">OQC Rejection Rate:</span>
-                  <span className="font-medium">0.5%</span>
+                  <span className="font-medium">-</span>
                 </div>
                 <div className="h-2 w-full bg-gray-200 rounded-full">
-                  <div className="h-2 rounded-full bg-green-500" style={{ width: '0.5%' }}></div>
+                  <div className="h-2 rounded-full bg-green-500" style={{ width: '0%' }}></div>
                 </div>
                 
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">Customer Return Rate:</span>
-                  <span className="font-medium">0.2%</span>
+                  <span className="font-medium">-</span>
                 </div>
                 <div className="h-2 w-full bg-gray-200 rounded-full">
-                  <div className="h-2 rounded-full bg-green-500" style={{ width: '0.2%' }}></div>
+                  <div className="h-2 rounded-full bg-green-500" style={{ width: '0%' }}></div>
                 </div>
                 
                 <Button variant="outline" className="w-full mt-2">
                   View Detailed Reports
                 </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>System Status</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Total GRNs Processed:</span>
+                  <span className="font-medium">{stats.pendingIQC}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Productions Active:</span>
+                  <span className="font-medium">{stats.activePQC}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Pending OQC:</span>
+                  <span className="font-medium">{stats.pendingOQC}</span>
+                </div>
+                <div className="text-center py-4 text-sm text-muted-foreground">
+                  Quality control system is operational
+                </div>
               </div>
             </CardContent>
           </Card>
