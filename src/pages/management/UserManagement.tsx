@@ -11,8 +11,19 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { UserPlus, Trash2, Edit } from 'lucide-react';
+import { UserPlus, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+
+interface UserPermission {
+  module: string;
+}
+
+interface ProfileWithPermissions {
+  id: string;
+  username: string;
+  role: string;
+  user_permissions: UserPermission[];
+}
 
 interface User {
   id: string;
@@ -37,8 +48,6 @@ const UserManagement = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [formData, setFormData] = useState({
     username: '',
     email: '',
@@ -64,7 +73,7 @@ const UserManagement = () => {
           username,
           role,
           user_permissions (module)
-        `);
+        `) as { data: ProfileWithPermissions[] | null };
 
       if (profiles) {
         const { data: authUsers } = await supabase.auth.admin.listUsers();
@@ -76,7 +85,7 @@ const UserManagement = () => {
             username: profile.username,
             role: profile.role,
             email: authUser?.email || '',
-            permissions: profile.user_permissions?.map((p: any) => p.module) || []
+            permissions: profile.user_permissions?.map((p: UserPermission) => p.module) || []
           };
         });
 
