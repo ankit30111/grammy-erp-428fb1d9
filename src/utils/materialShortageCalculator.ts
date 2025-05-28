@@ -2,6 +2,7 @@
 import { supabase } from "@/integrations/supabase/client";
 
 export interface MaterialShortage {
+  raw_material_id: string;
   material_code: string;
   material_name: string;
   required_quantity: number;
@@ -14,6 +15,40 @@ export interface MaterialShortage {
     is_primary: boolean;
   };
 }
+
+export interface VendorGroup {
+  vendor_id: string;
+  vendor_name: string;
+  vendor_code: string;
+  total_items: number;
+  items: MaterialShortage[];
+}
+
+export const groupShortagesByVendor = (shortages: MaterialShortage[]): VendorGroup[] => {
+  const vendorMap = new Map<string, VendorGroup>();
+
+  shortages.forEach(shortage => {
+    if (!shortage.vendor_info) return;
+
+    const vendorId = shortage.vendor_info.id;
+    
+    if (!vendorMap.has(vendorId)) {
+      vendorMap.set(vendorId, {
+        vendor_id: vendorId,
+        vendor_name: shortage.vendor_info.name,
+        vendor_code: shortage.vendor_info.vendor_code,
+        total_items: 0,
+        items: []
+      });
+    }
+
+    const vendorGroup = vendorMap.get(vendorId)!;
+    vendorGroup.items.push(shortage);
+    vendorGroup.total_items = vendorGroup.items.length;
+  });
+
+  return Array.from(vendorMap.values());
+};
 
 export const calculateMaterialShortages = async (
   productionOrders: any[]
@@ -43,7 +78,7 @@ export const calculateMaterialShortages = async (
     // Get all BOMs for the products in production orders
     const productIds = productionOrders.map(order => order.product_id);
     const { data: bomItems, error: bomError } = await supabase
-      .from("bom_items")
+      .from("bom")
       .select(`
         *,
         raw_materials(
@@ -69,7 +104,7 @@ export const calculateMaterialShortages = async (
 
     // Get current inventory levels
     const { data: inventory, error: inventoryError } = await supabase
-      .from("raw_material_inventory")
+      .from("inventory")
       .select("*");
 
     if (inventoryError) {
@@ -110,6 +145,7 @@ export const calculateMaterialShortages = async (
         const primaryVendor = material.raw_material_vendors?.find((rv: any) => rv.is_primary);
         
         shortages.push({
+          raw_material_id: materialId,
           material_code: material.material_code,
           material_name: material.name,
           required_quantity: requiredQuantity,
