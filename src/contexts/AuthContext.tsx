@@ -15,6 +15,11 @@ interface UserPermission {
   module: string;
 }
 
+interface AuthUser {
+  id: string;
+  email?: string;
+}
+
 interface AuthContextType {
   user: User | null;
   profile: Profile | null;
@@ -113,7 +118,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       // Get the user's email from auth.users using the admin API
       const { data: authUsers } = await supabase.auth.admin.listUsers();
-      const authUser = authUsers?.users?.find(u => u.id === profileData.id);
+      const authUser = authUsers?.users?.find((u: AuthUser) => u.id === profileData.id);
       
       if (!authUser?.email) {
         return { error: { message: 'Invalid username or password' } };
