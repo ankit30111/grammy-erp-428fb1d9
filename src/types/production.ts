@@ -1,3 +1,4 @@
+
 export interface ProductionLine {
   id: string;
   name: string;
@@ -201,7 +202,7 @@ export const mockScheduledProductionsForProduction: ScheduledProductionForProduc
     modelName: "Speaker A300",
     scheduledDate: "2025-05-21",
     quantity: 100,
-    kitStatus: "KIT SENT",
+    kitStatus: "SENT",
     materialStatus: "AVAILABLE",
     assignedLine: "Production Line 1",
     productionStatus: "IN_PROGRESS"
@@ -212,9 +213,9 @@ export const mockScheduledProductionsForProduction: ScheduledProductionForProduc
     modelName: "Subwoofer S200",
     scheduledDate: "2025-05-22",
     quantity: 50,
-    kitStatus: "KIT SENT",
+    kitStatus: "SENT",
     materialStatus: "AVAILABLE",
-    productionStatus: "NOT_STARTED"
+    productionStatus: "PENDING"
   },
   {
     id: "3",
@@ -222,9 +223,9 @@ export const mockScheduledProductionsForProduction: ScheduledProductionForProduc
     modelName: "Tweeter T100",
     scheduledDate: "2025-05-23",
     quantity: 200,
-    kitStatus: "KIT VERIFIED",
+    kitStatus: "VERIFIED",
     materialStatus: "AVAILABLE",
-    productionStatus: "NOT_STARTED"
+    productionStatus: "PENDING"
   },
   {
     id: "4",
@@ -232,8 +233,8 @@ export const mockScheduledProductionsForProduction: ScheduledProductionForProduc
     modelName: "Speaker A100",
     scheduledDate: "2025-05-24",
     quantity: 75,
-    kitStatus: "KIT SCHEDULED",
+    kitStatus: "NOT_PREPARED",
     materialStatus: "PARTIAL",
-    productionStatus: "NOT_STARTED"
+    productionStatus: "PENDING"
   }
 ];
