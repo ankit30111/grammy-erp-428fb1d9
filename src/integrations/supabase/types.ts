@@ -1396,52 +1396,127 @@ export type Database = {
           },
         ]
       }
-      raw_materials: {
+      raw_material_specifications: {
         Row: {
-          category: string
+          changes_description: string | null
           created_at: string
-          created_by: string | null
           id: string
-          is_active: boolean
-          material_code: string
-          name: string
-          specification: string | null
-          updated_at: string
-          vendor_id: string | null
+          iqc_checklist_url: string | null
+          raw_material_id: string
+          specification_sheet_url: string | null
+          uploaded_by: string | null
+          version_number: number
         }
         Insert: {
-          category: string
+          changes_description?: string | null
           created_at?: string
-          created_by?: string | null
           id?: string
-          is_active?: boolean
-          material_code: string
-          name: string
-          specification?: string | null
-          updated_at?: string
-          vendor_id?: string | null
+          iqc_checklist_url?: string | null
+          raw_material_id: string
+          specification_sheet_url?: string | null
+          uploaded_by?: string | null
+          version_number: number
         }
         Update: {
-          category?: string
+          changes_description?: string | null
           created_at?: string
-          created_by?: string | null
           id?: string
-          is_active?: boolean
-          material_code?: string
-          name?: string
-          specification?: string | null
-          updated_at?: string
-          vendor_id?: string | null
+          iqc_checklist_url?: string | null
+          raw_material_id?: string
+          specification_sheet_url?: string | null
+          uploaded_by?: string | null
+          version_number?: number
         }
         Relationships: [
           {
-            foreignKeyName: "raw_materials_vendor_id_fkey"
+            foreignKeyName: "raw_material_specifications_raw_material_id_fkey"
+            columns: ["raw_material_id"]
+            isOneToOne: false
+            referencedRelation: "raw_materials"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      raw_material_vendors: {
+        Row: {
+          created_at: string
+          id: string
+          is_primary: boolean | null
+          raw_material_id: string
+          vendor_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_primary?: boolean | null
+          raw_material_id: string
+          vendor_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_primary?: boolean | null
+          raw_material_id?: string
+          vendor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "raw_material_vendors_raw_material_id_fkey"
+            columns: ["raw_material_id"]
+            isOneToOne: false
+            referencedRelation: "raw_materials"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "raw_material_vendors_vendor_id_fkey"
             columns: ["vendor_id"]
             isOneToOne: false
             referencedRelation: "vendors"
             referencedColumns: ["id"]
           },
         ]
+      }
+      raw_materials: {
+        Row: {
+          category: string
+          created_at: string
+          created_by: string | null
+          id: string
+          iqc_checklist_url: string | null
+          is_active: boolean
+          material_code: string
+          name: string
+          specification: string | null
+          specification_sheet_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          iqc_checklist_url?: string | null
+          is_active?: boolean
+          material_code: string
+          name: string
+          specification?: string | null
+          specification_sheet_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          iqc_checklist_url?: string | null
+          is_active?: boolean
+          material_code?: string
+          name?: string
+          specification?: string | null
+          specification_sheet_url?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       skills: {
         Row: {
@@ -1711,6 +1786,10 @@ export type Database = {
       }
       generate_kit_number: {
         Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      generate_material_code: {
+        Args: { category_name: string }
         Returns: string
       }
       generate_po_number: {

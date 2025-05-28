@@ -1,0 +1,279 @@
+
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+
+export const useRawMaterials = () => {
+  const queryClient = useQueryClient();
+
+  const { data: rawMaterials = [], isLoading } = useQuery({
+    queryKey: ["raw-materials"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("raw_materials")
+        .select(`
+          *,
+          raw_material_vendors(
+            id,
+            is_primary,
+            vendors(
+              id,
+              name,
+              vendor_code
+            )
+          )
+        `)
+        .eq("is_active", true)
+        .order("created_at", { ascending: false });
+      
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  const addRawMaterial = useMutation({
+    mutationFn: async (materialData: {
+      name: string;
+      category: string;
+      specification?: string;
+      vendorIds: string[];
+      primaryVendorId?: string;
+      specificationFile?: File;
+      iqcChecklistFile?: File;
+    }) => {
+      let specificationUrl = null;
+      let iqcChecklistUrl = null;
+
+      // Upload specification sheet if provided
+      if (materialData.specificationFile) {
+        const fileName = `spec_${Date.now()}_${materialData.specificationFile.name}`;
+        const { error: uploadError } = await supabase.storage
+          .from("raw-material-documents")
+          .upload(fileName, materialData.specificationFile);
+        
+        if (uploadError) throw uploadError;
+        specificationUrl = fileName;
+      }
+
+      // Upload IQC checklist if provided
+      if (materialData.iqcChecklistFile) {
+        const fileName = `iqc_${Date.now()}_${materialData.iqcChecklistFile.name}`;
+        const { error: uploadError } = await supabase.storage
+          .from("raw-material-documents")
+          .upload(fileName, materialData.iqcChecklistFile);
+        
+        if (uploadError) throw uploadError;
+        iqcChecklistUrl = fileName;
+      }
+
+      // Insert raw material
+      const { data: material, error: materialError } = await supabase
+        .from("raw_materials")
+        .insert({
+          name: materialData.name,
+          category: materialData.category,
+          specification: materialData.specification,
+          specification_sheet_url: specificationUrl,
+          iqc_checklist_url: iqcChecklistUrl,
+        })
+        .select()
+        .single();
+
+      if (materialError) throw materialError;
+
+      // Add vendor relationships
+      const vendorRelations = materialData.vendorIds.map(vendorId => ({
+        raw_material_id: material.id,
+        vendor_id: vendorId,
+        is_primary: vendorId === materialData.primaryVendorId,
+      }));
+
+      const { error: vendorError } = await supabase
+        .from("raw_material_vendors")
+        .insert(vendorRelations);
+
+      if (vendorError) throw vendorError;
+
+      // Create initial specification record if files were uploaded
+      if (specificationUrl || iqcChecklistUrl) {
+        const { error: specError } = await supabase
+          .from("raw_material_specifications")
+          .insert({
+            raw_material_id: material.id,
+            version_number: 1,
+            specification_sheet_url: specificationUrl,
+            iqc_checklist_url: iqcChecklistUrl,
+            changes_description: "Initial specification upload",
+          });
+
+        if (specError) throw specError;
+      }
+
+      return material;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["raw-materials"] });
+      toast.success("Raw material added successfully");
+    },
+    onError: (error) => {
+      console.error("Error adding raw material:", error);
+      toast.error("Failed to add raw material");
+    },
+  });
+
+  const updateRawMaterial = useMutation({
+    mutationFn: async (data: {
+      id: string;
+      name: string;
+      category: string;
+      specification?: string;
+      vendorIds: string[];
+      primaryVendorId?: string;
+      specificationFile?: File;
+      iqcChecklistFile?: File;
+      changesDescription?: string;
+    }) => {
+      let specificationUrl = null;
+      let iqcChecklistUrl = null;
+
+      // Upload new specification sheet if provided
+      if (data.specificationFile) {
+        const fileName = `spec_${Date.now()}_${data.specificationFile.name}`;
+        const { error: uploadError } = await supabase.storage
+          .from("raw-material-documents")
+          .upload(fileName, data.specificationFile);
+        
+        if (uploadError) throw uploadError;
+        specificationUrl = fileName;
+      }
+
+      // Upload new IQC checklist if provided
+      if (data.iqcChecklistFile) {
+        const fileName = `iqc_${Date.now()}_${data.iqcChecklistFile.name}`;
+        const { error: uploadError } = await supabase.storage
+          .from("raw-material-documents")
+          .upload(fileName, data.iqcChecklistFile);
+        
+        if (uploadError) throw uploadError;
+        iqcChecklistUrl = fileName;
+      }
+
+      // Update raw material
+      const updateData: any = {
+        name: data.name,
+        category: data.category,
+        specification: data.specification,
+      };
+
+      if (specificationUrl) updateData.specification_sheet_url = specificationUrl;
+      if (iqcChecklistUrl) updateData.iqc_checklist_url = iqcChecklistUrl;
+
+      const { error: materialError } = await supabase
+        .from("raw_materials")
+        .update(updateData)
+        .eq("id", data.id);
+
+      if (materialError) throw materialError;
+
+      // Update vendor relationships
+      // First delete existing relationships
+      const { error: deleteError } = await supabase
+        .from("raw_material_vendors")
+        .delete()
+        .eq("raw_material_id", data.id);
+
+      if (deleteError) throw deleteError;
+
+      // Add new vendor relationships
+      const vendorRelations = data.vendorIds.map(vendorId => ({
+        raw_material_id: data.id,
+        vendor_id: vendorId,
+        is_primary: vendorId === data.primaryVendorId,
+      }));
+
+      const { error: vendorError } = await supabase
+        .from("raw_material_vendors")
+        .insert(vendorRelations);
+
+      if (vendorError) throw vendorError;
+
+      // Create new specification record if files were uploaded
+      if (specificationUrl || iqcChecklistUrl) {
+        // Get the next version number
+        const { data: lastVersion } = await supabase
+          .from("raw_material_specifications")
+          .select("version_number")
+          .eq("raw_material_id", data.id)
+          .order("version_number", { ascending: false })
+          .limit(1)
+          .single();
+
+        const nextVersion = (lastVersion?.version_number || 0) + 1;
+
+        const { error: specError } = await supabase
+          .from("raw_material_specifications")
+          .insert({
+            raw_material_id: data.id,
+            version_number: nextVersion,
+            specification_sheet_url: specificationUrl,
+            iqc_checklist_url: iqcChecklistUrl,
+            changes_description: data.changesDescription || "Specification update",
+          });
+
+        if (specError) throw specError;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["raw-materials"] });
+      toast.success("Raw material updated successfully");
+    },
+    onError: (error) => {
+      console.error("Error updating raw material:", error);
+      toast.error("Failed to update raw material");
+    },
+  });
+
+  const deleteRawMaterial = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("raw_materials")
+        .update({ is_active: false })
+        .eq("id", id);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["raw-materials"] });
+      toast.success("Raw material deleted successfully");
+    },
+    onError: (error) => {
+      console.error("Error deleting raw material:", error);
+      toast.error("Failed to delete raw material");
+    },
+  });
+
+  return {
+    rawMaterials,
+    isLoading,
+    addRawMaterial,
+    updateRawMaterial,
+    deleteRawMaterial,
+  };
+};
+
+export const useSpecificationHistory = (materialId: string) => {
+  return useQuery({
+    queryKey: ["specification-history", materialId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("raw_material_specifications")
+        .select("*")
+        .eq("raw_material_id", materialId)
+        .order("version_number", { ascending: false });
+      
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!materialId,
+  });
+};
