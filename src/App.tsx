@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -18,7 +19,8 @@ import OQC from "./pages/quality/OQC";
 import Management from "./pages/Management";
 import ProductsManagement from "./pages/management/ProductsManagement";
 import RawMaterialsManagement from "./pages/management/RawMaterialsManagement";
-import HRManagement from "./pages/management/HRManagement";
+import Resources from "./pages/Resources";
+import Vendors from "./pages/Vendors";
 import FinishedGoods from "./pages/FinishedGoods";
 import React from "react";
 
@@ -45,13 +47,12 @@ const App = () => (
             <Route path="/grn" element={<GRN />} />
             <Route path="/dispatch" element={<Index />} />
             <Route path="/spare-orders" element={<Index />} />
-            <Route path="/resources" element={<Index />} />
+            <Route path="/resources" element={<Resources />} />
             <Route path="/finished-goods" element={<FinishedGoods />} />
-            <Route path="/vendors" element={<Index />} />
+            <Route path="/vendors" element={<Vendors />} />
             <Route path="/management" element={<Management />} />
             <Route path="/management/products" element={<ProductsManagement />} />
             <Route path="/management/raw-materials" element={<RawMaterialsManagement />} />
-            <Route path="/management/human-resources" element={<HRManagement />} />
             <Route path="/settings" element={<Index />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

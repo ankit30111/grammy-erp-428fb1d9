@@ -19,9 +19,7 @@ import {
 import { 
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter, SheetClose, SheetTrigger
 } from "@/components/ui/sheet";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useNavigate, useLocation } from "react-router-dom";
-import { FileText, Package, Search, Plus } from "lucide-react";
+import { Search, Plus, Layers, FileText, Package } from "lucide-react";
 
 // Raw Material categories
 const MATERIAL_CATEGORIES = [
@@ -36,6 +34,13 @@ const MATERIAL_CATEGORIES = [
   "Others"
 ];
 
+// Sample vendors data
+const SAMPLE_VENDORS = [
+  { id: "1", vendor_code: "VND001", name: "Electronics Suppliers Ltd" },
+  { id: "2", vendor_code: "VND002", name: "Plastic Components Co" },
+  { id: "3", vendor_code: "VND003", name: "Metal Works Inc" }
+];
+
 // Sample data for demonstration
 const SAMPLE_MATERIALS = [
   {
@@ -43,6 +48,8 @@ const SAMPLE_MATERIALS = [
     name: "ABS Plastic Shell",
     category: "Plastic",
     specification: "Grade A, Fire Resistant",
+    vendor_id: "1",
+    vendor_name: "Electronics Suppliers Ltd",
     hasDocuments: {
       specification: true,
       iqcInspection: true
@@ -53,6 +60,8 @@ const SAMPLE_MATERIALS = [
     name: "MDF Board",
     category: "Wooden",
     specification: "18mm Thickness, Grade 1",
+    vendor_id: "2",
+    vendor_name: "Plastic Components Co",
     hasDocuments: {
       specification: true,
       iqcInspection: true
@@ -63,59 +72,27 @@ const SAMPLE_MATERIALS = [
     name: "Speaker Cable",
     category: "Wire",
     specification: "2.5mm², Copper Core",
+    vendor_id: "3",
+    vendor_name: "Metal Works Inc",
     hasDocuments: {
       specification: true,
       iqcInspection: false
-    }
-  },
-  {
-    id: "RM004",
-    name: "Amplifier PCB",
-    category: "PCB",
-    specification: "40W Output, 12V DC",
-    hasDocuments: {
-      specification: true,
-      iqcInspection: true
-    }
-  },
-  {
-    id: "RM005",
-    name: "Speaker Box",
-    category: "Packaging",
-    specification: "Corrugated, 5 ply",
-    hasDocuments: {
-      specification: false,
-      iqcInspection: true
     }
   }
 ];
 
 const RawMaterialsManagement = () => {
-  const navigate = useNavigate();
-  const location = useLocation();
   const [materials, setMaterials] = useState(SAMPLE_MATERIALS);
+  const [vendors] = useState(SAMPLE_VENDORS);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterCategory, setFilterCategory] = useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [newMaterial, setNewMaterial] = useState({
     name: "",
     category: "",
-    specification: ""
+    specification: "",
+    vendor_id: ""
   });
-
-  // Handle navigation between management tabs
-  const handleTabChange = (value: string) => {
-    navigate(`/management/${value}`);
-  };
-
-  // Get current tab from URL
-  const getCurrentTab = () => {
-    const path = location.pathname;
-    if (path.includes("/products")) return "products";
-    if (path.includes("/raw-materials")) return "raw-materials";
-    if (path.includes("/human-resources")) return "human-resources";
-    return "raw-materials";
-  };
 
   // Filter materials based on search and category
   const filteredMaterials = materials.filter(material => {
@@ -126,11 +103,14 @@ const RawMaterialsManagement = () => {
   });
 
   const handleAddMaterial = () => {
+    const selectedVendor = vendors.find(v => v.id === newMaterial.vendor_id);
     const material = {
       id: `RM${String(materials.length + 1).padStart(3, '0')}`,
       name: newMaterial.name,
       category: newMaterial.category,
       specification: newMaterial.specification,
+      vendor_id: newMaterial.vendor_id,
+      vendor_name: selectedVendor?.name || "",
       hasDocuments: {
         specification: false,
         iqcInspection: false
@@ -138,7 +118,7 @@ const RawMaterialsManagement = () => {
     };
     
     setMaterials([...materials, material]);
-    setNewMaterial({ name: "", category: "", specification: "" });
+    setNewMaterial({ name: "", category: "", specification: "", vendor_id: "" });
     setIsAddDialogOpen(false);
   };
 
@@ -146,19 +126,10 @@ const RawMaterialsManagement = () => {
     <DashboardLayout>
       <div className="container mx-auto p-6">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-3xl font-bold">Management</h1>
-        </div>
-
-        <Tabs value={getCurrentTab()} onValueChange={handleTabChange} className="w-full mb-6">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="products">Products</TabsTrigger>
-            <TabsTrigger value="raw-materials">Raw Materials</TabsTrigger>
-            <TabsTrigger value="human-resources">Human Resources</TabsTrigger>
-          </TabsList>
-        </Tabs>
-
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold">Raw Materials</h2>
+          <div className="flex items-center space-x-2">
+            <Layers className="h-6 w-6" />
+            <h1 className="text-3xl font-bold">Raw Materials Management</h1>
+          </div>
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
               <Button>
@@ -171,40 +142,60 @@ const RawMaterialsManagement = () => {
                 <DialogTitle>Add New Raw Material</DialogTitle>
               </DialogHeader>
               <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="name" className="text-right">Name</Label>
+                <div className="space-y-2">
+                  <Label htmlFor="name">Material Name</Label>
                   <Input 
                     id="name" 
                     value={newMaterial.name} 
                     onChange={(e) => setNewMaterial({...newMaterial, name: e.target.value})}
-                    className="col-span-3" 
+                    placeholder="Enter material name"
                   />
                 </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="category" className="text-right">Category</Label>
-                  <Select 
-                    value={newMaterial.category} 
-                    onValueChange={(value) => setNewMaterial({...newMaterial, category: value})}
-                  >
-                    <SelectTrigger id="category" className="col-span-3">
-                      <SelectValue placeholder="Select category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {MATERIAL_CATEGORIES.map((category) => (
-                        <SelectItem key={category} value={category}>
-                          {category}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="category">Category</Label>
+                    <Select 
+                      value={newMaterial.category} 
+                      onValueChange={(value) => setNewMaterial({...newMaterial, category: value})}
+                    >
+                      <SelectTrigger id="category">
+                        <SelectValue placeholder="Select category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {MATERIAL_CATEGORIES.map((category) => (
+                          <SelectItem key={category} value={category}>
+                            {category}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="vendor">Vendor</Label>
+                    <Select 
+                      value={newMaterial.vendor_id} 
+                      onValueChange={(value) => setNewMaterial({...newMaterial, vendor_id: value})}
+                    >
+                      <SelectTrigger id="vendor">
+                        <SelectValue placeholder="Select vendor" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {vendors.map((vendor) => (
+                          <SelectItem key={vendor.id} value={vendor.id}>
+                            {vendor.vendor_code} - {vendor.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="specification" className="text-right">Specification</Label>
+                <div className="space-y-2">
+                  <Label htmlFor="specification">Specification</Label>
                   <Input 
                     id="specification" 
                     value={newMaterial.specification} 
                     onChange={(e) => setNewMaterial({...newMaterial, specification: e.target.value})}
-                    className="col-span-3" 
+                    placeholder="Enter material specification"
                   />
                 </div>
               </div>
@@ -232,7 +223,7 @@ const RawMaterialsManagement = () => {
                   <SelectValue placeholder="All Categories" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Categories</SelectItem>
+                  <SelectItem value="">All Categories</SelectItem>
                   {MATERIAL_CATEGORIES.map((category) => (
                     <SelectItem key={category} value={category}>{category}</SelectItem>
                   ))}
@@ -250,9 +241,10 @@ const RawMaterialsManagement = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>ID</TableHead>
+                  <TableHead>Material ID</TableHead>
                   <TableHead>Material Name</TableHead>
                   <TableHead>Category</TableHead>
+                  <TableHead>Vendor</TableHead>
                   <TableHead>Specification</TableHead>
                   <TableHead className="text-center">Documents</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -261,16 +253,17 @@ const RawMaterialsManagement = () => {
               <TableBody>
                 {filteredMaterials.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-6 text-muted-foreground">
+                    <TableCell colSpan={7} className="text-center py-6 text-muted-foreground">
                       No materials found. Try adjusting your search or filter.
                     </TableCell>
                   </TableRow>
                 ) : (
                   filteredMaterials.map((material) => (
                     <TableRow key={material.id}>
-                      <TableCell>{material.id}</TableCell>
-                      <TableCell className="font-medium">{material.name}</TableCell>
+                      <TableCell className="font-medium">{material.id}</TableCell>
+                      <TableCell>{material.name}</TableCell>
                       <TableCell>{material.category}</TableCell>
+                      <TableCell>{material.vendor_name}</TableCell>
                       <TableCell>{material.specification}</TableCell>
                       <TableCell>
                         <div className="flex justify-center gap-2">
@@ -306,6 +299,8 @@ const RawMaterialsManagement = () => {
                                 <span>{material.id}</span>
                                 <span className="text-muted-foreground">Category:</span>
                                 <span>{material.category}</span>
+                                <span className="text-muted-foreground">Vendor:</span>
+                                <span>{material.vendor_name}</span>
                                 <span className="text-muted-foreground">Specification:</span>
                                 <span>{material.specification}</span>
                               </div>

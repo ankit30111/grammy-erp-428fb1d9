@@ -9,6 +9,53 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      raw_materials: {
+        Row: {
+          category: string
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          material_code: string
+          name: string
+          specification: string | null
+          updated_at: string
+          vendor_id: string | null
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          material_code: string
+          name: string
+          specification?: string | null
+          updated_at?: string
+          vendor_id?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          material_code?: string
+          name?: string
+          specification?: string | null
+          updated_at?: string
+          vendor_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "raw_materials_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_accounts: {
         Row: {
           created_at: string
@@ -45,6 +92,54 @@ export type Database = {
           role?: string
           updated_at?: string
           username?: string
+        }
+        Relationships: []
+      }
+      vendors: {
+        Row: {
+          address: string
+          bank_account_number: string
+          contact_number: string
+          created_at: string
+          created_by: string | null
+          email: string
+          gst_number: string
+          id: string
+          ifsc_code: string
+          is_active: boolean
+          name: string
+          updated_at: string
+          vendor_code: string
+        }
+        Insert: {
+          address: string
+          bank_account_number: string
+          contact_number: string
+          created_at?: string
+          created_by?: string | null
+          email: string
+          gst_number: string
+          id?: string
+          ifsc_code: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+          vendor_code: string
+        }
+        Update: {
+          address?: string
+          bank_account_number?: string
+          contact_number?: string
+          created_at?: string
+          created_by?: string | null
+          email?: string
+          gst_number?: string
+          id?: string
+          ifsc_code?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+          vendor_code?: string
         }
         Relationships: []
       }

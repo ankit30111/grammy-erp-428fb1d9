@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { NavLink } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { BarChart2, Package, Users, ClipboardCheck, Truck, ShoppingCart, Layers, Settings, ChevronRight, ChevronLeft, Home, FileCheck, Bell, Calendar, Plus, Check, Search, X, Archive, FileText, User, Database, UserPlus } from "lucide-react";
+import { BarChart2, Package, Users, ClipboardCheck, Truck, ShoppingCart, Layers, Settings, ChevronRight, ChevronLeft, Home, FileCheck, Bell, Calendar, Plus, Check, Search, X, Archive, FileText, User, Database, UserPlus, Building2 } from "lucide-react";
 
 interface NavItemProps {
   to: string;
@@ -129,10 +129,9 @@ export function Sidebar() {
             </div>}
           
           <ul className="space-y-1">
-            <NavItem to="/management/products" icon={<FileText size={20} />} label="Add New Product" collapsed={collapsed} />
-            <NavItem to="/management/raw-materials" icon={<Layers size={20} />} label="Add New Raw Material" collapsed={collapsed} />
-            <NavItem to="/vendors" icon={<ShoppingCart size={20} />} label="Add New Vendor" collapsed={collapsed} />
-            <NavItem to="/management/human-resources" icon={<UserPlus size={20} />} label="User Management" collapsed={collapsed} />
+            <NavItem to="/management/products" icon={<FileText size={20} />} label="Products" collapsed={collapsed} />
+            <NavItem to="/management/raw-materials" icon={<Layers size={20} />} label="Raw Materials" collapsed={collapsed} />
+            <NavItem to="/vendors" icon={<Building2 size={20} />} label="Vendors" collapsed={collapsed} />
           </ul>
         </div>
       </nav>
