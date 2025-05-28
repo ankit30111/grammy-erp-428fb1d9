@@ -21,7 +21,7 @@ interface AuthContextType {
   permissions: string[];
   session: Session | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<{ error: any }>;
+  signIn: (username: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
   hasPermission: (module: string) => boolean;
   isAdmin: () => boolean;
@@ -98,9 +98,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => subscription.unsubscribe();
   }, []);
 
-  const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    return { error };
+  const signIn = async (username: string, password: string) => {
+    try {
+      // First, find the user by username to get their email
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('username', username)
+        .single();
+
+      if (profileError || !profileData) {
+        return { error: { message: 'Invalid username or password' } };
+      }
+
+      // Get the user's email from auth.users using the admin API
+      const { data: authUsers } = await supabase.auth.admin.listUsers();
+      const authUser = authUsers?.users?.find(u => u.id === profileData.id);
+      
+      if (!authUser?.email) {
+        return { error: { message: 'Invalid username or password' } };
+      }
+
+      // Sign in with email and password
+      const { error } = await supabase.auth.signInWithPassword({ 
+        email: authUser.email, 
+        password 
+      });
+      
+      return { error };
+    } catch (error: any) {
+      return { error: { message: 'Invalid username or password' } };
+    }
   };
 
   const signOut = async () => {
