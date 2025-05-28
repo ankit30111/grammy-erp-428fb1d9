@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -19,7 +20,7 @@ import Management from "./pages/Management";
 import ProductsManagement from "./pages/management/ProductsManagement";
 import RawMaterialsManagement from "./pages/management/RawMaterialsManagement";
 import CustomersManagement from "./pages/management/CustomersManagement";
-import Resources from "./pages/Resources";
+import UserManagement from "./pages/UserManagement";
 import Vendors from "./pages/Vendors";
 import FinishedGoods from "./pages/FinishedGoods";
 import Dispatch from "./pages/Dispatch";
@@ -53,7 +54,7 @@ const App = () => (
             <Route path="/sales/spare-dispatch" element={<Sales />} />
             <Route path="/dispatch" element={<Dispatch />} />
             <Route path="/finished-goods" element={<FinishedGoods />} />
-            <Route path="/resources" element={<Resources />} />
+            <Route path="/user-management" element={<UserManagement />} />
             <Route path="/vendors" element={<Vendors />} />
             <Route path="/management" element={<Management />} />
             <Route path="/management/products" element={<ProductsManagement />} />
