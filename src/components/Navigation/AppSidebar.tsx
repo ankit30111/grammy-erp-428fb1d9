@@ -31,7 +31,6 @@ import {
   SidebarMenuSubItem,
   SidebarFooter,
   SidebarSeparator,
-  useSidebar,
 } from "@/components/ui/sidebar";
 import {
   Collapsible,
@@ -91,11 +90,8 @@ const NavItem = ({ to, icon, label, badge, subItems, permission }: NavItemProps)
                 
                 return (
                   <SidebarMenuSubItem key={index}>
-                    <SidebarMenuSubButton 
-                      asChild 
-                      isActive={location.pathname === item.to}
-                    >
-                      <NavLink to={item.to}>
+                    <SidebarMenuSubButton asChild isActive={location.pathname === item.to}>
+                      <NavLink to={item.to} className="flex items-center justify-between w-full">
                         <span>{item.label}</span>
                         {item.badge !== undefined && (
                           <span className="ml-auto bg-sidebar-primary text-sidebar-primary-foreground text-xs rounded-full px-2 py-0.5">
@@ -117,7 +113,7 @@ const NavItem = ({ to, icon, label, badge, subItems, permission }: NavItemProps)
   return (
     <SidebarMenuItem>
       <SidebarMenuButton asChild isActive={isActive}>
-        <NavLink to={to}>
+        <NavLink to={to} className="flex items-center gap-2 w-full">
           {icon}
           <span>{label}</span>
           {badge !== undefined && (
