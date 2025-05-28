@@ -325,6 +325,96 @@ export type Database = {
           },
         ]
       }
+      spare_order_items: {
+        Row: {
+          created_at: string
+          id: string
+          quantity: number
+          raw_material_id: string
+          spare_order_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          quantity: number
+          raw_material_id: string
+          spare_order_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          quantity?: number
+          raw_material_id?: string
+          spare_order_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "spare_order_items_raw_material_id_fkey"
+            columns: ["raw_material_id"]
+            isOneToOne: false
+            referencedRelation: "raw_materials"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "spare_order_items_spare_order_id_fkey"
+            columns: ["spare_order_id"]
+            isOneToOne: false
+            referencedRelation: "spare_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      spare_orders: {
+        Row: {
+          created_at: string
+          customer_id: string
+          id: string
+          notes: string | null
+          order_date: string
+          product_id: string
+          spare_order_number: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          customer_id: string
+          id?: string
+          notes?: string | null
+          order_date?: string
+          product_id: string
+          spare_order_number: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string
+          id?: string
+          notes?: string | null
+          order_date?: string
+          product_id?: string
+          spare_order_number?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "spare_orders_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "spare_orders_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_accounts: {
         Row: {
           created_at: string
@@ -418,6 +508,10 @@ export type Database = {
     }
     Functions: {
       generate_dispatch_order_number: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      generate_spare_order_number: {
         Args: Record<PropertyKey, never>
         Returns: string
       }
