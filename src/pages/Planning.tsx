@@ -10,6 +10,7 @@ import { calculateMaterialShortages, MaterialShortage } from "@/utils/materialSh
 import MaterialShortages from "@/components/PPC/MaterialShortages";
 import UnscheduledProjections from "@/components/PPC/UnscheduledProjections";
 import ProductionSchedule from "@/components/PPC/ProductionSchedule";
+import ProductionScheduleManagement from "@/components/PPC/ProductionScheduleManagement";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 
@@ -97,6 +98,7 @@ const Planning = () => {
         <Tabs defaultValue="schedule" className="space-y-4">
           <TabsList>
             <TabsTrigger value="schedule">Production Schedule</TabsTrigger>
+            <TabsTrigger value="schedule-management">Schedule Management</TabsTrigger>
             <TabsTrigger value="materials">Material Requirements</TabsTrigger>
             <TabsTrigger value="shortages">Material Shortages</TabsTrigger>
           </TabsList>
@@ -106,6 +108,10 @@ const Planning = () => {
               <UnscheduledProjections onScheduleClick={handleScheduleProduction} />
               <ProductionSchedule date={selectedDate} />
             </div>
+          </TabsContent>
+
+          <TabsContent value="schedule-management">
+            <ProductionScheduleManagement />
           </TabsContent>
 
           <TabsContent value="materials">

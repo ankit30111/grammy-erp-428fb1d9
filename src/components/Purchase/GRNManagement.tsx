@@ -1,0 +1,201 @@
+
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Package, FileText, CheckCircle, XCircle } from "lucide-react";
+import { useGRN, useUpdateGRNItem } from "@/hooks/useGRN";
+import { format } from "date-fns";
+
+const GRNManagement = () => {
+  const { data: grns, isLoading } = useGRN();
+  const updateGRNItem = useUpdateGRNItem();
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'PENDING': return 'warning';
+      case 'APPROVED': return 'default';
+      case 'REJECTED': return 'destructive';
+      default: return 'secondary';
+    }
+  };
+
+  const getIQCStatusColor = (status: string) => {
+    switch (status) {
+      case 'PENDING': return 'warning';
+      case 'APPROVED': return 'default';
+      case 'REJECTED': return 'destructive';
+      default: return 'secondary';
+    }
+  };
+
+  const handleIQCApproval = (itemId: string, approved: boolean) => {
+    updateGRNItem.mutate({
+      itemId,
+      updates: {
+        iqc_status: approved ? 'APPROVED' : 'REJECTED',
+        iqc_approved_at: new Date().toISOString(),
+      }
+    });
+  };
+
+  const handleStoreConfirmation = (itemId: string) => {
+    updateGRNItem.mutate({
+      itemId,
+      updates: {
+        store_confirmed: true,
+        store_confirmed_at: new Date().toISOString(),
+      }
+    });
+  };
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Package className="h-5 w-5" />
+            GRN Management
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-4">Loading GRNs...</div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!grns?.length) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Package className="h-5 w-5" />
+            GRN Management
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-8">
+            <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
+            <p className="text-muted-foreground">No GRNs found</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              GRNs will appear here when materials are received against purchase orders
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {grns.map((grn) => (
+        <Card key={grn.id}>
+          <CardHeader>
+            <div className="flex justify-between items-center">
+              <CardTitle className="flex items-center gap-2">
+                <Package className="h-5 w-5" />
+                GRN: {grn.grn_number}
+              </CardTitle>
+              <Badge variant={getStatusColor(grn.status) as any}>
+                {grn.status}
+              </Badge>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+              <div>
+                <span className="text-muted-foreground">PO Number:</span>
+                <p className="font-medium">{grn.purchase_orders?.po_number}</p>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Vendor:</span>
+                <p className="font-medium">{grn.vendors?.name}</p>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Received Date:</span>
+                <p className="font-medium">{format(new Date(grn.received_date), 'MMM dd, yyyy')}</p>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Items:</span>
+                <p className="font-medium">{grn.grn_items?.length || 0}</p>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Material Code</TableHead>
+                  <TableHead>Material Name</TableHead>
+                  <TableHead>PO Qty</TableHead>
+                  <TableHead>Received Qty</TableHead>
+                  <TableHead>IQC Status</TableHead>
+                  <TableHead>Store Status</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {grn.grn_items?.map((item) => (
+                  <TableRow key={item.id}>
+                    <TableCell className="font-mono">{item.raw_materials?.material_code}</TableCell>
+                    <TableCell>{item.raw_materials?.name}</TableCell>
+                    <TableCell>{item.po_quantity}</TableCell>
+                    <TableCell>{item.received_quantity}</TableCell>
+                    <TableCell>
+                      <Badge variant={getIQCStatusColor(item.iqc_status) as any}>
+                        {item.iqc_status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {item.store_confirmed ? (
+                        <Badge variant="default">Confirmed</Badge>
+                      ) : (
+                        <Badge variant="secondary">Pending</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        {item.iqc_status === 'PENDING' && (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleIQCApproval(item.id, true)}
+                              className="text-green-600 border-green-300 hover:bg-green-50"
+                            >
+                              <CheckCircle className="h-4 w-4 mr-1" />
+                              IQC Pass
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleIQCApproval(item.id, false)}
+                              className="text-red-600 border-red-300 hover:bg-red-50"
+                            >
+                              <XCircle className="h-4 w-4 mr-1" />
+                              IQC Reject
+                            </Button>
+                          </>
+                        )}
+                        {item.iqc_status === 'APPROVED' && !item.store_confirmed && (
+                          <Button
+                            size="sm"
+                            onClick={() => handleStoreConfirmation(item.id)}
+                            className="bg-blue-600 hover:bg-blue-700"
+                          >
+                            Confirm to Store
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+};
+
+export default GRNManagement;

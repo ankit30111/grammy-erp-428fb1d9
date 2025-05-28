@@ -2,13 +2,14 @@
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ShoppingCart, Clock, Calculator, RefreshCw } from "lucide-react";
+import { ShoppingCart, Clock, Calculator, RefreshCw, Package } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useState, useEffect } from "react";
 import { useProjections } from "@/hooks/useProjections";
 import { calculateMaterialShortages, MaterialShortage } from "@/utils/materialShortageCalculator";
 import MaterialShortages from "@/components/PPC/MaterialShortages";
 import PurchaseOrdersList from "@/components/PPC/PurchaseOrdersList";
+import GRNManagement from "@/components/Purchase/GRNManagement";
 import { useToast } from "@/hooks/use-toast";
 
 const Purchase = () => {
@@ -93,6 +94,7 @@ const Purchase = () => {
           <TabsList>
             <TabsTrigger value="shortages">Material Shortages</TabsTrigger>
             <TabsTrigger value="purchase-orders">Purchase Orders</TabsTrigger>
+            <TabsTrigger value="grn">GRN Management</TabsTrigger>
           </TabsList>
 
           <TabsContent value="shortages">
@@ -107,6 +109,10 @@ const Purchase = () => {
 
           <TabsContent value="purchase-orders">
             <PurchaseOrdersList />
+          </TabsContent>
+
+          <TabsContent value="grn">
+            <GRNManagement />
           </TabsContent>
         </Tabs>
 
