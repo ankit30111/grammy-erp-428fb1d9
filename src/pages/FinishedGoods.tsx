@@ -366,7 +366,7 @@ const FinishedGoods = () => {
                     <div className="text-2xl font-bold text-red-600">
                       {mockFinishedGoodsInventory.filter(item => item.inventoryAge > 14).length}
                     </div>
-                    <div className="text-sm text-red-700">Old (> 14 days)</div>
+                    <div className="text-sm text-red-700">Old ({'>'}14 days)</div>
                   </div>
                 </div>
 
