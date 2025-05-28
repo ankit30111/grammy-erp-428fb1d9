@@ -124,6 +124,8 @@ export function Sidebar() {
           to: "/dispatch",
           label: "Regular Dispatch"
         }]} />
+
+          <NavItem to="/hr-management" icon={<Users size={20} />} label="Human Resources" collapsed={collapsed} />
         </ul>
 
         <div className={cn("space-y-2", !collapsed && "px-2 pt-3")}>
@@ -138,7 +140,7 @@ export function Sidebar() {
             <NavItem to="/management/raw-materials" icon={<Layers size={20} />} label="Raw Materials" collapsed={collapsed} />
             <NavItem to="/management/customers" icon={<UserPlus size={20} />} label="Customers" collapsed={collapsed} />
             <NavItem to="/vendors" icon={<Building2 size={20} />} label="Vendors" collapsed={collapsed} />
-            <NavItem to="/user-management" icon={<Users size={20} />} label="User Management" collapsed={collapsed} />
+            <NavItem to="/user-management" icon={<User size={20} />} label="User Management" collapsed={collapsed} />
           </ul>
         </div>
       </nav>

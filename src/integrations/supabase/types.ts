@@ -9,6 +9,53 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      attendance: {
+        Row: {
+          break_hours: number | null
+          check_in_time: string | null
+          check_out_time: string | null
+          created_at: string | null
+          date: string
+          employee_id: string | null
+          id: string
+          imported_from_machine: boolean | null
+          overtime_hours: number | null
+          status: string | null
+        }
+        Insert: {
+          break_hours?: number | null
+          check_in_time?: string | null
+          check_out_time?: string | null
+          created_at?: string | null
+          date: string
+          employee_id?: string | null
+          id?: string
+          imported_from_machine?: boolean | null
+          overtime_hours?: number | null
+          status?: string | null
+        }
+        Update: {
+          break_hours?: number | null
+          check_in_time?: string | null
+          check_out_time?: string | null
+          created_at?: string | null
+          date?: string
+          employee_id?: string | null
+          id?: string
+          imported_from_machine?: boolean | null
+          overtime_hours?: number | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendance_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bom: {
         Row: {
           bom_type: Database["public"]["Enums"]["bom_type"]
@@ -239,6 +286,347 @@ export type Database = {
           },
         ]
       }
+      employee_skills: {
+        Row: {
+          acquired_date: string | null
+          certification_expiry: string | null
+          certified: boolean | null
+          employee_id: string | null
+          id: string
+          skill_id: string | null
+          skill_level: Database["public"]["Enums"]["skill_level"]
+        }
+        Insert: {
+          acquired_date?: string | null
+          certification_expiry?: string | null
+          certified?: boolean | null
+          employee_id?: string | null
+          id?: string
+          skill_id?: string | null
+          skill_level: Database["public"]["Enums"]["skill_level"]
+        }
+        Update: {
+          acquired_date?: string | null
+          certification_expiry?: string | null
+          certified?: boolean | null
+          employee_id?: string | null
+          id?: string
+          skill_id?: string | null
+          skill_level?: Database["public"]["Enums"]["skill_level"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_skills_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_skills_skill_id_fkey"
+            columns: ["skill_id"]
+            isOneToOne: false
+            referencedRelation: "skills"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      employee_training: {
+        Row: {
+          completion_date: string | null
+          employee_id: string | null
+          enrollment_date: string | null
+          feedback: string | null
+          id: string
+          score: number | null
+          status: string | null
+          training_program_id: string | null
+        }
+        Insert: {
+          completion_date?: string | null
+          employee_id?: string | null
+          enrollment_date?: string | null
+          feedback?: string | null
+          id?: string
+          score?: number | null
+          status?: string | null
+          training_program_id?: string | null
+        }
+        Update: {
+          completion_date?: string | null
+          employee_id?: string | null
+          enrollment_date?: string | null
+          feedback?: string | null
+          id?: string
+          score?: number | null
+          status?: string | null
+          training_program_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_training_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_training_training_program_id_fkey"
+            columns: ["training_program_id"]
+            isOneToOne: false
+            referencedRelation: "training_programs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      employees: {
+        Row: {
+          aadhar_number: string | null
+          address: string | null
+          bank_account_number: string | null
+          bank_name: string | null
+          city: string | null
+          created_at: string | null
+          created_by: string | null
+          date_of_birth: string | null
+          department: string
+          email: string
+          employee_code: string
+          esic_number: string | null
+          first_name: string
+          hire_date: string
+          id: string
+          ifsc_code: string | null
+          last_name: string
+          pan_number: string | null
+          phone_number: string
+          pincode: string | null
+          position: string
+          salary: number | null
+          state: string | null
+          status: Database["public"]["Enums"]["employee_status"]
+          updated_at: string | null
+        }
+        Insert: {
+          aadhar_number?: string | null
+          address?: string | null
+          bank_account_number?: string | null
+          bank_name?: string | null
+          city?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          date_of_birth?: string | null
+          department: string
+          email: string
+          employee_code: string
+          esic_number?: string | null
+          first_name: string
+          hire_date?: string
+          id?: string
+          ifsc_code?: string | null
+          last_name: string
+          pan_number?: string | null
+          phone_number: string
+          pincode?: string | null
+          position: string
+          salary?: number | null
+          state?: string | null
+          status?: Database["public"]["Enums"]["employee_status"]
+          updated_at?: string | null
+        }
+        Update: {
+          aadhar_number?: string | null
+          address?: string | null
+          bank_account_number?: string | null
+          bank_name?: string | null
+          city?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          date_of_birth?: string | null
+          department?: string
+          email?: string
+          employee_code?: string
+          esic_number?: string | null
+          first_name?: string
+          hire_date?: string
+          id?: string
+          ifsc_code?: string | null
+          last_name?: string
+          pan_number?: string | null
+          phone_number?: string
+          pincode?: string | null
+          position?: string
+          salary?: number | null
+          state?: string | null
+          status?: Database["public"]["Enums"]["employee_status"]
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      payroll: {
+        Row: {
+          allowances: number | null
+          basic_salary: number | null
+          deductions: number | null
+          employee_id: string | null
+          gross_salary: number | null
+          id: string
+          month: number
+          net_salary: number | null
+          overtime_amount: number | null
+          overtime_hours: number | null
+          present_days: number | null
+          processed_date: string | null
+          status: string | null
+          total_working_days: number | null
+          year: number
+        }
+        Insert: {
+          allowances?: number | null
+          basic_salary?: number | null
+          deductions?: number | null
+          employee_id?: string | null
+          gross_salary?: number | null
+          id?: string
+          month: number
+          net_salary?: number | null
+          overtime_amount?: number | null
+          overtime_hours?: number | null
+          present_days?: number | null
+          processed_date?: string | null
+          status?: string | null
+          total_working_days?: number | null
+          year: number
+        }
+        Update: {
+          allowances?: number | null
+          basic_salary?: number | null
+          deductions?: number | null
+          employee_id?: string | null
+          gross_salary?: number | null
+          id?: string
+          month?: number
+          net_salary?: number | null
+          overtime_amount?: number | null
+          overtime_hours?: number | null
+          present_days?: number | null
+          processed_date?: string | null
+          status?: string | null
+          total_working_days?: number | null
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payroll_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      performance_reviews: {
+        Row: {
+          action_plan: string | null
+          areas_for_improvement: string | null
+          communication_rating:
+            | Database["public"]["Enums"]["performance_rating"]
+            | null
+          created_at: string | null
+          employee_id: string | null
+          feedback: string | null
+          goals_achieved: string | null
+          id: string
+          next_review_date: string | null
+          overall_rating:
+            | Database["public"]["Enums"]["performance_rating"]
+            | null
+          punctuality_rating:
+            | Database["public"]["Enums"]["performance_rating"]
+            | null
+          review_period_end: string
+          review_period_start: string
+          reviewer_id: string | null
+          teamwork_rating:
+            | Database["public"]["Enums"]["performance_rating"]
+            | null
+          technical_skills_rating:
+            | Database["public"]["Enums"]["performance_rating"]
+            | null
+        }
+        Insert: {
+          action_plan?: string | null
+          areas_for_improvement?: string | null
+          communication_rating?:
+            | Database["public"]["Enums"]["performance_rating"]
+            | null
+          created_at?: string | null
+          employee_id?: string | null
+          feedback?: string | null
+          goals_achieved?: string | null
+          id?: string
+          next_review_date?: string | null
+          overall_rating?:
+            | Database["public"]["Enums"]["performance_rating"]
+            | null
+          punctuality_rating?:
+            | Database["public"]["Enums"]["performance_rating"]
+            | null
+          review_period_end: string
+          review_period_start: string
+          reviewer_id?: string | null
+          teamwork_rating?:
+            | Database["public"]["Enums"]["performance_rating"]
+            | null
+          technical_skills_rating?:
+            | Database["public"]["Enums"]["performance_rating"]
+            | null
+        }
+        Update: {
+          action_plan?: string | null
+          areas_for_improvement?: string | null
+          communication_rating?:
+            | Database["public"]["Enums"]["performance_rating"]
+            | null
+          created_at?: string | null
+          employee_id?: string | null
+          feedback?: string | null
+          goals_achieved?: string | null
+          id?: string
+          next_review_date?: string | null
+          overall_rating?:
+            | Database["public"]["Enums"]["performance_rating"]
+            | null
+          punctuality_rating?:
+            | Database["public"]["Enums"]["performance_rating"]
+            | null
+          review_period_end?: string
+          review_period_start?: string
+          reviewer_id?: string | null
+          teamwork_rating?:
+            | Database["public"]["Enums"]["performance_rating"]
+            | null
+          technical_skills_rating?:
+            | Database["public"]["Enums"]["performance_rating"]
+            | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "performance_reviews_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "performance_reviews_reviewer_id_fkey"
+            columns: ["reviewer_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       products: {
         Row: {
           category: string
@@ -325,6 +713,30 @@ export type Database = {
           },
         ]
       }
+      skills: {
+        Row: {
+          category: string
+          created_at: string | null
+          description: string | null
+          id: string
+          skill_name: string
+        }
+        Insert: {
+          category: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          skill_name: string
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          skill_name?: string
+        }
+        Relationships: []
+      }
       spare_order_items: {
         Row: {
           created_at: string
@@ -407,6 +819,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      training_programs: {
+        Row: {
+          cost: number | null
+          created_at: string | null
+          description: string | null
+          duration_hours: number | null
+          end_date: string | null
+          id: string
+          max_participants: number | null
+          program_name: string
+          start_date: string | null
+          trainer_name: string | null
+        }
+        Insert: {
+          cost?: number | null
+          created_at?: string | null
+          description?: string | null
+          duration_hours?: number | null
+          end_date?: string | null
+          id?: string
+          max_participants?: number | null
+          program_name: string
+          start_date?: string | null
+          trainer_name?: string | null
+        }
+        Update: {
+          cost?: number | null
+          created_at?: string | null
+          description?: string | null
+          duration_hours?: number | null
+          end_date?: string | null
+          id?: string
+          max_participants?: number | null
+          program_name?: string
+          start_date?: string | null
+          trainer_name?: string | null
+        }
+        Relationships: []
       }
       user_accounts: {
         Row: {
@@ -511,6 +962,14 @@ export type Database = {
     }
     Enums: {
       bom_type: "main_assembly" | "sub_assembly" | "accessory"
+      employee_status: "active" | "inactive" | "terminated" | "on_leave"
+      performance_rating:
+        | "excellent"
+        | "good"
+        | "satisfactory"
+        | "needs_improvement"
+        | "unsatisfactory"
+      skill_level: "beginner" | "intermediate" | "advanced" | "expert"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -627,6 +1086,15 @@ export const Constants = {
   public: {
     Enums: {
       bom_type: ["main_assembly", "sub_assembly", "accessory"],
+      employee_status: ["active", "inactive", "terminated", "on_leave"],
+      performance_rating: [
+        "excellent",
+        "good",
+        "satisfactory",
+        "needs_improvement",
+        "unsatisfactory",
+      ],
+      skill_level: ["beginner", "intermediate", "advanced", "expert"],
     },
   },
 } as const

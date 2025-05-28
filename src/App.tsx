@@ -21,6 +21,7 @@ import ProductsManagement from "./pages/management/ProductsManagement";
 import RawMaterialsManagement from "./pages/management/RawMaterialsManagement";
 import CustomersManagement from "./pages/management/CustomersManagement";
 import UserManagement from "./pages/UserManagement";
+import HRManagement from "./pages/management/HRManagement";
 import Vendors from "./pages/Vendors";
 import FinishedGoods from "./pages/FinishedGoods";
 import Dispatch from "./pages/Dispatch";
@@ -55,6 +56,7 @@ const App = () => (
             <Route path="/dispatch" element={<Dispatch />} />
             <Route path="/finished-goods" element={<FinishedGoods />} />
             <Route path="/user-management" element={<UserManagement />} />
+            <Route path="/hr-management" element={<HRManagement />} />
             <Route path="/vendors" element={<Vendors />} />
             <Route path="/management" element={<Management />} />
             <Route path="/management/products" element={<ProductsManagement />} />
