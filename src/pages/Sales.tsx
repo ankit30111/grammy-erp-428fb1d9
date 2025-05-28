@@ -3,7 +3,7 @@ import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DollarSign } from "lucide-react";
 import SpareDispatch from "./sales/SpareDispatch";
-import Dispatch from "./Dispatch";
+import RegularDispatch from "./sales/RegularDispatch";
 
 const Sales = () => {
   return (
@@ -25,7 +25,7 @@ const Sales = () => {
           </TabsContent>
 
           <TabsContent value="regular-dispatch" className="space-y-4">
-            <Dispatch />
+            <RegularDispatch />
           </TabsContent>
         </Tabs>
       </div>
