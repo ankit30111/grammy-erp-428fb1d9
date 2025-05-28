@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -19,7 +20,8 @@ import Management from "./pages/Management";
 import ProductsManagement from "./pages/management/ProductsManagement";
 import RawMaterialsManagement from "./pages/management/RawMaterialsManagement";
 import CustomersManagement from "./pages/management/CustomersManagement";
-import Resources from "./pages/Resources";
+import UserManagement from "./pages/UserManagement";
+import HRManagement from "./pages/HRManagement";
 import Vendors from "./pages/Vendors";
 import FinishedGoods from "./pages/FinishedGoods";
 import Dispatch from "./pages/Dispatch";
