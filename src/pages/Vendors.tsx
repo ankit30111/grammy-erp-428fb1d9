@@ -17,7 +17,12 @@ import {
 import { 
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter, SheetClose, SheetTrigger
 } from "@/components/ui/sheet";
-import { Search, Plus, Building2, Upload, FileText } from "lucide-react";
+import { 
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, 
+  AlertDialogTitle, AlertDialogTrigger 
+} from "@/components/ui/alert-dialog";
+import { Search, Plus, Building2, Upload, FileText, Edit, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -42,6 +47,8 @@ const Vendors = () => {
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState({ gst: false, msme: false });
   const { toast } = useToast();
@@ -67,6 +74,7 @@ const Vendors = () => {
       const { data, error } = await supabase
         .from('vendors')
         .select('*')
+        .eq('is_active', true)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -138,7 +146,6 @@ const Vendors = () => {
       let gstCertificateUrl = null;
       let msmeCertificateUrl = null;
 
-      // Upload files if provided
       if (newVendor.gst_certificate) {
         gstCertificateUrl = await handleFileUpload(newVendor.gst_certificate, 'gst');
       }
@@ -199,6 +206,118 @@ const Vendors = () => {
     }
   };
 
+  const handleEditVendor = async () => {
+    if (!editingVendor) return;
+
+    try {
+      let gstCertificateUrl = editingVendor.gst_certificate_url;
+      let msmeCertificateUrl = editingVendor.msme_certificate_url;
+
+      if (newVendor.gst_certificate) {
+        gstCertificateUrl = await handleFileUpload(newVendor.gst_certificate, 'gst');
+      }
+
+      if (newVendor.msme_certificate) {
+        msmeCertificateUrl = await handleFileUpload(newVendor.msme_certificate, 'msme');
+      }
+
+      const vendorData = {
+        name: newVendor.name,
+        contact_person_name: newVendor.contact_person_name,
+        email: newVendor.email,
+        contact_number: newVendor.contact_number,
+        address: newVendor.address,
+        gst_number: newVendor.gst_number,
+        bank_account_number: newVendor.bank_account_number,
+        ifsc_code: newVendor.ifsc_code,
+        gst_certificate_url: gstCertificateUrl,
+        msme_certificate_url: msmeCertificateUrl,
+      };
+
+      const { data, error } = await supabase
+        .from('vendors')
+        .update(vendorData)
+        .eq('id', editingVendor.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setVendors(vendors.map(v => v.id === editingVendor.id ? data : v));
+      setIsEditDialogOpen(false);
+      setEditingVendor(null);
+
+      toast({
+        title: "Success",
+        description: "Vendor updated successfully",
+      });
+    } catch (error) {
+      console.error('Error updating vendor:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update vendor",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteVendor = async (vendorId: string) => {
+    try {
+      const { error } = await supabase
+        .from('vendors')
+        .update({ is_active: false })
+        .eq('id', vendorId);
+
+      if (error) throw error;
+
+      setVendors(vendors.filter(v => v.id !== vendorId));
+
+      toast({
+        title: "Success",
+        description: "Vendor deleted successfully",
+      });
+    } catch (error) {
+      console.error('Error deleting vendor:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete vendor",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const openEditDialog = (vendor: Vendor) => {
+    setEditingVendor(vendor);
+    setNewVendor({
+      name: vendor.name,
+      contact_person_name: vendor.contact_person_name || "",
+      email: vendor.email,
+      contact_number: vendor.contact_number,
+      address: vendor.address,
+      gst_number: vendor.gst_number || "",
+      bank_account_number: vendor.bank_account_number,
+      ifsc_code: vendor.ifsc_code,
+      gst_certificate: null,
+      msme_certificate: null
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  const resetForm = () => {
+    setNewVendor({
+      name: "",
+      contact_person_name: "",
+      email: "",
+      contact_number: "",
+      address: "",
+      gst_number: "",
+      bank_account_number: "",
+      ifsc_code: "",
+      gst_certificate: null,
+      msme_certificate: null
+    });
+  };
+
   if (loading) {
     return (
       <DashboardLayout>
@@ -219,7 +338,10 @@ const Vendors = () => {
             <Building2 className="h-6 w-6" />
             <h1 className="text-3xl font-bold">Vendor Management</h1>
           </div>
-          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+          <Dialog open={isAddDialogOpen} onOpenChange={(open) => {
+            setIsAddDialogOpen(open);
+            if (!open) resetForm();
+          }}>
             <DialogTrigger asChild>
               <Button>
                 <Plus className="mr-2 h-4 w-4" />
@@ -370,6 +492,159 @@ const Vendors = () => {
           </Dialog>
         </div>
 
+        {/* Edit Dialog */}
+        <Dialog open={isEditDialogOpen} onOpenChange={(open) => {
+          setIsEditDialogOpen(open);
+          if (!open) {
+            setEditingVendor(null);
+            resetForm();
+          }
+        }}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Edit Vendor</DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-6 py-4">
+              {/* Same form fields as Add Dialog */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit_name">Vendor Name *</Label>
+                  <Input 
+                    id="edit_name" 
+                    value={newVendor.name} 
+                    onChange={(e) => setNewVendor({...newVendor, name: e.target.value})}
+                    placeholder="Enter vendor name"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit_contact_person">Contact Person Name</Label>
+                  <Input 
+                    id="edit_contact_person" 
+                    value={newVendor.contact_person_name} 
+                    onChange={(e) => setNewVendor({...newVendor, contact_person_name: e.target.value})}
+                    placeholder="Enter contact person name"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit_contact">Contact Number *</Label>
+                  <Input 
+                    id="edit_contact" 
+                    value={newVendor.contact_number} 
+                    onChange={(e) => setNewVendor({...newVendor, contact_number: e.target.value})}
+                    placeholder="+91-9876543210"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit_email">Contact Email ID *</Label>
+                  <Input 
+                    id="edit_email" 
+                    type="email"
+                    value={newVendor.email} 
+                    onChange={(e) => setNewVendor({...newVendor, email: e.target.value})}
+                    placeholder="vendor@example.com"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit_gst">GST Number</Label>
+                  <Input 
+                    id="edit_gst" 
+                    value={newVendor.gst_number} 
+                    onChange={(e) => setNewVendor({...newVendor, gst_number: e.target.value})}
+                    placeholder="27ABCDE1234F1Z5"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit_address">Address *</Label>
+                  <Textarea 
+                    id="edit_address" 
+                    value={newVendor.address} 
+                    onChange={(e) => setNewVendor({...newVendor, address: e.target.value})}
+                    placeholder="Enter complete address"
+                    rows={2}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit_account">Bank Account Number *</Label>
+                  <Input 
+                    id="edit_account" 
+                    value={newVendor.bank_account_number} 
+                    onChange={(e) => setNewVendor({...newVendor, bank_account_number: e.target.value})}
+                    placeholder="1234567890"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit_ifsc">IFSC Code *</Label>
+                  <Input 
+                    id="edit_ifsc" 
+                    value={newVendor.ifsc_code} 
+                    onChange={(e) => setNewVendor({...newVendor, ifsc_code: e.target.value})}
+                    placeholder="HDFC0001234"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit_gst_cert">GST Certificate (PDF) - Upload new to replace</Label>
+                  <div className="flex items-center space-x-2">
+                    <Input 
+                      id="edit_gst_cert" 
+                      type="file"
+                      accept=".pdf"
+                      onChange={(e) => setNewVendor({...newVendor, gst_certificate: e.target.files?.[0] || null})}
+                      className="flex-1"
+                    />
+                    {uploading.gst && <Upload className="h-4 w-4 animate-spin" />}
+                  </div>
+                  {editingVendor?.gst_certificate_url && (
+                    <p className="text-sm text-gray-500">Current: GST Certificate uploaded</p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit_msme_cert">MSME/UDYAM Certificate (PDF) - Upload new to replace</Label>
+                  <div className="flex items-center space-x-2">
+                    <Input 
+                      id="edit_msme_cert" 
+                      type="file"
+                      accept=".pdf"
+                      onChange={(e) => setNewVendor({...newVendor, msme_certificate: e.target.files?.[0] || null})}
+                      className="flex-1"
+                    />
+                    {uploading.msme && <Upload className="h-4 w-4 animate-spin" />}
+                  </div>
+                  {editingVendor?.msme_certificate_url && (
+                    <p className="text-sm text-gray-500">Current: MSME Certificate uploaded</p>
+                  )}
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button 
+                type="submit" 
+                onClick={handleEditVendor}
+                disabled={!newVendor.name || !newVendor.email || !newVendor.contact_number || !newVendor.address || !newVendor.bank_account_number || !newVendor.ifsc_code}
+              >
+                Update Vendor
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         <Card className="mb-6">
           <CardContent className="pt-6">
             <div className="relative">
@@ -418,97 +693,131 @@ const Vendors = () => {
                       <TableCell>{vendor.contact_number}</TableCell>
                       <TableCell>{vendor.gst_number || '-'}</TableCell>
                       <TableCell className="text-right">
-                        <Sheet>
-                          <SheetTrigger asChild>
-                            <Button variant="outline" size="sm">View Details</Button>
-                          </SheetTrigger>
-                          <SheetContent className="w-[600px]">
-                            <SheetHeader>
-                              <SheetTitle>{vendor.name} Details</SheetTitle>
-                            </SheetHeader>
-                            <div className="py-4 space-y-6">
-                              <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                  <span className="text-muted-foreground text-sm">Vendor Code:</span>
-                                  <p className="font-medium">{vendor.vendor_code}</p>
-                                </div>
-                                <div>
-                                  <span className="text-muted-foreground text-sm">Name:</span>
-                                  <p>{vendor.name}</p>
-                                </div>
-                                <div>
-                                  <span className="text-muted-foreground text-sm">Contact Person:</span>
-                                  <p>{vendor.contact_person_name || '-'}</p>
-                                </div>
-                                <div>
-                                  <span className="text-muted-foreground text-sm">Email:</span>
-                                  <p>{vendor.email}</p>
-                                </div>
-                                <div>
-                                  <span className="text-muted-foreground text-sm">Contact:</span>
-                                  <p>{vendor.contact_number}</p>
-                                </div>
-                                <div>
-                                  <span className="text-muted-foreground text-sm">GST Number:</span>
-                                  <p>{vendor.gst_number || '-'}</p>
-                                </div>
-                              </div>
-                              
-                              <div>
-                                <span className="text-muted-foreground text-sm">Address:</span>
-                                <p className="mt-1">{vendor.address}</p>
-                              </div>
-                              
-                              <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                  <span className="text-muted-foreground text-sm">Bank Account:</span>
-                                  <p>{vendor.bank_account_number}</p>
-                                </div>
-                                <div>
-                                  <span className="text-muted-foreground text-sm">IFSC Code:</span>
-                                  <p>{vendor.ifsc_code}</p>
-                                </div>
-                              </div>
+                        <div className="flex items-center justify-end space-x-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => openEditDialog(vendor)}
+                          >
+                            <Edit className="h-4 w-4 mr-1" />
+                            Edit
+                          </Button>
+                          
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="outline" size="sm">
+                                <Trash2 className="h-4 w-4 mr-1" />
+                                Delete
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This will deactivate the vendor "{vendor.name}". This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDeleteVendor(vendor.id)}>
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
 
-                              {/* Document Links */}
-                              <div className="space-y-2">
-                                <h4 className="font-medium">Documents</h4>
-                                <div className="flex flex-col space-y-2">
-                                  {vendor.gst_certificate_url && (
-                                    <a 
-                                      href={vendor.gst_certificate_url} 
-                                      target="_blank" 
-                                      rel="noopener noreferrer"
-                                      className="flex items-center space-x-2 text-blue-600 hover:text-blue-800"
-                                    >
-                                      <FileText className="h-4 w-4" />
-                                      <span>GST Certificate</span>
-                                    </a>
-                                  )}
-                                  {vendor.msme_certificate_url && (
-                                    <a 
-                                      href={vendor.msme_certificate_url} 
-                                      target="_blank" 
-                                      rel="noopener noreferrer"
-                                      className="flex items-center space-x-2 text-blue-600 hover:text-blue-800"
-                                    >
-                                      <FileText className="h-4 w-4" />
-                                      <span>MSME/UDYAM Certificate</span>
-                                    </a>
-                                  )}
-                                  {!vendor.gst_certificate_url && !vendor.msme_certificate_url && (
-                                    <p className="text-muted-foreground">No documents uploaded</p>
-                                  )}
+                          <Sheet>
+                            <SheetTrigger asChild>
+                              <Button variant="outline" size="sm">View Details</Button>
+                            </SheetTrigger>
+                            <SheetContent className="w-[600px]">
+                              <SheetHeader>
+                                <SheetTitle>{vendor.name} Details</SheetTitle>
+                              </SheetHeader>
+                              <div className="py-4 space-y-6">
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div>
+                                    <span className="text-muted-foreground text-sm">Vendor Code:</span>
+                                    <p className="font-medium">{vendor.vendor_code}</p>
+                                  </div>
+                                  <div>
+                                    <span className="text-muted-foreground text-sm">Name:</span>
+                                    <p>{vendor.name}</p>
+                                  </div>
+                                  <div>
+                                    <span className="text-muted-foreground text-sm">Contact Person:</span>
+                                    <p>{vendor.contact_person_name || '-'}</p>
+                                  </div>
+                                  <div>
+                                    <span className="text-muted-foreground text-sm">Email:</span>
+                                    <p>{vendor.email}</p>
+                                  </div>
+                                  <div>
+                                    <span className="text-muted-foreground text-sm">Contact:</span>
+                                    <p>{vendor.contact_number}</p>
+                                  </div>
+                                  <div>
+                                    <span className="text-muted-foreground text-sm">GST Number:</span>
+                                    <p>{vendor.gst_number || '-'}</p>
+                                  </div>
+                                </div>
+                                
+                                <div>
+                                  <span className="text-muted-foreground text-sm">Address:</span>
+                                  <p className="mt-1">{vendor.address}</p>
+                                </div>
+                                
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div>
+                                    <span className="text-muted-foreground text-sm">Bank Account:</span>
+                                    <p>{vendor.bank_account_number}</p>
+                                  </div>
+                                  <div>
+                                    <span className="text-muted-foreground text-sm">IFSC Code:</span>
+                                    <p>{vendor.ifsc_code}</p>
+                                  </div>
+                                </div>
+
+                                {/* Document Links */}
+                                <div className="space-y-2">
+                                  <h4 className="font-medium">Documents</h4>
+                                  <div className="flex flex-col space-y-2">
+                                    {vendor.gst_certificate_url && (
+                                      <a 
+                                        href={vendor.gst_certificate_url} 
+                                        target="_blank" 
+                                        rel="noopener noreferrer"
+                                        className="flex items-center space-x-2 text-blue-600 hover:text-blue-800"
+                                      >
+                                        <FileText className="h-4 w-4" />
+                                        <span>GST Certificate</span>
+                                      </a>
+                                    )}
+                                    {vendor.msme_certificate_url && (
+                                      <a 
+                                        href={vendor.msme_certificate_url} 
+                                        target="_blank" 
+                                        rel="noopener noreferrer"
+                                        className="flex items-center space-x-2 text-blue-600 hover:text-blue-800"
+                                      >
+                                        <FileText className="h-4 w-4" />
+                                        <span>MSME/UDYAM Certificate</span>
+                                      </a>
+                                    )}
+                                    {!vendor.gst_certificate_url && !vendor.msme_certificate_url && (
+                                      <p className="text-muted-foreground">No documents uploaded</p>
+                                    )}
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                            <SheetFooter className="pt-2">
-                              <SheetClose asChild>
-                                <Button variant="outline">Close</Button>
-                              </SheetClose>
-                            </SheetFooter>
-                          </SheetContent>
-                        </Sheet>
+                              <SheetFooter className="pt-2">
+                                <SheetClose asChild>
+                                  <Button variant="outline">Close</Button>
+                                </SheetClose>
+                              </SheetFooter>
+                            </SheetContent>
+                          </Sheet>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))
