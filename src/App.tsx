@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -51,6 +50,7 @@ function App() {
             <Route path="/" element={<AuthGuard><Index /></AuthGuard>} />
             <Route path="/projection" element={<AuthGuard><Projection /></AuthGuard>} />
             <Route path="/spare-orders" element={<AuthGuard><SpareOrders /></AuthGuard>} />
+            <Route path="/ppc" element={<AuthGuard><PPC /></AuthGuard>} />
             <Route path="/planning" element={<AuthGuard><PPC /></AuthGuard>} />
             <Route path="/production" element={<AuthGuard><Production /></AuthGuard>} />
             <Route path="/quality" element={<AuthGuard><Quality /></AuthGuard>} />

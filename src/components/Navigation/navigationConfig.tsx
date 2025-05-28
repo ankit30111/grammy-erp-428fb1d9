@@ -1,4 +1,3 @@
-
 import { Home, Plus, Wrench, Calendar, Package, BarChart2, Layers, ClipboardCheck, DollarSign, Users, FileText, UserPlus, Building2, User, Settings } from "lucide-react";
 
 interface NavigationSubItem {
@@ -20,7 +19,7 @@ export const navigationItems: NavigationItem[] = [
   { to: "/projection", icon: <Plus size={20} />, label: "Add Projection" },
   { to: "/spare-orders", icon: <Wrench size={20} />, label: "Spare Orders" },
   {
-    to: "#",
+    to: "/ppc",
     icon: <Calendar size={20} />,
     label: "PPC",
     subItems: [
