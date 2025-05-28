@@ -21,9 +21,16 @@ interface DashboardLayoutProps {
   children: ReactNode;
 }
 
+interface UserProfile {
+  full_name: string;
+  email: string;
+  mobile_number?: string;
+  department_name?: string;
+}
+
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const [userId, setUserId] = useState<string | null>(null);
-  const [userProfile, setUserProfile] = useState<any>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const navigate = useNavigate();
   
   // Get current user ID
@@ -33,14 +40,29 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       setUserId(user?.id || null);
       
       if (user) {
-        // Fetch user profile from user_accounts table
-        const { data: profile } = await supabase
+        // Fetch user profile from user_accounts table with department information
+        const { data: profile, error } = await supabase
           .from("user_accounts")
-          .select("name, email, mobile_number")
+          .select(`
+            full_name,
+            email,
+            departments!department_id (
+              name
+            )
+          `)
           .eq("id", user.id)
           .single();
         
-        setUserProfile(profile);
+        if (error) {
+          console.error("Error fetching user profile:", error);
+        } else if (profile) {
+          setUserProfile({
+            full_name: profile.full_name || "User",
+            email: profile.email || "",
+            mobile_number: "", // Not available in user_accounts table
+            department_name: profile.departments?.name || "N/A"
+          });
+        }
       }
     };
     
@@ -76,12 +98,18 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       <Sidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
         <header className="bg-card border-b h-14 flex items-center px-4 gap-4">
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search..."
-              className="pl-8 h-9"
-            />
+          <div className="flex items-center">
+            <h1 className="font-bold text-lg text-foreground">Grammy Management System</h1>
+          </div>
+          
+          <div className="flex-1 flex justify-center">
+            <div className="relative w-full max-w-md">
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search..."
+                className="pl-8 h-9"
+              />
+            </div>
           </div>
           
           <div className="flex items-center gap-2">
@@ -126,7 +154,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="sm" className="gap-2">
                   <User className="h-5 w-5" />
-                  <span>{userProfile?.name || "User"}</span>
+                  <span>{userProfile?.full_name || "User"}</span>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-64">
@@ -137,7 +165,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                   <div className="flex items-center gap-3">
                     <User className="h-4 w-4 text-muted-foreground" />
                     <div>
-                      <p className="text-sm font-medium">{userProfile?.name || "N/A"}</p>
+                      <p className="text-sm font-medium">{userProfile?.full_name || "N/A"}</p>
                       <p className="text-xs text-muted-foreground">Name</p>
                     </div>
                   </div>
@@ -146,7 +174,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                     <Mail className="h-4 w-4 text-muted-foreground" />
                     <div>
                       <p className="text-sm font-medium">{userProfile?.email || "N/A"}</p>
-                      <p className="text-xs text-muted-foreground">Email</p>
+                      <p className="text-xs text-muted-foreground">Email ID</p>
                     </div>
                   </div>
                   
@@ -161,11 +189,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                   <div className="flex items-center gap-3">
                     <Building2 className="h-4 w-4 text-muted-foreground" />
                     <div>
-                      <p className="text-sm font-medium">
-                        {userPermissions && typeof userPermissions === 'object' && 'departmentName' in userPermissions 
-                          ? userPermissions.departmentName 
-                          : "N/A"}
-                      </p>
+                      <p className="text-sm font-medium">{userProfile?.department_name || "N/A"}</p>
                       <p className="text-xs text-muted-foreground">Department</p>
                     </div>
                   </div>
