@@ -151,40 +151,61 @@ export type Database = {
       customers: {
         Row: {
           address: string
+          bank_account_number: string | null
+          brand_authorization_url: string | null
+          brand_name: string | null
           contact_number: string
+          contact_person_name: string | null
           created_at: string
           created_by: string | null
           customer_code: string
           email: string
+          gst_certificate_url: string | null
           gst_number: string | null
           id: string
+          ifsc_code: string | null
           is_active: boolean
+          msme_certificate_url: string | null
           name: string
           updated_at: string
         }
         Insert: {
           address: string
+          bank_account_number?: string | null
+          brand_authorization_url?: string | null
+          brand_name?: string | null
           contact_number: string
+          contact_person_name?: string | null
           created_at?: string
           created_by?: string | null
           customer_code: string
           email: string
+          gst_certificate_url?: string | null
           gst_number?: string | null
           id?: string
+          ifsc_code?: string | null
           is_active?: boolean
+          msme_certificate_url?: string | null
           name: string
           updated_at?: string
         }
         Update: {
           address?: string
+          bank_account_number?: string | null
+          brand_authorization_url?: string | null
+          brand_name?: string | null
           contact_number?: string
+          contact_person_name?: string | null
           created_at?: string
           created_by?: string | null
           customer_code?: string
           email?: string
+          gst_certificate_url?: string | null
           gst_number?: string | null
           id?: string
+          ifsc_code?: string | null
           is_active?: boolean
+          msme_certificate_url?: string | null
           name?: string
           updated_at?: string
         }
