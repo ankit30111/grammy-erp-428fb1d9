@@ -329,6 +329,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          packed: boolean
           quantity: number
           raw_material_id: string
           spare_order_id: string
@@ -336,6 +337,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          packed?: boolean
           quantity: number
           raw_material_id: string
           spare_order_id: string
@@ -343,6 +345,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          packed?: boolean
           quantity?: number
           raw_material_id?: string
           spare_order_id?: string
@@ -371,7 +374,6 @@ export type Database = {
           id: string
           notes: string | null
           order_date: string
-          product_id: string
           spare_order_number: string
           status: string
           updated_at: string
@@ -382,7 +384,6 @@ export type Database = {
           id?: string
           notes?: string | null
           order_date?: string
-          product_id: string
           spare_order_number: string
           status?: string
           updated_at?: string
@@ -393,7 +394,6 @@ export type Database = {
           id?: string
           notes?: string | null
           order_date?: string
-          product_id?: string
           spare_order_number?: string
           status?: string
           updated_at?: string
@@ -404,13 +404,6 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "spare_orders_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "products"
             referencedColumns: ["id"]
           },
         ]
