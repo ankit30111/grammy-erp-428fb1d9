@@ -554,6 +554,126 @@ export type Database = {
           },
         ]
       }
+      grn: {
+        Row: {
+          created_at: string
+          grn_number: string
+          id: string
+          notes: string | null
+          purchase_order_id: string
+          received_by: string | null
+          received_date: string
+          status: string
+          updated_at: string
+          vendor_id: string
+        }
+        Insert: {
+          created_at?: string
+          grn_number: string
+          id?: string
+          notes?: string | null
+          purchase_order_id: string
+          received_by?: string | null
+          received_date?: string
+          status?: string
+          updated_at?: string
+          vendor_id: string
+        }
+        Update: {
+          created_at?: string
+          grn_number?: string
+          id?: string
+          notes?: string | null
+          purchase_order_id?: string
+          received_by?: string | null
+          received_date?: string
+          status?: string
+          updated_at?: string
+          vendor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "grn_purchase_order_id_fkey"
+            columns: ["purchase_order_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "grn_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      grn_items: {
+        Row: {
+          accepted_quantity: number | null
+          created_at: string
+          grn_id: string
+          id: string
+          iqc_approved_at: string | null
+          iqc_approved_by: string | null
+          iqc_status: string | null
+          po_quantity: number
+          raw_material_id: string
+          received_quantity: number
+          rejected_quantity: number | null
+          store_confirmed: boolean | null
+          store_confirmed_at: string | null
+          store_confirmed_by: string | null
+        }
+        Insert: {
+          accepted_quantity?: number | null
+          created_at?: string
+          grn_id: string
+          id?: string
+          iqc_approved_at?: string | null
+          iqc_approved_by?: string | null
+          iqc_status?: string | null
+          po_quantity: number
+          raw_material_id: string
+          received_quantity?: number
+          rejected_quantity?: number | null
+          store_confirmed?: boolean | null
+          store_confirmed_at?: string | null
+          store_confirmed_by?: string | null
+        }
+        Update: {
+          accepted_quantity?: number | null
+          created_at?: string
+          grn_id?: string
+          id?: string
+          iqc_approved_at?: string | null
+          iqc_approved_by?: string | null
+          iqc_status?: string | null
+          po_quantity?: number
+          raw_material_id?: string
+          received_quantity?: number
+          rejected_quantity?: number | null
+          store_confirmed?: boolean | null
+          store_confirmed_at?: string | null
+          store_confirmed_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "grn_items_grn_id_fkey"
+            columns: ["grn_id"]
+            isOneToOne: false
+            referencedRelation: "grn"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "grn_items_raw_material_id_fkey"
+            columns: ["raw_material_id"]
+            isOneToOne: false
+            referencedRelation: "raw_materials"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inventory: {
         Row: {
           bin_location: string | null
@@ -588,6 +708,137 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "inventory_raw_material_id_fkey"
+            columns: ["raw_material_id"]
+            isOneToOne: false
+            referencedRelation: "raw_materials"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kit_items: {
+        Row: {
+          actual_quantity: number | null
+          created_at: string
+          id: string
+          kit_preparation_id: string
+          raw_material_id: string
+          required_quantity: number
+          verified_by_production: boolean | null
+        }
+        Insert: {
+          actual_quantity?: number | null
+          created_at?: string
+          id?: string
+          kit_preparation_id: string
+          raw_material_id: string
+          required_quantity: number
+          verified_by_production?: boolean | null
+        }
+        Update: {
+          actual_quantity?: number | null
+          created_at?: string
+          id?: string
+          kit_preparation_id?: string
+          raw_material_id?: string
+          required_quantity?: number
+          verified_by_production?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kit_items_kit_preparation_id_fkey"
+            columns: ["kit_preparation_id"]
+            isOneToOne: false
+            referencedRelation: "kit_preparation"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kit_items_raw_material_id_fkey"
+            columns: ["raw_material_id"]
+            isOneToOne: false
+            referencedRelation: "raw_materials"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kit_preparation: {
+        Row: {
+          created_at: string
+          id: string
+          kit_number: string
+          prepared_at: string | null
+          prepared_by: string | null
+          production_order_id: string
+          sent_to_production_at: string | null
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kit_number: string
+          prepared_at?: string | null
+          prepared_by?: string | null
+          production_order_id: string
+          sent_to_production_at?: string | null
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kit_number?: string
+          prepared_at?: string | null
+          prepared_by?: string | null
+          production_order_id?: string
+          sent_to_production_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kit_preparation_production_order_id_fkey"
+            columns: ["production_order_id"]
+            isOneToOne: false
+            referencedRelation: "production_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      material_blocking: {
+        Row: {
+          blocked_at: string
+          id: string
+          production_schedule_id: string
+          quantity_blocked: number
+          raw_material_id: string
+          released_at: string | null
+          status: string
+        }
+        Insert: {
+          blocked_at?: string
+          id?: string
+          production_schedule_id: string
+          quantity_blocked: number
+          raw_material_id: string
+          released_at?: string | null
+          status?: string
+        }
+        Update: {
+          blocked_at?: string
+          id?: string
+          production_schedule_id?: string
+          quantity_blocked?: number
+          raw_material_id?: string
+          released_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "material_blocking_production_schedule_id_fkey"
+            columns: ["production_schedule_id"]
+            isOneToOne: false
+            referencedRelation: "production_schedules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "material_blocking_raw_material_id_fkey"
             columns: ["raw_material_id"]
             isOneToOne: false
             referencedRelation: "raw_materials"
@@ -1029,6 +1280,101 @@ export type Database = {
           },
         ]
       }
+      purchase_order_items: {
+        Row: {
+          created_at: string
+          id: string
+          purchase_order_id: string
+          quantity: number
+          raw_material_id: string
+          total_price: number | null
+          unit_price: number | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          purchase_order_id: string
+          quantity: number
+          raw_material_id: string
+          total_price?: number | null
+          unit_price?: number | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          purchase_order_id?: string
+          quantity?: number
+          raw_material_id?: string
+          total_price?: number | null
+          unit_price?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_order_items_purchase_order_id_fkey"
+            columns: ["purchase_order_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_order_items_raw_material_id_fkey"
+            columns: ["raw_material_id"]
+            isOneToOne: false
+            referencedRelation: "raw_materials"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      purchase_orders: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          expected_delivery_date: string | null
+          id: string
+          notes: string | null
+          po_date: string
+          po_number: string
+          status: string
+          total_amount: number | null
+          updated_at: string
+          vendor_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          expected_delivery_date?: string | null
+          id?: string
+          notes?: string | null
+          po_date?: string
+          po_number: string
+          status?: string
+          total_amount?: number | null
+          updated_at?: string
+          vendor_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          expected_delivery_date?: string | null
+          id?: string
+          notes?: string | null
+          po_date?: string
+          po_number?: string
+          status?: string
+          total_amount?: number | null
+          updated_at?: string
+          vendor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_orders_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       raw_materials: {
         Row: {
           category: string
@@ -1326,6 +1672,18 @@ export type Database = {
     }
     Functions: {
       generate_dispatch_order_number: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      generate_grn_number: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      generate_kit_number: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      generate_po_number: {
         Args: Record<PropertyKey, never>
         Returns: string
       }

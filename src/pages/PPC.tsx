@@ -16,8 +16,39 @@ import {
   DollarSign
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useProjections } from "@/hooks/useProjections";
+import { useProductionSchedules } from "@/hooks/useProductionSchedules";
+import { usePurchaseOrders } from "@/hooks/usePurchaseOrders";
+import { useState, useEffect } from "react";
+import { calculateMaterialShortages, MaterialShortage } from "@/utils/materialShortageCalculator";
 
 const PPC = () => {
+  const [shortages, setShortages] = useState<MaterialShortage[]>([]);
+  const { data: projections } = useProjections();
+  const { data: schedules } = useProductionSchedules();
+  const { data: purchaseOrders } = usePurchaseOrders();
+
+  // Calculate material shortages
+  useEffect(() => {
+    const calculateShortages = async () => {
+      if (projections?.length) {
+        try {
+          const calculatedShortages = await calculateMaterialShortages(projections.map(p => p.id));
+          setShortages(calculatedShortages);
+        } catch (error) {
+          console.error('Error calculating shortages:', error);
+        }
+      }
+    };
+
+    calculateShortages();
+  }, [projections]);
+
+  const totalOrderValue = purchaseOrders?.reduce((sum, po) => sum + (po.total_amount || 0), 0) || 0;
+  const pendingPOs = purchaseOrders?.filter(po => po.status === 'PENDING').length || 0;
+  const unscheduledProjections = projections?.length ? 
+    projections.length - (schedules?.length || 0) : 0;
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -42,13 +73,28 @@ const PPC = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="text-center py-8">
-                <p className="text-muted-foreground">No productions scheduled yet</p>
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Total Projections</span>
+                  <span className="font-medium">{projections?.length || 0}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Scheduled</span>
+                  <span className="font-medium">{schedules?.length || 0}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Unscheduled</span>
+                  <Badge variant={unscheduledProjections > 0 ? "destructive" : "secondary"}>
+                    {unscheduledProjections}
+                  </Badge>
+                </div>
               </div>
               <div className="flex items-center justify-between pt-2 border-t">
                 <div className="flex items-center gap-2">
                   <TrendingUp className="h-4 w-4 text-green-600" />
-                  <span className="text-sm">Ready to plan productions</span>
+                  <span className="text-sm">
+                    {unscheduledProjections === 0 ? "All scheduled" : "Needs planning"}
+                  </span>
                 </div>
                 <Link to="/planning">
                   <Button variant="outline" size="sm" className="gap-2">
@@ -67,13 +113,28 @@ const PPC = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="text-center py-8">
-                <p className="text-muted-foreground">No purchase orders yet</p>
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Material Shortages</span>
+                  <Badge variant={shortages.length > 0 ? "destructive" : "secondary"}>
+                    {shortages.length}
+                  </Badge>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Purchase Orders</span>
+                  <span className="font-medium">{purchaseOrders?.length || 0}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Pending POs</span>
+                  <Badge variant={pendingPOs > 0 ? "warning" : "secondary"}>
+                    {pendingPOs}
+                  </Badge>
+                </div>
               </div>
               <div className="flex items-center justify-between pt-2 border-t">
                 <div className="flex items-center gap-2">
                   <DollarSign className="h-4 w-4 text-green-600" />
-                  <span className="text-sm">Ready to create POs</span>
+                  <span className="text-sm">₹{totalOrderValue.toFixed(0)} in POs</span>
                 </div>
                 <Link to="/purchase">
                   <Button variant="outline" size="sm" className="gap-2">
@@ -93,12 +154,12 @@ const PPC = () => {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="text-center py-8">
-                <p className="text-muted-foreground">No materials received yet</p>
+                <p className="text-muted-foreground">No GRN data yet</p>
               </div>
               <div className="flex items-center justify-between pt-2 border-t">
                 <div className="flex items-center gap-2">
                   <CheckCircle className="h-4 w-4 text-green-600" />
-                  <span className="text-sm">Ready to receive materials</span>
+                  <span className="text-sm">Ready to receive</span>
                 </div>
                 <Link to="/grn">
                   <Button variant="outline" size="sm" className="gap-2">
@@ -117,8 +178,8 @@ const PPC = () => {
               <div className="flex items-center gap-2">
                 <BarChart3 className="h-8 w-8 text-blue-600" />
                 <div>
-                  <div className="text-2xl font-bold">0</div>
-                  <div className="text-sm text-muted-foreground">Total Active Orders</div>
+                  <div className="text-2xl font-bold">{projections?.length || 0}</div>
+                  <div className="text-sm text-muted-foreground">Active Projections</div>
                 </div>
               </div>
             </CardContent>
@@ -129,8 +190,8 @@ const PPC = () => {
               <div className="flex items-center gap-2">
                 <DollarSign className="h-8 w-8 text-green-600" />
                 <div>
-                  <div className="text-2xl font-bold">₹0</div>
-                  <div className="text-sm text-muted-foreground">Total Value in Process</div>
+                  <div className="text-2xl font-bold">₹{totalOrderValue.toFixed(0)}</div>
+                  <div className="text-sm text-muted-foreground">Total PO Value</div>
                 </div>
               </div>
             </CardContent>
@@ -141,8 +202,8 @@ const PPC = () => {
               <div className="flex items-center gap-2">
                 <AlertTriangle className="h-8 w-8 text-orange-600" />
                 <div>
-                  <div className="text-2xl font-bold">0</div>
-                  <div className="text-sm text-muted-foreground">Critical Issues</div>
+                  <div className="text-2xl font-bold">{shortages.length}</div>
+                  <div className="text-sm text-muted-foreground">Material Shortages</div>
                 </div>
               </div>
             </CardContent>
@@ -153,8 +214,8 @@ const PPC = () => {
               <div className="flex items-center gap-2">
                 <CheckCircle className="h-8 w-8 text-green-600" />
                 <div>
-                  <div className="text-2xl font-bold">--</div>
-                  <div className="text-sm text-muted-foreground">Overall Efficiency</div>
+                  <div className="text-2xl font-bold">{schedules?.length || 0}</div>
+                  <div className="text-sm text-muted-foreground">Scheduled Productions</div>
                 </div>
               </div>
             </CardContent>
@@ -166,34 +227,53 @@ const PPC = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Calendar className="h-5 w-5" />
-              Getting Started
+              Workflow Status
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="p-4 border rounded-lg">
-                <h3 className="font-medium mb-2">Step 1: Customer Projections</h3>
-                <p className="text-sm text-muted-foreground mb-3">
-                  Start by adding customer projections for products they want to order.
-                </p>
-                <Link to="/projection">
-                  <Button variant="outline" size="sm">
-                    Add Projections
-                  </Button>
-                </Link>
+              <div className={`p-4 border rounded-lg ${projections?.length ? 'bg-green-50 border-green-200' : 'bg-gray-50'}`}>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-medium mb-2">Step 1: Customer Projections</h3>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      {projections?.length ? 
+                        `${projections.length} projections added` : 
+                        'Add customer projections for products they want to order'
+                      }
+                    </p>
+                  </div>
+                  {projections?.length ? (
+                    <CheckCircle className="h-6 w-6 text-green-600" />
+                  ) : (
+                    <Link to="/projection">
+                      <Button variant="outline" size="sm">
+                        Add Projections
+                      </Button>
+                    </Link>
+                  )}
+                </div>
               </div>
               
-              <div className="p-4 border rounded-lg bg-gray-50">
-                <h3 className="font-medium mb-2">Step 2: Production Planning</h3>
+              <div className={`p-4 border rounded-lg ${shortages.length ? 'bg-orange-50 border-orange-200' : 'bg-gray-50'}`}>
+                <h3 className="font-medium mb-2">Step 2: Material Shortages</h3>
                 <p className="text-sm text-muted-foreground">
-                  Once projections are added, plan productions and identify material shortages.
+                  {shortages.length ? 
+                    `${shortages.length} materials need to be purchased` : 
+                    projections?.length ? 
+                      'All materials are available in stock' :
+                      'Material shortages will be calculated when projections are added'
+                  }
                 </p>
               </div>
               
-              <div className="p-4 border rounded-lg bg-gray-50">
-                <h3 className="font-medium mb-2">Step 3: Purchase & GRN</h3>
+              <div className={`p-4 border rounded-lg ${purchaseOrders?.length ? 'bg-blue-50 border-blue-200' : 'bg-gray-50'}`}>
+                <h3 className="font-medium mb-2">Step 3: Purchase Orders</h3>
                 <p className="text-sm text-muted-foreground">
-                  Create purchase orders for shortage materials and manage goods receiving.
+                  {purchaseOrders?.length ? 
+                    `${purchaseOrders.length} purchase orders created` : 
+                    'Purchase orders will be created for shortage materials'
+                  }
                 </p>
               </div>
             </div>
