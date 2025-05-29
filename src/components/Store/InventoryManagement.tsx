@@ -5,23 +5,33 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Search, Package, MapPin, AlertTriangle, TrendingDown, TrendingUp } from "lucide-react";
-import { InventoryItem, mockInventory } from "@/types/store";
 import { format } from "date-fns";
 import { StatusBadge } from "@/components/ui/custom/StatusBadge";
+import { useInventory } from "@/hooks/useInventory";
 
 export default function InventoryManagement() {
-  const [inventory] = useState<InventoryItem[]>(mockInventory);
+  const { data: inventory = [], isLoading } = useInventory();
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("ALL");
 
+  const getInventoryStatus = (quantity: number, minimumStock: number) => {
+    if (quantity === 0) return "OUT_OF_STOCK";
+    if (quantity <= minimumStock) return "LOW_STOCK";
+    return "IN_STOCK";
+  };
+
   const filteredInventory = inventory.filter(item => {
-    const matchesSearch = 
-      item.partCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.bin.toLowerCase().includes(searchTerm.toLowerCase());
+    const status = getInventoryStatus(item.quantity, item.minimum_stock || 0);
+    const materialCode = item.raw_materials?.material_code || "";
+    const materialName = item.raw_materials?.name || "";
     
-    const matchesFilter = filterStatus === "ALL" || item.status === filterStatus;
+    const matchesSearch = 
+      materialCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      materialName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (item.location || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (item.bin_location || "").toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesFilter = filterStatus === "ALL" || status === filterStatus;
     
     return matchesSearch && matchesFilter;
   });
@@ -40,9 +50,26 @@ export default function InventoryManagement() {
   };
 
   const totalItems = inventory.length;
-  const lowStockItems = inventory.filter(item => item.status === "LOW_STOCK").length;
-  const outOfStockItems = inventory.filter(item => item.status === "OUT_OF_STOCK").length;
+  const lowStockItems = inventory.filter(item => {
+    const status = getInventoryStatus(item.quantity, item.minimum_stock || 0);
+    return status === "LOW_STOCK";
+  }).length;
+  const outOfStockItems = inventory.filter(item => {
+    const status = getInventoryStatus(item.quantity, item.minimum_stock || 0);
+    return status === "OUT_OF_STOCK";
+  }).length;
   const totalValue = inventory.reduce((sum, item) => sum + item.quantity, 0);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <div className="text-center">
+          <Package className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
+          <p className="text-muted-foreground">Loading inventory...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -130,7 +157,7 @@ export default function InventoryManagement() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Part Code</TableHead>
+              <TableHead>Material Code</TableHead>
               <TableHead>Description</TableHead>
               <TableHead>Current Stock</TableHead>
               <TableHead>Minimum Stock</TableHead>
@@ -141,31 +168,36 @@ export default function InventoryManagement() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredInventory.map((item, index) => (
-              <TableRow key={index}>
-                <TableCell className="font-mono font-medium">{item.partCode}</TableCell>
-                <TableCell>{item.description}</TableCell>
-                <TableCell className={`font-medium ${
-                  item.quantity <= item.minimumStock ? "text-red-600" : "text-green-600"
-                }`}>
-                  {item.quantity.toLocaleString()}
-                </TableCell>
-                <TableCell className="text-gray-600">{item.minimumStock}</TableCell>
-                <TableCell>
-                  <div className="flex items-center space-x-1">
-                    <MapPin className="h-4 w-4 text-gray-500" />
-                    <span>{item.location}</span>
-                  </div>
-                </TableCell>
-                <TableCell className="font-mono text-sm">{item.bin}</TableCell>
-                <TableCell>{format(new Date(item.lastUpdated), "MMM dd, yyyy")}</TableCell>
-                <TableCell>
-                  <StatusBadge status={getStatusColor(item.status)}>
-                    {item.status.replace("_", " ")}
-                  </StatusBadge>
-                </TableCell>
-              </TableRow>
-            ))}
+            {filteredInventory.map((item) => {
+              const status = getInventoryStatus(item.quantity, item.minimum_stock || 0);
+              return (
+                <TableRow key={item.id}>
+                  <TableCell className="font-mono font-medium">
+                    {item.raw_materials?.material_code || "N/A"}
+                  </TableCell>
+                  <TableCell>{item.raw_materials?.name || "N/A"}</TableCell>
+                  <TableCell className={`font-medium ${
+                    item.quantity <= (item.minimum_stock || 0) ? "text-red-600" : "text-green-600"
+                  }`}>
+                    {item.quantity.toLocaleString()}
+                  </TableCell>
+                  <TableCell className="text-gray-600">{item.minimum_stock || 0}</TableCell>
+                  <TableCell>
+                    <div className="flex items-center space-x-1">
+                      <MapPin className="h-4 w-4 text-gray-500" />
+                      <span>{item.location || "Not specified"}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="font-mono text-sm">{item.bin_location || "N/A"}</TableCell>
+                  <TableCell>{format(new Date(item.last_updated), "MMM dd, yyyy")}</TableCell>
+                  <TableCell>
+                    <StatusBadge status={getStatusColor(status)}>
+                      {status.replace("_", " ")}
+                    </StatusBadge>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       </div>
@@ -173,8 +205,17 @@ export default function InventoryManagement() {
       {filteredInventory.length === 0 && (
         <div className="text-center py-8 text-muted-foreground">
           <Package className="mx-auto h-12 w-12 opacity-50 mb-4" />
-          <p>No inventory items found</p>
-          <p className="text-sm">Try adjusting your search or filter criteria</p>
+          {inventory.length === 0 ? (
+            <>
+              <p>No inventory items found</p>
+              <p className="text-sm">Raw materials need to be linked to inventory. Please contact system administrator.</p>
+            </>
+          ) : (
+            <>
+              <p>No inventory items found</p>
+              <p className="text-sm">Try adjusting your search or filter criteria</p>
+            </>
+          )}
         </div>
       )}
     </div>

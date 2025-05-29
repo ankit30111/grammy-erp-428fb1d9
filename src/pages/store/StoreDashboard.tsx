@@ -1,6 +1,6 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
 import { ScheduledProduction as ScheduledProductionType, KitStatus, mockScheduledProductions, mockGRNs, mockMaterialRequests, GRNItem, MaterialRequest } from "@/types/store";
 import EnhancedScheduledProduction from "@/components/Store/EnhancedScheduledProduction";
 import EnhancedGRNReceiving from "@/components/Store/EnhancedGRNReceiving";
@@ -8,13 +8,24 @@ import ProductionFeedback from "@/components/Store/ProductionFeedback";
 import InventoryManagement from "@/components/Store/InventoryManagement";
 import SpareOrdersPacking from "@/components/Store/SpareOrdersPacking";
 import { useToast } from "@/hooks/use-toast";
-import { Layers } from "lucide-react";
+import { useInventorySync } from "@/hooks/useInventorySync";
+import { Layers, RefreshCw } from "lucide-react";
 
 export default function StoreDashboard() {
   const { toast } = useToast();
+  const { syncRawMaterialsToInventory, isLoading: isSyncing } = useInventorySync();
   const [productions, setProductions] = useState<ScheduledProductionType[]>(mockScheduledProductions);
   const [grns, setGRNs] = useState<GRNItem[]>(mockGRNs);
   const [materialRequests, setMaterialRequests] = useState<MaterialRequest[]>(mockMaterialRequests);
+
+  // Auto-sync inventory on component mount
+  useEffect(() => {
+    syncRawMaterialsToInventory.mutate();
+  }, []);
+
+  const handleSyncInventory = () => {
+    syncRawMaterialsToInventory.mutate();
+  };
 
   // Handler for updating kit status
   const handleKitStatusChange = (id: string, status: KitStatus) => {
@@ -130,9 +141,20 @@ export default function StoreDashboard() {
 
   return (
     <div className="container mx-auto py-6">
-      <div className="flex items-center space-x-4 mb-6">
-        <Layers className="h-8 w-8 text-primary" />
-        <h1 className="text-2xl font-bold">Store Management - Grammy Electronics</h1>
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center space-x-4">
+          <Layers className="h-8 w-8 text-primary" />
+          <h1 className="text-2xl font-bold">Store Management - Grammy Electronics</h1>
+        </div>
+        <Button
+          onClick={handleSyncInventory}
+          disabled={isSyncing}
+          variant="outline"
+          className="gap-2"
+        >
+          <RefreshCw className={`h-4 w-4 ${isSyncing ? "animate-spin" : ""}`} />
+          Sync Inventory
+        </Button>
       </div>
 
       <Tabs defaultValue="voucher-management" className="space-y-4">
