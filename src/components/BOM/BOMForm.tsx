@@ -2,18 +2,40 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { X, Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export interface BOMItem {
   raw_material_id: string;
   raw_material_name: string;
+  raw_material_code: string;
   bom_type: "main_assembly" | "sub_assembly" | "accessory";
   quantity: number;
+  is_critical?: boolean;
 }
 
 interface BOMFormProps {
@@ -26,6 +48,9 @@ export function BOMForm({ bomItems, onBOMChange }: BOMFormProps) {
   const [selectedMaterial, setSelectedMaterial] = useState("");
   const [selectedType, setSelectedType] = useState<"main_assembly" | "sub_assembly" | "accessory">("main_assembly");
   const [quantity, setQuantity] = useState(1);
+  const [isCritical, setIsCritical] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [searchValue, setSearchValue] = useState("");
 
   useEffect(() => {
     fetchRawMaterials();
@@ -36,7 +61,7 @@ export function BOMForm({ bomItems, onBOMChange }: BOMFormProps) {
       .from('raw_materials')
       .select('*')
       .eq('is_active', true)
-      .order('name');
+      .order('material_code');
     
     if (error) {
       console.error('Error fetching raw materials:', error);
@@ -44,6 +69,14 @@ export function BOMForm({ bomItems, onBOMChange }: BOMFormProps) {
       setRawMaterials(data || []);
     }
   };
+
+  const filteredMaterials = rawMaterials.filter(material =>
+    material.name.toLowerCase().includes(searchValue.toLowerCase()) ||
+    material.material_code.toLowerCase().includes(searchValue.toLowerCase()) ||
+    material.category.toLowerCase().includes(searchValue.toLowerCase())
+  );
+
+  const selectedMaterialData = rawMaterials.find(m => m.id === selectedMaterial);
 
   const addBOMItem = () => {
     if (!selectedMaterial || quantity <= 0) return;
@@ -64,13 +97,17 @@ export function BOMForm({ bomItems, onBOMChange }: BOMFormProps) {
     const newItem: BOMItem = {
       raw_material_id: selectedMaterial,
       raw_material_name: material.name,
+      raw_material_code: material.material_code,
       bom_type: selectedType,
-      quantity
+      quantity,
+      is_critical: isCritical
     };
 
     onBOMChange([...bomItems, newItem]);
     setSelectedMaterial("");
     setQuantity(1);
+    setIsCritical(false);
+    setSearchValue("");
   };
 
   const removeBOMItem = (index: number) => {
@@ -106,21 +143,54 @@ export function BOMForm({ bomItems, onBOMChange }: BOMFormProps) {
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Add BOM Item Form */}
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-5 gap-4">
           <div className="space-y-2">
             <Label>Raw Material</Label>
-            <Select value={selectedMaterial} onValueChange={setSelectedMaterial}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select material" />
-              </SelectTrigger>
-              <SelectContent>
-                {rawMaterials.map((material) => (
-                  <SelectItem key={material.id} value={material.id}>
-                    {material.name} ({material.category})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Popover open={open} onOpenChange={setOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={open}
+                  className="w-full justify-between"
+                >
+                  {selectedMaterialData
+                    ? `${selectedMaterialData.material_code} - ${selectedMaterialData.name}`
+                    : "Select material..."}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[400px] p-0">
+                <Command>
+                  <CommandInput
+                    placeholder="Search by code, name, or category..."
+                    value={searchValue}
+                    onValueChange={setSearchValue}
+                  />
+                  <CommandList>
+                    <CommandEmpty>No material found.</CommandEmpty>
+                    <CommandGroup>
+                      {filteredMaterials.map((material) => (
+                        <CommandItem
+                          key={material.id}
+                          value={`${material.material_code} ${material.name} ${material.category}`}
+                          onSelect={() => {
+                            setSelectedMaterial(material.id);
+                            setOpen(false);
+                            setSearchValue("");
+                          }}
+                        >
+                          <div className="flex flex-col">
+                            <span className="font-medium">{material.material_code}</span>
+                            <span className="text-sm text-muted-foreground">{material.name}</span>
+                            <span className="text-xs text-muted-foreground">({material.category})</span>
+                          </div>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
           <div className="space-y-2">
             <Label>BOM Type</Label>
@@ -143,6 +213,17 @@ export function BOMForm({ bomItems, onBOMChange }: BOMFormProps) {
               value={quantity}
               onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
             />
+          </div>
+          <div className="space-y-2">
+            <Label>Critical Component</Label>
+            <div className="flex items-center space-x-2 h-10">
+              <Checkbox
+                id="critical"
+                checked={isCritical}
+                onCheckedChange={(checked) => setIsCritical(checked as boolean)}
+              />
+              <Label htmlFor="critical" className="text-sm">Mark as critical</Label>
+            </div>
           </div>
           <div className="flex items-end">
             <Button onClick={addBOMItem} className="w-full">
@@ -169,8 +250,18 @@ export function BOMForm({ bomItems, onBOMChange }: BOMFormProps) {
                 );
                 return (
                   <div key={`${item.raw_material_id}-${item.bom_type}`} 
-                       className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                    <span>{item.raw_material_name} (Qty: {item.quantity})</span>
+                       className="flex items-center justify-between p-3 bg-gray-50 rounded">
+                    <div className="flex flex-col">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{item.raw_material_code}</span>
+                        {item.is_critical && (
+                          <Badge variant="destructive" className="text-xs">Critical</Badge>
+                        )}
+                      </div>
+                      <span className="text-sm text-muted-foreground">
+                        {item.raw_material_name} (Qty: {item.quantity})
+                      </span>
+                    </div>
                     <Button
                       variant="ghost"
                       size="sm"

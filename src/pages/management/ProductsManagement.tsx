@@ -17,7 +17,7 @@ import {
 import { 
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter 
 } from "@/components/ui/dialog";
-import { Search, Plus, Package } from "lucide-react";
+import { Search, Plus, Package, Upload } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { BOMForm, BOMItem } from "@/components/BOM/BOMForm";
 import { useToast } from "@/hooks/use-toast";
@@ -39,10 +39,18 @@ const ProductsManagement = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const [newProduct, setNewProduct] = useState({
+    product_code: "",
     name: "",
     category: "",
     description: "",
     specifications: ""
+  });
+  const [productDocuments, setProductDocuments] = useState({
+    bom: null as File | null,
+    wi: null as File | null,
+    pqc_checklist: null as File | null,
+    oqc_checklist: null as File | null,
+    ccl: null as File | null
   });
 
   useEffect(() => {
@@ -74,13 +82,19 @@ const ProductsManagement = () => {
     product.category.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const generateProductCode = async () => {
-    const { count } = await supabase
+  const checkProductCodeExists = async (productCode: string) => {
+    const { data, error } = await supabase
       .from('products')
-      .select('*', { count: 'exact', head: true });
+      .select('id')
+      .eq('product_code', productCode)
+      .eq('is_active', true);
     
-    const nextNumber = (count || 0) + 1;
-    return `PRD${String(nextNumber).padStart(3, '0')}`;
+    if (error) {
+      console.error('Error checking product code:', error);
+      return false;
+    }
+    
+    return data && data.length > 0;
   };
 
   const hasAllBOMTypes = () => {
@@ -88,7 +102,33 @@ const ProductsManagement = () => {
     return ["main_assembly", "sub_assembly", "accessory"].every(type => types.includes(type as any));
   };
 
+  const uploadDocument = async (file: File, type: string, productCode: string) => {
+    const fileName = `${productCode}_${type}_${Date.now()}.pdf`;
+    const { error } = await supabase.storage
+      .from('product-documents')
+      .upload(fileName, file);
+    
+    if (error) throw error;
+    return fileName;
+  };
+
+  const handleDocumentChange = (type: string, file: File | null) => {
+    setProductDocuments(prev => ({
+      ...prev,
+      [type]: file
+    }));
+  };
+
   const handleAddProduct = async () => {
+    if (!newProduct.product_code.trim()) {
+      toast({
+        title: "Product Code Required",
+        description: "Please enter a product code",
+        variant: "destructive"
+      });
+      return;
+    }
+
     if (!hasAllBOMTypes()) {
       toast({
         title: "BOM Required",
@@ -101,17 +141,42 @@ const ProductsManagement = () => {
     setIsLoading(true);
     
     try {
-      const productCode = await generateProductCode();
+      // Check if product code already exists
+      const codeExists = await checkProductCodeExists(newProduct.product_code);
+      if (codeExists) {
+        toast({
+          title: "Product Code Exists",
+          description: "This product code already exists. Please use a different code.",
+          variant: "destructive"
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      let documentUrls: any = {};
+
+      // Upload documents if provided
+      for (const [type, file] of Object.entries(productDocuments)) {
+        if (file) {
+          try {
+            const url = await uploadDocument(file, type, newProduct.product_code);
+            documentUrls[`${type}_url`] = url;
+          } catch (error) {
+            console.error(`Error uploading ${type}:`, error);
+          }
+        }
+      }
       
       // Insert product
       const { data: productData, error: productError } = await supabase
         .from('products')
         .insert({
-          product_code: productCode,
+          product_code: newProduct.product_code,
           name: newProduct.name,
           category: newProduct.category,
           description: newProduct.description,
-          specifications: newProduct.specifications
+          specifications: newProduct.specifications,
+          ...documentUrls
         })
         .select()
         .single();
@@ -123,7 +188,8 @@ const ProductsManagement = () => {
         product_id: productData.id,
         raw_material_id: item.raw_material_id,
         bom_type: item.bom_type,
-        quantity: item.quantity
+        quantity: item.quantity,
+        is_critical: item.is_critical || false
       }));
 
       const { error: bomError } = await supabase
@@ -134,12 +200,20 @@ const ProductsManagement = () => {
 
       // Reset form
       setNewProduct({
+        product_code: "",
         name: "",
         category: "",
         description: "",
         specifications: ""
       });
       setBomItems([]);
+      setProductDocuments({
+        bom: null,
+        wi: null,
+        pqc_checklist: null,
+        oqc_checklist: null,
+        ccl: null
+      });
       setIsAddDialogOpen(false);
       
       // Refresh products list
@@ -147,7 +221,7 @@ const ProductsManagement = () => {
       
       toast({
         title: "Success",
-        description: "Product created successfully with BOM"
+        description: "Product created successfully with BOM and documents"
       });
       
     } catch (error) {
@@ -161,6 +235,27 @@ const ProductsManagement = () => {
       setIsLoading(false);
     }
   };
+
+  const DocumentUpload = ({ type, label }: { type: string; label: string }) => (
+    <div className="space-y-2">
+      <Label htmlFor={type}>{label}</Label>
+      <div className="flex items-center space-x-2">
+        <Input
+          id={type}
+          type="file"
+          accept=".pdf"
+          onChange={(e) => handleDocumentChange(type, e.target.files?.[0] || null)}
+          className="flex-1"
+        />
+        <Upload className="h-4 w-4 text-muted-foreground" />
+      </div>
+      {productDocuments[type as keyof typeof productDocuments] && (
+        <p className="text-sm text-green-600">
+          File selected: {productDocuments[type as keyof typeof productDocuments]?.name}
+        </p>
+      )}
+    </div>
+  );
 
   return (
     <DashboardLayout>
@@ -177,9 +272,9 @@ const ProductsManagement = () => {
                 Add New Product
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>Add New Product with BOM</DialogTitle>
+                <DialogTitle>Add New Product with BOM & Documents</DialogTitle>
               </DialogHeader>
               <div className="grid gap-6 py-4">
                 {/* Product Information */}
@@ -188,7 +283,16 @@ const ProductsManagement = () => {
                     <CardTitle>Product Information</CardTitle>
                   </CardHeader>
                   <CardContent className="grid gap-4">
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="product_code">Product Code *</Label>
+                        <Input 
+                          id="product_code" 
+                          value={newProduct.product_code} 
+                          onChange={(e) => setNewProduct({...newProduct, product_code: e.target.value})}
+                          placeholder="Enter unique product code"
+                        />
+                      </div>
                       <div className="space-y-2">
                         <Label htmlFor="name">Product Name</Label>
                         <Input 
@@ -240,6 +344,20 @@ const ProductsManagement = () => {
                   </CardContent>
                 </Card>
 
+                {/* Document Upload Section */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Product Documents (PDF only)</CardTitle>
+                  </CardHeader>
+                  <CardContent className="grid grid-cols-2 gap-4">
+                    <DocumentUpload type="bom" label="BOM Document" />
+                    <DocumentUpload type="wi" label="Work Instruction (WI)" />
+                    <DocumentUpload type="pqc_checklist" label="PQC Checklist" />
+                    <DocumentUpload type="oqc_checklist" label="OQC Checklist" />
+                    <DocumentUpload type="ccl" label="CCL Document" />
+                  </CardContent>
+                </Card>
+
                 {/* BOM Form */}
                 <BOMForm bomItems={bomItems} onBOMChange={setBomItems} />
               </div>
@@ -247,7 +365,7 @@ const ProductsManagement = () => {
                 <Button 
                   type="submit" 
                   onClick={handleAddProduct}
-                  disabled={!hasAllBOMTypes() || isLoading}
+                  disabled={!hasAllBOMTypes() || isLoading || !newProduct.product_code.trim()}
                 >
                   {isLoading ? "Creating..." : "Create Product"}
                 </Button>
