@@ -1,4 +1,3 @@
-
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -96,7 +95,7 @@ const PPC = () => {
                     {unscheduledProjections === 0 ? "All scheduled" : "Needs planning"}
                   </span>
                 </div>
-                <Link to="/planning">
+                <Link to="/planning-dashboard">
                   <Button variant="outline" size="sm" className="gap-2">
                     View Details <ArrowRight className="h-4 w-4" />
                   </Button>

@@ -1202,6 +1202,13 @@ export type Database = {
             foreignKeyName: "production_schedules_projection_id_fkey"
             columns: ["projection_id"]
             isOneToOne: false
+            referencedRelation: "material_requirements_view"
+            referencedColumns: ["projection_id"]
+          },
+          {
+            foreignKeyName: "production_schedules_projection_id_fkey"
+            columns: ["projection_id"]
+            isOneToOne: false
             referencedRelation: "projections"
             referencedColumns: ["id"]
           },
@@ -1214,6 +1221,7 @@ export type Database = {
           ccl_url: string | null
           created_at: string
           created_by: string | null
+          crs_url: string | null
           description: string | null
           id: string
           is_active: boolean
@@ -1231,6 +1239,7 @@ export type Database = {
           ccl_url?: string | null
           created_at?: string
           created_by?: string | null
+          crs_url?: string | null
           description?: string | null
           id?: string
           is_active?: boolean
@@ -1248,6 +1257,7 @@ export type Database = {
           ccl_url?: string | null
           created_at?: string
           created_by?: string | null
+          crs_url?: string | null
           description?: string | null
           id?: string
           is_active?: boolean
@@ -1322,28 +1332,34 @@ export type Database = {
       purchase_order_items: {
         Row: {
           created_at: string
+          expected_delivery_date: string | null
           id: string
           purchase_order_id: string
           quantity: number
           raw_material_id: string
+          received_status: string | null
           total_price: number | null
           unit_price: number | null
         }
         Insert: {
           created_at?: string
+          expected_delivery_date?: string | null
           id?: string
           purchase_order_id: string
           quantity: number
           raw_material_id: string
+          received_status?: string | null
           total_price?: number | null
           unit_price?: number | null
         }
         Update: {
           created_at?: string
+          expected_delivery_date?: string | null
           id?: string
           purchase_order_id?: string
           quantity?: number
           raw_material_id?: string
+          received_status?: string | null
           total_price?: number | null
           unit_price?: number | null
         }
@@ -1368,6 +1384,7 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string | null
+          delivery_target_date: string | null
           expected_delivery_date: string | null
           id: string
           notes: string | null
@@ -1381,6 +1398,7 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by?: string | null
+          delivery_target_date?: string | null
           expected_delivery_date?: string | null
           id?: string
           notes?: string | null
@@ -1394,6 +1412,7 @@ export type Database = {
         Update: {
           created_at?: string
           created_by?: string | null
+          delivery_target_date?: string | null
           expected_delivery_date?: string | null
           id?: string
           notes?: string | null
@@ -1791,7 +1810,32 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      material_requirements_view: {
+        Row: {
+          available_quantity: number | null
+          bom_quantity: number | null
+          customer_name: string | null
+          delivery_month: string | null
+          is_critical: boolean | null
+          material_code: string | null
+          material_name: string | null
+          product_name: string | null
+          projection_id: string | null
+          projection_quantity: number | null
+          raw_material_id: string | null
+          shortage_quantity: number | null
+          total_required: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bom_raw_material_id_fkey"
+            columns: ["raw_material_id"]
+            isOneToOne: false
+            referencedRelation: "raw_materials"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       generate_dispatch_order_number: {
