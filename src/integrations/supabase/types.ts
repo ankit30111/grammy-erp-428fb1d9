@@ -62,6 +62,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           id: string
+          is_critical: boolean | null
           product_id: string
           quantity: number
           raw_material_id: string
@@ -72,6 +73,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
+          is_critical?: boolean | null
           product_id: string
           quantity: number
           raw_material_id: string
@@ -82,6 +84,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
+          is_critical?: boolean | null
           product_id?: string
           quantity?: number
           raw_material_id?: string
@@ -1206,40 +1209,55 @@ export type Database = {
       }
       products: {
         Row: {
+          bom_url: string | null
           category: string
+          ccl_url: string | null
           created_at: string
           created_by: string | null
           description: string | null
           id: string
           is_active: boolean
           name: string
+          oqc_checklist_url: string | null
+          pqc_checklist_url: string | null
           product_code: string
           specifications: string | null
           updated_at: string
+          wi_url: string | null
         }
         Insert: {
+          bom_url?: string | null
           category: string
+          ccl_url?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
           id?: string
           is_active?: boolean
           name: string
+          oqc_checklist_url?: string | null
+          pqc_checklist_url?: string | null
           product_code: string
           specifications?: string | null
           updated_at?: string
+          wi_url?: string | null
         }
         Update: {
+          bom_url?: string | null
           category?: string
+          ccl_url?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
           id?: string
           is_active?: boolean
           name?: string
+          oqc_checklist_url?: string | null
+          pqc_checklist_url?: string | null
           product_code?: string
           specifications?: string | null
           updated_at?: string
+          wi_url?: string | null
         }
         Relationships: []
       }
