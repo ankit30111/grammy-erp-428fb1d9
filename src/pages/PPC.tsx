@@ -1,3 +1,4 @@
+
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,7 +13,8 @@ import {
   Clock,
   ArrowRight,
   BarChart3,
-  DollarSign
+  DollarSign,
+  RefreshCw
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useProjections } from "@/hooks/useProjections";
@@ -20,27 +22,61 @@ import { useProductionSchedules } from "@/hooks/useProductionSchedules";
 import { usePurchaseOrders } from "@/hooks/usePurchaseOrders";
 import { useState, useEffect } from "react";
 import { calculateMaterialShortages, MaterialShortage } from "@/utils/materialShortageCalculator";
+import { useToast } from "@/hooks/use-toast";
 
 const PPC = () => {
   const [shortages, setShortages] = useState<MaterialShortage[]>([]);
+  const [isCalculating, setIsCalculating] = useState(false);
   const { data: projections } = useProjections();
   const { data: schedules } = useProductionSchedules();
   const { data: purchaseOrders } = usePurchaseOrders();
+  const { toast } = useToast();
 
   // Calculate material shortages
-  useEffect(() => {
-    const calculateShortages = async () => {
-      if (projections?.length) {
-        try {
-          const calculatedShortages = await calculateMaterialShortages(projections.map(p => p.id));
-          setShortages(calculatedShortages);
-        } catch (error) {
-          console.error('Error calculating shortages:', error);
-        }
-      }
-    };
+  const calculateShortages = async () => {
+    if (!projections?.length) {
+      toast({
+        title: "No Projections",
+        description: "Please add customer projections first to calculate material shortages",
+        variant: "destructive",
+      });
+      return;
+    }
 
-    calculateShortages();
+    setIsCalculating(true);
+    try {
+      console.log('Starting shortage calculation for projections:', projections.map(p => p.id));
+      const calculatedShortages = await calculateMaterialShortages(projections.map(p => p.id));
+      setShortages(calculatedShortages);
+      
+      if (calculatedShortages.length > 0) {
+        toast({
+          title: "Material Shortages Calculated",
+          description: `Found ${calculatedShortages.length} materials with shortages`,
+        });
+      } else {
+        toast({
+          title: "No Shortages Found",
+          description: "All required materials are available in stock",
+        });
+      }
+    } catch (error) {
+      console.error('Error calculating shortages:', error);
+      toast({
+        title: "Calculation Error",
+        description: "Failed to calculate material shortages",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCalculating(false);
+    }
+  };
+
+  // Auto-calculate shortages when projections are available
+  useEffect(() => {
+    if (projections?.length && shortages.length === 0) {
+      calculateShortages();
+    }
   }, [projections]);
 
   const totalOrderValue = purchaseOrders?.reduce((sum, po) => sum + (po.total_amount || 0), 0) || 0;
@@ -56,9 +92,24 @@ const PPC = () => {
             <h1 className="text-3xl font-bold">PPC Dashboard</h1>
             <p className="text-muted-foreground">Production Planning & Control Overview</p>
           </div>
-          <div className="flex items-center gap-2">
-            <Clock className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">Last updated: Today, 14:35</span>
+          <div className="flex items-center gap-4">
+            <Button 
+              onClick={calculateShortages}
+              disabled={isCalculating}
+              variant="outline"
+              className="gap-2"
+            >
+              {isCalculating ? (
+                <RefreshCw className="h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4" />
+              )}
+              Refresh Shortages
+            </Button>
+            <div className="flex items-center gap-2">
+              <Clock className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm text-muted-foreground">Last updated: Today, 14:35</span>
+            </div>
           </div>
         </div>
 
@@ -148,19 +199,19 @@ const PPC = () => {
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Package className="h-5 w-5 text-orange-600" />
-                GRN Department
+                Store Department
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="text-center py-8">
-                <p className="text-muted-foreground">No GRN data yet</p>
+                <p className="text-muted-foreground">Store management active</p>
               </div>
               <div className="flex items-center justify-between pt-2 border-t">
                 <div className="flex items-center gap-2">
                   <CheckCircle className="h-4 w-4 text-green-600" />
-                  <span className="text-sm">Ready to receive</span>
+                  <span className="text-sm">Inventory synced</span>
                 </div>
-                <Link to="/grn">
+                <Link to="/store">
                   <Button variant="outline" size="sm" className="gap-2">
                     View Details <ArrowRight className="h-4 w-4" />
                   </Button>
@@ -220,6 +271,49 @@ const PPC = () => {
             </CardContent>
           </Card>
         </div>
+
+        {/* Material Shortages Detail */}
+        {shortages.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-orange-600" />
+                Critical Material Shortages
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {shortages.slice(0, 5).map((shortage) => (
+                  <div key={shortage.raw_material_id} className="flex items-center justify-between p-3 border rounded-lg">
+                    <div>
+                      <div className="font-medium">{shortage.material_code} - {shortage.material_name}</div>
+                      <div className="text-sm text-muted-foreground">
+                        Shortage: {shortage.shortage_quantity} | Available: {shortage.available_quantity}
+                      </div>
+                      {shortage.vendor_info && (
+                        <div className="text-sm text-blue-600">
+                          Primary Vendor: {shortage.vendor_info.name} ({shortage.vendor_info.vendor_code})
+                        </div>
+                      )}
+                    </div>
+                    <Badge variant="destructive">
+                      {shortage.shortage_quantity} short
+                    </Badge>
+                  </div>
+                ))}
+                {shortages.length > 5 && (
+                  <div className="text-center pt-2">
+                    <Link to="/purchase">
+                      <Button variant="outline" size="sm">
+                        View All {shortages.length} Shortages
+                      </Button>
+                    </Link>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Getting Started */}
         <Card>
