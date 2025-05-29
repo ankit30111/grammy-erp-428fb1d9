@@ -1,9 +1,9 @@
 
+import React, { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Calendar, Clock, Package, Calculator } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useState, useEffect } from "react";
 import { useProjections } from "@/hooks/useProjections";
 import { useProductionSchedules } from "@/hooks/useProductionSchedules";
 import { calculateMaterialShortages, MaterialShortage } from "@/utils/materialShortageCalculator";
@@ -14,7 +14,7 @@ import ProductionScheduleManagement from "@/components/PPC/ProductionScheduleMan
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 
-const Planning = () => {
+const Planning: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [shortages, setShortages] = useState<MaterialShortage[]>([]);
   const [isCalculating, setIsCalculating] = useState(false);
