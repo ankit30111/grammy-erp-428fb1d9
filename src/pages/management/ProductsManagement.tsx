@@ -23,12 +23,11 @@ import { BOMForm, BOMItem } from "@/components/BOM/BOMForm";
 import { useToast } from "@/hooks/use-toast";
 
 const PRODUCT_CATEGORIES = [
-  "Electronics",
-  "Audio Equipment", 
-  "Gaming Accessories",
-  "Mobile Accessories",
-  "Computer Hardware",
-  "Others"
+  "Tower Speaker",
+  "Soundbar", 
+  "Party Speaker",
+  "Multimedia Speaker",
+  "Portable Speaker"
 ];
 
 const ProductsManagement = () => {
@@ -42,15 +41,15 @@ const ProductsManagement = () => {
     product_code: "",
     name: "",
     category: "",
-    description: "",
-    specifications: ""
+    description: ""
   });
   const [productDocuments, setProductDocuments] = useState({
     bom: null as File | null,
     wi: null as File | null,
     pqc_checklist: null as File | null,
     oqc_checklist: null as File | null,
-    ccl: null as File | null
+    ccl: null as File | null,
+    crs: null as File | null
   });
 
   useEffect(() => {
@@ -175,7 +174,6 @@ const ProductsManagement = () => {
           name: newProduct.name,
           category: newProduct.category,
           description: newProduct.description,
-          specifications: newProduct.specifications,
           ...documentUrls
         })
         .select()
@@ -203,8 +201,7 @@ const ProductsManagement = () => {
         product_code: "",
         name: "",
         category: "",
-        description: "",
-        specifications: ""
+        description: ""
       });
       setBomItems([]);
       setProductDocuments({
@@ -212,7 +209,8 @@ const ProductsManagement = () => {
         wi: null,
         pqc_checklist: null,
         oqc_checklist: null,
-        ccl: null
+        ccl: null,
+        crs: null
       });
       setIsAddDialogOpen(false);
       
@@ -331,16 +329,6 @@ const ProductsManagement = () => {
                         rows={3}
                       />
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="specifications">Specifications</Label>
-                      <Textarea 
-                        id="specifications" 
-                        value={newProduct.specifications} 
-                        onChange={(e) => setNewProduct({...newProduct, specifications: e.target.value})}
-                        placeholder="Enter technical specifications"
-                        rows={3}
-                      />
-                    </div>
                   </CardContent>
                 </Card>
 
@@ -355,6 +343,7 @@ const ProductsManagement = () => {
                     <DocumentUpload type="pqc_checklist" label="PQC Checklist" />
                     <DocumentUpload type="oqc_checklist" label="OQC Checklist" />
                     <DocumentUpload type="ccl" label="CCL Document" />
+                    <DocumentUpload type="crs" label="CRS Document" />
                   </CardContent>
                 </Card>
 
