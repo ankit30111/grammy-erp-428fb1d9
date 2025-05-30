@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Package, Plus, Trash2 } from "lucide-react";
+import { Package, Plus } from "lucide-react";
 import { usePurchaseOrders } from "@/hooks/usePurchaseOrders";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -60,13 +60,14 @@ const GRNForm = () => {
 
     setIsSubmitting(true);
     try {
-      // Create GRN
+      // Create GRN - let the trigger generate the grn_number
       const selectedPOData = purchaseOrders?.find(p => p.id === selectedPO);
       const { data: grn, error: grnError } = await supabase
         .from('grn')
         .insert({
+          grn_number: '', // Empty string will be replaced by trigger
           purchase_order_id: selectedPO,
-          vendor_id: selectedPOData?.vendor_id,
+          vendor_id: selectedPOData?.vendor_id || '',
           received_date: receivedDate,
           status: 'RECEIVED',
           notes: `Bill Number: ${billNumber}`
