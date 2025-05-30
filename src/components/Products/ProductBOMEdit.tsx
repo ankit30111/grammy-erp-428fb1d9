@@ -104,13 +104,18 @@ export function ProductBOMEdit({ product, open, onOpenChange, onSuccess }: Produ
 
     setIsLoading(true);
     try {
-      // Get current version number using a more generic approach
+      // Get current version number by querying existing versions
       const { data: bomVersionData, error: versionError } = await supabase
-        .rpc('get_latest_bom_version', { p_product_id: product.id });
+        .from('bom_versions')
+        .select('version_number')
+        .eq('product_id', product.id)
+        .order('version_number', { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
       let nextVersion = 1;
       if (!versionError && bomVersionData) {
-        nextVersion = bomVersionData + 1;
+        nextVersion = bomVersionData.version_number + 1;
       }
 
       // Archive current BOM if there are original items
@@ -121,7 +126,7 @@ export function ProductBOMEdit({ product, open, onOpenChange, onSuccess }: Produ
             product_id: product.id,
             version_number: nextVersion - 1,
             change_reason: nextVersion === 1 ? "Initial version" : "Previous version",
-            bom_data: originalBomItems,
+            bom_data: originalBomItems as any,
             created_at: new Date().toISOString()
           });
 
@@ -161,7 +166,7 @@ export function ProductBOMEdit({ product, open, onOpenChange, onSuccess }: Produ
           product_id: product.id,
           version_number: nextVersion,
           change_reason: changeReason,
-          bom_data: bomItems,
+          bom_data: bomItems as any,
           created_at: new Date().toISOString()
         });
 
