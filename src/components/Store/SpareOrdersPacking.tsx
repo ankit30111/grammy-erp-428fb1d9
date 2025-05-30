@@ -20,7 +20,7 @@ interface SpareOrderItem {
     material_code: string;
     name: string;
     category: string;
-  };
+  } | null;
   spare_orders: {
     id: string;
     spare_order_number: string;
@@ -29,8 +29,8 @@ interface SpareOrderItem {
       id: string;
       customer_code: string;
       name: string;
-    };
-  };
+    } | null;
+  } | null;
 }
 
 const SpareOrdersPacking = () => {
@@ -73,7 +73,11 @@ const SpareOrdersPacking = () => {
     if (error) {
       console.error('Error fetching spare order items:', error);
     } else {
-      setSpareOrderItems(data || []);
+      // Filter out items with null spare_orders or raw_materials
+      const validItems = (data || []).filter(item => 
+        item.spare_orders && item.raw_materials
+      );
+      setSpareOrderItems(validItems);
     }
   };
 
@@ -156,11 +160,16 @@ const SpareOrdersPacking = () => {
             {spareOrderItems.map((item) => (
               <TableRow key={item.id}>
                 <TableCell className="font-mono">
-                  {item.spare_orders.spare_order_number}
+                  {item.spare_orders?.spare_order_number || 'N/A'}
                 </TableCell>
-                <TableCell>{item.spare_orders.customers.name}</TableCell>
                 <TableCell>
-                  {item.raw_materials.name} ({item.raw_materials.material_code})
+                  {item.spare_orders?.customers?.name || 'Unknown Customer'}
+                </TableCell>
+                <TableCell>
+                  {item.raw_materials ? 
+                    `${item.raw_materials.name} (${item.raw_materials.material_code})` : 
+                    'Unknown Material'
+                  }
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-1">
@@ -181,6 +190,13 @@ const SpareOrdersPacking = () => {
                 </TableCell>
               </TableRow>
             ))}
+            {spareOrderItems.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={6} className="text-center py-4 text-muted-foreground">
+                  No pending spare orders found
+                </TableCell>
+              </TableRow>
+            )}
           </TableBody>
         </Table>
       </CardContent>
