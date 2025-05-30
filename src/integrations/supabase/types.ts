@@ -107,6 +107,44 @@ export type Database = {
           },
         ]
       }
+      bom_versions: {
+        Row: {
+          bom_data: Json
+          change_reason: string
+          created_at: string
+          created_by: string | null
+          id: string
+          product_id: string
+          version_number: number
+        }
+        Insert: {
+          bom_data: Json
+          change_reason: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          product_id: string
+          version_number: number
+        }
+        Update: {
+          bom_data?: Json
+          change_reason?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          product_id?: string
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bom_versions_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customer_warehouses: {
         Row: {
           address: string

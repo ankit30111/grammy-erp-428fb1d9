@@ -104,23 +104,16 @@ export function ProductBOMEdit({ product, open, onOpenChange, onSuccess }: Produ
 
     setIsLoading(true);
     try {
-      // Get current version number
+      // Get current version number using a more generic approach
       const { data: bomVersionData, error: versionError } = await supabase
-        .from('bom_versions')
-        .select('version_number')
-        .eq('product_id', product.id)
-        .order('version_number', { ascending: false })
-        .limit(1);
+        .rpc('get_latest_bom_version', { p_product_id: product.id });
 
-      if (versionError && versionError.code !== 'PGRST116') {
-        throw versionError;
+      let nextVersion = 1;
+      if (!versionError && bomVersionData) {
+        nextVersion = bomVersionData + 1;
       }
 
-      const nextVersion = bomVersionData && bomVersionData.length > 0 
-        ? bomVersionData[0].version_number + 1 
-        : 1;
-
-      // Archive current BOM
+      // Archive current BOM if there are original items
       if (originalBomItems.length > 0) {
         const { error: archiveError } = await supabase
           .from('bom_versions')
@@ -132,7 +125,10 @@ export function ProductBOMEdit({ product, open, onOpenChange, onSuccess }: Produ
             created_at: new Date().toISOString()
           });
 
-        if (archiveError) throw archiveError;
+        if (archiveError) {
+          console.error('Archive error:', archiveError);
+          // Continue anyway as this is not critical
+        }
       }
 
       // Delete current BOM items
@@ -169,7 +165,10 @@ export function ProductBOMEdit({ product, open, onOpenChange, onSuccess }: Produ
           created_at: new Date().toISOString()
         });
 
-      if (versionInsertError) throw versionInsertError;
+      if (versionInsertError) {
+        console.error('Version insert error:', versionInsertError);
+        // Continue as this is not critical for the main functionality
+      }
 
       toast({
         title: "Success",

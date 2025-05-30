@@ -2,8 +2,6 @@
 import { LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { NavItem } from "./NavItem";
-import { settingsItems } from "./navigationConfig";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
@@ -36,16 +34,6 @@ export const SidebarFooter = ({ collapsed, allowedTabs, userPermissions, isLoadi
   return (
     <>
       <div className="p-2 mt-auto border-t border-sidebar-border space-y-2">
-        {settingsItems.map((item) => (
-          <NavItem
-            key={item.to}
-            to={item.to}
-            icon={item.icon}
-            label={item.label}
-            collapsed={collapsed}
-            allowedTabs={allowedTabs}
-          />
-        ))}
         <Button
           variant="ghost"
           size="sm"
