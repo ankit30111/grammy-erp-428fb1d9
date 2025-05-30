@@ -45,3 +45,47 @@ export const useCreateProjection = () => {
     },
   });
 };
+
+export const useUpdateProjection = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ id, updates }: { id: string; updates: Partial<{
+      customer_id: string;
+      product_id: string;
+      quantity: number;
+      delivery_month: string;
+    }>}) => {
+      const { data, error } = await supabase
+        .from("projections")
+        .update(updates)
+        .eq("id", id)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["projections"] });
+    },
+  });
+};
+
+export const useDeleteProjection = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("projections")
+        .delete()
+        .eq("id", id);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["projections"] });
+    },
+  });
+};

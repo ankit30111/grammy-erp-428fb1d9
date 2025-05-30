@@ -4,7 +4,7 @@ import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Calendar, Clock, Plus } from "lucide-react";
+import { Calendar, Clock, Plus, Edit, Trash2 } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { 
@@ -17,7 +17,9 @@ import {
 import { format, addMonths } from "date-fns";
 import { useCustomers } from "@/hooks/useCustomers";
 import { useProducts } from "@/hooks/useProducts";
-import { useProjections, useCreateProjection } from "@/hooks/useProjections";
+import { useProjections, useCreateProjection, useDeleteProjection } from "@/hooks/useProjections";
+import { useDispatchOrders } from "@/hooks/useDispatchOrders";
+import { EditProjectionDialog } from "@/components/Projections/EditProjectionDialog";
 
 // Generate the next 12 months
 const generateMonths = () => {
@@ -43,13 +45,17 @@ const Projection = () => {
     quantity: "",
     delivery_month: "",
   });
+  const [editingProjection, setEditingProjection] = useState<any>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const { toast } = useToast();
 
   // Fetch data from database
   const { data: customers, isLoading: customersLoading } = useCustomers();
   const { data: products, isLoading: productsLoading } = useProducts();
   const { data: projections, isLoading: projectionsLoading } = useProjections();
+  const { data: dispatchOrders } = useDispatchOrders();
   const createProjection = useCreateProjection();
+  const deleteProjection = useDeleteProjection();
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -104,6 +110,45 @@ const Projection = () => {
         variant: "destructive",
       });
     }
+  };
+
+  const handleEditProjection = (projection: any) => {
+    setEditingProjection(projection);
+    setIsEditDialogOpen(true);
+  };
+
+  const handleDeleteProjection = async (projectionId: string) => {
+    if (window.confirm("Are you sure you want to delete this projection?")) {
+      try {
+        await deleteProjection.mutateAsync(projectionId);
+        toast({
+          title: "Projection deleted",
+          description: "Customer projection has been deleted successfully",
+        });
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Failed to delete projection. Please try again.",
+          variant: "destructive",
+        });
+      }
+    }
+  };
+
+  // Calculate supplied quantity from dispatch orders
+  const getSuppliedQuantity = (customerId: string, productId: string, deliveryMonth: string) => {
+    if (!dispatchOrders) return 0;
+    
+    const monthYear = deliveryMonth; // format: yyyy-MM
+    return dispatchOrders
+      .filter(order => {
+        const orderMonth = format(new Date(order.dispatch_date), 'yyyy-MM');
+        return order.customer_id === customerId && orderMonth === monthYear;
+      })
+      .reduce((total, order) => {
+        const productItems = order.dispatch_order_items?.filter(item => item.product_id === productId) || [];
+        return total + productItems.reduce((sum, item) => sum + item.quantity, 0);
+      }, 0);
   };
 
   // Format month for display
@@ -234,36 +279,81 @@ const Projection = () => {
                   <TableRow>
                     <TableHead>Customer</TableHead>
                     <TableHead>Product</TableHead>
-                    <TableHead>Quantity</TableHead>
+                    <TableHead>Projected Qty</TableHead>
+                    <TableHead>Supplied Qty</TableHead>
+                    <TableHead>Pending Qty</TableHead>
                     <TableHead>Delivery Month</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {projections?.map((projection) => (
-                    <TableRow key={projection.id}>
-                      <TableCell className="font-medium">
-                        {projection.customers?.name}
-                      </TableCell>
-                      <TableCell>{projection.products?.name}</TableCell>
-                      <TableCell>{projection.quantity.toLocaleString()}</TableCell>
-                      <TableCell>{formatMonth(projection.delivery_month)}</TableCell>
-                      <TableCell>
-                        <span className={`px-2 py-1 rounded-full text-xs ${
-                          projection.status === "New" ? "bg-blue-100 text-blue-800" : 
-                          projection.status === "Confirmed" ? "bg-green-100 text-green-800" : 
-                          "bg-gray-100 text-gray-800"
-                        }`}>
-                          {projection.status}
-                        </span>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {projections?.map((projection) => {
+                    const suppliedQty = getSuppliedQuantity(
+                      projection.customer_id, 
+                      projection.product_id, 
+                      projection.delivery_month
+                    );
+                    const pendingQty = projection.quantity - suppliedQty;
+                    
+                    return (
+                      <TableRow key={projection.id}>
+                        <TableCell className="font-medium">
+                          {projection.customers?.name}
+                        </TableCell>
+                        <TableCell>{projection.products?.name}</TableCell>
+                        <TableCell>{projection.quantity.toLocaleString()}</TableCell>
+                        <TableCell className="text-green-600 font-medium">
+                          {suppliedQty.toLocaleString()}
+                        </TableCell>
+                        <TableCell className={pendingQty > 0 ? "text-orange-600 font-medium" : "text-green-600"}>
+                          {pendingQty.toLocaleString()}
+                        </TableCell>
+                        <TableCell>{formatMonth(projection.delivery_month)}</TableCell>
+                        <TableCell>
+                          <span className={`px-2 py-1 rounded-full text-xs ${
+                            projection.status === "New" ? "bg-blue-100 text-blue-800" : 
+                            projection.status === "Confirmed" ? "bg-green-100 text-green-800" : 
+                            "bg-gray-100 text-gray-800"
+                          }`}>
+                            {projection.status}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleEditProjection(projection)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleDeleteProjection(projection.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             )}
           </CardContent>
         </Card>
+
+        <EditProjectionDialog
+          projection={editingProjection}
+          isOpen={isEditDialogOpen}
+          onClose={() => {
+            setIsEditDialogOpen(false);
+            setEditingProjection(null);
+          }}
+        />
       </div>
     </DashboardLayout>
   );
