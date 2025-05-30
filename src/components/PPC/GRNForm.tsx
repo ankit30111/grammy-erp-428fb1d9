@@ -166,7 +166,7 @@ const GRNForm = () => {
 
         {grnItems.length > 0 && (
           <div>
-            <h3 className="text-lg font-medium mb-4">GRN Items</h3>
+            <h3 className="text-lg font-medium mb-4">GRN Items - Enter Received Quantities</h3>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -178,8 +178,15 @@ const GRNForm = () => {
               <TableBody>
                 {grnItems.map((item, index) => (
                   <TableRow key={index}>
-                    <TableCell>{item.material_name}</TableCell>
-                    <TableCell>{item.po_quantity}</TableCell>
+                    <TableCell>
+                      <div>
+                        <div className="font-medium">{item.material_name}</div>
+                        <div className="text-sm text-muted-foreground">ID: {item.raw_material_id}</div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{item.po_quantity}</Badge>
+                    </TableCell>
                     <TableCell>
                       <Input
                         type="number"
@@ -187,7 +194,8 @@ const GRNForm = () => {
                         max={item.po_quantity}
                         value={item.received_quantity}
                         onChange={(e) => updateReceivedQuantity(index, parseInt(e.target.value) || 0)}
-                        className="w-24"
+                        className="w-32"
+                        placeholder="Enter qty"
                       />
                     </TableCell>
                   </TableRow>
@@ -198,7 +206,7 @@ const GRNForm = () => {
             <div className="flex justify-end mt-4">
               <Button 
                 onClick={handleSubmit}
-                disabled={isSubmitting || !billNumber}
+                disabled={isSubmitting || !billNumber || grnItems.every(item => item.received_quantity === 0)}
                 className="gap-2"
               >
                 <Plus className="h-4 w-4" />
@@ -211,6 +219,12 @@ const GRNForm = () => {
         {selectedPO && grnItems.length === 0 && (
           <div className="text-center py-8 text-muted-foreground">
             No items found for selected PO
+          </div>
+        )}
+
+        {!selectedPO && (
+          <div className="text-center py-8 text-muted-foreground">
+            Select a Purchase Order to begin creating GRN
           </div>
         )}
       </CardContent>

@@ -114,7 +114,7 @@ const PPC = () => {
         </div>
 
         {/* Department Navigation Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <Card className="hover:shadow-lg transition-shadow cursor-pointer">
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-lg">
@@ -199,6 +199,31 @@ const PPC = () => {
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Package className="h-5 w-5 text-orange-600" />
+                GRN Management
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="text-center py-8">
+                <p className="text-muted-foreground">Goods Receipt Notes</p>
+              </div>
+              <div className="flex items-center justify-between pt-2 border-t">
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-green-600" />
+                  <span className="text-sm">Active receiving</span>
+                </div>
+                <Link to="/grn">
+                  <Button variant="outline" size="sm" className="gap-2">
+                    View Details <ArrowRight className="h-4 w-4" />
+                  </Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Package className="h-5 w-5 text-purple-600" />
                 Store Department
               </CardTitle>
             </CardHeader>
@@ -211,7 +236,7 @@ const PPC = () => {
                   <CheckCircle className="h-4 w-4 text-green-600" />
                   <span className="text-sm">Inventory synced</span>
                 </div>
-                <Link to="/store">
+                <Link to="/store/dashboard">
                   <Button variant="outline" size="sm" className="gap-2">
                     View Details <ArrowRight className="h-4 w-4" />
                   </Button>

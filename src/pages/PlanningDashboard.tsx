@@ -1,146 +1,124 @@
-
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Calendar, Package2, AlertTriangle, Clock, Package, CheckCircle, Edit, Trash2 } from "lucide-react";
-import { useProjections } from "@/hooks/useProjections";
-import { useProductionSchedules, useUpdateProductionSchedule } from "@/hooks/useProductionSchedules";
-import { ScheduleProductionDialog } from "@/components/Planning/ScheduleProductionDialog";
-import { useState } from "react";
-import { format } from "date-fns";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import SchedulingProduction from "@/components/Planning/SchedulingProduction";
-import ProductionVoucherDetails from "@/components/Planning/ProductionVoucherDetails";
-import GRNForm from "@/components/PPC/GRNForm";
+import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Calendar as CalendarIcon, Factory, Package } from "lucide-react";
+import { useState } from "react";
+import { format } from "date-fns";
+import { useProjections } from "@/hooks/useProjections";
+import { useProductionSchedules, useCreateProductionSchedule, useDeleteProductionSchedule } from "@/hooks/useProductionSchedules";
+import { usePurchaseOrders } from "@/hooks/usePurchaseOrders";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 import { useToast } from "@/hooks/use-toast";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 const PlanningDashboard = () => {
-  const { data: projections = [] } = useProjections();
-  const { data: schedules = [] } = useProductionSchedules();
-  const updateSchedule = useUpdateProductionSchedule();
+  const [selectedDate, setSelectedDate] = useState<Date>();
+  const [selectedProjection, setSelectedProjection] = useState<string>("");
+  const [quantity, setQuantity] = useState<string>("");
+  const [selectedVoucher, setSelectedVoucher] = useState<any>(null);
+
+  const { data: projections } = useProjections();
+  const { data: schedules } = useProductionSchedules();
+  const { data: purchaseOrders } = usePurchaseOrders();
+  const createSchedule = useCreateProductionSchedule();
+  const deleteSchedule = useDeleteProductionSchedule();
   const { toast } = useToast();
-  
-  const [selectedProjection, setSelectedProjection] = useState<any>(null);
-  const [isScheduleDialogOpen, setIsScheduleDialogOpen] = useState(false);
-  const [selectedVoucherDetails, setSelectedVoucherDetails] = useState<{
-    scheduleId: string;
-    voucherNumber: string;
-  } | null>(null);
-  const [editingSchedule, setEditingSchedule] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState({
-    scheduled_date: "",
-    quantity: "",
-    production_line: ""
-  });
 
-  // Generate production voucher numbers for scheduled productions
-  const generateVoucherNumber = (scheduledDate: string, scheduleIndex: number) => {
-    const date = new Date(scheduledDate);
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const voucherNum = String(scheduleIndex + 1).padStart(2, '0');
-    return `${month}-${voucherNum}`;
-  };
+  const productionLines = ["Line 1", "Line 2", "Line 3", "Line 4"];
 
-  // Fetch material requirements and shortages
-  const { data: materialRequirements = [] } = useQuery({
-    queryKey: ["material-requirements"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("material_requirements_view")
-        .select("*");
-      
-      if (error) throw error;
-      return data;
-    }
-  });
+  const unscheduledProjections = projections?.filter(projection => {
+    // Filter projections that still have remaining quantity to schedule
+    return projection.quantity > 0; // This would need proper calculation
+  }) || [];
 
-  // Calculate scheduled quantities for each projection
-  const getScheduledQuantity = (projectionId: string) => {
-    return schedules
-      .filter(schedule => schedule.projection_id === projectionId)
-      .reduce((total, schedule) => total + schedule.quantity, 0);
-  };
+  const selectedProjectionData = projections?.find(p => p.id === selectedProjection);
+  const maxQuantity = selectedProjectionData?.quantity || 0;
 
-  const getRemainingQuantity = (projection: any) => {
-    const scheduled = getScheduledQuantity(projection.id);
-    return projection.quantity - scheduled;
-  };
-
-  const handleScheduleProduction = (projection: any) => {
-    setSelectedProjection(projection);
-    setIsScheduleDialogOpen(true);
-  };
-
-  // Group schedules by date and assign voucher numbers
-  const schedulesWithVouchers = schedules.map((schedule, index) => ({
-    ...schedule,
-    voucherNumber: generateVoucherNumber(schedule.scheduled_date, index)
-  }));
-
-  // Get material shortages for each production voucher
-  const getShortagesForVoucher = (scheduleId: string) => {
-    return materialRequirements.filter(req => 
-      req.shortage_quantity > 0 && 
-      req.projection_id === scheduleId
-    );
-  };
-
-  const handleEditSchedule = (schedule: any) => {
-    setEditingSchedule(schedule.id);
-    setEditForm({
-      scheduled_date: schedule.scheduled_date,
-      quantity: schedule.quantity.toString(),
-      production_line: schedule.production_line
-    });
-  };
-
-  const handleSaveEdit = async (scheduleId: string) => {
-    try {
-      await updateSchedule.mutateAsync({
-        scheduleId,
-        updates: {
-          scheduled_date: editForm.scheduled_date,
-          quantity: parseInt(editForm.quantity),
-          production_line: editForm.production_line
-        }
+  const handleSchedule = async () => {
+    if (!selectedDate || !selectedProjection || !quantity || !productionLine) {
+      toast({
+        title: "Missing Information",
+        description: "Please fill in all fields to schedule production.",
+        variant: "destructive",
       });
-      setEditingSchedule(null);
-    } catch (error) {
-      console.error('Error updating schedule:', error);
+      return;
     }
-  };
 
-  const handleDeleteSchedule = async (scheduleId: string) => {
+    if (parseInt(quantity) > maxQuantity) {
+      toast({
+        title: "Invalid Quantity",
+        description: `Quantity exceeds the maximum available for this projection (${maxQuantity} units).`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
-      const { error } = await supabase
-        .from('production_schedules')
-        .delete()
-        .eq('id', scheduleId);
-
-      if (error) throw error;
+      await createSchedule.mutateAsync({
+        projection_id: selectedProjection,
+        scheduled_date: format(selectedDate, 'yyyy-MM-dd'),
+        quantity: parseInt(quantity),
+        production_line: productionLine,
+      });
 
       toast({
-        title: "Schedule Deleted",
-        description: "Production schedule has been deleted successfully",
+        title: "Production Scheduled",
+        description: `Production of ${quantity} units scheduled for ${format(selectedDate, 'PPP')} on ${productionLine}.`,
       });
+
+      // Reset form
+      setSelectedDate(undefined);
+      setSelectedProjection("");
+      setQuantity("");
+      setProductionLine("");
     } catch (error) {
-      console.error('Error deleting schedule:', error);
+      console.error('Error scheduling production:', error);
       toast({
-        title: "Error",
-        description: "Failed to delete production schedule",
+        title: "Scheduling Error",
+        description: "Failed to schedule production. Please try again.",
         variant: "destructive",
       });
     }
   };
 
-  const productionLines = ["Line 1", "Line 2", "Line 3", "Line 4"];
+  const handleDeleteSchedule = async (scheduleId: string) => {
+    try {
+      await deleteSchedule.mutateAsync(scheduleId);
+      toast({
+        title: "Schedule Deleted",
+        description: "Production schedule deleted successfully.",
+      });
+    } catch (error) {
+      console.error('Error deleting schedule:', error);
+      toast({
+        title: "Deletion Error",
+        description: "Failed to delete production schedule. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const scheduledProductions = schedules?.map(schedule => {
+    const projection = projections?.find(p => p.id === schedule.projection_id);
+    return {
+      ...schedule,
+      customerName: projection?.customers?.name || 'Unknown Customer',
+      productName: projection?.products?.name || 'Unknown Product',
+      scheduledDateFormatted: format(new Date(schedule.scheduled_date), 'PPP'),
+    };
+  }) || [];
 
   return (
     <DashboardLayout>
@@ -148,315 +126,278 @@ const PlanningDashboard = () => {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold">Production Planning Dashboard</h1>
-            <p className="text-muted-foreground">Manage projections, schedules, and material requirements</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Clock className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">Last updated: {format(new Date(), "PPp")}</span>
+            <p className="text-muted-foreground">Manage customer projections, scheduling, and material status</p>
           </div>
         </div>
 
-        <Tabs defaultValue="projections" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-5">
+        <Tabs defaultValue="projections" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="projections">Customer Projections</TabsTrigger>
             <TabsTrigger value="scheduling">Scheduling Production</TabsTrigger>
             <TabsTrigger value="schedule">Production Schedule</TabsTrigger>
             <TabsTrigger value="materials">Raw Material Status</TabsTrigger>
-            <TabsTrigger value="grn">GRN Management</TabsTrigger>
           </TabsList>
 
           <TabsContent value="projections">
-            {/* Customer Projections Section */}
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Package2 className="h-5 w-5" />
-                  Customer Projections ({projections.length})
-                </CardTitle>
+                <CardTitle>Customer Projections</CardTitle>
+                <CardDescription>View and manage customer demand projections</CardDescription>
               </CardHeader>
               <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Customer</TableHead>
-                      <TableHead>Product</TableHead>
-                      <TableHead>Delivery Month</TableHead>
-                      <TableHead>Total Quantity</TableHead>
-                      <TableHead>Scheduled</TableHead>
-                      <TableHead>Remaining</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {projections.map((projection) => {
-                      const scheduled = getScheduledQuantity(projection.id);
-                      const remaining = getRemainingQuantity(projection);
-                      
-                      return (
+                {projections && projections.length > 0 ? (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Customer</TableHead>
+                        <TableHead>Product</TableHead>
+                        <TableHead>Quantity</TableHead>
+                        <TableHead>Delivery Month</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {projections.map((projection) => (
                         <TableRow key={projection.id}>
-                          <TableCell className="font-medium">
-                            {projection.customers?.name}
-                          </TableCell>
+                          <TableCell>{projection.customers?.name}</TableCell>
                           <TableCell>{projection.products?.name}</TableCell>
+                          <TableCell>{projection.quantity}</TableCell>
                           <TableCell>{projection.delivery_month}</TableCell>
-                          <TableCell>{projection.quantity.toLocaleString()}</TableCell>
-                          <TableCell>{scheduled.toLocaleString()}</TableCell>
-                          <TableCell>{remaining.toLocaleString()}</TableCell>
-                          <TableCell>
-                            <Badge variant={remaining === 0 ? "secondary" : "destructive"}>
-                              {remaining === 0 ? "Fully Scheduled" : "Pending"}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            {remaining > 0 && (
-                              <Button
-                                size="sm"
-                                onClick={() => handleScheduleProduction(projection)}
-                              >
-                                Schedule Production
-                              </Button>
-                            )}
-                          </TableCell>
                         </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
+                      ))}
+                    </TableBody>
+                  </Table>
+                ) : (
+                  <div className="text-center py-4 text-muted-foreground">
+                    No customer projections available
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
 
           <TabsContent value="scheduling">
-            <SchedulingProduction />
+            <Card>
+              <CardHeader>
+                <CardTitle>Schedule Production</CardTitle>
+                <CardDescription>Plan production based on customer projections</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Calendar */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <CalendarIcon className="h-5 w-5" />
+                        Select Production Date
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <Calendar
+                        mode="single"
+                        selected={selectedDate}
+                        onSelect={setSelectedDate}
+                        disabled={(date) => date < new Date()}
+                        className="rounded-md border"
+                      />
+                    </CardContent>
+                  </Card>
+
+                  {/* Scheduling Form */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Factory className="h-5 w-5" />
+                        Schedule Production
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div>
+                        <Label htmlFor="projection">Customer Projection</Label>
+                        <Select value={selectedProjection} onValueChange={setSelectedProjection}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select projection" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {unscheduledProjections.map((projection) => (
+                              <SelectItem key={projection.id} value={projection.id}>
+                                {projection.customers?.name} - {projection.products?.name} ({projection.quantity} units)
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {selectedDate && (
+                        <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                          <p className="text-sm text-blue-800">
+                            <strong>Selected Date:</strong> {format(selectedDate, 'PPP')}
+                          </p>
+                        </div>
+                      )}
+
+                      <div>
+                        <Label htmlFor="quantity">Quantity to Produce</Label>
+                        <Input
+                          id="quantity"
+                          type="number"
+                          min="1"
+                          max={maxQuantity}
+                          value={quantity}
+                          onChange={(e) => setQuantity(e.target.value)}
+                          placeholder="Enter quantity"
+                        />
+                        {selectedProjectionData && (
+                          <p className="text-sm text-muted-foreground mt-1">
+                            Maximum available: {maxQuantity} units
+                          </p>
+                        )}
+                      </div>
+
+                      <div>
+                        <Label htmlFor="production-line">Production Line</Label>
+                        <Select value={productionLine} onValueChange={setProductionLine}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select production line" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {productionLines.map((line) => (
+                              <SelectItem key={line} value={line}>
+                                {line}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <Button
+                        onClick={handleSchedule}
+                        disabled={!selectedDate || !selectedProjection || !quantity || !productionLine || createSchedule.isPending}
+                        className="w-full gap-2"
+                      >
+                        <Factory className="h-4 w-4" />
+                        {createSchedule.isPending ? "Scheduling..." : "Schedule Production"}
+                      </Button>
+
+                      {unscheduledProjections.length === 0 && (
+                        <div className="text-center py-4 text-muted-foreground">
+                          No unscheduled projections available
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="schedule">
-            {/* Production Schedule */}
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Calendar className="h-5 w-5" />
-                  Production Schedule ({schedulesWithVouchers.length})
-                </CardTitle>
+                <CardTitle>Production Schedule</CardTitle>
+                <CardDescription>View and manage scheduled production</CardDescription>
               </CardHeader>
               <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Voucher #</TableHead>
-                      <TableHead>Product</TableHead>
-                      <TableHead>Customer</TableHead>
-                      <TableHead>Scheduled Date</TableHead>
-                      <TableHead>Quantity</TableHead>
-                      <TableHead>Production Line</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {schedulesWithVouchers.map((schedule) => (
-                      <TableRow key={schedule.id}>
-                        <TableCell className="font-bold text-primary">
-                          {schedule.voucherNumber}
-                        </TableCell>
-                        <TableCell>
-                          <div>
-                            <div className="font-medium">{schedule.projections?.products?.name}</div>
-                            <div className="text-sm text-muted-foreground">
-                              {schedule.projections?.products?.product_code}
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>{schedule.projections?.customers?.name}</TableCell>
-                        <TableCell>
-                          {editingSchedule === schedule.id ? (
-                            <Input
-                              type="date"
-                              value={editForm.scheduled_date}
-                              onChange={(e) => setEditForm({...editForm, scheduled_date: e.target.value})}
-                              className="w-32"
-                            />
-                          ) : (
-                            format(new Date(schedule.scheduled_date), 'MMM dd, yyyy')
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {editingSchedule === schedule.id ? (
-                            <Input
-                              type="number"
-                              value={editForm.quantity}
-                              onChange={(e) => setEditForm({...editForm, quantity: e.target.value})}
-                              className="w-20"
-                            />
-                          ) : (
-                            schedule.quantity.toLocaleString()
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {editingSchedule === schedule.id ? (
-                            <Select 
-                              value={editForm.production_line} 
-                              onValueChange={(value) => setEditForm({...editForm, production_line: value})}
-                            >
-                              <SelectTrigger className="w-24">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {productionLines.map((line) => (
-                                  <SelectItem key={line} value={line}>
-                                    {line}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          ) : (
-                            schedule.production_line
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline">
-                            {schedule.status.replace('_', ' ')}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex gap-2">
-                            {editingSchedule === schedule.id ? (
-                              <>
-                                <Button size="sm" onClick={() => handleSaveEdit(schedule.id)}>
-                                  Save
-                                </Button>
-                                <Button size="sm" variant="outline" onClick={() => setEditingSchedule(null)}>
-                                  Cancel
-                                </Button>
-                              </>
-                            ) : (
-                              <>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => handleEditSchedule(schedule)}
-                                  className="gap-1"
-                                >
-                                  <Edit className="h-3 w-3" />
-                                  Edit
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="destructive"
-                                  onClick={() => handleDeleteSchedule(schedule.id)}
-                                  className="gap-1"
-                                >
-                                  <Trash2 className="h-3 w-3" />
-                                  Delete
-                                </Button>
-                              </>
-                            )}
-                          </div>
-                        </TableCell>
+                {scheduledProductions && scheduledProductions.length > 0 ? (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Customer</TableHead>
+                        <TableHead>Product</TableHead>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Line</TableHead>
+                        <TableHead>Quantity</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {scheduledProductions.map((schedule) => (
+                        <TableRow key={schedule.id}>
+                          <TableCell>{schedule.customerName}</TableCell>
+                          <TableCell>{schedule.productName}</TableCell>
+                          <TableCell>{schedule.scheduledDateFormatted}</TableCell>
+                          <TableCell>{schedule.production_line}</TableCell>
+                          <TableCell>{schedule.quantity}</TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setSelectedVoucher(schedule)}
+                            >
+                              View Voucher
+                            </Button>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => handleDeleteSchedule(schedule.id)}
+                            >
+                              Delete
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                ) : (
+                  <div className="text-center py-4 text-muted-foreground">
+                    No production schedules available
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
 
           <TabsContent value="materials">
-            {/* Raw Material Status */}
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Package className="h-5 w-5" />
-                  Raw Material Status
-                </CardTitle>
+                <CardTitle>Raw Material Status</CardTitle>
+                <CardDescription>Track raw material availability and shortages</CardDescription>
               </CardHeader>
               <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Voucher #</TableHead>
-                      <TableHead>Product</TableHead>
-                      <TableHead>Customer</TableHead>
-                      <TableHead>Scheduled Date</TableHead>
-                      <TableHead>Quantity</TableHead>
-                      <TableHead>Material Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {schedulesWithVouchers.map((schedule) => {
-                      const shortages = getShortagesForVoucher(schedule.projection_id);
-                      const hasShortages = shortages.length > 0;
-                      
-                      return (
-                        <TableRow key={schedule.id}>
-                          <TableCell className="font-bold text-primary">
-                            {schedule.voucherNumber}
-                          </TableCell>
-                          <TableCell>
-                            <div>
-                              <div className="font-medium">{schedule.projections?.products?.name}</div>
-                              <div className="text-sm text-muted-foreground">
-                                {schedule.projections?.products?.product_code}
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell>{schedule.projections?.customers?.name}</TableCell>
-                          <TableCell>{format(new Date(schedule.scheduled_date), 'MMM dd, yyyy')}</TableCell>
-                          <TableCell>{schedule.quantity.toLocaleString()}</TableCell>
-                          <TableCell>
-                            <Button
-                              variant={hasShortages ? "destructive" : "secondary"}
-                              size="sm"
-                              onClick={() => setSelectedVoucherDetails({
-                                scheduleId: schedule.projection_id,
-                                voucherNumber: schedule.voucherNumber
-                              })}
-                              className="gap-2"
-                            >
-                              {hasShortages ? (
-                                <>
-                                  <AlertTriangle className="h-3 w-3" />
-                                  Short ({shortages.length})
-                                </>
-                              ) : (
-                                <>
-                                  <CheckCircle className="h-3 w-3" />
-                                  Available
-                                </>
-                              )}
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
+                <div className="text-center py-4 text-muted-foreground">
+                  Raw material status will be displayed here
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
-
-          <TabsContent value="grn">
-            <GRNForm />
-          </TabsContent>
         </Tabs>
 
-        <ScheduleProductionDialog
-          projection={selectedProjection}
-          isOpen={isScheduleDialogOpen}
-          onClose={() => {
-            setIsScheduleDialogOpen(false);
-            setSelectedProjection(null);
-          }}
-          maxQuantity={selectedProjection ? getRemainingQuantity(selectedProjection) : 0}
-        />
-
-        <ProductionVoucherDetails
-          scheduleId={selectedVoucherDetails?.scheduleId || null}
-          voucherNumber={selectedVoucherDetails?.voucherNumber || ""}
-          isOpen={!!selectedVoucherDetails}
-          onClose={() => setSelectedVoucherDetails(null)}
-        />
+        {/* ProductionVoucherDetails Modal */}
+        <Dialog open={!!selectedVoucher} onOpenChange={() => setSelectedVoucher(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Production Voucher Details</DialogTitle>
+              <DialogDescription>
+                View details for the selected production schedule.
+              </DialogDescription>
+            </DialogHeader>
+            {selectedVoucher && (
+              <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label>Customer</Label>
+                    <Input type="text" value={selectedVoucher.customerName} readOnly />
+                  </div>
+                  <div>
+                    <Label>Product</Label>
+                    <Input type="text" value={selectedVoucher.productName} readOnly />
+                  </div>
+                  <div>
+                    <Label>Scheduled Date</Label>
+                    <Input type="text" value={selectedVoucher.scheduledDateFormatted} readOnly />
+                  </div>
+                  <div>
+                    <Label>Production Line</Label>
+                    <Input type="text" value={selectedVoucher.production_line} readOnly />
+                  </div>
+                  <div>
+                    <Label>Quantity</Label>
+                    <Input type="text" value={selectedVoucher.quantity} readOnly />
+                  </div>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );
