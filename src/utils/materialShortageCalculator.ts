@@ -8,6 +8,8 @@ export interface MaterialShortage {
   required_quantity: number;
   available_quantity: number;
   shortage_quantity: number;
+  total_required?: number;
+  is_critical?: boolean;
   vendor_info?: {
     id: string;
     name: string;

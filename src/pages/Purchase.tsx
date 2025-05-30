@@ -1,3 +1,4 @@
+
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -266,7 +267,7 @@ const Purchase = () => {
                               {shortage.material_code}
                             </TableCell>
                             <TableCell>{shortage.material_name}</TableCell>
-                            <TableCell>{shortage.total_required || shortage.shortage_quantity}</TableCell>
+                            <TableCell>{shortage.required_quantity}</TableCell>
                             <TableCell>{shortage.available_quantity}</TableCell>
                             <TableCell>
                               <Badge variant="destructive">
@@ -274,7 +275,7 @@ const Purchase = () => {
                               </Badge>
                             </TableCell>
                             <TableCell>
-                              {shortage.is_critical !== undefined && shortage.is_critical && (
+                              {shortage.is_critical && (
                                 <Badge variant="warning">Critical</Badge>
                               )}
                             </TableCell>
