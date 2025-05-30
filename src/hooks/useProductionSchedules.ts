@@ -71,6 +71,36 @@ export const useCreateProductionSchedule = () => {
   });
 };
 
+export const useDeleteProductionSchedule = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async (scheduleId: string) => {
+      const { error } = await supabase
+        .from('production_schedules')
+        .delete()
+        .eq('id', scheduleId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['production_schedules'] });
+      toast({
+        title: "Success",
+        description: "Production schedule deleted successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to delete production schedule",
+        variant: "destructive",
+      });
+    },
+  });
+};
+
 export const useUpdateProductionSchedule = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();

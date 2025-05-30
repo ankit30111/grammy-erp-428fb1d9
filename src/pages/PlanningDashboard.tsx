@@ -1,5 +1,6 @@
+
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
@@ -27,6 +28,7 @@ const PlanningDashboard = () => {
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [selectedProjection, setSelectedProjection] = useState<string>("");
   const [quantity, setQuantity] = useState<string>("");
+  const [productionLine, setProductionLine] = useState<string>("");
   const [selectedVoucher, setSelectedVoucher] = useState<any>(null);
 
   const { data: projections } = useProjections();
