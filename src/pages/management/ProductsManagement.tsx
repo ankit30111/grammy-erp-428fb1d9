@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 import { 
@@ -17,9 +16,20 @@ import {
 import { 
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter 
 } from "@/components/ui/dialog";
-import { Search, Plus, Package, Upload } from "lucide-react";
+import { 
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger 
+} from "@/components/ui/dropdown-menu";
+import { 
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, 
+  AlertDialogTitle 
+} from "@/components/ui/alert-dialog";
+import { Search, Plus, Package, Upload, MoreVertical, FileText, Edit, Eye, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { BOMForm, BOMItem } from "@/components/BOM/BOMForm";
+import { ProductBOMView } from "@/components/Products/ProductBOMView";
+import { ProductDocumentsView } from "@/components/Products/ProductDocumentsView";
+import { ProductBOMEdit } from "@/components/Products/ProductBOMEdit";
 import { useToast } from "@/hooks/use-toast";
 
 const PRODUCT_CATEGORIES = [
@@ -51,6 +61,11 @@ const ProductsManagement = () => {
     ccl: null as File | null,
     crs: null as File | null
   });
+  const [selectedProduct, setSelectedProduct] = useState<any>(null);
+  const [viewBOMOpen, setViewBOMOpen] = useState(false);
+  const [editBOMOpen, setEditBOMOpen] = useState(false);
+  const [documentsOpen, setDocumentsOpen] = useState(false);
+  const [deleteProductOpen, setDeleteProductOpen] = useState(false);
 
   useEffect(() => {
     fetchProducts();
@@ -234,6 +249,35 @@ const ProductsManagement = () => {
     }
   };
 
+  const handleDeleteProduct = async () => {
+    if (!selectedProduct) return;
+
+    try {
+      const { error } = await supabase
+        .from('products')
+        .update({ is_active: false })
+        .eq('id', selectedProduct.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Product deleted successfully"
+      });
+
+      fetchProducts();
+      setDeleteProductOpen(false);
+      setSelectedProduct(null);
+    } catch (error) {
+      console.error('Error deleting product:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete product",
+        variant: "destructive"
+      });
+    }
+  };
+
   const DocumentUpload = ({ type, label }: { type: string; label: string }) => (
     <div className="space-y-2">
       <Label htmlFor={type}>{label}</Label>
@@ -407,7 +451,52 @@ const ProductsManagement = () => {
                       <TableCell>{product.category}</TableCell>
                       <TableCell className="max-w-md truncate">{product.description}</TableCell>
                       <TableCell className="text-right">
-                        <Button variant="outline" size="sm">View BOM</Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem 
+                              onClick={() => {
+                                setSelectedProduct(product);
+                                setViewBOMOpen(true);
+                              }}
+                            >
+                              <Eye className="mr-2 h-4 w-4" />
+                              View BOM
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => {
+                                setSelectedProduct(product);
+                                setEditBOMOpen(true);
+                              }}
+                            >
+                              <Edit className="mr-2 h-4 w-4" />
+                              Edit BOM
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => {
+                                setSelectedProduct(product);
+                                setDocumentsOpen(true);
+                              }}
+                            >
+                              <FileText className="mr-2 h-4 w-4" />
+                              View Documents
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => {
+                                setSelectedProduct(product);
+                                setDeleteProductOpen(true);
+                              }}
+                              className="text-red-600"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Delete Product
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </TableCell>
                     </TableRow>
                   ))
@@ -416,6 +505,49 @@ const ProductsManagement = () => {
             </Table>
           </CardContent>
         </Card>
+
+        {/* View BOM Dialog */}
+        <ProductBOMView 
+          product={selectedProduct}
+          open={viewBOMOpen}
+          onOpenChange={setViewBOMOpen}
+        />
+
+        {/* Edit BOM Dialog */}
+        <ProductBOMEdit 
+          product={selectedProduct}
+          open={editBOMOpen}
+          onOpenChange={setEditBOMOpen}
+          onSuccess={() => {
+            fetchProducts();
+            setEditBOMOpen(false);
+          }}
+        />
+
+        {/* Documents Dialog */}
+        <ProductDocumentsView 
+          product={selectedProduct}
+          open={documentsOpen}
+          onOpenChange={setDocumentsOpen}
+        />
+
+        {/* Delete Product Alert Dialog */}
+        <AlertDialog open={deleteProductOpen} onOpenChange={setDeleteProductOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Product</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete "{selectedProduct?.name}"? This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDeleteProduct} className="bg-red-600 hover:bg-red-700">
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </DashboardLayout>
   );
