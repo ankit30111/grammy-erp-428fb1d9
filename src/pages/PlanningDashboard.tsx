@@ -4,20 +4,41 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Package2, AlertTriangle, Clock, Package, CheckCircle } from "lucide-react";
+import { Calendar, Package2, AlertTriangle, Clock, Package, CheckCircle, Edit, Trash2 } from "lucide-react";
 import { useProjections } from "@/hooks/useProjections";
-import { useProductionSchedules } from "@/hooks/useProductionSchedules";
+import { useProductionSchedules, useUpdateProductionSchedule } from "@/hooks/useProductionSchedules";
 import { ScheduleProductionDialog } from "@/components/Planning/ScheduleProductionDialog";
 import { useState } from "react";
 import { format } from "date-fns";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import SchedulingProduction from "@/components/Planning/SchedulingProduction";
+import ProductionVoucherDetails from "@/components/Planning/ProductionVoucherDetails";
+import GRNForm from "@/components/PPC/GRNForm";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
 
 const PlanningDashboard = () => {
   const { data: projections = [] } = useProjections();
   const { data: schedules = [] } = useProductionSchedules();
+  const updateSchedule = useUpdateProductionSchedule();
+  const { toast } = useToast();
+  
   const [selectedProjection, setSelectedProjection] = useState<any>(null);
   const [isScheduleDialogOpen, setIsScheduleDialogOpen] = useState(false);
+  const [selectedVoucherDetails, setSelectedVoucherDetails] = useState<{
+    scheduleId: string;
+    voucherNumber: string;
+  } | null>(null);
+  const [editingSchedule, setEditingSchedule] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({
+    scheduled_date: "",
+    quantity: "",
+    production_line: ""
+  });
 
   // Generate production voucher numbers for scheduled productions
   const generateVoucherNumber = (scheduledDate: string, scheduleIndex: number) => {
@@ -64,13 +85,62 @@ const PlanningDashboard = () => {
   }));
 
   // Get material shortages for each production voucher
-  const getShortagesForVoucher = (voucherNumber: string, productId: string) => {
+  const getShortagesForVoucher = (scheduleId: string) => {
     return materialRequirements.filter(req => 
       req.shortage_quantity > 0 && 
-      req.projection_id && 
-      schedules.find(s => s.projection_id === req.projection_id && s.projections?.products?.id === productId)
+      req.projection_id === scheduleId
     );
   };
+
+  const handleEditSchedule = (schedule: any) => {
+    setEditingSchedule(schedule.id);
+    setEditForm({
+      scheduled_date: schedule.scheduled_date,
+      quantity: schedule.quantity.toString(),
+      production_line: schedule.production_line
+    });
+  };
+
+  const handleSaveEdit = async (scheduleId: string) => {
+    try {
+      await updateSchedule.mutateAsync({
+        scheduleId,
+        updates: {
+          scheduled_date: editForm.scheduled_date,
+          quantity: parseInt(editForm.quantity),
+          production_line: editForm.production_line
+        }
+      });
+      setEditingSchedule(null);
+    } catch (error) {
+      console.error('Error updating schedule:', error);
+    }
+  };
+
+  const handleDeleteSchedule = async (scheduleId: string) => {
+    try {
+      const { error } = await supabase
+        .from('production_schedules')
+        .delete()
+        .eq('id', scheduleId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Schedule Deleted",
+        description: "Production schedule has been deleted successfully",
+      });
+    } catch (error) {
+      console.error('Error deleting schedule:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete production schedule",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const productionLines = ["Line 1", "Line 2", "Line 3", "Line 4"];
 
   return (
     <DashboardLayout>
@@ -86,202 +156,290 @@ const PlanningDashboard = () => {
           </div>
         </div>
 
-        {/* Overview Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center gap-2">
-                <Package2 className="h-8 w-8 text-blue-600" />
-                <div>
-                  <div className="text-2xl font-bold">{projections.length}</div>
-                  <div className="text-sm text-muted-foreground">Total Projections</div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+        <Tabs defaultValue="projections" className="space-y-4">
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="projections">Customer Projections</TabsTrigger>
+            <TabsTrigger value="scheduling">Scheduling Production</TabsTrigger>
+            <TabsTrigger value="schedule">Production Schedule</TabsTrigger>
+            <TabsTrigger value="materials">Raw Material Status</TabsTrigger>
+            <TabsTrigger value="grn">GRN Management</TabsTrigger>
+          </TabsList>
 
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center gap-2">
-                <Calendar className="h-8 w-8 text-green-600" />
-                <div>
-                  <div className="text-2xl font-bold">{schedules.length}</div>
-                  <div className="text-sm text-muted-foreground">Scheduled Productions</div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center gap-2">
-                <AlertTriangle className="h-8 w-8 text-orange-600" />
-                <div>
-                  <div className="text-2xl font-bold">
-                    {projections.filter(p => getRemainingQuantity(p) > 0).length}
-                  </div>
-                  <div className="text-sm text-muted-foreground">Pending Scheduling</div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center gap-2">
-                <Package className="h-8 w-8 text-red-600" />
-                <div>
-                  <div className="text-2xl font-bold">
-                    {materialRequirements.filter(req => req.shortage_quantity > 0).length}
-                  </div>
-                  <div className="text-sm text-muted-foreground">Material Shortages</div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Customer Projections Section */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Package2 className="h-5 w-5" />
-              Customer Projections
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Customer</TableHead>
-                  <TableHead>Product</TableHead>
-                  <TableHead>Delivery Month</TableHead>
-                  <TableHead>Total Quantity</TableHead>
-                  <TableHead>Scheduled</TableHead>
-                  <TableHead>Remaining</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {projections.map((projection) => {
-                  const scheduled = getScheduledQuantity(projection.id);
-                  const remaining = getRemainingQuantity(projection);
-                  
-                  return (
-                    <TableRow key={projection.id}>
-                      <TableCell className="font-medium">
-                        {projection.customers?.name}
-                      </TableCell>
-                      <TableCell>{projection.products?.name}</TableCell>
-                      <TableCell>{projection.delivery_month}</TableCell>
-                      <TableCell>{projection.quantity.toLocaleString()}</TableCell>
-                      <TableCell>{scheduled.toLocaleString()}</TableCell>
-                      <TableCell>{remaining.toLocaleString()}</TableCell>
-                      <TableCell>
-                        <Badge variant={remaining === 0 ? "secondary" : "destructive"}>
-                          {remaining === 0 ? "Fully Scheduled" : "Pending"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {remaining > 0 && (
-                          <Button
-                            size="sm"
-                            onClick={() => handleScheduleProduction(projection)}
-                          >
-                            Schedule Production
-                          </Button>
-                        )}
-                      </TableCell>
+          <TabsContent value="projections">
+            {/* Customer Projections Section */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Package2 className="h-5 w-5" />
+                  Customer Projections ({projections.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Customer</TableHead>
+                      <TableHead>Product</TableHead>
+                      <TableHead>Delivery Month</TableHead>
+                      <TableHead>Total Quantity</TableHead>
+                      <TableHead>Scheduled</TableHead>
+                      <TableHead>Remaining</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Actions</TableHead>
                     </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+                  </TableHeader>
+                  <TableBody>
+                    {projections.map((projection) => {
+                      const scheduled = getScheduledQuantity(projection.id);
+                      const remaining = getRemainingQuantity(projection);
+                      
+                      return (
+                        <TableRow key={projection.id}>
+                          <TableCell className="font-medium">
+                            {projection.customers?.name}
+                          </TableCell>
+                          <TableCell>{projection.products?.name}</TableCell>
+                          <TableCell>{projection.delivery_month}</TableCell>
+                          <TableCell>{projection.quantity.toLocaleString()}</TableCell>
+                          <TableCell>{scheduled.toLocaleString()}</TableCell>
+                          <TableCell>{remaining.toLocaleString()}</TableCell>
+                          <TableCell>
+                            <Badge variant={remaining === 0 ? "secondary" : "destructive"}>
+                              {remaining === 0 ? "Fully Scheduled" : "Pending"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {remaining > 0 && (
+                              <Button
+                                size="sm"
+                                onClick={() => handleScheduleProduction(projection)}
+                              >
+                                Schedule Production
+                              </Button>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-        {/* Production Schedule with Material Shortages */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="h-5 w-5" />
-              Production Schedule & Material Shortages
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Voucher #</TableHead>
-                  <TableHead>Product</TableHead>
-                  <TableHead>Customer</TableHead>
-                  <TableHead>Scheduled Date</TableHead>
-                  <TableHead>Quantity</TableHead>
-                  <TableHead>Production Line</TableHead>
-                  <TableHead>Material Shortages</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {schedulesWithVouchers.map((schedule) => {
-                  const shortages = getShortagesForVoucher(
-                    schedule.voucherNumber, 
-                    schedule.projections?.products?.id
-                  );
-                  
-                  return (
-                    <TableRow key={schedule.id}>
-                      <TableCell className="font-bold text-primary">
-                        {schedule.voucherNumber}
-                      </TableCell>
-                      <TableCell>
-                        <div>
-                          <div className="font-medium">{schedule.projections?.products?.name}</div>
-                          <div className="text-sm text-muted-foreground">
-                            {schedule.projections?.products?.product_code}
+          <TabsContent value="scheduling">
+            <SchedulingProduction />
+          </TabsContent>
+
+          <TabsContent value="schedule">
+            {/* Production Schedule */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Calendar className="h-5 w-5" />
+                  Production Schedule ({schedulesWithVouchers.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Voucher #</TableHead>
+                      <TableHead>Product</TableHead>
+                      <TableHead>Customer</TableHead>
+                      <TableHead>Scheduled Date</TableHead>
+                      <TableHead>Quantity</TableHead>
+                      <TableHead>Production Line</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {schedulesWithVouchers.map((schedule) => (
+                      <TableRow key={schedule.id}>
+                        <TableCell className="font-bold text-primary">
+                          {schedule.voucherNumber}
+                        </TableCell>
+                        <TableCell>
+                          <div>
+                            <div className="font-medium">{schedule.projections?.products?.name}</div>
+                            <div className="text-sm text-muted-foreground">
+                              {schedule.projections?.products?.product_code}
+                            </div>
                           </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>{schedule.projections?.customers?.name}</TableCell>
-                      <TableCell>{format(new Date(schedule.scheduled_date), 'MMM dd, yyyy')}</TableCell>
-                      <TableCell>{schedule.quantity.toLocaleString()}</TableCell>
-                      <TableCell>{schedule.production_line}</TableCell>
-                      <TableCell>
-                        {shortages.length > 0 ? (
-                          <div className="space-y-1">
-                            {shortages.slice(0, 2).map((shortage, index) => (
-                              <div key={index} className="text-xs">
-                                <Badge variant="destructive" className="text-xs">
-                                  {shortage.material_code}: -{shortage.shortage_quantity}
-                                </Badge>
-                              </div>
-                            ))}
-                            {shortages.length > 2 && (
-                              <div className="text-xs text-muted-foreground">
-                                +{shortages.length - 2} more
-                              </div>
+                        </TableCell>
+                        <TableCell>{schedule.projections?.customers?.name}</TableCell>
+                        <TableCell>
+                          {editingSchedule === schedule.id ? (
+                            <Input
+                              type="date"
+                              value={editForm.scheduled_date}
+                              onChange={(e) => setEditForm({...editForm, scheduled_date: e.target.value})}
+                              className="w-32"
+                            />
+                          ) : (
+                            format(new Date(schedule.scheduled_date), 'MMM dd, yyyy')
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {editingSchedule === schedule.id ? (
+                            <Input
+                              type="number"
+                              value={editForm.quantity}
+                              onChange={(e) => setEditForm({...editForm, quantity: e.target.value})}
+                              className="w-20"
+                            />
+                          ) : (
+                            schedule.quantity.toLocaleString()
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {editingSchedule === schedule.id ? (
+                            <Select 
+                              value={editForm.production_line} 
+                              onValueChange={(value) => setEditForm({...editForm, production_line: value})}
+                            >
+                              <SelectTrigger className="w-24">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {productionLines.map((line) => (
+                                  <SelectItem key={line} value={line}>
+                                    {line}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            schedule.production_line
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">
+                            {schedule.status.replace('_', ' ')}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-2">
+                            {editingSchedule === schedule.id ? (
+                              <>
+                                <Button size="sm" onClick={() => handleSaveEdit(schedule.id)}>
+                                  Save
+                                </Button>
+                                <Button size="sm" variant="outline" onClick={() => setEditingSchedule(null)}>
+                                  Cancel
+                                </Button>
+                              </>
+                            ) : (
+                              <>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleEditSchedule(schedule)}
+                                  className="gap-1"
+                                >
+                                  <Edit className="h-3 w-3" />
+                                  Edit
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  onClick={() => handleDeleteSchedule(schedule.id)}
+                                  className="gap-1"
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                  Delete
+                                </Button>
+                              </>
                             )}
                           </div>
-                        ) : (
-                          <Badge variant="secondary">
-                            <CheckCircle className="h-3 w-3 mr-1" />
-                            No Shortages
-                          </Badge>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">
-                          {schedule.status.replace('_', ' ')}
-                        </Badge>
-                      </TableCell>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="materials">
+            {/* Raw Material Status */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Package className="h-5 w-5" />
+                  Raw Material Status
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Voucher #</TableHead>
+                      <TableHead>Product</TableHead>
+                      <TableHead>Customer</TableHead>
+                      <TableHead>Scheduled Date</TableHead>
+                      <TableHead>Quantity</TableHead>
+                      <TableHead>Material Status</TableHead>
                     </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+                  </TableHeader>
+                  <TableBody>
+                    {schedulesWithVouchers.map((schedule) => {
+                      const shortages = getShortagesForVoucher(schedule.projection_id);
+                      const hasShortages = shortages.length > 0;
+                      
+                      return (
+                        <TableRow key={schedule.id}>
+                          <TableCell className="font-bold text-primary">
+                            {schedule.voucherNumber}
+                          </TableCell>
+                          <TableCell>
+                            <div>
+                              <div className="font-medium">{schedule.projections?.products?.name}</div>
+                              <div className="text-sm text-muted-foreground">
+                                {schedule.projections?.products?.product_code}
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>{schedule.projections?.customers?.name}</TableCell>
+                          <TableCell>{format(new Date(schedule.scheduled_date), 'MMM dd, yyyy')}</TableCell>
+                          <TableCell>{schedule.quantity.toLocaleString()}</TableCell>
+                          <TableCell>
+                            <Button
+                              variant={hasShortages ? "destructive" : "secondary"}
+                              size="sm"
+                              onClick={() => setSelectedVoucherDetails({
+                                scheduleId: schedule.projection_id,
+                                voucherNumber: schedule.voucherNumber
+                              })}
+                              className="gap-2"
+                            >
+                              {hasShortages ? (
+                                <>
+                                  <AlertTriangle className="h-3 w-3" />
+                                  Short ({shortages.length})
+                                </>
+                              ) : (
+                                <>
+                                  <CheckCircle className="h-3 w-3" />
+                                  Available
+                                </>
+                              )}
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="grn">
+            <GRNForm />
+          </TabsContent>
+        </Tabs>
 
         <ScheduleProductionDialog
           projection={selectedProjection}
@@ -291,6 +449,13 @@ const PlanningDashboard = () => {
             setSelectedProjection(null);
           }}
           maxQuantity={selectedProjection ? getRemainingQuantity(selectedProjection) : 0}
+        />
+
+        <ProductionVoucherDetails
+          scheduleId={selectedVoucherDetails?.scheduleId || null}
+          voucherNumber={selectedVoucherDetails?.voucherNumber || ""}
+          isOpen={!!selectedVoucherDetails}
+          onClose={() => setSelectedVoucherDetails(null)}
         />
       </div>
     </DashboardLayout>
