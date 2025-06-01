@@ -63,7 +63,7 @@ const FinishedGoods = () => {
       }
       
       console.log('Fetched finished goods inventory:', data);
-      return data as FinishedGoodsItem[];
+      return data;
     },
   });
 
