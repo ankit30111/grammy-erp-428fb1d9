@@ -1,4 +1,3 @@
-
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,12 +6,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Calendar as CalendarIcon, Factory, Package } from "lucide-react";
+import { Calendar as CalendarIcon, Factory } from "lucide-react";
 import { useState } from "react";
 import { format } from "date-fns";
 import { useProjections } from "@/hooks/useProjections";
 import { useProductionSchedules, useCreateProductionSchedule, useDeleteProductionSchedule } from "@/hooks/useProductionSchedules";
-import { usePurchaseOrders } from "@/hooks/usePurchaseOrders";
 import {
   Table,
   TableBody,
@@ -22,7 +20,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { useToast } from "@/hooks/use-toast";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useBOM } from "@/hooks/useBOM";
 import { useInventory } from "@/hooks/useInventory";
 
@@ -34,7 +32,6 @@ const PlanningDashboard = () => {
 
   const { data: projections } = useProjections();
   const { data: schedules } = useProductionSchedules();
-  const { data: purchaseOrders } = usePurchaseOrders();
   const { data: bomData } = useBOM();
   const { data: inventory } = useInventory();
   const createSchedule = useCreateProductionSchedule();

@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { CalendarIcon, AlertTriangle, Check } from "lucide-react";
+import { CalendarIcon, Check } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -10,18 +10,10 @@ import { useProjections } from "@/hooks/useProjections";
 import { useCreateProductionSchedule } from "@/hooks/useProductionSchedules";
 import { useToast } from "@/hooks/use-toast";
 
-const productionLines = [
-  { id: "L1", name: "Line 1", capacity: 300 },
-  { id: "L2", name: "Line 2", capacity: 400 },
-  { id: "L3", name: "Line 3", capacity: 250 }
-];
-
 interface ScheduleProductionFormProps {
   date: Date | undefined;
   selectedProjection: string | null;
   setSelectedProjection: (id: string | null) => void;
-  selectedLine: string;
-  setSelectedLine: (id: string) => void;
   quantity: string;
   setQuantity: (quantity: string) => void;
 }
@@ -30,8 +22,6 @@ const ScheduleProductionForm = ({
   date,
   selectedProjection,
   setSelectedProjection,
-  selectedLine,
-  setSelectedLine,
   quantity,
   setQuantity,
 }: ScheduleProductionFormProps) => {
@@ -45,7 +35,7 @@ const ScheduleProductionForm = ({
   };
 
   const handleScheduleProduction = async () => {
-    if (!date || !selectedProjection || !selectedLine || !quantity) {
+    if (!date || !selectedProjection || !quantity) {
       toast({
         title: "Missing Information",
         description: "Please fill in all required fields",
@@ -58,13 +48,11 @@ const ScheduleProductionForm = ({
       await createSchedule.mutateAsync({
         projection_id: selectedProjection,
         scheduled_date: format(date, 'yyyy-MM-dd'),
-        production_line: selectedLine,
         quantity: parseInt(quantity),
       });
 
       // Reset form
       setSelectedProjection(null);
-      setSelectedLine("");
       setQuantity("");
 
       toast({
@@ -138,26 +126,10 @@ const ScheduleProductionForm = ({
             
             {/* Right column */}
             <div className="space-y-4">
-              <div>
-                <label htmlFor="line" className="text-sm font-medium mb-1 block">Production Line</label>
-                <Select value={selectedLine} onValueChange={setSelectedLine}>
-                  <SelectTrigger id="line">
-                    <SelectValue placeholder="Select production line" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {productionLines.map((line) => (
-                      <SelectItem key={line.id} value={line.id}>
-                        {line.name} (Capacity: {line.capacity} pcs/day)
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              
               <div className="pt-6">
                 <Button 
                   onClick={handleScheduleProduction}
-                  disabled={!date || !selectedProjection || !selectedLine || !quantity || createSchedule.isPending}
+                  disabled={!date || !selectedProjection || !quantity || createSchedule.isPending}
                   className="w-full"
                 >
                   <Check className="mr-2 h-4 w-4" />

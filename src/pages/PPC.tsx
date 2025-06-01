@@ -1,8 +1,6 @@
 
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Calendar, Factory, Package, TrendingUp } from "lucide-react";
 import ProductionSchedule from "@/components/PPC/ProductionSchedule";
 import ProductionCalendar from "@/components/PPC/ProductionCalendar";
 import MaterialShortages from "@/components/PPC/MaterialShortages";
@@ -34,7 +32,7 @@ const PPC = () => {
           </TabsContent>
 
           <TabsContent value="calendar">
-            <ProductionCalendar onDateSelect={setSelectedDate} selectedDate={selectedDate} />
+            <ProductionCalendar selectedDate={selectedDate} />
           </TabsContent>
 
           <TabsContent value="materials">

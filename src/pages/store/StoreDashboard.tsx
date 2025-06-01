@@ -1,13 +1,22 @@
 
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Package, Receipt, FileCheck } from "lucide-react";
+import { Package } from "lucide-react";
 import EnhancedScheduledProduction from "@/components/Store/EnhancedScheduledProduction";
 import EnhancedGRNReceiving from "@/components/Store/EnhancedGRNReceiving";
 import InventoryManagement from "@/components/Store/InventoryManagement";
 import SpareOrdersPacking from "@/components/Store/SpareOrdersPacking";
 
 const StoreDashboard = () => {
+  // Mock handlers for GRN Receiving component
+  const handleReceiveGRN = (id: string, quantity: number) => {
+    console.log(`Receiving GRN ${id} with quantity ${quantity}`);
+  };
+
+  const handleDiscrepancyReport = (grnId: string, expectedQty: number, receivedQty: number, poNumber: string) => {
+    console.log(`Discrepancy reported for GRN ${grnId}: Expected ${expectedQty}, Received ${receivedQty}, PO: ${poNumber}`);
+  };
+
   return (
     <DashboardLayout>
       <div className="container mx-auto py-6">
@@ -29,7 +38,11 @@ const StoreDashboard = () => {
           </TabsContent>
 
           <TabsContent value="grn-receiving" className="space-y-4">
-            <EnhancedGRNReceiving />
+            <EnhancedGRNReceiving 
+              grns={[]} 
+              onReceiveGRN={handleReceiveGRN}
+              onDiscrepancyReport={handleDiscrepancyReport}
+            />
           </TabsContent>
 
           <TabsContent value="inventory" className="space-y-4">

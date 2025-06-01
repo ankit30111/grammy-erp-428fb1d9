@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -84,12 +83,25 @@ export const useCreateProductionSchedule = () => {
       // Generate voucher number
       const voucherNumber = await generateVoucherNumber(data.scheduled_date);
       
+      // Get projection details to get product_id
+      const { data: projection, error: projectionError } = await supabase
+        .from("projections")
+        .select("product_id")
+        .eq("id", data.projection_id)
+        .single();
+
+      if (projectionError) {
+        console.error("Error fetching projection:", projectionError);
+        throw projectionError;
+      }
+      
       const { data: schedule, error } = await supabase
         .from("production_schedules")
         .insert({
           projection_id: data.projection_id,
           scheduled_date: data.scheduled_date,
           quantity: data.quantity,
+          production_line: 'LINE-1', // Default production line since it's required in DB
           status: 'SCHEDULED'
         })
         .select()
@@ -105,6 +117,7 @@ export const useCreateProductionSchedule = () => {
         .from('production_orders')
         .insert({
           production_schedule_id: schedule.id,
+          product_id: projection.product_id,
           voucher_number: voucherNumber,
           quantity: data.quantity,
           scheduled_date: data.scheduled_date,

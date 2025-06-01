@@ -6,7 +6,7 @@ import { useProjections } from "@/hooks/useProjections";
 import { useProductionSchedules } from "@/hooks/useProductionSchedules";
 
 interface UnscheduledProjectionsProps {
-  onScheduleClick: (projectionId: string) => void;
+  onScheduleClick?: (projectionId: string) => void;
 }
 
 const UnscheduledProjections = ({ 
@@ -52,7 +52,7 @@ const UnscheduledProjections = ({
               <TableHead>Product</TableHead>
               <TableHead>Quantity</TableHead>
               <TableHead>Delivery Month</TableHead>
-              <TableHead>Action</TableHead>
+              {onScheduleClick && <TableHead>Action</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -64,20 +64,22 @@ const UnscheduledProjections = ({
                   <TableCell>{proj.products?.name}</TableCell>
                   <TableCell>{proj.quantity}</TableCell>
                   <TableCell>{proj.delivery_month}</TableCell>
-                  <TableCell>
-                    <Button 
-                      size="sm" 
-                      onClick={() => onScheduleClick(proj.id)}
-                      variant="outline"
-                    >
-                      Schedule
-                    </Button>
-                  </TableCell>
+                  {onScheduleClick && (
+                    <TableCell>
+                      <Button 
+                        size="sm" 
+                        onClick={() => onScheduleClick(proj.id)}
+                        variant="outline"
+                      >
+                        Schedule
+                      </Button>
+                    </TableCell>
+                  )}
                 </TableRow>
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-4 text-muted-foreground">
+                <TableCell colSpan={onScheduleClick ? 6 : 5} className="text-center py-4 text-muted-foreground">
                   All projections have been scheduled
                 </TableCell>
               </TableRow>
