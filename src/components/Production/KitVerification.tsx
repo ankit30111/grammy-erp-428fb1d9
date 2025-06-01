@@ -10,6 +10,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Package, AlertTriangle, CheckCircle } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const KitVerification = () => {
   const [receivedQuantities, setReceivedQuantities] = useState<Record<string, number>>({});
@@ -41,7 +42,7 @@ const KitVerification = () => {
             name
           )
         `)
-        .eq("kit_preparation.status", "SENT")
+        .in("kit_preparation.status", ["SENT", "VERIFIED", "VERIFIED_WITH_DISCREPANCY"])
         .order("created_at", { ascending: false });
       
       if (error) throw error;
@@ -160,7 +161,22 @@ const KitVerification = () => {
     }
   };
 
-  // Group kit items by kit preparation
+  const handleQuantityChange = (itemId: string, value: string) => {
+    const quantity = parseInt(value) || 0;
+    setReceivedQuantities(prev => ({
+      ...prev,
+      [itemId]: quantity
+    }));
+  };
+
+  const handleCommentChange = (itemId: string, comment: string) => {
+    setDiscrepancyComments(prev => ({
+      ...prev,
+      [itemId]: comment
+    }));
+  };
+
+  // Group kit items by kit preparation and separate by verification status
   const groupedKits = kitItems.reduce((acc, item) => {
     const kitId = item.kit_preparation_id;
     if (!acc[kitId]) {
@@ -173,6 +189,125 @@ const KitVerification = () => {
     return acc;
   }, {} as Record<string, { kit: any; items: any[] }>);
 
+  // Separate kits by verification status
+  const kitsToVerify = Object.entries(groupedKits).filter(([_, { kit }]) => 
+    kit.status === "SENT"
+  );
+
+  const verifiedKits = Object.entries(groupedKits).filter(([_, { kit }]) => 
+    kit.status === "VERIFIED" || kit.status === "VERIFIED_WITH_DISCREPANCY"
+  );
+
+  const renderKitTable = (kits: any[], showActions: boolean = true) => (
+    <div className="space-y-8">
+      {kits.map(([kitId, { kit, items }]) => (
+        <div key={kitId} className="border rounded-lg p-6">
+          <div className="mb-4">
+            <h3 className="text-lg font-semibold">Kit: {kit.kit_number}</h3>
+            <p className="text-sm text-muted-foreground">
+              Voucher: {kit.production_orders.voucher_number} | 
+              Product: {kit.production_orders.production_schedules.projections.products.name}
+            </p>
+            <Badge variant={kit.status === "VERIFIED" ? "default" : kit.status === "VERIFIED_WITH_DISCREPANCY" ? "destructive" : "secondary"}>
+              {kit.status.replace('_', ' ')}
+            </Badge>
+          </div>
+
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Component</TableHead>
+                <TableHead>Material Code</TableHead>
+                <TableHead>Qty Sent</TableHead>
+                <TableHead>Qty Received/Verified</TableHead>
+                <TableHead>Discrepancy Qty</TableHead>
+                <TableHead>Status</TableHead>
+                {showActions && <TableHead>Comments</TableHead>}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {items.map((item) => {
+                const receivedQty = receivedQuantities[item.id] ?? item.actual_quantity;
+                const discrepancyQty = Math.max(0, item.actual_quantity - receivedQty);
+                const hasDiscrepancy = discrepancyQty > 0;
+
+                return (
+                  <TableRow key={item.id}>
+                    <TableCell className="font-medium">{item.raw_materials.name}</TableCell>
+                    <TableCell className="font-mono">{item.raw_materials.material_code}</TableCell>
+                    <TableCell>{item.actual_quantity}</TableCell>
+                    <TableCell>
+                      {showActions ? (
+                        <Input
+                          type="number"
+                          className="w-24"
+                          value={receivedQuantities[item.id] ?? item.actual_quantity}
+                          onChange={(e) => handleQuantityChange(item.id, e.target.value)}
+                          max={item.actual_quantity}
+                          disabled={item.verified_by_production}
+                        />
+                      ) : (
+                        <span>{receivedQty}</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {discrepancyQty > 0 ? (
+                        <span className="text-red-600 font-medium">{discrepancyQty}</span>
+                      ) : (
+                        <span className="text-green-600">0</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {item.verified_by_production ? (
+                        <Badge variant="default" className="gap-1">
+                          <CheckCircle className="h-3 w-3" />
+                          Verified
+                        </Badge>
+                      ) : hasDiscrepancy ? (
+                        <Badge variant="destructive" className="gap-1">
+                          <AlertTriangle className="h-3 w-3" />
+                          Discrepancy
+                        </Badge>
+                      ) : (
+                        <Badge variant="default" className="gap-1">
+                          <CheckCircle className="h-3 w-3" />
+                          OK
+                        </Badge>
+                      )}
+                    </TableCell>
+                    {showActions && (
+                      <TableCell>
+                        {hasDiscrepancy && !item.verified_by_production && (
+                          <Textarea
+                            placeholder="Required: Explain the discrepancy"
+                            value={discrepancyComments[item.id] || ""}
+                            onChange={(e) => handleCommentChange(item.id, e.target.value)}
+                            className="min-h-[60px]"
+                          />
+                        )}
+                      </TableCell>
+                    )}
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+
+          {showActions && (
+            <div className="mt-4 flex justify-end">
+              <Button 
+                onClick={() => handleVerifyKit(kitId, items)}
+                disabled={items.every(item => item.verified_by_production)}
+              >
+                {items.every(item => item.verified_by_production) ? "Already Verified" : "Verify Kit"}
+              </Button>
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+
   return (
     <div className="space-y-6">
       <Card>
@@ -183,108 +318,32 @@ const KitVerification = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-8">
-            {Object.entries(groupedKits).map(([kitId, { kit, items }]) => (
-              <div key={kitId} className="border rounded-lg p-6">
-                <div className="mb-4">
-                  <h3 className="text-lg font-semibold">Kit: {kit.kit_number}</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Voucher: {kit.production_orders.voucher_number} | 
-                    Product: {kit.production_orders.production_schedules.projections.products.name}
-                  </p>
+          <Tabs defaultValue="to-verify" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="to-verify">Kits to be Verified ({kitsToVerify.length})</TabsTrigger>
+              <TabsTrigger value="verified">Kits Verified ({verifiedKits.length})</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="to-verify" className="mt-6">
+              {kitsToVerify.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  No kits available for verification
                 </div>
-
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Component</TableHead>
-                      <TableHead>Material Code</TableHead>
-                      <TableHead>Qty Sent</TableHead>
-                      <TableHead>Qty Received/Verified</TableHead>
-                      <TableHead>Discrepancy Qty</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Comments</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {items.map((item) => {
-                      const receivedQty = receivedQuantities[item.id] ?? item.actual_quantity;
-                      const discrepancyQty = Math.max(0, item.actual_quantity - receivedQty);
-                      const hasDiscrepancy = discrepancyQty > 0;
-
-                      return (
-                        <TableRow key={item.id}>
-                          <TableCell className="font-medium">{item.raw_materials.name}</TableCell>
-                          <TableCell className="font-mono">{item.raw_materials.material_code}</TableCell>
-                          <TableCell>{item.actual_quantity}</TableCell>
-                          <TableCell>
-                            <Input
-                              type="number"
-                              className="w-24"
-                              value={receivedQuantities[item.id] ?? item.actual_quantity}
-                              onChange={(e) => handleQuantityChange(item.id, e.target.value)}
-                              max={item.actual_quantity}
-                              disabled={item.verified_by_production}
-                            />
-                          </TableCell>
-                          <TableCell>
-                            {discrepancyQty > 0 ? (
-                              <span className="text-red-600 font-medium">{discrepancyQty}</span>
-                            ) : (
-                              <span className="text-green-600">0</span>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            {item.verified_by_production ? (
-                              <Badge variant="default" className="gap-1">
-                                <CheckCircle className="h-3 w-3" />
-                                Verified
-                              </Badge>
-                            ) : hasDiscrepancy ? (
-                              <Badge variant="destructive" className="gap-1">
-                                <AlertTriangle className="h-3 w-3" />
-                                Discrepancy
-                              </Badge>
-                            ) : (
-                              <Badge variant="default" className="gap-1">
-                                <CheckCircle className="h-3 w-3" />
-                                OK
-                              </Badge>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            {hasDiscrepancy && !item.verified_by_production && (
-                              <Textarea
-                                placeholder="Required: Explain the discrepancy"
-                                value={discrepancyComments[item.id] || ""}
-                                onChange={(e) => handleCommentChange(item.id, e.target.value)}
-                                className="min-h-[60px]"
-                              />
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-
-                <div className="mt-4 flex justify-end">
-                  <Button 
-                    onClick={() => handleVerifyKit(kitId, items)}
-                    disabled={items.every(item => item.verified_by_production)}
-                  >
-                    {items.every(item => item.verified_by_production) ? "Already Verified" : "Verify Kit"}
-                  </Button>
+              ) : (
+                renderKitTable(kitsToVerify, true)
+              )}
+            </TabsContent>
+            
+            <TabsContent value="verified" className="mt-6">
+              {verifiedKits.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  No verified kits found
                 </div>
-              </div>
-            ))}
-
-            {Object.keys(groupedKits).length === 0 && (
-              <div className="text-center py-8 text-muted-foreground">
-                No kits available for verification
-              </div>
-            )}
-          </div>
+              ) : (
+                renderKitTable(verifiedKits, false)
+              )}
+            </TabsContent>
+          </Tabs>
         </CardContent>
       </Card>
     </div>
