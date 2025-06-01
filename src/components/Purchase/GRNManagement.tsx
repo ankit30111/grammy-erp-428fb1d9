@@ -3,13 +3,19 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Package, FileText, CheckCircle, XCircle } from "lucide-react";
+import { Package, FileText, Edit, CheckCircle, XCircle } from "lucide-react";
 import { useGRN, useUpdateGRNItem } from "@/hooks/useGRN";
 import { format } from "date-fns";
+import { useState } from "react";
+import { Input } from "@/components/ui/input";
+import { useToast } from "@/hooks/use-toast";
 
 const GRNManagement = () => {
   const { data: grns, isLoading } = useGRN();
   const updateGRNItem = useUpdateGRNItem();
+  const { toast } = useToast();
+  const [editingItem, setEditingItem] = useState<string | null>(null);
+  const [editQuantity, setEditQuantity] = useState<string>("");
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -23,18 +29,52 @@ const GRNManagement = () => {
   const getIQCStatusColor = (status: string) => {
     switch (status) {
       case 'PENDING': return 'warning';
-      case 'APPROVED': return 'default';
+      case 'ACCEPTED': return 'default';
       case 'REJECTED': return 'destructive';
       default: return 'secondary';
     }
+  };
+
+  const handleEditQuantity = (item: any) => {
+    setEditingItem(item.id);
+    setEditQuantity(item.received_quantity.toString());
+  };
+
+  const handleSaveEdit = (item: any) => {
+    const newQuantity = parseInt(editQuantity);
+    if (newQuantity <= 0 || newQuantity > item.po_quantity) {
+      toast({
+        title: "Invalid Quantity",
+        description: `Quantity must be between 1 and ${item.po_quantity}`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    updateGRNItem.mutate({
+      itemId: item.id,
+      updates: {
+        received_quantity: newQuantity,
+        accepted_quantity: newQuantity, // For now, assume all received is accepted
+      }
+    });
+
+    setEditingItem(null);
+    setEditQuantity("");
+  };
+
+  const handleCancelEdit = () => {
+    setEditingItem(null);
+    setEditQuantity("");
   };
 
   const handleIQCApproval = (itemId: string, approved: boolean) => {
     updateGRNItem.mutate({
       itemId,
       updates: {
-        iqc_status: approved ? 'APPROVED' : 'REJECTED',
+        iqc_status: approved ? 'ACCEPTED' : 'REJECTED',
         iqc_approved_at: new Date().toISOString(),
+        accepted_quantity: approved ? undefined : 0, // If rejected, set accepted quantity to 0
       }
     });
   };
@@ -139,7 +179,47 @@ const GRNManagement = () => {
                     <TableCell className="font-mono">{item.raw_materials?.material_code}</TableCell>
                     <TableCell>{item.raw_materials?.name}</TableCell>
                     <TableCell>{item.po_quantity}</TableCell>
-                    <TableCell>{item.received_quantity}</TableCell>
+                    <TableCell>
+                      {editingItem === item.id ? (
+                        <div className="flex gap-2 items-center">
+                          <Input
+                            type="number"
+                            value={editQuantity}
+                            onChange={(e) => setEditQuantity(e.target.value)}
+                            className="w-20"
+                            min="1"
+                            max={item.po_quantity}
+                          />
+                          <Button
+                            size="sm"
+                            onClick={() => handleSaveEdit(item)}
+                            className="h-8 w-8 p-0"
+                          >
+                            <CheckCircle className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={handleCancelEdit}
+                            className="h-8 w-8 p-0"
+                          >
+                            <XCircle className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <span>{item.received_quantity}</span>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleEditQuantity(item)}
+                            className="h-6 w-6 p-0"
+                          >
+                            <Edit className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      )}
+                    </TableCell>
                     <TableCell>
                       <Badge variant={getIQCStatusColor(item.iqc_status) as any}>
                         {item.iqc_status}
@@ -176,7 +256,7 @@ const GRNManagement = () => {
                             </Button>
                           </>
                         )}
-                        {item.iqc_status === 'APPROVED' && !item.store_confirmed && (
+                        {item.iqc_status === 'ACCEPTED' && !item.store_confirmed && (
                           <Button
                             size="sm"
                             onClick={() => handleStoreConfirmation(item.id)}

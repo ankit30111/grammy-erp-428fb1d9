@@ -15,19 +15,15 @@ export const ProjectionsOverview = () => {
   const [selectedProjection, setSelectedProjection] = useState<any>(null);
   const [isScheduleDialogOpen, setIsScheduleDialogOpen] = useState(false);
 
-  // Calculate scheduled quantities for each projection
-  const getScheduledQuantity = (projectionId: string) => {
-    return schedules
-      .filter(schedule => schedule.projection_id === projectionId)
-      .reduce((total, schedule) => total + schedule.quantity, 0);
-  };
-
   const getRemainingQuantity = (projection: any) => {
-    const scheduled = getScheduledQuantity(projection.id);
+    const scheduled = projection.scheduled_quantity || 0;
     return projection.quantity - scheduled;
   };
 
   const handleScheduleProduction = (projection: any) => {
+    const remaining = getRemainingQuantity(projection);
+    if (remaining <= 0) return;
+    
     setSelectedProjection(projection);
     setIsScheduleDialogOpen(true);
   };
@@ -94,7 +90,7 @@ export const ProjectionsOverview = () => {
             </TableHeader>
             <TableBody>
               {projections.map((projection) => {
-                const scheduled = getScheduledQuantity(projection.id);
+                const scheduled = projection.scheduled_quantity || 0;
                 const remaining = getRemainingQuantity(projection);
                 
                 return (
@@ -105,21 +101,27 @@ export const ProjectionsOverview = () => {
                     <TableCell>{projection.products?.name}</TableCell>
                     <TableCell>{projection.delivery_month}</TableCell>
                     <TableCell>{projection.quantity.toLocaleString()}</TableCell>
-                    <TableCell>{scheduled.toLocaleString()}</TableCell>
-                    <TableCell>{remaining.toLocaleString()}</TableCell>
+                    <TableCell className="font-medium text-blue-600">
+                      {scheduled.toLocaleString()}
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      {remaining.toLocaleString()}
+                    </TableCell>
                     <TableCell>
-                      <Badge variant={remaining === 0 ? "secondary" : "destructive"}>
+                      <Badge variant={remaining === 0 ? "default" : "destructive"}>
                         {remaining === 0 ? "Fully Scheduled" : "Pending"}
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {remaining > 0 && (
+                      {remaining > 0 ? (
                         <Button
                           size="sm"
                           onClick={() => handleScheduleProduction(projection)}
                         >
                           Schedule Production
                         </Button>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">Complete</span>
                       )}
                     </TableCell>
                   </TableRow>

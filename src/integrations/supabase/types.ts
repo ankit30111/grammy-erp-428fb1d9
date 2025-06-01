@@ -1375,6 +1375,7 @@ export type Database = {
           id: string
           product_id: string
           quantity: number
+          scheduled_quantity: number | null
           status: string
           updated_at: string
         }
@@ -1386,6 +1387,7 @@ export type Database = {
           id?: string
           product_id: string
           quantity: number
+          scheduled_quantity?: number | null
           status?: string
           updated_at?: string
         }
@@ -1397,6 +1399,7 @@ export type Database = {
           id?: string
           product_id?: string
           quantity?: number
+          scheduled_quantity?: number | null
           status?: string
           updated_at?: string
         }
@@ -1432,6 +1435,7 @@ export type Database = {
           purchase_order_id: string
           quantity: number
           raw_material_id: string
+          received_quantity: number | null
           received_status: string | null
           total_price: number | null
           unit_price: number | null
@@ -1443,6 +1447,7 @@ export type Database = {
           purchase_order_id: string
           quantity: number
           raw_material_id: string
+          received_quantity?: number | null
           received_status?: string | null
           total_price?: number | null
           unit_price?: number | null
@@ -1454,6 +1459,7 @@ export type Database = {
           purchase_order_id?: string
           quantity?: number
           raw_material_id?: string
+          received_quantity?: number | null
           received_status?: string | null
           total_price?: number | null
           unit_price?: number | null

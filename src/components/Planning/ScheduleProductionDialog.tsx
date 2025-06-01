@@ -130,9 +130,20 @@ export const ScheduleProductionDialog = ({
               <Label>Product</Label>
               <div className="text-sm font-medium">{projection.products?.name}</div>
             </div>
+
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="text-sm">
+                <div className="font-medium">Projection Summary:</div>
+                <div>Total Quantity: {projection.quantity?.toLocaleString()}</div>
+                <div>Already Scheduled: {(projection.scheduled_quantity || 0).toLocaleString()}</div>
+                <div className="font-medium text-blue-600">
+                  Available to Schedule: {maxQuantity.toLocaleString()}
+                </div>
+              </div>
+            </div>
             
             <div className="space-y-2">
-              <Label htmlFor="quantity">Quantity (Max: {maxQuantity.toLocaleString()})</Label>
+              <Label htmlFor="quantity">Quantity to Schedule (Max: {maxQuantity.toLocaleString()})</Label>
               <Input
                 id="quantity"
                 type="number"
@@ -141,7 +152,13 @@ export const ScheduleProductionDialog = ({
                 max={maxQuantity}
                 min="1"
                 placeholder="Enter quantity"
+                disabled={maxQuantity === 0}
               />
+              {maxQuantity === 0 && (
+                <p className="text-sm text-orange-600">
+                  This projection is fully scheduled
+                </p>
+              )}
             </div>
             
             <div className="space-y-2">
@@ -177,7 +194,10 @@ export const ScheduleProductionDialog = ({
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button onClick={handleSchedule} disabled={isLoading}>
+          <Button 
+            onClick={handleSchedule} 
+            disabled={isLoading || maxQuantity === 0}
+          >
             {isLoading ? "Scheduling..." : "Schedule Production"}
           </Button>
         </DialogFooter>
