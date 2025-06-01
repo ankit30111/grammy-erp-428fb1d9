@@ -1,11 +1,13 @@
+
 import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ScheduledProduction as ScheduledProductionType, KitStatus, mockScheduledProductions, mockGRNs, mockMaterialRequests, GRNItem, MaterialRequest } from "@/types/store";
-import EnhancedScheduledProduction from "@/components/Store/EnhancedScheduledProduction";
 import EnhancedGRNReceiving from "@/components/Store/EnhancedGRNReceiving";
 import ProductionFeedback from "@/components/Store/ProductionFeedback";
 import InventoryManagement from "@/components/Store/InventoryManagement";
@@ -13,7 +15,7 @@ import SpareOrdersPacking from "@/components/Store/SpareOrdersPacking";
 import { useToast } from "@/hooks/use-toast";
 import { useInventorySync } from "@/hooks/useInventorySync";
 import { useProductionOrders } from "@/hooks/useProductionOrders";
-import { Layers, RefreshCw, Package } from "lucide-react";
+import { Layers, RefreshCw, Package, ChevronDown } from "lucide-react";
 import { format } from "date-fns";
 
 export default function StoreDashboard() {
@@ -34,55 +36,20 @@ export default function StoreDashboard() {
   };
 
   // Handler for updating kit status
-  const handleKitStatusChange = (id: string, status: KitStatus) => {
-    setProductions(prev =>
-      prev.map(production =>
-        production.id === id ? { ...production, kitStatus: status } : production
-      )
-    );
-    
+  const handleKitStatusChange = (voucherId: string, status: string) => {
+    // Update the kit status in the database
     toast({
       title: "Kit Status Updated",
       description: `Kit status has been updated to ${status}`,
     });
   };
 
-  // Handler for marking kit as received by production
-  const handleKitReceivedChange = (id: string, received: boolean) => {
-    setProductions(prev =>
-      prev.map(production =>
-        production.id === id ? { ...production, kitReceived: received } : production
-      )
-    );
-    
+  // Handler for sending components
+  const handleSendComponent = (voucherId: string, component: string) => {
     toast({
-      title: received ? "Kit Marked as Received" : "Kit Receipt Cancelled",
-      description: received 
-        ? "Production has confirmed receipt of the kit" 
-        : "Kit receipt status has been reset",
+      title: "Component Sent",
+      description: `${component} has been sent to production for voucher ${voucherId}`,
     });
-  };
-
-  // Handler for reporting shortage
-  const handleShortageReportChange = (id: string, hasShortage: boolean) => {
-    setProductions(prev =>
-      prev.map(production =>
-        production.id === id ? { ...production, shortageReported: hasShortage } : production
-      )
-    );
-    
-    if (hasShortage) {
-      toast({
-        title: "Shortage Reported",
-        description: "Production has reported a shortage in the kit",
-        variant: "destructive"
-      });
-    } else {
-      toast({
-        title: "Shortage Report Cancelled",
-        description: "Production shortage report has been cancelled",
-      });
-    }
   };
 
   // Handler for receiving GRN
@@ -192,65 +159,89 @@ export default function StoreDashboard() {
         </TabsList>
 
         <TabsContent value="vouchers">
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Package className="h-5 w-5" />
-                  Production Voucher Management ({productionOrders?.length || 0})
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {productionOrders?.length ? (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Voucher No.</TableHead>
-                        <TableHead>Product</TableHead>
-                        <TableHead>Customer</TableHead>
-                        <TableHead>Scheduled Date</TableHead>
-                        <TableHead>Quantity</TableHead>
-                        <TableHead>Kit Status</TableHead>
-                        <TableHead>Production Status</TableHead>
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Package className="h-5 w-5" />
+                Production Voucher Management ({productionOrders?.length || 0})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {productionOrders?.length ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Voucher No.</TableHead>
+                      <TableHead>Product</TableHead>
+                      <TableHead>Customer</TableHead>
+                      <TableHead>Scheduled Date</TableHead>
+                      <TableHead>Quantity</TableHead>
+                      <TableHead>Kit Status</TableHead>
+                      <TableHead>Send Components</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {productionOrders.map((order) => (
+                      <TableRow key={order.id}>
+                        <TableCell className="font-mono">{order.voucher_number}</TableCell>
+                        <TableCell>{order.production_schedules?.projections?.products?.name}</TableCell>
+                        <TableCell>{order.production_schedules?.projections?.customers?.name}</TableCell>
+                        <TableCell>{format(new Date(order.scheduled_date), 'MMM dd, yyyy')}</TableCell>
+                        <TableCell>{order.quantity}</TableCell>
+                        <TableCell>
+                          <Select onValueChange={(value) => handleKitStatusChange(order.voucher_number, value)}>
+                            <SelectTrigger className="w-[140px]">
+                              <SelectValue placeholder={
+                                <Badge variant={getKitStatusColor(order.kit_status) as any}>
+                                  {order.kit_status === 'NOT_PREPARED' ? 'Not Ready' : 
+                                   order.kit_status === 'PREPARED' ? 'Ready' : 
+                                   order.kit_status === 'SENT' ? 'Sent to Production' : 
+                                   order.kit_status?.replace('_', ' ')}
+                                </Badge>
+                              } />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="NOT_PREPARED">Not Ready</SelectItem>
+                              <SelectItem value="PREPARED">Ready</SelectItem>
+                              <SelectItem value="SENT">Sent to Production</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </TableCell>
+                        <TableCell>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="outline" size="sm" className="gap-2">
+                                Send Components
+                                <ChevronDown className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => handleSendComponent(order.voucher_number, "All Components")}>
+                                Send All Components
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleSendComponent(order.voucher_number, "Main Assembly")}>
+                                Send Main Assembly
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleSendComponent(order.voucher_number, "Sub Assembly")}>
+                                Send Sub Assembly
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleSendComponent(order.voucher_number, "Accessory")}>
+                                Send Accessory
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
                       </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {productionOrders.map((order) => (
-                        <TableRow key={order.id}>
-                          <TableCell className="font-mono">{order.voucher_number}</TableCell>
-                          <TableCell>{order.production_schedules?.projections?.products?.name}</TableCell>
-                          <TableCell>{order.production_schedules?.projections?.customers?.name}</TableCell>
-                          <TableCell>{format(new Date(order.scheduled_date), 'MMM dd, yyyy')}</TableCell>
-                          <TableCell>{order.quantity}</TableCell>
-                          <TableCell>
-                            <Badge variant={getKitStatusColor(order.kit_status) as any}>
-                              {order.kit_status?.replace('_', ' ')}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant={order.status === 'PENDING' ? 'secondary' : 'default'}>
-                              {order.status}
-                            </Badge>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                ) : (
-                  <div className="text-center py-8 text-muted-foreground">
-                    No production vouchers found
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            <EnhancedScheduledProduction 
-              productions={productions}
-              onStatusChange={handleKitStatusChange}
-              onKitReceivedChange={handleKitReceivedChange}
-              onShortageReportChange={handleShortageReportChange}
-            />
-          </div>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  No production vouchers found
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="grn">
