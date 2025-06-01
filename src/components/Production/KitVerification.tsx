@@ -28,7 +28,7 @@ const KitVerification = () => {
             status,
             production_orders!inner(
               voucher_number,
-              quantity as production_quantity,
+              quantity,
               production_schedules!inner(
                 projections!inner(
                   products!inner(name)
