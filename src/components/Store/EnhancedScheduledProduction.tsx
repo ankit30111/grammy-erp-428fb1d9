@@ -1,232 +1,189 @@
 
-import { useState } from "react";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Calendar, ChevronDown, Eye, Package } from "lucide-react";
-import { ScheduledProduction as ScheduledProductionType, KitStatus, ProductionVoucherDetail, BOMItem } from "@/types/store";
-import { format } from "date-fns";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { StatusBadge } from "@/components/ui/custom/StatusBadge";
-import { bom } from "@/types/ppc";
+import { Button } from "@/components/ui/button";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Calendar, Package, CheckCircle, AlertTriangle } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { format } from "date-fns";
 
-interface EnhancedScheduledProductionProps {
-  productions: ScheduledProductionType[];
-  onStatusChange: (id: string, status: KitStatus) => void;
-  onKitReceivedChange: (id: string, received: boolean) => void;
-  onShortageReportChange: (id: string, hasShortage: boolean) => void;
+interface ProductionOrder {
+  id: string;
+  voucher_number: string;
+  quantity: number;
+  scheduled_date: string;
+  status: string;
+  kit_status: string;
+  production_schedule_id: string;
+  product_id: string;
+  production_schedules: {
+    projections: {
+      customers: {
+        name: string;
+      } | null;
+      products: {
+        name: string;
+        product_code: string;
+      } | null;
+    } | null;
+  } | null;
 }
 
-export default function EnhancedScheduledProduction({ 
-  productions, 
-  onStatusChange,
-  onKitReceivedChange,
-  onShortageReportChange
-}: EnhancedScheduledProductionProps) {
-  const [selectedVoucher, setSelectedVoucher] = useState<string | null>(null);
-  
-  // Get status color class
-  const getKitStatusClass = (status: KitStatus) => {
+const EnhancedScheduledProduction = () => {
+  const { data: productionOrders = [], isLoading } = useQuery({
+    queryKey: ["production-orders-store"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("production_orders")
+        .select(`
+          id,
+          voucher_number,
+          quantity,
+          scheduled_date,
+          status,
+          kit_status,
+          production_schedule_id,
+          product_id,
+          production_schedules!inner(
+            projections!inner(
+              customers!inner(name),
+              products!inner(name, product_code)
+            )
+          )
+        `)
+        .order('scheduled_date', { ascending: true });
+
+      if (error) {
+        console.error('Error fetching production orders:', error);
+        throw error;
+      }
+
+      return data as ProductionOrder[];
+    },
+  });
+
+  const getStatusBadge = (status: string) => {
     switch (status) {
-      case "KIT SENT":
-        return "bg-blue-100 text-blue-800";
-      case "KIT VERIFIED":
-        return "bg-green-100 text-green-800";
-      case "KIT SCHEDULED":
-        return "bg-yellow-100 text-yellow-800";
-      case "KIT SHORTAGE":
-        return "bg-red-100 text-red-800";
+      case 'PENDING':
+        return <Badge variant="outline" className="bg-yellow-100 text-yellow-800">Pending</Badge>;
+      case 'IN_PROGRESS':
+        return <Badge variant="outline" className="bg-blue-100 text-blue-800">In Progress</Badge>;
+      case 'COMPLETED':
+        return <Badge variant="outline" className="bg-green-100 text-green-800">Completed</Badge>;
       default:
-        return "bg-gray-100 text-gray-800";
+        return <Badge variant="outline">{status}</Badge>;
     }
   };
 
-  const getMaterialStatusClass = (status: string) => {
-    switch (status) {
-      case "AVAILABLE":
-        return "bg-green-100 text-green-800";
-      case "PARTIAL":
-        return "bg-yellow-100 text-yellow-800";
-      case "SHORTAGE":
-        return "bg-red-100 text-red-800";
+  const getKitStatusBadge = (kitStatus: string) => {
+    switch (kitStatus) {
+      case 'NOT_PREPARED':
+        return <Badge variant="outline" className="bg-red-100 text-red-800">Not Prepared</Badge>;
+      case 'PREPARING':
+        return <Badge variant="outline" className="bg-yellow-100 text-yellow-800">Preparing</Badge>;
+      case 'PREPARED':
+        return <Badge variant="outline" className="bg-blue-100 text-blue-800">Prepared</Badge>;
+      case 'SENT':
+        return <Badge variant="outline" className="bg-green-100 text-green-800">Sent</Badge>;
       default:
-        return "bg-gray-100 text-gray-800";
+        return <Badge variant="outline">{kitStatus}</Badge>;
     }
   };
-
-  // Generate voucher details for display
-  const generateVoucherDetails = (production: ScheduledProductionType): ProductionVoucherDetail => {
-    const productBom = bom[production.modelName as keyof typeof bom] || [];
-    const bomItems: BOMItem[] = productBom.map(item => {
-      const required = item.quantity * production.quantity;
-      const available = Math.floor(Math.random() * required * 1.2); // Mock available quantity
-      const shortage = Math.max(0, required - available);
-      
-      return {
-        partCode: item.partCode,
-        description: item.description,
-        quantity: item.quantity,
-        required,
-        available,
-        shortage,
-        status: shortage > 0 ? "SHORTAGE" : "AVAILABLE"
-      };
-    });
-
-    const hasShortage = bomItems.some(item => item.status === "SHORTAGE");
-    const hasPartial = bomItems.some(item => item.shortage > 0 && item.available > 0);
-    
-    return {
-      voucherNumber: production.voucherNumber,
-      modelName: production.modelName,
-      productionQuantity: production.quantity,
-      bomItems,
-      overallStatus: hasShortage ? "SHORTAGE" : hasPartial ? "PARTIAL" : "AVAILABLE"
-    };
-  };
-
-  const selectedProduction = productions.find(p => p.voucherNumber === selectedVoucher);
-  const voucherDetails = selectedProduction ? generateVoucherDetails(selectedProduction) : null;
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h3 className="text-lg font-medium">Production Vouchers & Kit Management</h3>
-        <div className="flex space-x-2">
-          <Button variant="outline" size="sm">
-            <Calendar className="mr-2 h-4 w-4" />
-            Filter by Date
-          </Button>
-        </div>
-      </div>
-
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Voucher No</TableHead>
-              <TableHead>Model</TableHead>
-              <TableHead>Scheduled Date</TableHead>
-              <TableHead>Quantity</TableHead>
-              <TableHead>Material Status</TableHead>
-              <TableHead>Kit Status</TableHead>
-              <TableHead>Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {productions.map((production) => (
-              <TableRow key={production.id}>
-                <TableCell className="font-medium">{production.voucherNumber}</TableCell>
-                <TableCell>{production.modelName}</TableCell>
-                <TableCell>{format(new Date(production.scheduledDate), "PPP")}</TableCell>
-                <TableCell>{production.quantity}</TableCell>
-                <TableCell>
-                  <span className={`${getMaterialStatusClass(production.materialStatus)} text-xs px-2 py-1 rounded-full font-medium`}>
-                    {production.materialStatus}
-                  </span>
-                </TableCell>
-                <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" className={`${getKitStatusClass(production.kitStatus)} text-xs px-2 py-1 h-auto rounded-full font-medium flex items-center`}>
-                        {production.kitStatus}
-                        <ChevronDown className="ml-1 h-3 w-3" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                      <DropdownMenuItem onClick={() => onStatusChange(production.id, "KIT SCHEDULED")}>
-                        KIT SCHEDULED
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => onStatusChange(production.id, "KIT VERIFIED")}>
-                        KIT VERIFIED
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => onStatusChange(production.id, "KIT SENT")}>
-                        KIT SENT
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
-                <TableCell>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => setSelectedVoucher(
-                      selectedVoucher === production.voucherNumber ? null : production.voucherNumber
-                    )}
-                  >
-                    <Eye className="mr-1 h-4 w-4" />
-                    {selectedVoucher === production.voucherNumber ? "Hide" : "View"} Details
-                  </Button>
-                </TableCell>
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Calendar className="h-5 w-5" />
+          Production Voucher Management
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <div className="text-center py-4">Loading production orders...</div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Voucher Number</TableHead>
+                <TableHead>Customer</TableHead>
+                <TableHead>Product</TableHead>
+                <TableHead>Quantity</TableHead>
+                <TableHead>Scheduled Date</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Kit Status</TableHead>
+                <TableHead>Actions</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
-
-      {voucherDetails && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Package className="h-5 w-5" />
-              <span>Voucher Details: {voucherDetails.voucherNumber} - {voucherDetails.modelName}</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-3 gap-4 mb-6">
-              <div className="text-center p-4 bg-gray-50 rounded-lg">
-                <p className="text-sm text-gray-600">Production Quantity</p>
-                <p className="text-2xl font-bold">{voucherDetails.productionQuantity}</p>
-              </div>
-              <div className="text-center p-4 bg-gray-50 rounded-lg">
-                <p className="text-sm text-gray-600">Total Parts</p>
-                <p className="text-2xl font-bold">{voucherDetails.bomItems.length}</p>
-              </div>
-              <div className="text-center p-4 bg-gray-50 rounded-lg">
-                <p className="text-sm text-gray-600">Overall Status</p>
-                <span className={`${getMaterialStatusClass(voucherDetails.overallStatus)} text-sm px-3 py-1 rounded-full font-medium`}>
-                  {voucherDetails.overallStatus}
-                </span>
-              </div>
-            </div>
-
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Part Code</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Qty per Unit</TableHead>
-                  <TableHead>Total Required</TableHead>
-                  <TableHead>Available</TableHead>
-                  <TableHead>Shortage</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {voucherDetails.bomItems.map((item, index) => (
-                  <TableRow key={index}>
-                    <TableCell className="font-mono">{item.partCode}</TableCell>
-                    <TableCell>{item.description}</TableCell>
-                    <TableCell>{item.quantity}</TableCell>
-                    <TableCell className="font-medium">{item.required}</TableCell>
-                    <TableCell className={item.shortage > 0 ? "text-red-600 font-medium" : "text-green-600 font-medium"}>
-                      {item.available}
-                    </TableCell>
-                    <TableCell className={item.shortage > 0 ? "text-red-600 font-medium" : ""}>
-                      {item.shortage > 0 ? item.shortage : "-"}
+            </TableHeader>
+            <TableBody>
+              {productionOrders.length > 0 ? (
+                productionOrders.map((order) => (
+                  <TableRow key={order.id}>
+                    <TableCell className="font-mono font-medium">
+                      {order.voucher_number}
                     </TableCell>
                     <TableCell>
-                      <StatusBadge status={item.status === "SHORTAGE" ? "rejected" : "approved"}>
-                        {item.status}
-                      </StatusBadge>
+                      {order.production_schedules?.projections?.customers?.name || 'Unknown Customer'}
+                    </TableCell>
+                    <TableCell>
+                      <div>
+                        <div className="font-medium">
+                          {order.production_schedules?.projections?.products?.name || 'Unknown Product'}
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          {order.production_schedules?.projections?.products?.product_code}
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        <Package className="h-4 w-4" />
+                        {order.quantity}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {format(new Date(order.scheduled_date), 'MMM dd, yyyy')}
+                    </TableCell>
+                    <TableCell>
+                      {getStatusBadge(order.status)}
+                    </TableCell>
+                    <TableCell>
+                      {getKitStatusBadge(order.kit_status)}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        {order.kit_status === 'NOT_PREPARED' && (
+                          <Button size="sm" variant="outline">
+                            Prepare Kit
+                          </Button>
+                        )}
+                        {order.kit_status === 'PREPARED' && (
+                          <Button size="sm" variant="outline">
+                            Send to Production
+                          </Button>
+                        )}
+                        <Button size="sm" variant="ghost">
+                          View Details
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      )}
-    </div>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                    No production orders found
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        )}
+      </CardContent>
+    </Card>
   );
-}
+};
+
+export default EnhancedScheduledProduction;

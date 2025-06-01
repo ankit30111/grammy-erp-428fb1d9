@@ -23,33 +23,33 @@ import {
 } from "@/components/ui/table"
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { useBOM } from "@/hooks/useBOM";
+import { useInventory } from "@/hooks/useInventory";
 
 const PlanningDashboard = () => {
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [selectedProjection, setSelectedProjection] = useState<string>("");
   const [quantity, setQuantity] = useState<string>("");
-  const [productionLine, setProductionLine] = useState<string>("");
   const [selectedVoucher, setSelectedVoucher] = useState<any>(null);
 
   const { data: projections } = useProjections();
   const { data: schedules } = useProductionSchedules();
   const { data: purchaseOrders } = usePurchaseOrders();
+  const { data: bomData } = useBOM();
+  const { data: inventory } = useInventory();
   const createSchedule = useCreateProductionSchedule();
   const deleteSchedule = useDeleteProductionSchedule();
   const { toast } = useToast();
 
-  const productionLines = ["Line 1", "Line 2", "Line 3", "Line 4"];
-
   const unscheduledProjections = projections?.filter(projection => {
-    // Filter projections that still have remaining quantity to schedule
-    return projection.quantity > 0; // This would need proper calculation
+    return projection.quantity > 0;
   }) || [];
 
   const selectedProjectionData = projections?.find(p => p.id === selectedProjection);
   const maxQuantity = selectedProjectionData?.quantity || 0;
 
   const handleSchedule = async () => {
-    if (!selectedDate || !selectedProjection || !quantity || !productionLine) {
+    if (!selectedDate || !selectedProjection || !quantity) {
       toast({
         title: "Missing Information",
         description: "Please fill in all fields to schedule production.",
@@ -72,44 +72,45 @@ const PlanningDashboard = () => {
         projection_id: selectedProjection,
         scheduled_date: format(selectedDate, 'yyyy-MM-dd'),
         quantity: parseInt(quantity),
-        production_line: productionLine,
-      });
-
-      toast({
-        title: "Production Scheduled",
-        description: `Production of ${quantity} units scheduled for ${format(selectedDate, 'PPP')} on ${productionLine}.`,
       });
 
       // Reset form
       setSelectedDate(undefined);
       setSelectedProjection("");
       setQuantity("");
-      setProductionLine("");
     } catch (error) {
       console.error('Error scheduling production:', error);
-      toast({
-        title: "Scheduling Error",
-        description: "Failed to schedule production. Please try again.",
-        variant: "destructive",
-      });
     }
   };
 
   const handleDeleteSchedule = async (scheduleId: string) => {
     try {
       await deleteSchedule.mutateAsync(scheduleId);
-      toast({
-        title: "Schedule Deleted",
-        description: "Production schedule deleted successfully.",
-      });
     } catch (error) {
       console.error('Error deleting schedule:', error);
-      toast({
-        title: "Deletion Error",
-        description: "Failed to delete production schedule. Please try again.",
-        variant: "destructive",
-      });
     }
+  };
+
+  const getVoucherDetails = (schedule: any) => {
+    if (!schedule || !bomData || !inventory) return null;
+    
+    const productBOM = bomData.filter(bom => bom.product_id === schedule.projections?.products?.id);
+    
+    const materialRequirements = productBOM.map(bomItem => {
+      const inventoryItem = inventory.find(inv => inv.raw_material_id === bomItem.raw_material_id);
+      const requiredQty = bomItem.quantity * schedule.quantity;
+      const availableQty = inventoryItem?.quantity || 0;
+      
+      return {
+        material_code: bomItem.raw_materials?.material_code || 'N/A',
+        material_name: bomItem.raw_materials?.name || 'Unknown',
+        required_quantity: requiredQty,
+        available_quantity: availableQty,
+        shortage: Math.max(0, requiredQty - availableQty)
+      };
+    });
+
+    return materialRequirements;
   };
 
   const scheduledProductions = schedules?.map(schedule => {
@@ -255,25 +256,9 @@ const PlanningDashboard = () => {
                         )}
                       </div>
 
-                      <div>
-                        <Label htmlFor="production-line">Production Line</Label>
-                        <Select value={productionLine} onValueChange={setProductionLine}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select production line" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {productionLines.map((line) => (
-                              <SelectItem key={line} value={line}>
-                                {line}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
                       <Button
                         onClick={handleSchedule}
-                        disabled={!selectedDate || !selectedProjection || !quantity || !productionLine || createSchedule.isPending}
+                        disabled={!selectedDate || !selectedProjection || !quantity || createSchedule.isPending}
                         className="w-full gap-2"
                       >
                         <Factory className="h-4 w-4" />
@@ -306,8 +291,8 @@ const PlanningDashboard = () => {
                         <TableHead>Customer</TableHead>
                         <TableHead>Product</TableHead>
                         <TableHead>Date</TableHead>
-                        <TableHead>Line</TableHead>
                         <TableHead>Quantity</TableHead>
+                        <TableHead>Status</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -317,8 +302,8 @@ const PlanningDashboard = () => {
                           <TableCell>{schedule.customerName}</TableCell>
                           <TableCell>{schedule.productName}</TableCell>
                           <TableCell>{schedule.scheduledDateFormatted}</TableCell>
-                          <TableCell>{schedule.production_line}</TableCell>
                           <TableCell>{schedule.quantity}</TableCell>
+                          <TableCell>{schedule.status}</TableCell>
                           <TableCell className="text-right">
                             <Button
                               variant="ghost"
@@ -365,36 +350,66 @@ const PlanningDashboard = () => {
 
         {/* ProductionVoucherDetails Modal */}
         <Dialog open={!!selectedVoucher} onOpenChange={() => setSelectedVoucher(null)}>
-          <DialogContent>
+          <DialogContent className="max-w-4xl">
             <DialogHeader>
               <DialogTitle>Production Voucher Details</DialogTitle>
               <DialogDescription>
-                View details for the selected production schedule.
+                Material requirements vs available stock for this production voucher.
               </DialogDescription>
             </DialogHeader>
             {selectedVoucher && (
-              <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
                   <div>
                     <Label>Customer</Label>
-                    <Input type="text" value={selectedVoucher.customerName} readOnly />
+                    <p className="font-medium">{selectedVoucher.customerName}</p>
                   </div>
                   <div>
                     <Label>Product</Label>
-                    <Input type="text" value={selectedVoucher.productName} readOnly />
+                    <p className="font-medium">{selectedVoucher.productName}</p>
                   </div>
                   <div>
                     <Label>Scheduled Date</Label>
-                    <Input type="text" value={selectedVoucher.scheduledDateFormatted} readOnly />
-                  </div>
-                  <div>
-                    <Label>Production Line</Label>
-                    <Input type="text" value={selectedVoucher.production_line} readOnly />
+                    <p className="font-medium">{selectedVoucher.scheduledDateFormatted}</p>
                   </div>
                   <div>
                     <Label>Quantity</Label>
-                    <Input type="text" value={selectedVoucher.quantity} readOnly />
+                    <p className="font-medium">{selectedVoucher.quantity}</p>
                   </div>
+                </div>
+                
+                <div>
+                  <h3 className="text-lg font-semibold mb-2">Material Requirements</h3>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Material Code</TableHead>
+                        <TableHead>Material Name</TableHead>
+                        <TableHead>Required Qty</TableHead>
+                        <TableHead>Available Qty</TableHead>
+                        <TableHead>Shortage</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {getVoucherDetails(selectedVoucher)?.map((material, index) => (
+                        <TableRow key={index}>
+                          <TableCell className="font-mono">{material.material_code}</TableCell>
+                          <TableCell>{material.material_name}</TableCell>
+                          <TableCell>{material.required_quantity}</TableCell>
+                          <TableCell>{material.available_quantity}</TableCell>
+                          <TableCell className={material.shortage > 0 ? 'text-red-600 font-medium' : 'text-green-600'}>
+                            {material.shortage > 0 ? material.shortage : 'OK'}
+                          </TableCell>
+                        </TableRow>
+                      )) || (
+                        <TableRow>
+                          <TableCell colSpan={5} className="text-center py-4 text-muted-foreground">
+                            No BOM data available for this product
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
                 </div>
               </div>
             )}

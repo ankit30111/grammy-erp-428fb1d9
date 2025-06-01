@@ -10,28 +10,40 @@ import { Calendar as CalendarIcon, Factory } from "lucide-react";
 import { useProjections } from "@/hooks/useProjections";
 import { useCreateProductionSchedule } from "@/hooks/useProductionSchedules";
 import { format } from "date-fns";
+import { useToast } from "@/hooks/use-toast";
 
 const SchedulingProduction = () => {
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [selectedProjection, setSelectedProjection] = useState<string>("");
   const [quantity, setQuantity] = useState<string>("");
-  const [productionLine, setProductionLine] = useState<string>("");
 
   const { data: projections } = useProjections();
   const createSchedule = useCreateProductionSchedule();
-
-  const productionLines = ["Line 1", "Line 2", "Line 3", "Line 4"];
+  const { toast } = useToast();
 
   const unscheduledProjections = projections?.filter(projection => {
-    // Filter projections that still have remaining quantity to schedule
-    return projection.quantity > 0; // This would need proper calculation
+    return projection.quantity > 0;
   }) || [];
 
   const selectedProjectionData = projections?.find(p => p.id === selectedProjection);
   const maxQuantity = selectedProjectionData?.quantity || 0;
 
   const handleSchedule = async () => {
-    if (!selectedDate || !selectedProjection || !quantity || !productionLine) {
+    if (!selectedDate || !selectedProjection || !quantity) {
+      toast({
+        title: "Missing Information",
+        description: "Please fill in all fields to schedule production.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (parseInt(quantity) > maxQuantity) {
+      toast({
+        title: "Invalid Quantity",
+        description: `Quantity exceeds the maximum available for this projection (${maxQuantity} units).`,
+        variant: "destructive",
+      });
       return;
     }
 
@@ -40,14 +52,12 @@ const SchedulingProduction = () => {
         projection_id: selectedProjection,
         scheduled_date: format(selectedDate, 'yyyy-MM-dd'),
         quantity: parseInt(quantity),
-        production_line: productionLine,
       });
 
       // Reset form
       setSelectedDate(undefined);
       setSelectedProjection("");
       setQuantity("");
-      setProductionLine("");
     } catch (error) {
       console.error('Error scheduling production:', error);
     }
@@ -125,25 +135,9 @@ const SchedulingProduction = () => {
             )}
           </div>
 
-          <div>
-            <Label htmlFor="production-line">Production Line</Label>
-            <Select value={productionLine} onValueChange={setProductionLine}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select production line" />
-              </SelectTrigger>
-              <SelectContent>
-                {productionLines.map((line) => (
-                  <SelectItem key={line} value={line}>
-                    {line}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
           <Button 
             onClick={handleSchedule}
-            disabled={!selectedDate || !selectedProjection || !quantity || !productionLine || createSchedule.isPending}
+            disabled={!selectedDate || !selectedProjection || !quantity || createSchedule.isPending}
             className="w-full gap-2"
           >
             <Factory className="h-4 w-4" />
