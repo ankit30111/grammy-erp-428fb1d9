@@ -96,7 +96,7 @@ const Purchase = () => {
 
   // Group shortages by vendor
   const shortagesByVendor = shortages.reduce((acc, shortage) => {
-    const vendor = shortage.vendor_info?.name || 'Unknown Vendor';
+    const vendor = shortage.vendor_info?.vendor_name || 'Unknown Vendor';
     if (!acc[vendor]) {
       acc[vendor] = [];
     }
