@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -38,7 +37,7 @@ const FinishedGoods = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedModel, setSelectedModel] = useState<string | null>(null);
 
-  // Fetch real finished goods inventory from database
+  // Fetch real finished goods inventory from database with production voucher
   const { data: finishedGoodsInventory = [], isLoading } = useQuery({
     queryKey: ["finished-goods"],
     queryFn: async () => {
@@ -49,6 +48,7 @@ const FinishedGoods = () => {
           products!inner(name, product_code)
         `)
         .eq("quality_status", "APPROVED")
+        .gt("quantity", 0)
         .order("created_at", { ascending: false });
       
       if (error) throw error;
@@ -252,7 +252,7 @@ const FinishedGoods = () => {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Voucher Number</TableHead>
+                        <TableHead>Production Voucher</TableHead>
                         <TableHead>Model</TableHead>
                         <TableHead>Quantity</TableHead>
                         <TableHead>Production Date</TableHead>
@@ -340,7 +340,7 @@ const FinishedGoods = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Voucher Number</TableHead>
+                      <TableHead>Production Voucher</TableHead>
                       <TableHead>Model</TableHead>
                       <TableHead>Quantity</TableHead>
                       <TableHead>Age</TableHead>

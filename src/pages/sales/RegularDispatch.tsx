@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -245,9 +244,51 @@ const RegularDispatch = () => {
 
       if (itemsError) throw itemsError;
 
+      // Reduce quantities from finished goods inventory
+      for (const item of orderItems) {
+        // Find finished goods inventory items for this product (FIFO order)
+        const { data: inventoryItems, error: inventoryError } = await supabase
+          .from('finished_goods_inventory')
+          .select('*')
+          .eq('product_id', item.product_id)
+          .eq('quality_status', 'APPROVED')
+          .gt('quantity', 0)
+          .order('production_date', { ascending: true });
+
+        if (inventoryError) {
+          console.error('Error fetching inventory:', inventoryError);
+          continue;
+        }
+
+        let remainingQuantity = item.quantity;
+        
+        // Deduct quantities using FIFO
+        for (const inventoryItem of inventoryItems) {
+          if (remainingQuantity <= 0) break;
+
+          const deductQuantity = Math.min(remainingQuantity, inventoryItem.quantity);
+          const newQuantity = inventoryItem.quantity - deductQuantity;
+
+          const { error: updateError } = await supabase
+            .from('finished_goods_inventory')
+            .update({ quantity: newQuantity })
+            .eq('id', inventoryItem.id);
+
+          if (updateError) {
+            console.error('Error updating inventory:', updateError);
+          }
+
+          remainingQuantity -= deductQuantity;
+        }
+
+        if (remainingQuantity > 0) {
+          console.warn(`Could not fulfill complete quantity for product ${item.product_id}. Remaining: ${remainingQuantity}`);
+        }
+      }
+
       toast({
         title: "Success",
-        description: "Dispatch order created successfully"
+        description: "Dispatch order created successfully and inventory updated"
       });
 
       setIsCreatingOrder(false);
