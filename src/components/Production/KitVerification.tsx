@@ -28,9 +28,10 @@ const KitVerification = () => {
           production_orders!inner(
             voucher_number,
             quantity,
+            product_id,
             production_schedules!inner(
               projections!inner(
-                products!inner(name),
+                products!inner(id, name),
                 customers!inner(name)
               )
             )
@@ -172,7 +173,7 @@ const KitVerification = () => {
           .from("bom")
           .select("bom_type")
           .eq("raw_material_id", item.raw_material_id)
-          .eq("product_id", selectedKitDetails.production_orders.production_schedules.projections.products.id)
+          .eq("product_id", selectedKitDetails.production_orders.product_id)
           .single();
 
         await logProductionFeedbackMutation.mutateAsync({

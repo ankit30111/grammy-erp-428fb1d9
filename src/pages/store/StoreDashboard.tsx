@@ -30,6 +30,7 @@ export default function StoreDashboard() {
   const [sentComponents, setSentComponents] = useState<Record<string, string[]>>({});
   const [selectedOrderForBOM, setSelectedOrderForBOM] = useState<any>(null);
   const [isBOMViewOpen, setIsBOMViewOpen] = useState(false);
+  const [voucherStatuses, setVoucherStatuses] = useState<Record<string, string>>({});
 
   // Auto-sync inventory on component mount
   useEffect(() => {
@@ -40,8 +41,25 @@ export default function StoreDashboard() {
   useEffect(() => {
     if (productionOrders) {
       loadExistingKitData();
+      loadVoucherStatuses();
     }
   }, [productionOrders]);
+
+  const loadVoucherStatuses = async () => {
+    if (!productionOrders) return;
+
+    const statusPromises = productionOrders.map(async (order) => {
+      const status = await checkVoucherStatus(order);
+      return { voucherNumber: order.voucher_number, status };
+    });
+
+    const statuses = await Promise.all(statusPromises);
+    const statusMap: Record<string, string> = {};
+    statuses.forEach(({ voucherNumber, status }) => {
+      statusMap[voucherNumber] = status;
+    });
+    setVoucherStatuses(statusMap);
+  };
 
   const loadExistingKitData = async () => {
     try {
@@ -94,7 +112,7 @@ export default function StoreDashboard() {
   };
 
   // Check voucher status based on BOM availability
-  const checkVoucherStatus = async (productionOrder: any) => {
+  const checkVoucherStatus = async (productionOrder: any): Promise<string> => {
     try {
       const { data: bomItems, error } = await supabase
         .from("bom")
@@ -379,35 +397,6 @@ export default function StoreDashboard() {
     }
   };
 
-  const getVoucherStatus = async (productionOrder: any) => {
-    try {
-      const { data: bomItems, error } = await supabase
-        .from("bom")
-        .select(`
-          *,
-          raw_materials!inner(
-            id,
-            material_code,
-            inventory(quantity)
-          )
-        `)
-        .eq("product_id", productionOrder.product_id);
-
-      if (error) throw error;
-
-      const isReady = bomItems?.every(item => {
-        const requiredQty = item.quantity * productionOrder.quantity;
-        const availableQty = item.raw_materials.inventory?.[0]?.quantity || 0;
-        return availableQty >= requiredQty;
-      });
-
-      return isReady ? "Ready" : "Not Ready";
-    } catch (error) {
-      console.error("Error checking voucher status:", error);
-      return "Unknown";
-    }
-  };
-
   const handleViewBOMStatus = (order: any) => {
     setSelectedOrderForBOM(order);
     setIsBOMViewOpen(true);
@@ -478,8 +467,8 @@ export default function StoreDashboard() {
                         <TableCell>{format(new Date(order.scheduled_date), 'MMM dd, yyyy')}</TableCell>
                         <TableCell>{order.quantity}</TableCell>
                         <TableCell>
-                          <Badge variant={getKitStatusColor(getVoucherStatus(order)) as any}>
-                            {getVoucherStatus(order)}
+                          <Badge variant={getKitStatusColor(voucherStatuses[order.voucher_number] || "Unknown") as any}>
+                            {voucherStatuses[order.voucher_number] || "Loading..."}
                           </Badge>
                         </TableCell>
                         <TableCell>
