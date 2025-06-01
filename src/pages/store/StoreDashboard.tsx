@@ -1,6 +1,10 @@
+
 import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 import { ScheduledProduction as ScheduledProductionType, KitStatus, mockScheduledProductions, mockGRNs, mockMaterialRequests, GRNItem, MaterialRequest } from "@/types/store";
 import EnhancedScheduledProduction from "@/components/Store/EnhancedScheduledProduction";
 import EnhancedGRNReceiving from "@/components/Store/EnhancedGRNReceiving";
@@ -9,11 +13,14 @@ import InventoryManagement from "@/components/Store/InventoryManagement";
 import SpareOrdersPacking from "@/components/Store/SpareOrdersPacking";
 import { useToast } from "@/hooks/use-toast";
 import { useInventorySync } from "@/hooks/useInventorySync";
-import { Layers, RefreshCw } from "lucide-react";
+import { useProductionOrders } from "@/hooks/useProductionOrders";
+import { Layers, RefreshCw, Package } from "lucide-react";
+import { format } from "date-fns";
 
 export default function StoreDashboard() {
   const { toast } = useToast();
   const { syncRawMaterialsToInventory, isLoading: isSyncing } = useInventorySync();
+  const { data: productionOrders } = useProductionOrders();
   const [productions, setProductions] = useState<ScheduledProductionType[]>(mockScheduledProductions);
   const [grns, setGRNs] = useState<GRNItem[]>(mockGRNs);
   const [materialRequests, setMaterialRequests] = useState<MaterialRequest[]>(mockMaterialRequests);
@@ -107,66 +114,111 @@ export default function StoreDashboard() {
     console.log(`PO: ${poNumber}, Expected: ${expectedQty}, Received: ${receivedQty}`);
     console.log(`Purchase team notified. Vendor payment on hold.`);
     
-    // This would typically send a notification to the Purchase module
-    // For now, we'll just log it
+    toast({
+      title: "Discrepancy Reported",
+      description: `Purchase team notified about quantity mismatch in PO ${poNumber}`,
+    });
   };
 
-  // Handlers for material requests
-  const handleApproveMaterialRequest = (id: string) => {
-    setMaterialRequests(prev =>
-      prev.map(request =>
-        request.id === id ? { ...request, status: "APPROVED" } : request
-      )
-    );
-    
-    toast({
-      title: "Material Request Approved",
-      description: "The additional material request has been approved",
-    });
-  };
-  
-  const handleRejectMaterialRequest = (id: string) => {
-    setMaterialRequests(prev =>
-      prev.map(request =>
-        request.id === id ? { ...request, status: "REJECTED" } : request
-      )
-    );
-    
-    toast({
-      title: "Material Request Rejected",
-      description: "The additional material request has been rejected",
-      variant: "destructive"
-    });
+  const getKitStatusColor = (status: string) => {
+    switch (status) {
+      case 'NOT_PREPARED': return 'secondary';
+      case 'PREPARED': return 'warning';
+      case 'SENT': return 'default';
+      case 'VERIFIED': return 'default';
+      case 'READY': return 'default';
+      default: return 'secondary';
+    }
   };
 
   return (
-    <div className="container mx-auto py-6">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center space-x-4">
-          <Layers className="h-8 w-8 text-primary" />
-          <h1 className="text-2xl font-bold">Store Management - Grammy Electronics</h1>
+    <div className="container mx-auto p-6 space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Store Dashboard</h1>
+          <p className="text-muted-foreground">Manage vouchers, inventory, GRN receiving, and material requests</p>
         </div>
-        <Button
-          onClick={handleSyncInventory}
-          disabled={isSyncing}
-          variant="outline"
-          className="gap-2"
-        >
-          <RefreshCw className={`h-4 w-4 ${isSyncing ? "animate-spin" : ""}`} />
-          Sync Inventory
-        </Button>
+        <div className="flex items-center gap-4">
+          <Button 
+            onClick={handleSyncInventory}
+            disabled={isSyncing}
+            variant="outline"
+            className="gap-2"
+          >
+            {isSyncing ? (
+              <RefreshCw className="h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4" />
+            )}
+            Sync Inventory
+          </Button>
+        </div>
       </div>
 
-      <Tabs defaultValue="voucher-management" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="voucher-management">Voucher Management</TabsTrigger>
-          <TabsTrigger value="material-receiving">Material Receiving</TabsTrigger>
-          <TabsTrigger value="spare-orders">Spare Orders</TabsTrigger>
-          <TabsTrigger value="production-feedback">Production Feedback</TabsTrigger>
+      <Tabs defaultValue="vouchers" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-6">
+          <TabsTrigger value="vouchers">Voucher Management</TabsTrigger>
+          <TabsTrigger value="productions">Kit Management</TabsTrigger>
+          <TabsTrigger value="grn">GRN Receiving</TabsTrigger>
+          <TabsTrigger value="feedback">Production Feedback</TabsTrigger>
           <TabsTrigger value="inventory">Inventory</TabsTrigger>
+          <TabsTrigger value="spare-orders">Spare Orders</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="voucher-management" className="space-y-4">
+        <TabsContent value="vouchers">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Package className="h-5 w-5" />
+                Production Voucher Management ({productionOrders?.length || 0})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {productionOrders?.length ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Voucher No.</TableHead>
+                      <TableHead>Product</TableHead>
+                      <TableHead>Customer</TableHead>
+                      <TableHead>Scheduled Date</TableHead>
+                      <TableHead>Quantity</TableHead>
+                      <TableHead>Kit Status</TableHead>
+                      <TableHead>Production Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {productionOrders.map((order) => (
+                      <TableRow key={order.id}>
+                        <TableCell className="font-mono">{order.voucher_number}</TableCell>
+                        <TableCell>{order.production_schedules?.projections?.products?.name}</TableCell>
+                        <TableCell>{order.production_schedules?.projections?.customers?.name}</TableCell>
+                        <TableCell>{format(new Date(order.scheduled_date), 'MMM dd, yyyy')}</TableCell>
+                        <TableCell>{order.quantity}</TableCell>
+                        <TableCell>
+                          <Badge variant={getKitStatusColor(order.kit_status) as any}>
+                            {order.kit_status?.replace('_', ' ')}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={order.status === 'PENDING' ? 'secondary' : 'default'}>
+                            {order.status}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  No production vouchers found
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="productions">
           <EnhancedScheduledProduction 
             productions={productions}
             onStatusChange={handleKitStatusChange}
@@ -175,7 +227,7 @@ export default function StoreDashboard() {
           />
         </TabsContent>
 
-        <TabsContent value="material-receiving" className="space-y-4">
+        <TabsContent value="grn">
           <EnhancedGRNReceiving 
             grns={grns}
             onReceiveGRN={handleReceiveGRN}
@@ -183,21 +235,16 @@ export default function StoreDashboard() {
           />
         </TabsContent>
 
-        <TabsContent value="spare-orders" className="space-y-4">
-          <SpareOrdersPacking />
+        <TabsContent value="feedback">
+          <ProductionFeedback />
         </TabsContent>
 
-        <TabsContent value="production-feedback" className="space-y-4">
-          <ProductionFeedback 
-            materialRequests={materialRequests}
-            productions={productions}
-            onApproveMaterialRequest={handleApproveMaterialRequest}
-            onRejectMaterialRequest={handleRejectMaterialRequest}
-          />
-        </TabsContent>
-
-        <TabsContent value="inventory" className="space-y-4">
+        <TabsContent value="inventory">
           <InventoryManagement />
+        </TabsContent>
+
+        <TabsContent value="spare-orders">
+          <SpareOrdersPacking />
         </TabsContent>
       </Tabs>
     </div>

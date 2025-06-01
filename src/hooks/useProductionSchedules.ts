@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -32,33 +31,90 @@ export const useProductionSchedules = () => {
   });
 };
 
+// Helper function to generate voucher number
+const generateVoucherNumber = async (scheduledDate: string) => {
+  const date = new Date(scheduledDate);
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  
+  // Get count of existing vouchers for this month
+  const { data: existingVouchers, error } = await supabase
+    .from('production_orders')
+    .select('voucher_number')
+    .like('voucher_number', `${month}-%`)
+    .order('voucher_number', { ascending: false })
+    .limit(1);
+  
+  if (error) throw error;
+  
+  let sequence = 1;
+  if (existingVouchers && existingVouchers.length > 0) {
+    const lastVoucher = existingVouchers[0].voucher_number;
+    const lastSequence = parseInt(lastVoucher.split('-')[1]) || 0;
+    sequence = lastSequence + 1;
+  }
+  
+  return `${month}-${String(sequence).padStart(2, '0')}`;
+};
+
 export const useCreateProductionSchedule = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
   return useMutation({
     mutationFn: async (scheduleData: any) => {
-      const { data, error } = await supabase
+      // First create the production schedule
+      const { data: schedule, error: scheduleError } = await supabase
         .from('production_schedules')
         .insert({
           projection_id: scheduleData.projection_id,
           scheduled_date: scheduleData.scheduled_date,
           quantity: scheduleData.quantity,
-          production_line: scheduleData.production_line,
+          production_line: 'Default Line',
           status: 'SCHEDULED',
         })
         .select()
         .single();
 
-      if (error) throw error;
-      return data;
+      if (scheduleError) throw scheduleError;
+
+      // Generate voucher number
+      const voucherNumber = await generateVoucherNumber(scheduleData.scheduled_date);
+
+      // Get product_id from projection
+      const { data: projection, error: projectionError } = await supabase
+        .from('projections')
+        .select('product_id')
+        .eq('id', scheduleData.projection_id)
+        .single();
+
+      if (projectionError) throw projectionError;
+
+      // Create production order with voucher number
+      const { data: productionOrder, error: orderError } = await supabase
+        .from('production_orders')
+        .insert({
+          production_schedule_id: schedule.id,
+          product_id: projection.product_id,
+          quantity: scheduleData.quantity,
+          scheduled_date: scheduleData.scheduled_date,
+          voucher_number: voucherNumber,
+          status: 'PENDING',
+          kit_status: 'NOT_PREPARED'
+        })
+        .select()
+        .single();
+
+      if (orderError) throw orderError;
+
+      return { schedule, productionOrder };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['production_schedules'] });
       queryClient.invalidateQueries({ queryKey: ['projections'] });
+      queryClient.invalidateQueries({ queryKey: ['production-orders'] });
       toast({
         title: "Success",
-        description: "Production scheduled successfully",
+        description: "Production scheduled successfully with voucher number",
       });
     },
     onError: (error) => {
@@ -77,15 +133,25 @@ export const useDeleteProductionSchedule = () => {
 
   return useMutation({
     mutationFn: async (scheduleId: string) => {
-      const { error } = await supabase
+      // First delete related production orders
+      const { error: orderError } = await supabase
+        .from('production_orders')
+        .delete()
+        .eq('production_schedule_id', scheduleId);
+
+      if (orderError) throw orderError;
+
+      // Then delete the production schedule
+      const { error: scheduleError } = await supabase
         .from('production_schedules')
         .delete()
         .eq('id', scheduleId);
 
-      if (error) throw error;
+      if (scheduleError) throw scheduleError;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['production_schedules'] });
+      queryClient.invalidateQueries({ queryKey: ['production-orders'] });
       toast({
         title: "Success",
         description: "Production schedule deleted successfully",
