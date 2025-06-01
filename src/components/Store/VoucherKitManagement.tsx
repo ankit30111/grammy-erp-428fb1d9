@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -64,7 +63,7 @@ export default function VoucherKitManagement({
     return validation.isValid;
   };
 
-  // Handler for sending components with enhanced stock validation
+  // Handler for sending components with enhanced stock validation and inventory deduction
   const handleSendComponent = async (voucherId: string, component: string) => {
     try {
       const canSend = await canSendComponent(voucherId, component);
@@ -189,6 +188,44 @@ export default function VoucherKitManagement({
           .insert(kitItems);
 
         if (itemsError) throw itemsError;
+
+        // Deduct inventory quantities for each new kit item
+        for (const bomItem of newBomItems) {
+          const quantityToDeduct = bomItem.quantity * productionOrder.quantity;
+          
+          // Get current inventory for this raw material
+          const { data: inventoryItem, error: inventoryError } = await supabase
+            .from("inventory")
+            .select("*")
+            .eq("raw_material_id", bomItem.raw_material_id)
+            .maybeSingle();
+
+          if (inventoryError) {
+            console.error(`Error fetching inventory for material ${bomItem.raw_material_id}:`, inventoryError);
+            continue;
+          }
+
+          if (inventoryItem) {
+            const newQuantity = Math.max(0, inventoryItem.quantity - quantityToDeduct);
+            
+            // Update inventory quantity
+            const { error: updateError } = await supabase
+              .from("inventory")
+              .update({ 
+                quantity: newQuantity,
+                last_updated: new Date().toISOString()
+              })
+              .eq("id", inventoryItem.id);
+
+            if (updateError) {
+              console.error(`Error updating inventory for material ${bomItem.raw_material_id}:`, updateError);
+            } else {
+              console.log(`Deducted ${quantityToDeduct} units from inventory for material ${bomItem.raw_materials.material_code}`);
+            }
+          } else {
+            console.warn(`No inventory record found for material ${bomItem.raw_material_id}`);
+          }
+        }
       }
 
       // Update sent components tracking
@@ -237,7 +274,7 @@ export default function VoucherKitManagement({
 
       toast({
         title: "Components Sent",
-        description: `${component} has been sent to production for voucher ${voucherId}`,
+        description: `${component} has been sent to production for voucher ${voucherId} and inventory has been updated`,
       });
 
     } catch (error) {
