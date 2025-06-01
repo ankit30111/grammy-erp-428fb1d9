@@ -31,6 +31,9 @@ interface FinishedGoodsItem {
     name: string;
     product_code: string;
   };
+  production_orders?: {
+    voucher_number: string;
+  } | null;
 }
 
 const FinishedGoods = () => {
@@ -41,17 +44,25 @@ const FinishedGoods = () => {
   const { data: finishedGoodsInventory = [], isLoading } = useQuery({
     queryKey: ["finished-goods"],
     queryFn: async () => {
+      console.log('Fetching finished goods inventory...');
+      
       const { data, error } = await supabase
         .from("finished_goods_inventory")
         .select(`
           *,
-          products!inner(name, product_code)
+          products!inner(name, product_code),
+          production_orders!left(voucher_number)
         `)
         .eq("quality_status", "APPROVED")
         .gt("quantity", 0)
         .order("created_at", { ascending: false });
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching finished goods:', error);
+        throw error;
+      }
+      
+      console.log('Fetched finished goods inventory:', data);
       return data as FinishedGoodsItem[];
     },
   });
@@ -85,7 +96,8 @@ const FinishedGoods = () => {
     const matchesSearch = 
       item.products.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.lot_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.products.product_code.toLowerCase().includes(searchTerm.toLowerCase());
+      item.products.product_code.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.production_orders?.voucher_number?.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesModel = !selectedModel || item.products.name === selectedModel;
     
@@ -267,7 +279,9 @@ const FinishedGoods = () => {
                           const age = calculateAge(item.production_date);
                           return (
                             <TableRow key={item.id}>
-                              <TableCell className="font-mono font-medium">{item.lot_number}</TableCell>
+                              <TableCell className="font-mono font-medium">
+                                {item.production_orders?.voucher_number || item.lot_number || 'N/A'}
+                              </TableCell>
                               <TableCell>{item.products.name}</TableCell>
                               <TableCell className="font-medium">{item.quantity.toLocaleString()}</TableCell>
                               <TableCell>{format(new Date(item.production_date), "MMM dd, yyyy")}</TableCell>
@@ -284,7 +298,7 @@ const FinishedGoods = () => {
                                   </DialogTrigger>
                                   <DialogContent>
                                     <DialogHeader>
-                                      <DialogTitle>OQC Report - {item.lot_number}</DialogTitle>
+                                      <DialogTitle>OQC Report - {item.production_orders?.voucher_number || item.lot_number}</DialogTitle>
                                     </DialogHeader>
                                     <div className="space-y-4">
                                       <div className="text-center py-8">
@@ -355,7 +369,9 @@ const FinishedGoods = () => {
                         const age = calculateAge(item.production_date);
                         return (
                           <TableRow key={item.id}>
-                            <TableCell className="font-mono">{item.lot_number}</TableCell>
+                            <TableCell className="font-mono">
+                              {item.production_orders?.voucher_number || item.lot_number || 'N/A'}
+                            </TableCell>
                             <TableCell>{item.products.name}</TableCell>
                             <TableCell>{item.quantity.toLocaleString()}</TableCell>
                             <TableCell className={getAgeColor(age)}>

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -217,6 +218,8 @@ const RegularDispatch = () => {
     }
 
     try {
+      console.log('Creating dispatch order with items:', orderItems);
+
       // Create dispatch order - let the trigger generate the dispatch_order_number
       const { data: dispatchOrder, error: orderError } = await supabase
         .from('dispatch_orders')
@@ -230,7 +233,12 @@ const RegularDispatch = () => {
         .select()
         .single();
 
-      if (orderError) throw orderError;
+      if (orderError) {
+        console.error('Error creating dispatch order:', orderError);
+        throw orderError;
+      }
+
+      console.log('Dispatch order created:', dispatchOrder);
 
       // Create dispatch order items
       const itemsToInsert = orderItems.map(item => ({
@@ -242,11 +250,18 @@ const RegularDispatch = () => {
         .from('dispatch_order_items')
         .insert(itemsToInsert);
 
-      if (itemsError) throw itemsError;
+      if (itemsError) {
+        console.error('Error creating dispatch order items:', itemsError);
+        throw itemsError;
+      }
 
-      // Reduce quantities from finished goods inventory
+      console.log('Dispatch order items created, now updating inventory...');
+
+      // Reduce quantities from finished goods inventory using FIFO
       for (const item of orderItems) {
-        // Find finished goods inventory items for this product (FIFO order)
+        console.log(`Processing inventory reduction for product ${item.product_id}, quantity: ${item.quantity}`);
+        
+        // Find finished goods inventory items for this product (FIFO order by production_date)
         const { data: inventoryItems, error: inventoryError } = await supabase
           .from('finished_goods_inventory')
           .select('*')
@@ -256,18 +271,27 @@ const RegularDispatch = () => {
           .order('production_date', { ascending: true });
 
         if (inventoryError) {
-          console.error('Error fetching inventory:', inventoryError);
+          console.error('Error fetching inventory for product:', item.product_id, inventoryError);
+          continue;
+        }
+
+        console.log(`Found ${inventoryItems?.length || 0} inventory items for product ${item.product_id}:`, inventoryItems);
+
+        if (!inventoryItems || inventoryItems.length === 0) {
+          console.warn(`No inventory found for product ${item.product_id}`);
           continue;
         }
 
         let remainingQuantity = item.quantity;
         
-        // Deduct quantities using FIFO
+        // Deduct quantities using FIFO (oldest first)
         for (const inventoryItem of inventoryItems) {
           if (remainingQuantity <= 0) break;
 
           const deductQuantity = Math.min(remainingQuantity, inventoryItem.quantity);
           const newQuantity = inventoryItem.quantity - deductQuantity;
+
+          console.log(`Updating inventory item ${inventoryItem.id}: ${inventoryItem.quantity} -> ${newQuantity} (deducting ${deductQuantity})`);
 
           const { error: updateError } = await supabase
             .from('finished_goods_inventory')
@@ -275,14 +299,21 @@ const RegularDispatch = () => {
             .eq('id', inventoryItem.id);
 
           if (updateError) {
-            console.error('Error updating inventory:', updateError);
+            console.error('Error updating inventory item:', inventoryItem.id, updateError);
+          } else {
+            console.log(`Successfully updated inventory item ${inventoryItem.id}`);
           }
 
           remainingQuantity -= deductQuantity;
         }
 
         if (remainingQuantity > 0) {
-          console.warn(`Could not fulfill complete quantity for product ${item.product_id}. Remaining: ${remainingQuantity}`);
+          console.warn(`Could not fulfill complete quantity for product ${item.product_id}. Remaining unfulfilled: ${remainingQuantity}`);
+          toast({
+            title: "Warning",
+            description: `Insufficient inventory for some items. Remaining unfulfilled: ${remainingQuantity} units`,
+            variant: "destructive"
+          });
         }
       }
 
