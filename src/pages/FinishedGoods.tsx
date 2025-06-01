@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,6 +28,7 @@ interface FinishedGoodsItem {
   lot_number: string;
   quality_status: string;
   created_at: string;
+  production_order_id: string | null;
   products: {
     name: string;
     product_code: string;
@@ -63,7 +65,7 @@ const FinishedGoods = () => {
       }
       
       console.log('Fetched finished goods inventory:', data);
-      return data;
+      return data as FinishedGoodsItem[];
     },
   });
 

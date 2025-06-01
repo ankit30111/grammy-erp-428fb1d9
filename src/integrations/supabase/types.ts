@@ -583,6 +583,7 @@ export type Database = {
           lot_number: string | null
           product_id: string
           production_date: string | null
+          production_order_id: string | null
           quality_status: string | null
           quantity: number
         }
@@ -593,6 +594,7 @@ export type Database = {
           lot_number?: string | null
           product_id: string
           production_date?: string | null
+          production_order_id?: string | null
           quality_status?: string | null
           quantity?: number
         }
@@ -603,6 +605,7 @@ export type Database = {
           lot_number?: string | null
           product_id?: string
           production_date?: string | null
+          production_order_id?: string | null
           quality_status?: string | null
           quantity?: number
         }
@@ -612,6 +615,13 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finished_goods_inventory_production_order_id_fkey"
+            columns: ["production_order_id"]
+            isOneToOne: false
+            referencedRelation: "production_orders"
             referencedColumns: ["id"]
           },
         ]
