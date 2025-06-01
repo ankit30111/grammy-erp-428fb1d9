@@ -171,7 +171,7 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
                       <Button
                         variant="ghost"
                         className={cn(
-                          "nav-link w-full justify-start",
+                          "nav-link w-full justify-start group",
                           isItemActive && "active"
                         )}
                       >
@@ -200,7 +200,7 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
                             key={child.href}
                             to={child.href}
                             className={cn(
-                              "flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors",
+                              "flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors group",
                               "text-sidebar-foreground/80 hover:text-sidebar-foreground hover:bg-sidebar-accent/30",
                               isActive(child.href) && "text-sidebar-primary bg-sidebar-accent/50"
                             )}
@@ -220,7 +220,7 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
                   key={item.title}
                   to={item.href}
                   className={cn(
-                    "nav-link",
+                    "nav-link group",
                     isItemActive && "active"
                   )}
                   title={!isOpen ? item.title : undefined}
