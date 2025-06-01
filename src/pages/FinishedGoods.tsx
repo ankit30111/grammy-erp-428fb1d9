@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -111,6 +110,17 @@ const FinishedGoods = () => {
     },
   });
 
+  // Calculate total dispatched quantities by product
+  const dispatchedQuantities = dispatchOrders.reduce((acc, order) => {
+    order.dispatch_order_items?.forEach(item => {
+      if (!acc[item.product_id]) {
+        acc[item.product_id] = 0;
+      }
+      acc[item.product_id] += item.quantity;
+    });
+    return acc;
+  }, {} as Record<string, number>);
+
   // Create stock movements from inventory and dispatch data
   const stockMovements: StockMovement[] = [
     // Inbound movements from finished goods inventory
@@ -146,13 +156,12 @@ const FinishedGoods = () => {
       acc[modelName] = {
         modelName,
         totalQuantity: 0,
-        availableQuantity: 0,
+        dispatchedQuantity: 0,
         oldestLotDate: item.production_date,
         lots: []
       };
     }
     acc[modelName].totalQuantity += item.quantity;
-    acc[modelName].availableQuantity += item.quantity;
     acc[modelName].lots.push(item);
     
     if (new Date(item.production_date) < new Date(acc[modelName].oldestLotDate)) {
@@ -161,6 +170,13 @@ const FinishedGoods = () => {
     
     return acc;
   }, {} as Record<string, any>);
+
+  // Add dispatched quantities to model stocks
+  Object.values(modelStocks).forEach((model: any) => {
+    model.dispatchedQuantity = model.lots.reduce((total: number, lot: any) => {
+      return total + (dispatchedQuantities[lot.product_id] || 0);
+    }, 0);
+  });
 
   const modelStocksArray = Object.values(modelStocks);
   
@@ -178,7 +194,7 @@ const FinishedGoods = () => {
 
   const totalModels = modelStocksArray.length;
   const totalQuantity = modelStocksArray.reduce((sum, model) => sum + model.totalQuantity, 0);
-  const availableQuantity = modelStocksArray.reduce((sum, model) => sum + model.availableQuantity, 0);
+  const totalDispatched = modelStocksArray.reduce((sum, model) => sum + model.dispatchedQuantity, 0);
 
   const calculateAge = (productionDate: string) => {
     const today = new Date();
@@ -247,10 +263,10 @@ const FinishedGoods = () => {
           
           <Card>
             <CardContent className="flex items-center p-6">
-              <CheckCircle className="h-8 w-8 text-green-600" />
+              <TrendingDown className="h-8 w-8 text-red-600" />
               <div className="ml-4">
-                <p className="text-sm text-gray-600">Available</p>
-                <p className="text-2xl font-bold text-green-600">{availableQuantity.toLocaleString()}</p>
+                <p className="text-sm text-gray-600">Dispatched</p>
+                <p className="text-2xl font-bold text-red-600">{totalDispatched.toLocaleString()}</p>
               </div>
             </CardContent>
           </Card>
@@ -280,7 +296,7 @@ const FinishedGoods = () => {
                       <TableRow>
                         <TableHead>Model Name</TableHead>
                         <TableHead>Total Qty</TableHead>
-                        <TableHead>Available</TableHead>
+                        <TableHead>Dispatched</TableHead>
                         <TableHead>Oldest Lot</TableHead>
                         <TableHead>Lots Count</TableHead>
                       </TableRow>
@@ -290,8 +306,8 @@ const FinishedGoods = () => {
                         <TableRow key={model.modelName}>
                           <TableCell className="font-medium">{model.modelName}</TableCell>
                           <TableCell className="font-bold">{model.totalQuantity.toLocaleString()}</TableCell>
-                          <TableCell className="text-green-600 font-medium">
-                            {model.availableQuantity.toLocaleString()}
+                          <TableCell className="text-red-600 font-medium">
+                            {model.dispatchedQuantity.toLocaleString()}
                           </TableCell>
                           <TableCell>{format(new Date(model.oldestLotDate), "MMM dd")}</TableCell>
                           <TableCell>{model.lots.length}</TableCell>
