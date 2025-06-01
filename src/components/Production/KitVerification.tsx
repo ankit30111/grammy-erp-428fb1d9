@@ -161,21 +161,6 @@ const KitVerification = () => {
     }
   };
 
-  const handleQuantityChange = (itemId: string, value: string) => {
-    const quantity = parseInt(value) || 0;
-    setReceivedQuantities(prev => ({
-      ...prev,
-      [itemId]: quantity
-    }));
-  };
-
-  const handleCommentChange = (itemId: string, comment: string) => {
-    setDiscrepancyComments(prev => ({
-      ...prev,
-      [itemId]: comment
-    }));
-  };
-
   // Group kit items by kit preparation and separate by verification status
   const groupedKits = kitItems.reduce((acc, item) => {
     const kitId = item.kit_preparation_id;
