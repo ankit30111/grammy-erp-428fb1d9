@@ -15,6 +15,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 const Purchase = () => {
   const [shortages, setShortages] = useState<MaterialShortage[]>([]);
@@ -29,6 +31,21 @@ const Purchase = () => {
   const { data: purchaseOrders } = usePurchaseOrders();
   const createPO = useCreatePurchaseOrder();
   const { toast } = useToast();
+
+  // Fetch vendors for the dropdown
+  const { data: vendors } = useQuery({
+    queryKey: ['vendors'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('vendors')
+        .select('*')
+        .eq('is_active', true)
+        .order('name');
+      
+      if (error) throw error;
+      return data;
+    },
+  });
 
   const calculateShortages = async () => {
     if (!projections?.length) {
@@ -132,6 +149,13 @@ const Purchase = () => {
     }
   };
 
+  // Get available vendors for selected materials
+  const getAvailableVendors = () => {
+    const selectedShortages = shortages.filter(s => selectedMaterials.includes(s.raw_material_id));
+    const vendorIds = new Set(selectedShortages.map(s => s.vendor_info?.id).filter(Boolean));
+    return vendors?.filter(v => vendorIds.has(v.id)) || [];
+  };
+
   return (
     <DashboardLayout>
       <div className="grid gap-4 md:gap-6">
@@ -187,9 +211,9 @@ const Purchase = () => {
                               <SelectValue placeholder="Select vendor" />
                             </SelectTrigger>
                             <SelectContent>
-                              {Object.keys(shortagesByVendor).map((vendor) => (
-                                <SelectItem key={vendor} value={vendor}>
-                                  {vendor}
+                              {getAvailableVendors().map((vendor) => (
+                                <SelectItem key={vendor.id} value={vendor.id}>
+                                  {vendor.name} ({vendor.vendor_code})
                                 </SelectItem>
                               ))}
                             </SelectContent>
