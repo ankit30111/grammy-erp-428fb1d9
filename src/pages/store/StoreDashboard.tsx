@@ -6,11 +6,8 @@ import EnhancedGRNReceiving from "@/components/Store/EnhancedGRNReceiving";
 import ProductionFeedback from "@/components/Store/ProductionFeedback";
 import InventoryManagement from "@/components/Store/InventoryManagement";
 import SpareOrdersPacking from "@/components/Store/SpareOrdersPacking";
-import MonthlyKitLog from "@/components/Store/MonthlyKitLog";
-import MonthlyKitTracker from "@/components/Store/MonthlyKitTracker";
 import VoucherKitManagement from "@/components/Store/VoucherKitManagement";
 import StoreDashboardHeader from "@/components/Store/StoreDashboardHeader";
-import KitVerification from "@/components/Store/KitVerification";
 import { useToast } from "@/hooks/use-toast";
 import { useInventorySync } from "@/hooks/useInventorySync";
 import { useKitManagement } from "@/hooks/useKitManagement";
@@ -104,19 +101,16 @@ export default function StoreDashboard() {
         isSyncing={isSyncing}
       />
 
-      <Tabs defaultValue="vouchers" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-8">
-          <TabsTrigger value="vouchers">Voucher & Kit Management</TabsTrigger>
-          <TabsTrigger value="kit-verification">Kit Verification</TabsTrigger>
-          <TabsTrigger value="monthly-log">Monthly Kit Log</TabsTrigger>
-          <TabsTrigger value="kit-tracker">Monthly Kit Tracker</TabsTrigger>
+      <Tabs defaultValue="production-vouchers" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-5">
+          <TabsTrigger value="production-vouchers">Production Voucher Management</TabsTrigger>
           <TabsTrigger value="grn">GRN Receiving</TabsTrigger>
           <TabsTrigger value="feedback">Production Feedback</TabsTrigger>
           <TabsTrigger value="inventory">Inventory</TabsTrigger>
           <TabsTrigger value="spare-orders">Spare Orders</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="vouchers">
+        <TabsContent value="production-vouchers">
           <VoucherKitManagement
             sentComponents={sentComponents}
             setSentComponents={setSentComponents}
@@ -124,18 +118,6 @@ export default function StoreDashboard() {
             setKitStatuses={setKitStatuses}
             voucherStatuses={voucherStatuses}
           />
-        </TabsContent>
-
-        <TabsContent value="kit-verification">
-          <KitVerification />
-        </TabsContent>
-
-        <TabsContent value="monthly-log">
-          <MonthlyKitLog />
-        </TabsContent>
-
-        <TabsContent value="kit-tracker">
-          <MonthlyKitTracker />
         </TabsContent>
 
         <TabsContent value="grn">
