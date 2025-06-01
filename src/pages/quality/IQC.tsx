@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,7 +16,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
 const IQC = () => {
@@ -30,6 +29,7 @@ const IQC = () => {
   const [receivedQuantity, setReceivedQuantity] = useState("");
   const [selectedInspection, setSelectedInspection] = useState<string | null>(null);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   // Fetch pending GRNs
   const { data: pendingGRNs = [] } = useQuery({
@@ -53,24 +53,53 @@ const IQC = () => {
     },
   });
 
-  // Mock data for completed inspections since iqc_reports table types aren't available
-  const completedInspections = [
-    {
-      id: "1",
-      inspection_date: "2025-05-28",
-      result: "Accepted",
-      grn_items: {
-        grn: { grn_number: "GRN-001" },
-        raw_materials: { material_code: "PCB-123", name: "Main PCB" },
-        store_confirmed: false
-      }
-    }
-  ];
+  // Fetch completed inspections
+  const { data: completedInspections = [] } = useQuery({
+    queryKey: ["completed-inspections"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("grn_items")
+        .select(`
+          *,
+          grn!inner(
+            grn_number,
+            vendors(name)
+          ),
+          raw_materials!inner(material_code, name)
+        `)
+        .in("iqc_status", ["ACCEPTED", "REJECTED"]);
+      
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  // Fetch items pending store acceptance
+  const { data: pendingStoreAcceptance = [] } = useQuery({
+    queryKey: ["pending-store-acceptance"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("grn_items")
+        .select(`
+          *,
+          grn!inner(
+            grn_number,
+            vendors(name)
+          ),
+          raw_materials!inner(material_code, name)
+        `)
+        .eq("iqc_status", "ACCEPTED")
+        .eq("store_confirmed", false);
+      
+      if (error) throw error;
+      return data || [];
+    },
+  });
 
   // Find the selected GRN and material details
   const selectedGRNDetails = pendingGRNs.find(grn => grn.id === selectedGRN);
   const selectedMaterialDetails = selectedGRNDetails?.grn_items?.find((item: any) => item.id === selectedMaterial);
-  const selectedInspectionDetails = completedInspections.find(insp => insp.id === selectedInspection);
+  const selectedInspectionDetails = pendingStoreAcceptance.find(item => item.id === selectedInspection);
 
   // Handle file selection
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -79,7 +108,138 @@ const IQC = () => {
     }
   };
 
-  // Handle inspection submission - using mock for now
+  // Submit inspection mutation
+  const submitInspectionMutation = useMutation({
+    mutationFn: async ({
+      grnItemId,
+      status,
+      remarks,
+      approvedQuantity,
+      rejectedQuantity
+    }: {
+      grnItemId: string;
+      status: string;
+      remarks: string;
+      approvedQuantity: number;
+      rejectedQuantity: number;
+    }) => {
+      const { error } = await supabase
+        .from("grn_items")
+        .update({
+          iqc_status: status.toUpperCase(),
+          accepted_quantity: approvedQuantity,
+          rejected_quantity: rejectedQuantity,
+          iqc_approved_by: (await supabase.auth.getUser()).data.user?.id,
+          iqc_approved_at: new Date().toISOString()
+        })
+        .eq("id", grnItemId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["pending-grns"] });
+      queryClient.invalidateQueries({ queryKey: ["completed-inspections"] });
+      queryClient.invalidateQueries({ queryKey: ["pending-store-acceptance"] });
+      
+      toast({
+        title: "Inspection recorded",
+        description: `Material has been marked as ${inspectionStatus}`,
+      });
+
+      // Reset form
+      setSelectedGRN(null);
+      setSelectedMaterial(null);
+      setInspectionStatus("");
+      setRemarks("");
+      setSelectedFile(null);
+    },
+    onError: (error) => {
+      console.error("Error submitting inspection:", error);
+      toast({
+        title: "Error",
+        description: "Failed to submit inspection",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Store acceptance mutation
+  const storeAcceptanceMutation = useMutation({
+    mutationFn: async ({
+      grnItemId,
+      quantity,
+      rawMaterialId
+    }: {
+      grnItemId: string;
+      quantity: number;
+      rawMaterialId: string;
+    }) => {
+      // Update GRN item to mark as store confirmed
+      const { error: grnError } = await supabase
+        .from("grn_items")
+        .update({
+          store_confirmed: true,
+          store_confirmed_by: (await supabase.auth.getUser()).data.user?.id,
+          store_confirmed_at: new Date().toISOString()
+        })
+        .eq("id", grnItemId);
+
+      if (grnError) throw grnError;
+
+      // Check if inventory record exists for this material
+      const { data: existingInventory } = await supabase
+        .from("inventory")
+        .select("*")
+        .eq("raw_material_id", rawMaterialId)
+        .single();
+
+      if (existingInventory) {
+        // Update existing inventory
+        const { error: inventoryError } = await supabase
+          .from("inventory")
+          .update({
+            quantity: existingInventory.quantity + quantity,
+            last_updated: new Date().toISOString()
+          })
+          .eq("raw_material_id", rawMaterialId);
+
+        if (inventoryError) throw inventoryError;
+      } else {
+        // Create new inventory record
+        const { error: inventoryError } = await supabase
+          .from("inventory")
+          .insert({
+            raw_material_id: rawMaterialId,
+            quantity: quantity,
+            last_updated: new Date().toISOString()
+          });
+
+        if (inventoryError) throw inventoryError;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["pending-store-acceptance"] });
+      
+      toast({
+        title: "Material accepted by store",
+        description: `Material has been received in store and inventory updated`,
+      });
+
+      // Reset form
+      setSelectedInspection(null);
+      setReceivedQuantity("");
+    },
+    onError: (error) => {
+      console.error("Error confirming store acceptance:", error);
+      toast({
+        title: "Error",
+        description: "Failed to confirm store acceptance",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Handle inspection submission
   const handleSubmitInspection = async () => {
     if (!selectedGRN || !selectedMaterial || !inspectionStatus) {
       toast({
@@ -90,41 +250,16 @@ const IQC = () => {
       return;
     }
 
-    try {
-      // Mock inspection submission - would use iqc_reports table when types are available
-      console.log("Submitting inspection:", {
-        grn_item_id: selectedMaterial,
-        result: inspectionStatus,
-        remarks: remarks,
-        approved_quantity: inspectionStatus === "Accepted" ? selectedMaterialDetails?.received_quantity : 0,
-        rejected_quantity: inspectionStatus === "Rejected" ? selectedMaterialDetails?.received_quantity : 0,
-      });
+    const approvedQuantity = inspectionStatus === "Accepted" ? selectedMaterialDetails?.received_quantity : 0;
+    const rejectedQuantity = inspectionStatus === "Rejected" ? selectedMaterialDetails?.received_quantity : 0;
 
-      // Update GRN item IQC status
-      await supabase
-        .from("grn_items")
-        .update({ iqc_status: inspectionStatus.toUpperCase() })
-        .eq("id", selectedMaterial);
-
-      toast({
-        title: "Inspection recorded",
-        description: `${selectedMaterialDetails?.raw_materials?.material_code} has been marked as ${inspectionStatus}`,
-      });
-
-      // Reset form
-      setSelectedGRN(null);
-      setSelectedMaterial(null);
-      setInspectionStatus("");
-      setRemarks("");
-      setSelectedFile(null);
-    } catch (error) {
-      console.error("Error submitting inspection:", error);
-      toast({
-        title: "Error",
-        description: "Failed to submit inspection",
-        variant: "destructive",
-      });
-    }
+    submitInspectionMutation.mutate({
+      grnItemId: selectedMaterial,
+      status: inspectionStatus,
+      remarks: remarks,
+      approvedQuantity: approvedQuantity || 0,
+      rejectedQuantity: rejectedQuantity || 0
+    });
   };
 
   // Handle store acceptance
@@ -138,28 +273,22 @@ const IQC = () => {
       return;
     }
 
-    try {
-      const qty = parseInt(receivedQuantity);
-      
-      // Mock store confirmation - would need to link with actual inspection data
-      console.log("Store acceptance:", { inspection_id: selectedInspection, quantity: qty });
-
+    const qty = parseInt(receivedQuantity);
+    
+    if (qty <= 0 || qty > (selectedInspectionDetails?.accepted_quantity || 0)) {
       toast({
-        title: "Material accepted by store",
-        description: `Material has been received in store with quantity: ${qty}`,
-      });
-
-      // Reset form
-      setSelectedInspection(null);
-      setReceivedQuantity("");
-    } catch (error) {
-      console.error("Error confirming store acceptance:", error);
-      toast({
-        title: "Error",
-        description: "Failed to confirm store acceptance",
+        title: "Invalid quantity",
+        description: "Please enter a valid quantity within accepted limits",
         variant: "destructive",
       });
+      return;
     }
+
+    storeAcceptanceMutation.mutate({
+      grnItemId: selectedInspection,
+      quantity: qty,
+      rawMaterialId: selectedInspectionDetails?.raw_material_id || ""
+    });
   };
 
   return (
@@ -332,8 +461,9 @@ const IQC = () => {
                       <Button 
                         className="w-full mt-4" 
                         onClick={handleSubmitInspection}
+                        disabled={submitInspectionMutation.isPending}
                       >
-                        Submit Inspection
+                        {submitInspectionMutation.isPending ? "Submitting..." : "Submit Inspection"}
                       </Button>
                     </div>
                   </div>
@@ -360,41 +490,33 @@ const IQC = () => {
                         <TableHead>GRN ID</TableHead>
                         <TableHead>Part Code</TableHead>
                         <TableHead>Description</TableHead>
+                        <TableHead>Vendor</TableHead>
+                        <TableHead>Accepted Qty</TableHead>
+                        <TableHead>Rejected Qty</TableHead>
                         <TableHead>Status</TableHead>
-                        <TableHead>Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {completedInspections.map((inspection: any) => (
                         <TableRow key={inspection.id}>
-                          <TableCell>{new Date(inspection.inspection_date).toLocaleDateString()}</TableCell>
-                          <TableCell>{inspection.grn_items?.grn?.grn_number}</TableCell>
-                          <TableCell className="font-mono">{inspection.grn_items?.raw_materials?.material_code}</TableCell>
-                          <TableCell>{inspection.grn_items?.raw_materials?.name}</TableCell>
+                          <TableCell>{new Date(inspection.iqc_approved_at || inspection.created_at).toLocaleDateString()}</TableCell>
+                          <TableCell>{inspection.grn?.grn_number}</TableCell>
+                          <TableCell className="font-mono">{inspection.raw_materials?.material_code}</TableCell>
+                          <TableCell>{inspection.raw_materials?.name}</TableCell>
+                          <TableCell>{inspection.grn?.vendors?.name}</TableCell>
+                          <TableCell className="font-medium text-green-600">{inspection.accepted_quantity || 0}</TableCell>
+                          <TableCell className="font-medium text-red-600">{inspection.rejected_quantity || 0}</TableCell>
                           <TableCell>
                             <Badge 
                               variant="outline" 
                               className={
-                                inspection.result === "Accepted" ? "bg-green-100 text-green-800" :
-                                inspection.result === "Rejected" ? "bg-red-100 text-red-800" :
+                                inspection.iqc_status === "ACCEPTED" ? "bg-green-100 text-green-800" :
+                                inspection.iqc_status === "REJECTED" ? "bg-red-100 text-red-800" :
                                 "bg-amber-100 text-amber-800"
                               }
                             >
-                              {inspection.result}
+                              {inspection.iqc_status}
                             </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <Button variant="outline" size="sm">
-                                <FileCheck className="h-3 w-3 mr-1" />
-                                Report
-                              </Button>
-                              {inspection.result === "Rejected" && (
-                                <Button variant="outline" size="sm" onClick={() => setSelectedTab("capa")}>
-                                  CAPA
-                                </Button>
-                              )}
-                            </div>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -417,9 +539,46 @@ const IQC = () => {
                       <CardTitle>Pending Store Acceptance</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div className="text-center py-8 text-muted-foreground">
-                        No materials pending store acceptance
-                      </div>
+                      {pendingStoreAcceptance.length === 0 ? (
+                        <div className="text-center py-8 text-muted-foreground">
+                          No materials pending store acceptance
+                        </div>
+                      ) : (
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead></TableHead>
+                              <TableHead>GRN No</TableHead>
+                              <TableHead>Part Code</TableHead>
+                              <TableHead>Description</TableHead>
+                              <TableHead>Vendor</TableHead>
+                              <TableHead>Approved Qty</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {pendingStoreAcceptance.map((item: any) => (
+                              <TableRow key={item.id} className={selectedInspection === item.id ? "bg-accent" : ""}>
+                                <TableCell>
+                                  <input 
+                                    type="radio" 
+                                    name="inspection" 
+                                    checked={selectedInspection === item.id}
+                                    onChange={() => {
+                                      setSelectedInspection(item.id);
+                                      setReceivedQuantity(item.accepted_quantity?.toString() || "");
+                                    }} 
+                                  />
+                                </TableCell>
+                                <TableCell className="font-medium">{item.grn?.grn_number}</TableCell>
+                                <TableCell className="font-mono">{item.raw_materials?.material_code}</TableCell>
+                                <TableCell>{item.raw_materials?.name}</TableCell>
+                                <TableCell>{item.grn?.vendors?.name}</TableCell>
+                                <TableCell className="font-medium text-green-600">{item.accepted_quantity}</TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      )}
                     </CardContent>
                   </Card>
 
@@ -432,9 +591,10 @@ const IQC = () => {
                         <div className="space-y-4">
                           <h3 className="font-medium">Material Details</h3>
                           <div className="space-y-1">
-                            <p><span className="font-medium">GRN: </span>{selectedInspectionDetails.grn_items?.grn?.grn_number}</p>
-                            <p><span className="font-medium">Part Code: </span>{selectedInspectionDetails.grn_items?.raw_materials?.material_code}</p>
-                            <p><span className="font-medium">Description: </span>{selectedInspectionDetails.grn_items?.raw_materials?.name}</p>
+                            <p><span className="font-medium">GRN: </span>{selectedInspectionDetails.grn?.grn_number}</p>
+                            <p><span className="font-medium">Part Code: </span>{selectedInspectionDetails.raw_materials?.material_code}</p>
+                            <p><span className="font-medium">Description: </span>{selectedInspectionDetails.raw_materials?.name}</p>
+                            <p><span className="font-medium">Approved Qty: </span>{selectedInspectionDetails.accepted_quantity}</p>
                           </div>
                           
                           <div className="space-y-2">
@@ -447,32 +607,23 @@ const IQC = () => {
                               value={receivedQuantity}
                               onChange={(e) => setReceivedQuantity(e.target.value)}
                               placeholder="Enter actual quantity received"
+                              max={selectedInspectionDetails.accepted_quantity}
                             />
                           </div>
                           
                           <Button 
                             className="w-full mt-4"
                             onClick={handleStoreAcceptance}
+                            disabled={storeAcceptanceMutation.isPending}
                           >
                             <CheckCircle className="h-4 w-4 mr-2" />
-                            Confirm Receipt
+                            {storeAcceptanceMutation.isPending ? "Processing..." : "Confirm Receipt"}
                           </Button>
                         </div>
                       </CardContent>
                     </Card>
                   )}
                 </div>
-
-                <Card className="mt-4">
-                  <CardHeader>
-                    <CardTitle>Processed Store Receipts</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-center py-8 text-muted-foreground">
-                      No processed store receipts
-                    </div>
-                  </CardContent>
-                </Card>
               </CardContent>
             </Card>
           </TabsContent>
