@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -286,10 +287,9 @@ const FinishedGoods = () => {
         </div>
 
         <Tabs defaultValue="overview" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="overview">Model Overview</TabsTrigger>
             <TabsTrigger value="inventory">Lot Details</TabsTrigger>
-            <TabsTrigger value="aging">Aging Analysis</TabsTrigger>
             <TabsTrigger value="movements">Stock Movement</TabsTrigger>
           </TabsList>
 
@@ -358,9 +358,34 @@ const FinishedGoods = () => {
               )}
             </div>
 
+            {/* Aging Analysis Summary */}
+            <div className="grid grid-cols-3 gap-4 mb-6">
+              <div className="text-center p-4 bg-green-50 rounded-lg">
+                <div className="text-2xl font-bold text-green-600">
+                  {finishedGoodsInventory.filter(item => calculateAge(item.production_date) <= 7).length}
+                </div>
+                <div className="text-sm text-green-700">Fresh (≤ 7 days)</div>
+              </div>
+              <div className="text-center p-4 bg-yellow-50 rounded-lg">
+                <div className="text-2xl font-bold text-yellow-600">
+                  {finishedGoodsInventory.filter(item => {
+                    const age = calculateAge(item.production_date);
+                    return age > 7 && age <= 14;
+                  }).length}
+                </div>
+                <div className="text-sm text-yellow-700">Aging (8-14 days)</div>
+              </div>
+              <div className="text-center p-4 bg-red-50 rounded-lg">
+                <div className="text-2xl font-bold text-red-600">
+                  {finishedGoodsInventory.filter(item => calculateAge(item.production_date) > 14).length}
+                </div>
+                <div className="text-sm text-red-700">Old ({'>'}14 days)</div>
+              </div>
+            </div>
+
             <Card>
               <CardHeader>
-                <CardTitle>Inventory Lots (FIFO Order)</CardTitle>
+                <CardTitle>Lot Details & Aging Analysis (FIFO Order)</CardTitle>
               </CardHeader>
               <CardContent>
                 {filteredInventory.length === 0 ? (
@@ -371,11 +396,13 @@ const FinishedGoods = () => {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Production Voucher</TableHead>
+                        <TableHead>Voucher No.</TableHead>
                         <TableHead>Model</TableHead>
                         <TableHead>Quantity</TableHead>
+                        <TableHead>Quantity Dispatched</TableHead>
                         <TableHead>Production Date</TableHead>
                         <TableHead>Age</TableHead>
+                        <TableHead>Risk Level</TableHead>
                         <TableHead>OQC Report</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -384,6 +411,7 @@ const FinishedGoods = () => {
                         .sort((a, b) => new Date(a.production_date).getTime() - new Date(b.production_date).getTime())
                         .map((item) => {
                           const age = calculateAge(item.production_date);
+                          const dispatchedQty = dispatchedQuantities[item.product_id] || 0;
                           return (
                             <TableRow key={item.id}>
                               <TableCell className="font-mono font-medium">
@@ -391,9 +419,21 @@ const FinishedGoods = () => {
                               </TableCell>
                               <TableCell>{item.products.name}</TableCell>
                               <TableCell className="font-medium">{item.quantity.toLocaleString()}</TableCell>
+                              <TableCell className="text-red-600 font-medium">{dispatchedQty.toLocaleString()}</TableCell>
                               <TableCell>{format(new Date(item.production_date), "MMM dd, yyyy")}</TableCell>
                               <TableCell className={getAgeColor(age)}>
                                 {age} days
+                              </TableCell>
+                              <TableCell>
+                                {age <= 7 && (
+                                  <Badge className="bg-green-100 text-green-800">Low</Badge>
+                                )}
+                                {age > 7 && age <= 14 && (
+                                  <Badge className="bg-yellow-100 text-yellow-800">Medium</Badge>
+                                )}
+                                {age > 14 && (
+                                  <Badge className="bg-red-100 text-red-800">High</Badge>
+                                )}
                               </TableCell>
                               <TableCell>
                                 <Dialog>
@@ -424,83 +464,6 @@ const FinishedGoods = () => {
                     </TableBody>
                   </Table>
                 )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="aging" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Inventory Aging Analysis</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-3 gap-4 mb-6">
-                  <div className="text-center p-4 bg-green-50 rounded-lg">
-                    <div className="text-2xl font-bold text-green-600">
-                      {finishedGoodsInventory.filter(item => calculateAge(item.production_date) <= 7).length}
-                    </div>
-                    <div className="text-sm text-green-700">Fresh (≤ 7 days)</div>
-                  </div>
-                  <div className="text-center p-4 bg-yellow-50 rounded-lg">
-                    <div className="text-2xl font-bold text-yellow-600">
-                      {finishedGoodsInventory.filter(item => {
-                        const age = calculateAge(item.production_date);
-                        return age > 7 && age <= 14;
-                      }).length}
-                    </div>
-                    <div className="text-sm text-yellow-700">Aging (8-14 days)</div>
-                  </div>
-                  <div className="text-center p-4 bg-red-50 rounded-lg">
-                    <div className="text-2xl font-bold text-red-600">
-                      {finishedGoodsInventory.filter(item => calculateAge(item.production_date) > 14).length}
-                    </div>
-                    <div className="text-sm text-red-700">Old ({'>'}14 days)</div>
-                  </div>
-                </div>
-
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Production Voucher</TableHead>
-                      <TableHead>Model</TableHead>
-                      <TableHead>Quantity</TableHead>
-                      <TableHead>Age</TableHead>
-                      <TableHead>Production Date</TableHead>
-                      <TableHead>Risk Level</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {finishedGoodsInventory
-                      .sort((a, b) => calculateAge(b.production_date) - calculateAge(a.production_date))
-                      .map((item) => {
-                        const age = calculateAge(item.production_date);
-                        return (
-                          <TableRow key={item.id}>
-                            <TableCell className="font-mono">
-                              {item.production_orders?.voucher_number || item.lot_number || 'N/A'}
-                            </TableCell>
-                            <TableCell>{item.products.name}</TableCell>
-                            <TableCell>{item.quantity.toLocaleString()}</TableCell>
-                            <TableCell className={getAgeColor(age)}>
-                              {age} days
-                            </TableCell>
-                            <TableCell>{format(new Date(item.production_date), "MMM dd, yyyy")}</TableCell>
-                            <TableCell>
-                              {age <= 7 && (
-                                <Badge className="bg-green-100 text-green-800">Low</Badge>
-                              )}
-                              {age > 7 && age <= 14 && (
-                                <Badge className="bg-yellow-100 text-yellow-800">Medium</Badge>
-                              )}
-                              {age > 14 && (
-                                <Badge className="bg-red-100 text-red-800">High</Badge>
-                              )}
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                  </TableBody>
-                </Table>
               </CardContent>
             </Card>
           </TabsContent>
