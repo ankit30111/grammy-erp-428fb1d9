@@ -10,6 +10,8 @@ import { Package, Eye } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { validateStockForComponent } from "./StockValidator";
 
+type BomType = "main_assembly" | "sub_assembly" | "accessory";
+
 interface ProductionVoucherDetailsProps {
   isOpen: boolean;
   onClose: () => void;
@@ -65,13 +67,15 @@ const ProductionVoucherDetails = ({
   const validateAndSendComponent = async (componentType: string) => {
     if (!productionOrder) return;
 
-    const bomTypeMap: Record<string, string> = {
+    const bomTypeMap: Record<string, BomType> = {
       "Sub Assembly": "sub_assembly",
       "Accessories": "accessory", 
       "Main Assembly": "main_assembly"
     };
 
     const bomType = bomTypeMap[componentType];
+    if (!bomType) return;
+
     const validation = await validateStockForComponent(
       productionOrder.product_id, 
       productionOrder.quantity, 

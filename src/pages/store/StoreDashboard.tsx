@@ -24,6 +24,8 @@ import { Layers, RefreshCw, Package, ChevronDown, Eye, AlertTriangle } from "luc
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 
+type BomType = "main_assembly" | "sub_assembly" | "accessory";
+
 export default function StoreDashboard() {
   const { toast } = useToast();
   const { syncRawMaterialsToInventory, isLoading: isSyncing } = useInventorySync();
@@ -148,7 +150,7 @@ export default function StoreDashboard() {
     const productionOrder = productionOrders?.find(order => order.voucher_number === voucherId);
     if (!productionOrder) return false;
 
-    const componentToBomType: Record<string, string> = {
+    const componentToBomType: Record<string, BomType> = {
       "Main Assembly": "main_assembly",
       "Sub Assembly": "sub_assembly",
       "Accessories": "accessory"
@@ -240,7 +242,7 @@ export default function StoreDashboard() {
       if (bomError) throw bomError;
 
       // Map component names to BOM types
-      const componentToBomType: Record<string, string> = {
+      const componentToBomType: Record<string, BomType> = {
         "Main Assembly": "main_assembly",
         "Sub Assembly": "sub_assembly",
         "Accessories": "accessory"
@@ -366,7 +368,7 @@ export default function StoreDashboard() {
     const productionOrder = productionOrders?.find(order => order.voucher_number === voucherId);
     if (!productionOrder) return false;
 
-    const componentToBomType: Record<string, string> = {
+    const componentToBomType: Record<string, BomType> = {
       "Main Assembly": "main_assembly",
       "Sub Assembly": "sub_assembly", 
       "Accessories": "accessory"
