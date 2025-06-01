@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -57,8 +58,8 @@ const FinishedGoods = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedModel, setSelectedModel] = useState<string | null>(null);
 
-  // Fetch real finished goods inventory from database with production voucher
-  const { data: finishedGoodsInventory = [], isLoading } = useQuery({
+  // Fetch real finished goods inventory from database
+  const { data: finishedGoodsInventory = [], isLoading, refetch } = useQuery({
     queryKey: ["finished-goods"],
     queryFn: async () => {
       console.log('Fetching finished goods inventory...');
@@ -68,7 +69,7 @@ const FinishedGoods = () => {
         .select(`
           *,
           products!inner(name, product_code),
-          production_orders!left(voucher_number)
+          production_orders(voucher_number)
         `)
         .eq("quality_status", "APPROVED")
         .gt("quantity", 0)
@@ -84,27 +85,59 @@ const FinishedGoods = () => {
     },
   });
 
-  // Fetch stock movements (simulated data for now - in real app this would come from audit table)
-  const { data: stockMovements = [] } = useQuery({
-    queryKey: ["stock-movements"],
+  // Fetch dispatch orders for stock movements
+  const { data: dispatchOrders = [] } = useQuery({
+    queryKey: ["dispatch-orders-movements"],
     queryFn: async () => {
-      // For now, we'll create simulated movements based on existing inventory
-      // In a real implementation, you'd have a separate stock_movements table
-      const movements: StockMovement[] = finishedGoodsInventory.map(item => ({
-        id: `in-${item.id}`,
-        type: "INBOUND" as const,
+      const { data, error } = await supabase
+        .from("dispatch_orders")
+        .select(`
+          *,
+          dispatch_order_items(
+            id,
+            product_id,
+            quantity,
+            products(name, product_code)
+          )
+        `)
+        .order("created_at", { ascending: false });
+      
+      if (error) {
+        console.error('Error fetching dispatch orders:', error);
+        throw error;
+      }
+      
+      return data || [];
+    },
+  });
+
+  // Create stock movements from inventory and dispatch data
+  const stockMovements: StockMovement[] = [
+    // Inbound movements from finished goods inventory
+    ...finishedGoodsInventory.map(item => ({
+      id: `in-${item.id}`,
+      type: "INBOUND" as const,
+      product_id: item.product_id,
+      quantity: item.quantity,
+      date: item.production_date || item.created_at,
+      reference: item.production_orders?.voucher_number || item.lot_number || 'Production',
+      notes: 'OQC Approved',
+      products: item.products
+    })),
+    // Outbound movements from dispatch orders
+    ...dispatchOrders.flatMap(order => 
+      order.dispatch_order_items?.map(item => ({
+        id: `out-${item.id}`,
+        type: "OUTBOUND" as const,
         product_id: item.product_id,
         quantity: item.quantity,
-        date: item.production_date || item.created_at,
-        reference: item.production_orders?.voucher_number || item.lot_number || 'Production',
-        notes: 'OQC Approved',
+        date: order.dispatch_date,
+        reference: order.dispatch_order_number,
+        notes: `Dispatched to customer`,
         products: item.products
-      }));
-
-      return movements;
-    },
-    enabled: finishedGoodsInventory.length > 0
-  });
+      })) || []
+    )
+  ];
 
   // Group inventory by model
   const modelStocks = finishedGoodsInventory.reduce((acc, item) => {
@@ -184,6 +217,9 @@ const FinishedGoods = () => {
               {format(new Date(), "MMM dd, yyyy HH:mm")}
             </span>
             <Clock className="h-4 w-4 text-muted-foreground" />
+            <Button onClick={() => refetch()} size="sm">
+              Refresh
+            </Button>
           </div>
         </div>
 

@@ -325,6 +325,7 @@ const RegularDispatch = () => {
 
       // Invalidate and refetch finished goods inventory to refresh the display
       queryClient.invalidateQueries({ queryKey: ["finished-goods"] });
+      queryClient.invalidateQueries({ queryKey: ["dispatch-orders-movements"] });
 
       toast({
         title: "Success",
