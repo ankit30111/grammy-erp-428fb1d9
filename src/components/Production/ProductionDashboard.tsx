@@ -2,11 +2,17 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Factory, Clock, CheckCircle, AlertCircle, Zap, Target } from "lucide-react";
+import { Factory, Clock, CheckCircle, AlertCircle, Zap, Target, Edit } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { useState } from "react";
+import HourlyProductionDialog from "./HourlyProductionDialog";
 
 const ProductionDashboard = () => {
+  const [selectedLine, setSelectedLine] = useState<string | null>(null);
+  const [showHourlyDialog, setShowHourlyDialog] = useState(false);
+
   const { data: productionOrders = [] } = useQuery({
     queryKey: ["production-lines-orders"],
     queryFn: async () => {
@@ -16,6 +22,7 @@ const ProductionDashboard = () => {
           *,
           products!inner(name),
           production_schedules!inner(
+            production_line,
             projections!inner(
               customers!inner(name)
             )
@@ -27,18 +34,32 @@ const ProductionDashboard = () => {
     },
   });
 
-  // Production lines data - empty by default, will be populated with real data
-  const productionLines: Array<{
-    id: number;
-    name: string;
-    status: "IDLE" | "RUNNING" | "MAINTENANCE" | "SETUP";
-    currentOrder: any;
-    efficiency: number;
-    target: number;
-    produced: number;
-    operator: string;
-    lastUpdate: string;
-  }> = [];
+  // Define all 4 production lines
+  const allProductionLines = [
+    "Line 1",
+    "Line 2", 
+    "Sub Assembly 1",
+    "Sub Assembly 2"
+  ];
+
+  // Create production lines data with current orders
+  const productionLines = allProductionLines.map((lineName) => {
+    const currentOrder = productionOrders.find(
+      order => order.production_schedules?.production_line === lineName
+    );
+
+    return {
+      id: lineName.replace(/\s+/g, '_').toLowerCase(),
+      name: lineName,
+      status: currentOrder ? "RUNNING" : "IDLE" as "IDLE" | "RUNNING" | "MAINTENANCE" | "SETUP",
+      currentOrder: currentOrder || null,
+      efficiency: currentOrder ? 85 : 0, // Default efficiency when running
+      target: currentOrder ? currentOrder.quantity : 0,
+      produced: 0, // This would come from hourly production data
+      operator: currentOrder ? "Assigned" : "",
+      lastUpdate: currentOrder ? new Date().toLocaleTimeString() : ""
+    };
+  });
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -66,6 +87,11 @@ const ProductionDashboard = () => {
     return "text-red-600";
   };
 
+  const handleLineClick = (lineName: string) => {
+    setSelectedLine(lineName);
+    setShowHourlyDialog(true);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -77,14 +103,25 @@ const ProductionDashboard = () => {
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {productionLines.map((line) => (
-          <Card key={line.id} className="relative">
+          <Card key={line.id} className="relative cursor-pointer hover:shadow-lg transition-shadow">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-lg">{line.name}</CardTitle>
-                <Badge variant={getStatusColor(line.status) as any} className="gap-1">
-                  {getStatusIcon(line.status)}
-                  {line.status}
-                </Badge>
+                <div className="flex items-center gap-2">
+                  <Badge variant={getStatusColor(line.status) as any} className="gap-1">
+                    {getStatusIcon(line.status)}
+                    {line.status}
+                  </Badge>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleLineClick(line.name)}
+                    className="gap-1"
+                  >
+                    <Edit className="h-3 w-3" />
+                    Hourly Data
+                  </Button>
+                </div>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -193,6 +230,13 @@ const ProductionDashboard = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Hourly Production Dialog */}
+      <HourlyProductionDialog
+        open={showHourlyDialog}
+        onOpenChange={setShowHourlyDialog}
+        productionLine={selectedLine}
+      />
     </div>
   );
 };
