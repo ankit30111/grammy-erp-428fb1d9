@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Package, AlertTriangle, CheckCircle } from "lucide-react";
@@ -16,9 +16,11 @@ const KitVerification = () => {
   const [receivedQuantities, setReceivedQuantities] = useState<Record<string, number>>({});
   const [discrepancyComments, setDiscrepancyComments] = useState<Record<string, string>>({});
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
-  const { data: kitItems = [] } = useQuery({
-    queryKey: ["kit-verification"],
+  // Fetch kit items that have been sent by Store but not yet verified by Production
+  const { data: kitsToVerify = [] } = useQuery({
+    queryKey: ["kits-to-verify"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("kit_items")
@@ -42,7 +44,48 @@ const KitVerification = () => {
             name
           )
         `)
-        .in("kit_preparation.status", ["SENT", "VERIFIED", "VERIFIED_WITH_DISCREPANCY"])
+        .in("kit_preparation.status", [
+          "COMPLETE KIT SENT", 
+          "PARTIAL KIT SENT", 
+          "MAIN ASSEMBLY COMPONENTS SENT", 
+          "SUB ASSEMBLY COMPONENTS SENT", 
+          "ACCESSORY COMPONENTS SENT"
+        ])
+        .eq("verified_by_production", false)
+        .order("created_at", { ascending: false });
+      
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  // Fetch verified kit items
+  const { data: verifiedKits = [] } = useQuery({
+    queryKey: ["verified-kits"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("kit_items")
+        .select(`
+          *,
+          kit_preparation!inner(
+            kit_number,
+            status,
+            production_orders!inner(
+              voucher_number,
+              quantity,
+              production_schedules!inner(
+                projections!inner(
+                  products!inner(name)
+                )
+              )
+            )
+          ),
+          raw_materials!inner(
+            material_code,
+            name
+          )
+        `)
+        .eq("verified_by_production", true)
         .order("created_at", { ascending: false });
       
       if (error) throw error;
@@ -65,16 +108,16 @@ const KitVerification = () => {
     }));
   };
 
-  const handleVerifyKit = async (kitId: string, items: any[]) => {
-    try {
+  const verifyKitMutation = useMutation({
+    mutationFn: async ({ kitId, items }: { kitId: string; items: any[] }) => {
       const hasDiscrepancies = items.some(item => {
-        const receivedQty = receivedQuantities[item.id] || 0;
+        const receivedQty = receivedQuantities[item.id] || item.actual_quantity;
         return receivedQty < item.actual_quantity;
       });
 
       if (hasDiscrepancies) {
         const itemsWithDiscrepancies = items.filter(item => {
-          const receivedQty = receivedQuantities[item.id] || 0;
+          const receivedQty = receivedQuantities[item.id] || item.actual_quantity;
           return receivedQty < item.actual_quantity;
         });
 
@@ -84,29 +127,8 @@ const KitVerification = () => {
         );
 
         if (missingComments.length > 0) {
-          toast({
-            title: "Missing Discrepancy Comments",
-            description: "Please provide comments for all items with discrepancies",
-            variant: "destructive",
-          });
-          return;
+          throw new Error("Please provide comments for all items with discrepancies");
         }
-
-        // Log discrepancies to console for now (until production_feedback table is available)
-        itemsWithDiscrepancies.forEach(item => {
-          const receivedQty = receivedQuantities[item.id] || 0;
-          const discrepancyQty = item.actual_quantity - receivedQty;
-          
-          console.log("Production Feedback Logged:", {
-            voucher_number: item.kit_preparation.production_orders.voucher_number,
-            component_code: item.raw_materials.material_code,
-            sent_quantity: item.actual_quantity,
-            received_quantity: receivedQty,
-            discrepancy_quantity: discrepancyQty,
-            section: "Kit Verification",
-            remarks: discrepancyComments[item.id]
-          });
-        });
       }
 
       // Update kit items with verified quantities
@@ -130,6 +152,13 @@ const KitVerification = () => {
         })
         .eq("id", kitId);
 
+      return { hasDiscrepancies };
+    },
+    onSuccess: ({ hasDiscrepancies }) => {
+      queryClient.invalidateQueries({ queryKey: ["kits-to-verify"] });
+      queryClient.invalidateQueries({ queryKey: ["verified-kits"] });
+      queryClient.invalidateQueries({ queryKey: ["scheduled-productions"] });
+      
       toast({
         title: "Kit Verified",
         description: hasDiscrepancies 
@@ -137,32 +166,25 @@ const KitVerification = () => {
           : "Kit verified successfully",
       });
 
-      // Clear local state for this kit
-      items.forEach(item => {
-        setReceivedQuantities(prev => {
-          const newState = { ...prev };
-          delete newState[item.id];
-          return newState;
-        });
-        setDiscrepancyComments(prev => {
-          const newState = { ...prev };
-          delete newState[item.id];
-          return newState;
-        });
-      });
-
-    } catch (error) {
-      console.error("Error verifying kit:", error);
+      // Clear local state
+      setReceivedQuantities({});
+      setDiscrepancyComments({});
+    },
+    onError: (error: Error) => {
       toast({
         title: "Error",
-        description: "Failed to verify kit",
+        description: error.message,
         variant: "destructive",
       });
-    }
+    },
+  });
+
+  const handleVerifyKit = (kitId: string, items: any[]) => {
+    verifyKitMutation.mutate({ kitId, items });
   };
 
-  // Group kit items by kit preparation and separate by verification status
-  const groupedKits = kitItems.reduce((acc, item) => {
+  // Group kit items by kit preparation
+  const groupedKitsToVerify = kitsToVerify.reduce((acc, item) => {
     const kitId = item.kit_preparation_id;
     if (!acc[kitId]) {
       acc[kitId] = {
@@ -174,24 +196,27 @@ const KitVerification = () => {
     return acc;
   }, {} as Record<string, { kit: any; items: any[] }>);
 
-  // Separate kits by verification status
-  const kitsToVerify = Object.entries(groupedKits).filter(([_, { kit }]) => 
-    kit.status === "SENT"
-  );
+  const groupedVerifiedKits = verifiedKits.reduce((acc, item) => {
+    const kitId = item.kit_preparation_id;
+    if (!acc[kitId]) {
+      acc[kitId] = {
+        kit: item.kit_preparation,
+        items: []
+      };
+    }
+    acc[kitId].items.push(item);
+    return acc;
+  }, {} as Record<string, { kit: any; items: any[] }>);
 
-  const verifiedKits = Object.entries(groupedKits).filter(([_, { kit }]) => 
-    kit.status === "VERIFIED" || kit.status === "VERIFIED_WITH_DISCREPANCY"
-  );
-
-  const renderKitTable = (kits: any[], showActions: boolean = true) => (
+  const renderKitTable = (groupedKits: any, showActions: boolean = true) => (
     <div className="space-y-8">
-      {kits.map(([kitId, { kit, items }]) => (
+      {Object.entries(groupedKits).map(([kitId, { kit, items }]: [string, any]) => (
         <div key={kitId} className="border rounded-lg p-6">
           <div className="mb-4">
-            <h3 className="text-lg font-semibold">Kit: {kit.kit_number}</h3>
+            <h3 className="text-lg font-semibold">Production Voucher: {kit.production_orders.voucher_number}</h3>
             <p className="text-sm text-muted-foreground">
-              Voucher: {kit.production_orders.voucher_number} | 
-              Product: {kit.production_orders.production_schedules.projections.products.name}
+              Product: {kit.production_orders.production_schedules.projections.products.name} | 
+              Kit: {kit.kit_number}
             </p>
             <Badge variant={kit.status === "VERIFIED" ? "default" : kit.status === "VERIFIED_WITH_DISCREPANCY" ? "destructive" : "secondary"}>
               {kit.status.replace('_', ' ')}
@@ -204,14 +229,14 @@ const KitVerification = () => {
                 <TableHead>Component</TableHead>
                 <TableHead>Material Code</TableHead>
                 <TableHead>Qty Sent</TableHead>
-                <TableHead>Qty Received/Verified</TableHead>
-                <TableHead>Discrepancy Qty</TableHead>
+                <TableHead>Qty Received</TableHead>
+                <TableHead>Discrepancy</TableHead>
                 <TableHead>Status</TableHead>
                 {showActions && <TableHead>Comments</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
-              {items.map((item) => {
+              {items.map((item: any) => {
                 const receivedQty = receivedQuantities[item.id] ?? item.actual_quantity;
                 const discrepancyQty = Math.max(0, item.actual_quantity - receivedQty);
                 const hasDiscrepancy = discrepancyQty > 0;
@@ -229,7 +254,6 @@ const KitVerification = () => {
                           value={receivedQuantities[item.id] ?? item.actual_quantity}
                           onChange={(e) => handleQuantityChange(item.id, e.target.value)}
                           max={item.actual_quantity}
-                          disabled={item.verified_by_production}
                         />
                       ) : (
                         <span>{receivedQty}</span>
@@ -243,12 +267,7 @@ const KitVerification = () => {
                       )}
                     </TableCell>
                     <TableCell>
-                      {item.verified_by_production ? (
-                        <Badge variant="default" className="gap-1">
-                          <CheckCircle className="h-3 w-3" />
-                          Verified
-                        </Badge>
-                      ) : hasDiscrepancy ? (
+                      {hasDiscrepancy ? (
                         <Badge variant="destructive" className="gap-1">
                           <AlertTriangle className="h-3 w-3" />
                           Discrepancy
@@ -262,7 +281,7 @@ const KitVerification = () => {
                     </TableCell>
                     {showActions && (
                       <TableCell>
-                        {hasDiscrepancy && !item.verified_by_production && (
+                        {hasDiscrepancy && (
                           <Textarea
                             placeholder="Required: Explain the discrepancy"
                             value={discrepancyComments[item.id] || ""}
@@ -282,9 +301,9 @@ const KitVerification = () => {
             <div className="mt-4 flex justify-end">
               <Button 
                 onClick={() => handleVerifyKit(kitId, items)}
-                disabled={items.every(item => item.verified_by_production)}
+                disabled={verifyKitMutation.isPending}
               >
-                {items.every(item => item.verified_by_production) ? "Already Verified" : "Verify Kit"}
+                {verifyKitMutation.isPending ? "Verifying..." : "Verify Kit"}
               </Button>
             </div>
           )}
@@ -305,27 +324,31 @@ const KitVerification = () => {
         <CardContent>
           <Tabs defaultValue="to-verify" className="w-full">
             <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="to-verify">Kits to be Verified ({kitsToVerify.length})</TabsTrigger>
-              <TabsTrigger value="verified">Kits Verified ({verifiedKits.length})</TabsTrigger>
+              <TabsTrigger value="to-verify">
+                Kits to be Verified ({Object.keys(groupedKitsToVerify).length})
+              </TabsTrigger>
+              <TabsTrigger value="verified">
+                Kits Verified ({Object.keys(groupedVerifiedKits).length})
+              </TabsTrigger>
             </TabsList>
             
             <TabsContent value="to-verify" className="mt-6">
-              {kitsToVerify.length === 0 ? (
+              {Object.keys(groupedKitsToVerify).length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   No kits available for verification
                 </div>
               ) : (
-                renderKitTable(kitsToVerify, true)
+                renderKitTable(groupedKitsToVerify, true)
               )}
             </TabsContent>
             
             <TabsContent value="verified" className="mt-6">
-              {verifiedKits.length === 0 ? (
+              {Object.keys(groupedVerifiedKits).length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   No verified kits found
                 </div>
               ) : (
-                renderKitTable(verifiedKits, false)
+                renderKitTable(groupedVerifiedKits, false)
               )}
             </TabsContent>
           </Tabs>

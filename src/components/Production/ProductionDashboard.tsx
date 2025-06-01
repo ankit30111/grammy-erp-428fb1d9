@@ -27,54 +27,50 @@ const ProductionDashboard = () => {
     },
   });
 
-  // Mock production lines data with performance metrics
+  // Production lines data without shift information
   const productionLines = [
     {
       id: 1,
-      name: "Line 1 - Main Assembly",
+      name: "Line 1",
       status: "RUNNING",
       currentOrder: productionOrders[0] || null,
       efficiency: 87,
       target: 150,
       produced: 95,
       operator: "John Smith",
-      shift: "Day Shift",
       lastUpdate: "2 mins ago"
     },
     {
       id: 2,
-      name: "Line 2 - Sub Assembly", 
+      name: "Line 2", 
       status: "RUNNING",
       currentOrder: productionOrders[1] || null,
       efficiency: 92,
       target: 120,
       produced: 110,
       operator: "Sarah Johnson",
-      shift: "Day Shift",
       lastUpdate: "1 min ago"
     },
     {
       id: 3,
-      name: "Line 3 - Testing",
+      name: "Sub Assembly 1",
       status: "SETUP",
       currentOrder: null,
       efficiency: 0,
       target: 80,
       produced: 0,
       operator: "Mike Wilson",
-      shift: "Day Shift",
       lastUpdate: "15 mins ago"
     },
     {
       id: 4,
-      name: "Line 4 - Packaging",
+      name: "Sub Assembly 2",
       status: "MAINTENANCE",
       currentOrder: null,
       efficiency: 0,
       target: 200,
       produced: 0,
       operator: "Lisa Brown",
-      shift: "Day Shift",
       lastUpdate: "30 mins ago"
     }
   ];
@@ -139,9 +135,6 @@ const ProductionDashboard = () => {
                     <div className="text-sm text-muted-foreground">
                       Voucher: {line.currentOrder.voucher_number}
                     </div>
-                    <div className="text-sm text-muted-foreground">
-                      Customer: {line.currentOrder.production_schedules?.projections?.customers?.name}
-                    </div>
                     <div className="text-sm">
                       Quantity: {line.currentOrder.quantity} units
                     </div>
@@ -185,11 +178,6 @@ const ProductionDashboard = () => {
                 <div className="flex justify-between text-sm">
                   <span>Operator</span>
                   <span className="font-medium">{line.operator}</span>
-                </div>
-
-                <div className="flex justify-between text-sm">
-                  <span>Shift</span>
-                  <span>{line.shift}</span>
                 </div>
 
                 <div className="flex justify-between text-sm">
