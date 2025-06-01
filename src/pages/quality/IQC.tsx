@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,7 +32,7 @@ const IQC = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch pending GRNs
+  // Fetch pending GRNs - only those with RECEIVED status and items with PENDING IQC status
   const { data: pendingGRNs = [] } = useQuery({
     queryKey: ["pending-grns"],
     queryFn: async () => {
@@ -46,14 +47,21 @@ const IQC = () => {
             raw_materials!inner(material_code, name)
           )
         `)
-        .eq("status", "RECEIVED");
+        .eq("status", "RECEIVED")
+        .eq("grn_items.iqc_status", "PENDING");
       
       if (error) throw error;
-      return data || [];
+      
+      // Filter out GRNs that don't have any pending items
+      const filteredData = data?.filter(grn => 
+        grn.grn_items && grn.grn_items.some((item: any) => item.iqc_status === "PENDING")
+      ) || [];
+      
+      return filteredData;
     },
   });
 
-  // Fetch completed inspections
+  // Fetch completed inspections - only items with ACCEPTED or REJECTED status
   const { data: completedInspections = [] } = useQuery({
     queryKey: ["completed-inspections"],
     queryFn: async () => {
@@ -67,14 +75,15 @@ const IQC = () => {
           ),
           raw_materials!inner(material_code, name)
         `)
-        .in("iqc_status", ["ACCEPTED", "REJECTED"]);
+        .in("iqc_status", ["ACCEPTED", "REJECTED"])
+        .not("iqc_status", "is", null);
       
       if (error) throw error;
       return data || [];
     },
   });
 
-  // Fetch items pending store acceptance
+  // Fetch items pending store acceptance - only ACCEPTED items that haven't been store confirmed
   const { data: pendingStoreAcceptance = [] } = useQuery({
     queryKey: ["pending-store-acceptance"],
     queryFn: async () => {
@@ -98,7 +107,9 @@ const IQC = () => {
 
   // Find the selected GRN and material details
   const selectedGRNDetails = pendingGRNs.find(grn => grn.id === selectedGRN);
-  const selectedMaterialDetails = selectedGRNDetails?.grn_items?.find((item: any) => item.id === selectedMaterial);
+  const selectedMaterialDetails = selectedGRNDetails?.grn_items?.find((item: any) => 
+    item.id === selectedMaterial && item.iqc_status === "PENDING"
+  );
   const selectedInspectionDetails = pendingStoreAcceptance.find(item => item.id === selectedInspection);
 
   // Handle file selection
@@ -331,30 +342,33 @@ const IQC = () => {
                           <TableHead>Date</TableHead>
                           <TableHead>Vendor</TableHead>
                           <TableHead>PO Number</TableHead>
-                          <TableHead>Items</TableHead>
+                          <TableHead>Pending Items</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {pendingGRNs.map((grn: any) => (
-                          <TableRow key={grn.id} className={selectedGRN === grn.id ? "bg-accent" : ""}>
-                            <TableCell>
-                              <input 
-                                type="radio" 
-                                name="grn" 
-                                checked={selectedGRN === grn.id}
-                                onChange={() => {
-                                  setSelectedGRN(grn.id);
-                                  setSelectedMaterial(null);
-                                }} 
-                              />
-                            </TableCell>
-                            <TableCell className="font-medium">{grn.grn_number}</TableCell>
-                            <TableCell>{new Date(grn.received_date).toLocaleDateString()}</TableCell>
-                            <TableCell>{grn.vendors?.name}</TableCell>
-                            <TableCell>{grn.purchase_orders?.po_number}</TableCell>
-                            <TableCell>{grn.grn_items?.length || 0}</TableCell>
-                          </TableRow>
-                        ))}
+                        {pendingGRNs.map((grn: any) => {
+                          const pendingItems = grn.grn_items?.filter((item: any) => item.iqc_status === "PENDING") || [];
+                          return (
+                            <TableRow key={grn.id} className={selectedGRN === grn.id ? "bg-accent" : ""}>
+                              <TableCell>
+                                <input 
+                                  type="radio" 
+                                  name="grn" 
+                                  checked={selectedGRN === grn.id}
+                                  onChange={() => {
+                                    setSelectedGRN(grn.id);
+                                    setSelectedMaterial(null);
+                                  }} 
+                                />
+                              </TableCell>
+                              <TableCell className="font-medium">{grn.grn_number}</TableCell>
+                              <TableCell>{new Date(grn.received_date).toLocaleDateString()}</TableCell>
+                              <TableCell>{grn.vendors?.name}</TableCell>
+                              <TableCell>{grn.purchase_orders?.po_number}</TableCell>
+                              <TableCell>{pendingItems.length}</TableCell>
+                            </TableRow>
+                          );
+                        })}
                       </TableBody>
                     </Table>
                   )}
@@ -370,7 +384,7 @@ const IQC = () => {
                     <div className="space-y-4">
                       <h3 className="font-medium">GRN: {selectedGRNDetails.grn_number}</h3>
                       <div className="space-y-2">
-                        {selectedGRNDetails.grn_items?.map((item: any) => (
+                        {selectedGRNDetails.grn_items?.filter((item: any) => item.iqc_status === "PENDING").map((item: any) => (
                           <div 
                             key={item.id} 
                             className={`p-2 border rounded cursor-pointer ${selectedMaterial === item.id ? 'bg-accent border-primary' : ''}`}
