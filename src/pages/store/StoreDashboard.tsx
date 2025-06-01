@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -15,6 +16,7 @@ import BOMKitStatusView from "@/components/Store/BOMKitStatusView";
 import MonthlyKitLog from "@/components/Store/MonthlyKitLog";
 import MonthlyKitTracker from "@/components/Store/MonthlyKitTracker";
 import ProductionVoucherDetails from "@/components/Store/ProductionVoucherDetails";
+import { validateStockForComponent } from "@/components/Store/StockValidator";
 import { useToast } from "@/hooks/use-toast";
 import { useInventorySync } from "@/hooks/useInventorySync";
 import { useProductionOrders } from "@/hooks/useProductionOrders";

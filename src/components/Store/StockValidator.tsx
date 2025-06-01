@@ -12,10 +12,12 @@ export interface StockValidationResult {
   }>;
 }
 
+type BomType = "main_assembly" | "sub_assembly" | "accessory";
+
 export const validateStockForComponent = async (
   productId: string, 
   quantity: number, 
-  bomType: string
+  bomType: BomType
 ): Promise<StockValidationResult> => {
   try {
     // Get BOM items for the specific component type
