@@ -12,6 +12,8 @@ import ProductionFeedback from "@/components/Store/ProductionFeedback";
 import InventoryManagement from "@/components/Store/InventoryManagement";
 import SpareOrdersPacking from "@/components/Store/SpareOrdersPacking";
 import BOMKitStatusView from "@/components/Store/BOMKitStatusView";
+import MonthlyKitLog from "@/components/Store/MonthlyKitLog";
+import ProductionVoucherDetails from "@/components/Store/ProductionVoucherDetails";
 import { useToast } from "@/hooks/use-toast";
 import { useInventorySync } from "@/hooks/useInventorySync";
 import { useProductionOrders } from "@/hooks/useProductionOrders";
@@ -141,9 +143,64 @@ export default function StoreDashboard() {
     }
   };
 
-  // Handler for sending components
+  // Check if component can be sent based on stock availability
+  const canSendComponent = async (voucherId: string, component: string): Promise<boolean> => {
+    const alreadySent = sentComponents[voucherId] || [];
+    if (component !== "All Components" && alreadySent.includes(component)) {
+      return false;
+    }
+
+    const productionOrder = productionOrders?.find(order => order.voucher_number === voucherId);
+    if (!productionOrder) return false;
+
+    try {
+      const { data: bomItems, error } = await supabase
+        .from("bom")
+        .select(`
+          *,
+          raw_materials!inner(
+            inventory(quantity)
+          )
+        `)
+        .eq("product_id", productionOrder.product_id);
+
+      if (error) throw error;
+
+      // Map component names to BOM types
+      const componentToBomType: Record<string, string> = {
+        "Main Assembly": "main_assembly",
+        "Sub Assembly": "sub_assembly",
+        "Accessories": "accessory"
+      };
+
+      const bomType = componentToBomType[component];
+      const filteredItems = bomType ? 
+        bomItems?.filter(item => item.bom_type === bomType) : bomItems;
+
+      return filteredItems?.every(item => {
+        const requiredQty = item.quantity * productionOrder.quantity;
+        const availableQty = item.raw_materials.inventory?.[0]?.quantity || 0;
+        return availableQty >= requiredQty;
+      }) || false;
+    } catch (error) {
+      console.error("Error checking component availability:", error);
+      return false;
+    }
+  };
+
+  // Handler for sending components with stock validation
   const handleSendComponent = async (voucherId: string, component: string) => {
     try {
+      const canSend = await canSendComponent(voucherId, component);
+      if (!canSend) {
+        toast({
+          title: "Insufficient Stock",
+          description: "Insufficient stock to send kit. Please replenish before dispatch.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       // Check if component has already been sent
       const alreadySent = sentComponents[voucherId] || [];
       if (component !== "All Components" && alreadySent.includes(component)) {
@@ -397,7 +454,7 @@ export default function StoreDashboard() {
     }
   };
 
-  const handleViewBOMStatus = (order: any) => {
+  const handleViewProductionVoucher = (order: any) => {
     setSelectedOrderForBOM(order);
     setIsBOMViewOpen(true);
   };
@@ -427,8 +484,9 @@ export default function StoreDashboard() {
       </div>
 
       <Tabs defaultValue="vouchers" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="vouchers">Voucher & Kit Management</TabsTrigger>
+          <TabsTrigger value="monthly-log">Monthly Kit Log</TabsTrigger>
           <TabsTrigger value="grn">GRN Receiving</TabsTrigger>
           <TabsTrigger value="feedback">Production Feedback</TabsTrigger>
           <TabsTrigger value="inventory">Inventory</TabsTrigger>
@@ -454,7 +512,7 @@ export default function StoreDashboard() {
                       <TableHead>Quantity</TableHead>
                       <TableHead>Voucher Status</TableHead>
                       <TableHead>Send Components</TableHead>
-                      <TableHead>View BOM & Kit Status</TableHead>
+                      <TableHead>Production Voucher</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -509,10 +567,10 @@ export default function StoreDashboard() {
                             variant="outline" 
                             size="sm" 
                             className="gap-2"
-                            onClick={() => handleViewBOMStatus(order)}
+                            onClick={() => handleViewProductionVoucher(order)}
                           >
                             <Eye className="h-4 w-4" />
-                            View BOM & Kit Status
+                            Production Voucher
                           </Button>
                         </TableCell>
                       </TableRow>
@@ -527,7 +585,7 @@ export default function StoreDashboard() {
             </CardContent>
           </Card>
 
-          <BOMKitStatusView
+          <ProductionVoucherDetails
             isOpen={isBOMViewOpen}
             onClose={() => {
               setIsBOMViewOpen(false);
@@ -541,6 +599,10 @@ export default function StoreDashboard() {
             }}
             sentComponents={selectedOrderForBOM ? sentComponents[selectedOrderForBOM.voucher_number] || [] : []}
           />
+        </TabsContent>
+
+        <TabsContent value="monthly-log">
+          <MonthlyKitLog />
         </TabsContent>
 
         <TabsContent value="grn">

@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +14,7 @@ const KitVerification = () => {
   const [selectedKit, setSelectedKit] = useState<string | null>(null);
   const [verificationData, setVerificationData] = useState<Record<string, number>>({});
   const [selectedLine, setSelectedLine] = useState<string>("");
+  const [discrepancyComments, setDiscrepancyComments] = useState<Record<string, string>>({});
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -72,19 +72,28 @@ const KitVerification = () => {
     mutationFn: async (feedbackData: {
       voucherNumber: string;
       componentCode: string;
+      sentQty: number;
+      receivedQty: number;
       discrepancyQty: number;
       section: string;
       remarks?: string;
     }) => {
-      // For now, we'll log to console since the production_feedback table doesn't exist yet
-      console.log("Production Feedback Logged:", feedbackData);
+      // Insert into production_feedback table
+      const { data, error } = await supabase
+        .from("production_feedback")
+        .insert({
+          voucher_number: feedbackData.voucherNumber,
+          component_code: feedbackData.componentCode,
+          sent_quantity: feedbackData.sentQty,
+          received_quantity: feedbackData.receivedQty,
+          discrepancy_quantity: feedbackData.discrepancyQty,
+          section: feedbackData.section,
+          remarks: feedbackData.remarks,
+          created_at: new Date().toISOString()
+        });
       
-      // You would typically insert into a production_feedback table here
-      // const { data, error } = await supabase
-      //   .from("production_feedback")
-      //   .insert(feedbackData);
-      
-      return feedbackData;
+      if (error) throw error;
+      return data;
     },
     onSuccess: () => {
       toast({
@@ -142,6 +151,13 @@ const KitVerification = () => {
     }));
   };
 
+  const handleDiscrepancyCommentChange = (partCode: string, comment: string) => {
+    setDiscrepancyComments(prev => ({
+      ...prev,
+      [partCode]: comment
+    }));
+  };
+
   const handleCompleteVerification = async () => {
     if (!selectedLine) {
       toast({
@@ -157,16 +173,35 @@ const KitVerification = () => {
     const selectedKitDetails = kits.find(kit => kit.id === selectedKit);
     if (!selectedKitDetails) return;
 
-    // Check for discrepancies and log them
+    // Check for discrepancies and validate comments
     const discrepancies = selectedKitDetails.kit_items?.filter((item: any) => {
-      const receivedQty = verificationData[item.raw_materials?.material_code] ?? item.actual_quantity ?? 0;
-      return receivedQty !== item.actual_quantity;
+      const sentQty = item.actual_quantity ?? 0;
+      const receivedQty = verificationData[item.raw_materials?.material_code] ?? sentQty;
+      return receivedQty < sentQty;
     });
 
+    // Check if all discrepancies have comments
+    const missingComments = discrepancies?.filter((item: any) => {
+      const hasDiscrepancy = (verificationData[item.raw_materials?.material_code] ?? item.actual_quantity) < item.actual_quantity;
+      const hasComment = discrepancyComments[item.raw_materials?.material_code]?.trim();
+      return hasDiscrepancy && !hasComment;
+    });
+
+    if (missingComments && missingComments.length > 0) {
+      toast({
+        title: "Missing Discrepancy Comments",
+        description: "Please add comments for all components with discrepancies",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Log discrepancies to production feedback
     if (discrepancies && discrepancies.length > 0) {
       for (const item of discrepancies) {
-        const receivedQty = verificationData[item.raw_materials?.material_code] ?? item.actual_quantity ?? 0;
-        const discrepancyQty = item.actual_quantity - receivedQty;
+        const sentQty = item.actual_quantity ?? 0;
+        const receivedQty = verificationData[item.raw_materials?.material_code] ?? sentQty;
+        const discrepancyQty = sentQty - receivedQty;
         
         // Get BOM info to determine section
         const { data: bomInfo } = await supabase
@@ -179,9 +214,11 @@ const KitVerification = () => {
         await logProductionFeedbackMutation.mutateAsync({
           voucherNumber: selectedKitDetails.production_orders.voucher_number,
           componentCode: item.raw_materials.material_code,
+          sentQty: sentQty,
+          receivedQty: receivedQty,
           discrepancyQty: discrepancyQty,
           section: getBOMSection(bomInfo?.bom_type || 'unknown'),
-          remarks: `Discrepancy found during verification on ${selectedLine}`
+          remarks: discrepancyComments[item.raw_materials?.material_code] || ''
         });
       }
     }
@@ -203,6 +240,7 @@ const KitVerification = () => {
     setSelectedKit(null);
     setSelectedLine("");
     setVerificationData({});
+    setDiscrepancyComments({});
   };
 
   if (kits.length === 0) {
@@ -299,6 +337,7 @@ const KitVerification = () => {
                   <TableHead>Qty Sent by Store</TableHead>
                   <TableHead>Qty Received & Verified</TableHead>
                   <TableHead>Discrepancy Qty</TableHead>
+                  <TableHead>Discrepancy Comment</TableHead>
                   <TableHead>Status</TableHead>
                 </TableRow>
               </TableHeader>
@@ -307,6 +346,7 @@ const KitVerification = () => {
                   const sentQty = item.actual_quantity || 0;
                   const receivedQty = verificationData[item.raw_materials?.material_code] ?? sentQty;
                   const discrepancyQty = sentQty - receivedQty;
+                  const hasDiscrepancy = discrepancyQty > 0;
                   
                   return (
                     <TableRow key={item.id}>
@@ -314,7 +354,6 @@ const KitVerification = () => {
                       <TableCell className="font-medium">{item.raw_materials?.name}</TableCell>
                       <TableCell>
                         <Badge variant="outline">
-                          {/* This would need BOM type lookup - placeholder for now */}
                           Mixed Components
                         </Badge>
                       </TableCell>
@@ -335,6 +374,19 @@ const KitVerification = () => {
                           </span>
                         ) : (
                           <span className="text-green-600">0</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {hasDiscrepancy ? (
+                          <Input
+                            type="text"
+                            className="w-40"
+                            placeholder="Required for discrepancy"
+                            value={discrepancyComments[item.raw_materials?.material_code] || ''}
+                            onChange={(e) => handleDiscrepancyCommentChange(item.raw_materials?.material_code, e.target.value)}
+                          />
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
                         )}
                       </TableCell>
                       <TableCell>
