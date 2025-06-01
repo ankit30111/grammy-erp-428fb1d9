@@ -157,6 +157,7 @@ const FinishedGoods = () => {
         modelName,
         totalQuantity: 0,
         dispatchedQuantity: 0,
+        remainingStock: 0,
         oldestLotDate: item.production_date,
         lots: []
       };
@@ -171,11 +172,12 @@ const FinishedGoods = () => {
     return acc;
   }, {} as Record<string, any>);
 
-  // Add dispatched quantities to model stocks
+  // Add dispatched quantities and calculate remaining stock
   Object.values(modelStocks).forEach((model: any) => {
     model.dispatchedQuantity = model.lots.reduce((total: number, lot: any) => {
       return total + (dispatchedQuantities[lot.product_id] || 0);
     }, 0);
+    model.remainingStock = model.totalQuantity - model.dispatchedQuantity;
   });
 
   const modelStocksArray = Object.values(modelStocks);
@@ -193,8 +195,9 @@ const FinishedGoods = () => {
   });
 
   const totalModels = modelStocksArray.length;
-  const totalQuantity = modelStocksArray.reduce((sum, model) => sum + model.totalQuantity, 0);
+  const totalProduced = modelStocksArray.reduce((sum, model) => sum + model.totalQuantity, 0);
   const totalDispatched = modelStocksArray.reduce((sum, model) => sum + model.dispatchedQuantity, 0);
+  const totalRemainingStock = totalProduced - totalDispatched;
 
   const calculateAge = (productionDate: string) => {
     const today = new Date();
@@ -240,7 +243,7 @@ const FinishedGoods = () => {
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-4 gap-4 mb-6">
           <Card>
             <CardContent className="flex items-center p-6">
               <Package className="h-8 w-8 text-blue-600" />
@@ -256,7 +259,17 @@ const FinishedGoods = () => {
               <CheckCircle className="h-8 w-8 text-green-600" />
               <div className="ml-4">
                 <p className="text-sm text-gray-600">Total Stock</p>
-                <p className="text-2xl font-bold">{totalQuantity.toLocaleString()}</p>
+                <p className="text-2xl font-bold text-green-600">{totalRemainingStock.toLocaleString()}</p>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="flex items-center p-6">
+              <TrendingUp className="h-8 w-8 text-blue-600" />
+              <div className="ml-4">
+                <p className="text-sm text-gray-600">Produced</p>
+                <p className="text-2xl font-bold">{totalProduced.toLocaleString()}</p>
               </div>
             </CardContent>
           </Card>
@@ -295,7 +308,8 @@ const FinishedGoods = () => {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Model Name</TableHead>
-                        <TableHead>Total Qty</TableHead>
+                        <TableHead>Total Stock</TableHead>
+                        <TableHead>Produced</TableHead>
                         <TableHead>Dispatched</TableHead>
                         <TableHead>Oldest Lot</TableHead>
                         <TableHead>Lots Count</TableHead>
@@ -305,7 +319,8 @@ const FinishedGoods = () => {
                       {modelStocksArray.map((model) => (
                         <TableRow key={model.modelName}>
                           <TableCell className="font-medium">{model.modelName}</TableCell>
-                          <TableCell className="font-bold">{model.totalQuantity.toLocaleString()}</TableCell>
+                          <TableCell className="font-bold text-green-600">{model.remainingStock.toLocaleString()}</TableCell>
+                          <TableCell className="font-medium">{model.totalQuantity.toLocaleString()}</TableCell>
                           <TableCell className="text-red-600 font-medium">
                             {model.dispatchedQuantity.toLocaleString()}
                           </TableCell>
