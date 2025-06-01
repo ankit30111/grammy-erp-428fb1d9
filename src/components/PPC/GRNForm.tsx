@@ -1,16 +1,12 @@
 
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { Package, Plus, RefreshCw } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
 import { usePurchaseOrders } from "@/hooks/usePurchaseOrders";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import GRNFormHeader from "./GRNFormHeader";
+import GRNFormInputs from "./GRNFormInputs";
+import GRNItemsTable from "./GRNItemsTable";
 
 interface GRNItem {
   raw_material_id: string;
@@ -138,115 +134,29 @@ const GRNForm = () => {
 
   return (
     <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
-            <Package className="h-5 w-5" />
-            Create GRN (Goods Receipt Note)
-          </CardTitle>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => refetchPOs()}
-            disabled={isLoading}
-            className="gap-2"
-          >
-            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-            Refresh POs
-          </Button>
-        </div>
-      </CardHeader>
+      <GRNFormHeader
+        onRefresh={() => refetchPOs()}
+        isLoading={isLoading}
+      />
       <CardContent className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <Label htmlFor="po-select">Purchase Order</Label>
-            <Select value={selectedPO} onValueChange={handlePOSelection}>
-              <SelectTrigger>
-                <SelectValue placeholder={availablePOs.length === 0 ? "No purchase orders available" : "Select PO"} />
-              </SelectTrigger>
-              <SelectContent>
-                {availablePOs.map((po) => (
-                  <SelectItem key={po.id} value={po.id}>
-                    {po.po_number} - {po.vendors?.name} ({po.status})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {availablePOs.length === 0 && (
-              <p className="text-sm text-muted-foreground mt-1">
-                Create purchase orders first to generate GRNs
-              </p>
-            )}
-          </div>
-
-          <div>
-            <Label htmlFor="bill-number">Bill Number</Label>
-            <Input
-              id="bill-number"
-              value={billNumber}
-              onChange={(e) => setBillNumber(e.target.value)}
-              placeholder="Enter bill number"
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="received-date">Received Date</Label>
-            <Input
-              id="received-date"
-              type="date"
-              value={receivedDate}
-              onChange={(e) => setReceivedDate(e.target.value)}
-            />
-          </div>
-        </div>
+        <GRNFormInputs
+          selectedPO={selectedPO}
+          onPOSelection={handlePOSelection}
+          billNumber={billNumber}
+          onBillNumberChange={setBillNumber}
+          receivedDate={receivedDate}
+          onReceivedDateChange={setReceivedDate}
+          availablePOs={availablePOs}
+        />
 
         {grnItems.length > 0 && (
-          <div>
-            <h3 className="text-lg font-medium mb-4">GRN Items - Enter Received Quantities</h3>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Material Code</TableHead>
-                  <TableHead>Material Name</TableHead>
-                  <TableHead>PO Quantity</TableHead>
-                  <TableHead>Received Quantity</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {grnItems.map((item, index) => (
-                  <TableRow key={index}>
-                    <TableCell className="font-mono">{item.material_code}</TableCell>
-                    <TableCell>{item.material_name}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{item.po_quantity}</Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Input
-                        type="number"
-                        min="0"
-                        max={item.po_quantity}
-                        value={item.received_quantity}
-                        onChange={(e) => updateReceivedQuantity(index, parseInt(e.target.value) || 0)}
-                        className="w-32"
-                        placeholder="Enter qty"
-                      />
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-
-            <div className="flex justify-end mt-4">
-              <Button 
-                onClick={handleSubmit}
-                disabled={isSubmitting || !billNumber || grnItems.every(item => item.received_quantity === 0)}
-                className="gap-2"
-              >
-                <Plus className="h-4 w-4" />
-                {isSubmitting ? "Creating..." : "Create GRN"}
-              </Button>
-            </div>
-          </div>
+          <GRNItemsTable
+            grnItems={grnItems}
+            onQuantityUpdate={updateReceivedQuantity}
+            onSubmit={handleSubmit}
+            isSubmitting={isSubmitting}
+            billNumber={billNumber}
+          />
         )}
 
         {selectedPO && grnItems.length === 0 && (
