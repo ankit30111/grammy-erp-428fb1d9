@@ -120,6 +120,34 @@ export default function StoreDashboard() {
     });
   };
 
+  // Handler for material request approval
+  const handleApproveMaterialRequest = (id: string) => {
+    setMaterialRequests(prev =>
+      prev.map(request =>
+        request.id === id ? { ...request, status: "APPROVED" } : request
+      )
+    );
+    
+    toast({
+      title: "Material Request Approved",
+      description: "Material request has been approved",
+    });
+  };
+
+  // Handler for material request rejection
+  const handleRejectMaterialRequest = (id: string) => {
+    setMaterialRequests(prev =>
+      prev.map(request =>
+        request.id === id ? { ...request, status: "REJECTED" } : request
+      )
+    );
+    
+    toast({
+      title: "Material Request Rejected",
+      description: "Material request has been rejected",
+    });
+  };
+
   const getKitStatusColor = (status: string) => {
     switch (status) {
       case 'NOT_PREPARED': return 'secondary';
@@ -236,7 +264,12 @@ export default function StoreDashboard() {
         </TabsContent>
 
         <TabsContent value="feedback">
-          <ProductionFeedback />
+          <ProductionFeedback 
+            materialRequests={materialRequests}
+            productions={productions}
+            onApproveMaterialRequest={handleApproveMaterialRequest}
+            onRejectMaterialRequest={handleRejectMaterialRequest}
+          />
         </TabsContent>
 
         <TabsContent value="inventory">

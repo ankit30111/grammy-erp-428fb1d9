@@ -1,3 +1,4 @@
+
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,7 +13,6 @@ import { format } from "date-fns";
 import { useProjections } from "@/hooks/useProjections";
 import { useProductionSchedules, useCreateProductionSchedule, useDeleteProductionSchedule } from "@/hooks/useProductionSchedules";
 import { useProductionOrders } from "@/hooks/useProductionOrders";
-import { useBOM } from "@/hooks/useBOM";
 import { useInventory } from "@/hooks/useInventory";
 import {
   Table,
@@ -24,6 +24,8 @@ import {
 } from "@/components/ui/table"
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 const PlanningDashboard = () => {
   const [selectedDate, setSelectedDate] = useState<Date>();
@@ -34,11 +36,30 @@ const PlanningDashboard = () => {
   const { data: projections } = useProjections();
   const { data: schedules } = useProductionSchedules();
   const { data: productionOrders } = useProductionOrders();
-  const { data: bomData } = useBOM();
   const { data: inventory } = useInventory();
   const createSchedule = useCreateProductionSchedule();
   const deleteSchedule = useDeleteProductionSchedule();
   const { toast } = useToast();
+
+  // BOM query without vendor_id reference
+  const { data: bomData } = useQuery({
+    queryKey: ['bom'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('bom')
+        .select(`
+          *,
+          raw_materials (
+            id,
+            material_code,
+            name
+          )
+        `);
+      
+      if (error) throw error;
+      return data;
+    },
+  });
 
   const unscheduledProjections = projections?.filter(projection => {
     return projection.quantity > 0;
