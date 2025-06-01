@@ -1,16 +1,18 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar, Play } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useState } from "react";
 
 const ScheduledProductions = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [selectedLines, setSelectedLines] = useState<Record<string, string>>({});
 
   // Fetch scheduled productions with kit status information
   const { data: scheduledProductions = [] } = useQuery({
@@ -46,7 +48,7 @@ const ScheduledProductions = () => {
 
   // Mutation to start production
   const startProductionMutation = useMutation({
-    mutationFn: async (productionOrderId: string) => {
+    mutationFn: async ({ productionOrderId, productionLine }: { productionOrderId: string; productionLine: string }) => {
       const { error } = await supabase
         .from("production_orders")
         .update({ 
@@ -55,6 +57,20 @@ const ScheduledProductions = () => {
         .eq("id", productionOrderId);
 
       if (error) throw error;
+
+      // Update production schedule with assigned line
+      const { data: productionOrder } = await supabase
+        .from("production_orders")
+        .select("production_schedule_id")
+        .eq("id", productionOrderId)
+        .single();
+
+      if (productionOrder) {
+        await supabase
+          .from("production_schedules")
+          .update({ production_line: productionLine })
+          .eq("id", productionOrder.production_schedule_id);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["scheduled-productions"] });
@@ -134,12 +150,34 @@ const ScheduledProductions = () => {
   const canStartProduction = (production: any) => {
     const kitStatus = getKitStatus(production);
     return production.status === 'PENDING' && 
-           (kitStatus === 'Complete Kit Received' || kitStatus === 'Kit Received');
+           (kitStatus === 'Complete Kit Received' || 
+            kitStatus === 'Sub Assembly Received' || 
+            kitStatus === 'Accessory Received' || 
+            kitStatus === 'Main Assembly Received' || 
+            kitStatus === 'Kit Received');
+  };
+
+  const handleLineSelection = (productionOrderId: string, line: string) => {
+    setSelectedLines(prev => ({
+      ...prev,
+      [productionOrderId]: line
+    }));
   };
 
   const handleStartProduction = (productionOrderId: string) => {
-    startProductionMutation.mutate(productionOrderId);
+    const selectedLine = selectedLines[productionOrderId];
+    if (!selectedLine) {
+      toast({
+        title: "Error",
+        description: "Please select a production line",
+        variant: "destructive",
+      });
+      return;
+    }
+    startProductionMutation.mutate({ productionOrderId, productionLine: selectedLine });
   };
+
+  const productionLines = ["Line 1", "Line 2", "Sub Assembly 1", "Sub Assembly 2"];
 
   if (scheduledProductions.length === 0) {
     return (
@@ -180,6 +218,7 @@ const ScheduledProductions = () => {
                 <TableHead>Quantity</TableHead>
                 <TableHead>Kit Status</TableHead>
                 <TableHead>Production Status</TableHead>
+                <TableHead>Production Line</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -202,6 +241,31 @@ const ScheduledProductions = () => {
                       <Badge variant={getProductionStatusColor(production.status) as any}>
                         {production.status.replace('_', ' ')}
                       </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {canStartProduction(production) && production.status === 'PENDING' ? (
+                        <Select
+                          value={selectedLines[production.id] || ""}
+                          onValueChange={(value) => handleLineSelection(production.id, value)}
+                        >
+                          <SelectTrigger className="w-40">
+                            <SelectValue placeholder="Select Line" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {productionLines.map((line) => (
+                              <SelectItem key={line} value={line}>
+                                {line}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : production.status === 'IN_PROGRESS' ? (
+                        <span className="text-sm text-muted-foreground">
+                          {production.production_schedules?.production_line || 'Assigned'}
+                        </span>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">-</span>
+                      )}
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-2">

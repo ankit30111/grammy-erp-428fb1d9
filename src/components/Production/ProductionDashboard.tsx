@@ -27,51 +27,51 @@ const ProductionDashboard = () => {
     },
   });
 
-  // Production lines data without shift information
+  // Production lines data - empty by default, will be populated with real data
   const productionLines = [
     {
       id: 1,
       name: "Line 1",
-      status: "RUNNING",
-      currentOrder: productionOrders[0] || null,
-      efficiency: 87,
-      target: 150,
-      produced: 95,
-      operator: "John Smith",
-      lastUpdate: "2 mins ago"
+      status: "IDLE" as const,
+      currentOrder: null,
+      efficiency: 0,
+      target: 0,
+      produced: 0,
+      operator: "",
+      lastUpdate: ""
     },
     {
       id: 2,
       name: "Line 2", 
-      status: "RUNNING",
-      currentOrder: productionOrders[1] || null,
-      efficiency: 92,
-      target: 120,
-      produced: 110,
-      operator: "Sarah Johnson",
-      lastUpdate: "1 min ago"
+      status: "IDLE" as const,
+      currentOrder: null,
+      efficiency: 0,
+      target: 0,
+      produced: 0,
+      operator: "",
+      lastUpdate: ""
     },
     {
       id: 3,
       name: "Sub Assembly 1",
-      status: "SETUP",
+      status: "IDLE" as const,
       currentOrder: null,
       efficiency: 0,
-      target: 80,
+      target: 0,
       produced: 0,
-      operator: "Mike Wilson",
-      lastUpdate: "15 mins ago"
+      operator: "",
+      lastUpdate: ""
     },
     {
       id: 4,
       name: "Sub Assembly 2",
-      status: "MAINTENANCE",
+      status: "IDLE" as const,
       currentOrder: null,
       efficiency: 0,
-      target: 200,
+      target: 0,
       produced: 0,
-      operator: "Lisa Brown",
-      lastUpdate: "30 mins ago"
+      operator: "",
+      lastUpdate: ""
     }
   ];
 
@@ -158,7 +158,7 @@ const ProductionDashboard = () => {
                     <span>{line.produced}/{line.target} units</span>
                   </div>
                   <Progress 
-                    value={(line.produced / line.target) * 100} 
+                    value={line.target > 0 ? (line.produced / line.target) * 100 : 0} 
                     className="h-2"
                   />
                 </div>
@@ -177,12 +177,12 @@ const ProductionDashboard = () => {
                 {/* Operator Info */}
                 <div className="flex justify-between text-sm">
                   <span>Operator</span>
-                  <span className="font-medium">{line.operator}</span>
+                  <span className="font-medium">{line.operator || "Not assigned"}</span>
                 </div>
 
                 <div className="flex justify-between text-sm">
                   <span>Last Update</span>
-                  <span className="text-muted-foreground">{line.lastUpdate}</span>
+                  <span className="text-muted-foreground">{line.lastUpdate || "No updates"}</span>
                 </div>
               </div>
             </CardContent>
@@ -213,7 +213,7 @@ const ProductionDashboard = () => {
         <Card>
           <CardContent className="p-4">
             <div className="text-2xl font-bold">
-              {Math.round(productionLines.reduce((sum, line) => sum + line.efficiency, 0) / productionLines.length)}%
+              {productionLines.length > 0 ? Math.round(productionLines.reduce((sum, line) => sum + line.efficiency, 0) / productionLines.length) : 0}%
             </div>
             <div className="text-sm text-muted-foreground">Average Efficiency</div>
           </CardContent>
