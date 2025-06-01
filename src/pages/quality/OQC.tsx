@@ -6,18 +6,21 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Clock, FileCheck, CheckCircle, X } from "lucide-react";
+import { Clock, FileCheck, CheckCircle, X, Eye } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
+import { ProductionDetailsDialog } from "@/components/Production/ProductionDetailsDialog";
 
 const OQC = () => {
   const [selectedTab, setSelectedTab] = useState("pending");
+  const [selectedOrder, setSelectedOrder] = useState<any>(null);
+  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch production orders pending OQC
+  // Fetch production orders pending OQC (COMPLETED status)
   const { data: pendingOQC = [] } = useQuery({
     queryKey: ["pending-oqc"],
     queryFn: async () => {
@@ -25,13 +28,16 @@ const OQC = () => {
         .from("production_orders")
         .select(`
           *,
-          production_schedules(
-            projections(
-              products(name, product_code)
+          products!inner(name, product_code),
+          production_schedules!inner(
+            production_line,
+            projections!inner(
+              customers!inner(name)
             )
           )
         `)
-        .eq("status", "PENDING_OQC");
+        .eq("status", "COMPLETED")
+        .order("updated_at", { ascending: false });
       
       if (error) throw error;
       return data || [];
@@ -46,13 +52,16 @@ const OQC = () => {
         .from("production_orders")
         .select(`
           *,
-          production_schedules(
-            projections(
-              products(name, product_code)
+          products!inner(name, product_code),
+          production_schedules!inner(
+            production_line,
+            projections!inner(
+              customers!inner(name)
             )
           )
         `)
-        .in("status", ["OQC_PASSED", "OQC_FAILED"]);
+        .in("status", ["OQC_PASSED", "OQC_FAILED"])
+        .order("updated_at", { ascending: false });
       
       if (error) throw error;
       return data || [];
@@ -127,6 +136,11 @@ const OQC = () => {
     });
   };
 
+  const handleViewDetails = (order: any) => {
+    setSelectedOrder(order);
+    setDetailsDialogOpen(true);
+  };
+
   return (
     <DashboardLayout>
       <div className="grid gap-4 md:gap-6">
@@ -141,7 +155,7 @@ const OQC = () => {
 
         <Tabs value={selectedTab} onValueChange={setSelectedTab}>
           <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="pending">Pending OQC</TabsTrigger>
+            <TabsTrigger value="pending">Pending OQC ({pendingOQC.length})</TabsTrigger>
             <TabsTrigger value="completed">Completed OQC</TabsTrigger>
             <TabsTrigger value="reports">Quality Reports</TabsTrigger>
           </TabsList>
@@ -160,31 +174,46 @@ const OQC = () => {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Voucher Number</TableHead>
+                        <TableHead>Voucher</TableHead>
                         <TableHead>Product</TableHead>
+                        <TableHead>Customer</TableHead>
                         <TableHead>Quantity</TableHead>
-                        <TableHead>Scheduled Date</TableHead>
+                        <TableHead>Production Line</TableHead>
+                        <TableHead>Completed Date</TableHead>
+                        <TableHead>Status</TableHead>
                         <TableHead>Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {pendingOQC.map((order: any) => (
+                      {pendingOQC.map((order) => (
                         <TableRow key={order.id}>
-                          <TableCell className="font-mono">{order.voucher_number}</TableCell>
+                          <TableCell className="font-medium">{order.voucher_number}</TableCell>
                           <TableCell>
                             <div>
-                              <div className="font-medium">
-                                {order.production_schedules?.projections?.products?.name}
-                              </div>
-                              <div className="text-sm text-muted-foreground">
-                                {order.production_schedules?.projections?.products?.product_code}
-                              </div>
+                              <div className="font-medium">{order.products?.name}</div>
+                              <div className="text-sm text-muted-foreground">{order.products?.product_code}</div>
                             </div>
                           </TableCell>
-                          <TableCell>{order.quantity}</TableCell>
-                          <TableCell>{format(new Date(order.scheduled_date), 'MMM dd, yyyy')}</TableCell>
+                          <TableCell>{order.production_schedules?.projections?.customers?.name}</TableCell>
+                          <TableCell>{order.quantity} units</TableCell>
+                          <TableCell>{order.production_schedules?.production_line}</TableCell>
+                          <TableCell>{format(new Date(order.updated_at), 'MMM dd, yyyy')}</TableCell>
+                          <TableCell>
+                            <Badge variant="warning">
+                              Pending OQC
+                            </Badge>
+                          </TableCell>
                           <TableCell>
                             <div className="flex gap-2">
+                              <Button 
+                                size="sm" 
+                                variant="outline" 
+                                onClick={() => handleViewDetails(order)}
+                                className="gap-2"
+                              >
+                                <Eye className="h-4 w-4" />
+                                Details
+                              </Button>
                               <Button
                                 size="sm"
                                 onClick={() => handleOQCApproval(order.id, true)}
@@ -231,6 +260,7 @@ const OQC = () => {
                       <TableRow>
                         <TableHead>Voucher Number</TableHead>
                         <TableHead>Product</TableHead>
+                        <TableHead>Customer</TableHead>
                         <TableHead>Quantity</TableHead>
                         <TableHead>Result</TableHead>
                         <TableHead>Completed Date</TableHead>
@@ -242,14 +272,11 @@ const OQC = () => {
                           <TableCell className="font-mono">{order.voucher_number}</TableCell>
                           <TableCell>
                             <div>
-                              <div className="font-medium">
-                                {order.production_schedules?.projections?.products?.name}
-                              </div>
-                              <div className="text-sm text-muted-foreground">
-                                {order.production_schedules?.projections?.products?.product_code}
-                              </div>
+                              <div className="font-medium">{order.products?.name}</div>
+                              <div className="text-sm text-muted-foreground">{order.products?.product_code}</div>
                             </div>
                           </TableCell>
+                          <TableCell>{order.production_schedules?.projections?.customers?.name}</TableCell>
                           <TableCell>{order.quantity}</TableCell>
                           <TableCell>
                             <Badge 
@@ -288,6 +315,12 @@ const OQC = () => {
             </Card>
           </TabsContent>
         </Tabs>
+
+        <ProductionDetailsDialog
+          open={detailsDialogOpen}
+          onOpenChange={setDetailsDialogOpen}
+          productionOrder={selectedOrder}
+        />
       </div>
     </DashboardLayout>
   );
