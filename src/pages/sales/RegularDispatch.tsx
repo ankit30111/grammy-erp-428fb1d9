@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Plus, Truck, Package } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface Customer {
   id: string;
@@ -58,6 +58,7 @@ const RegularDispatch = () => {
   const [dispatchOrders, setDispatchOrders] = useState<DispatchOrder[]>([]);
   const [isCreatingOrder, setIsCreatingOrder] = useState(false);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const [orderForm, setOrderForm] = useState({
     customer_id: "",
@@ -279,6 +280,11 @@ const RegularDispatch = () => {
 
         if (!inventoryItems || inventoryItems.length === 0) {
           console.warn(`No inventory found for product ${item.product_id}`);
+          toast({
+            title: "Warning",
+            description: `No inventory available for some products`,
+            variant: "destructive"
+          });
           continue;
         }
 
@@ -316,6 +322,9 @@ const RegularDispatch = () => {
           });
         }
       }
+
+      // Invalidate and refetch finished goods inventory to refresh the display
+      queryClient.invalidateQueries({ queryKey: ["finished-goods"] });
 
       toast({
         title: "Success",

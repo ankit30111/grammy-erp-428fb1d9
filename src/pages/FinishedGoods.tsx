@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,7 +13,9 @@ import {
   Clock, 
   CheckCircle,
   Upload,
-  FileText
+  FileText,
+  TrendingUp,
+  TrendingDown
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -36,6 +37,20 @@ interface FinishedGoodsItem {
   production_orders?: {
     voucher_number: string;
   } | null;
+}
+
+interface StockMovement {
+  id: string;
+  type: "INBOUND" | "OUTBOUND";
+  product_id: string;
+  quantity: number;
+  date: string;
+  reference: string;
+  notes?: string;
+  products: {
+    name: string;
+    product_code: string;
+  };
 }
 
 const FinishedGoods = () => {
@@ -67,6 +82,28 @@ const FinishedGoods = () => {
       console.log('Fetched finished goods inventory:', data);
       return data as FinishedGoodsItem[];
     },
+  });
+
+  // Fetch stock movements (simulated data for now - in real app this would come from audit table)
+  const { data: stockMovements = [] } = useQuery({
+    queryKey: ["stock-movements"],
+    queryFn: async () => {
+      // For now, we'll create simulated movements based on existing inventory
+      // In a real implementation, you'd have a separate stock_movements table
+      const movements: StockMovement[] = finishedGoodsInventory.map(item => ({
+        id: `in-${item.id}`,
+        type: "INBOUND" as const,
+        product_id: item.product_id,
+        quantity: item.quantity,
+        date: item.production_date || item.created_at,
+        reference: item.production_orders?.voucher_number || item.lot_number || 'Production',
+        notes: 'OQC Approved',
+        products: item.products
+      }));
+
+      return movements;
+    },
+    enabled: finishedGoodsInventory.length > 0
   });
 
   // Group inventory by model
@@ -184,10 +221,11 @@ const FinishedGoods = () => {
         </div>
 
         <Tabs defaultValue="overview" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="overview">Model Overview</TabsTrigger>
             <TabsTrigger value="inventory">Lot Details</TabsTrigger>
             <TabsTrigger value="aging">Aging Analysis</TabsTrigger>
+            <TabsTrigger value="movements">Stock Movement</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-4">
@@ -396,6 +434,63 @@ const FinishedGoods = () => {
                       })}
                   </TableBody>
                 </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="movements" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Stock Movement History</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {stockMovements.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No stock movements found
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Product</TableHead>
+                        <TableHead>Quantity</TableHead>
+                        <TableHead>Reference</TableHead>
+                        <TableHead>Notes</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {stockMovements
+                        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                        .map((movement) => (
+                          <TableRow key={movement.id}>
+                            <TableCell>{format(new Date(movement.date), "MMM dd, yyyy")}</TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                {movement.type === "INBOUND" ? (
+                                  <TrendingUp className="h-4 w-4 text-green-600" />
+                                ) : (
+                                  <TrendingDown className="h-4 w-4 text-red-600" />
+                                )}
+                                <Badge 
+                                  className={movement.type === "INBOUND" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}
+                                >
+                                  {movement.type}
+                                </Badge>
+                              </div>
+                            </TableCell>
+                            <TableCell>{movement.products.name}</TableCell>
+                            <TableCell className="font-medium">
+                              {movement.type === "INBOUND" ? "+" : "-"}{movement.quantity.toLocaleString()}
+                            </TableCell>
+                            <TableCell className="font-mono">{movement.reference}</TableCell>
+                            <TableCell>{movement.notes || '-'}</TableCell>
+                          </TableRow>
+                        ))}
+                    </TableBody>
+                  </Table>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
