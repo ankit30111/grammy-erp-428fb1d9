@@ -28,52 +28,17 @@ const ProductionDashboard = () => {
   });
 
   // Production lines data - empty by default, will be populated with real data
-  const productionLines = [
-    {
-      id: 1,
-      name: "Line 1",
-      status: "IDLE" as const,
-      currentOrder: null,
-      efficiency: 0,
-      target: 0,
-      produced: 0,
-      operator: "",
-      lastUpdate: ""
-    },
-    {
-      id: 2,
-      name: "Line 2", 
-      status: "IDLE" as const,
-      currentOrder: null,
-      efficiency: 0,
-      target: 0,
-      produced: 0,
-      operator: "",
-      lastUpdate: ""
-    },
-    {
-      id: 3,
-      name: "Sub Assembly 1",
-      status: "IDLE" as const,
-      currentOrder: null,
-      efficiency: 0,
-      target: 0,
-      produced: 0,
-      operator: "",
-      lastUpdate: ""
-    },
-    {
-      id: 4,
-      name: "Sub Assembly 2",
-      status: "IDLE" as const,
-      currentOrder: null,
-      efficiency: 0,
-      target: 0,
-      produced: 0,
-      operator: "",
-      lastUpdate: ""
-    }
-  ];
+  const productionLines: Array<{
+    id: number;
+    name: string;
+    status: "IDLE" | "RUNNING" | "MAINTENANCE" | "SETUP";
+    currentOrder: any;
+    efficiency: number;
+    target: number;
+    produced: number;
+    operator: string;
+    lastUpdate: string;
+  }> = [];
 
   const getStatusColor = (status: string) => {
     switch (status) {
