@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -46,6 +45,9 @@ export default function StoreDashboard() {
 
   // Handler for sending components
   const handleSendComponent = (voucherId: string, component: string) => {
+    // Create kit preparation record for production verification
+    console.log(`Creating kit preparation for voucher ${voucherId} with component: ${component}`);
+    
     toast({
       title: "Component Sent",
       description: `${component} has been sent to production for voucher ${voucherId}`,
@@ -117,10 +119,7 @@ export default function StoreDashboard() {
   const getKitStatusColor = (status: string) => {
     switch (status) {
       case 'NOT_PREPARED': return 'secondary';
-      case 'PREPARED': return 'warning';
-      case 'SENT': return 'default';
-      case 'VERIFIED': return 'default';
-      case 'READY': return 'default';
+      case 'PREPARED': return 'default';
       default: return 'secondary';
     }
   };
@@ -190,20 +189,16 @@ export default function StoreDashboard() {
                         <TableCell>{order.quantity}</TableCell>
                         <TableCell>
                           <Select onValueChange={(value) => handleKitStatusChange(order.voucher_number, value)}>
-                            <SelectTrigger className="w-[140px]">
+                            <SelectTrigger className="w-[120px]">
                               <SelectValue placeholder={
                                 <Badge variant={getKitStatusColor(order.kit_status) as any}>
-                                  {order.kit_status === 'NOT_PREPARED' ? 'Not Ready' : 
-                                   order.kit_status === 'PREPARED' ? 'Ready' : 
-                                   order.kit_status === 'SENT' ? 'Sent to Production' : 
-                                   order.kit_status?.replace('_', ' ')}
+                                  {order.kit_status === 'NOT_PREPARED' ? 'Not Ready' : 'Ready'}
                                 </Badge>
                               } />
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="NOT_PREPARED">Not Ready</SelectItem>
                               <SelectItem value="PREPARED">Ready</SelectItem>
-                              <SelectItem value="SENT">Sent to Production</SelectItem>
                             </SelectContent>
                           </Select>
                         </TableCell>

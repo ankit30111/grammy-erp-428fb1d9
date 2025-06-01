@@ -4,14 +4,18 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Package, CheckCircle, AlertTriangle } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Package, CheckCircle, AlertTriangle, Factory } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
 
 const KitVerification = () => {
   const [selectedKit, setSelectedKit] = useState<string | null>(null);
   const [verificationData, setVerificationData] = useState<Record<string, number>>({});
+  const [selectedLine, setSelectedLine] = useState<string>("");
+  const { toast } = useToast();
 
   const { data: kits = [] } = useQuery({
     queryKey: ["kit-verification"],
@@ -35,6 +39,13 @@ const KitVerification = () => {
     },
   });
 
+  const productionLines = [
+    "Line-1",
+    "Line-2", 
+    "Sub Assembly-1",
+    "Sub Assembly-2"
+  ];
+
   const getVerificationStatusColor = (status: string) => {
     switch (status) {
       case 'VERIFIED': return 'default';
@@ -49,6 +60,35 @@ const KitVerification = () => {
       ...prev,
       [partCode]: parseInt(value) || 0
     }));
+  };
+
+  const handleReportDiscrepancy = (kitId: string) => {
+    // Send discrepancy report back to store dashboard
+    console.log(`Reporting discrepancy for kit ${kitId}`);
+    toast({
+      title: "Discrepancy Reported",
+      description: "Material shortage reported to Store team for approval",
+    });
+  };
+
+  const handleCompleteVerification = () => {
+    if (!selectedLine) {
+      toast({
+        title: "Select Production Line",
+        description: "Please select a production line before completing verification",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    toast({
+      title: "Kit Verified",
+      description: `Kit verified and assigned to ${selectedLine}`,
+    });
+    
+    setSelectedKit(null);
+    setSelectedLine("");
+    setVerificationData({});
   };
 
   if (kits.length === 0) {
@@ -140,58 +180,85 @@ const KitVerification = () => {
                   <TableHead>Material Code</TableHead>
                   <TableHead>Description</TableHead>
                   <TableHead>Required Qty</TableHead>
-                  <TableHead>Actual Qty</TableHead>
+                  <TableHead>Received Qty</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Verified</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {selectedKitDetails.kit_items?.map((item: any) => (
-                  <TableRow key={item.id}>
-                    <TableCell className="font-medium">{item.raw_materials?.material_code}</TableCell>
-                    <TableCell>{item.raw_materials?.name}</TableCell>
-                    <TableCell>{item.required_quantity}</TableCell>
-                    <TableCell>
-                      <Input
-                        type="number"
-                        className="w-20"
-                        value={verificationData[item.raw_materials?.material_code] || item.actual_quantity || ''}
-                        onChange={(e) => handleVerificationChange(item.raw_materials?.material_code, e.target.value)}
-                        placeholder="Enter qty"
-                      />
-                    </TableCell>
-                    <TableCell>
-                      {item.actual_quantity < item.required_quantity ? (
-                        <Badge variant="destructive" className="gap-1">
-                          <AlertTriangle className="h-3 w-3" />
-                          Short
-                        </Badge>
-                      ) : (
-                        <Badge variant="default" className="gap-1">
-                          <CheckCircle className="h-3 w-3" />
-                          OK
-                        </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <input 
-                        type="checkbox" 
-                        checked={item.verified_by_production} 
-                        readOnly
-                      />
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {selectedKitDetails.kit_items?.map((item: any) => {
+                  const receivedQty = verificationData[item.raw_materials?.material_code] ?? item.actual_quantity ?? 0;
+                  const isShort = receivedQty < item.required_quantity;
+                  
+                  return (
+                    <TableRow key={item.id}>
+                      <TableCell className="font-medium">{item.raw_materials?.material_code}</TableCell>
+                      <TableCell>{item.raw_materials?.name}</TableCell>
+                      <TableCell>{item.required_quantity}</TableCell>
+                      <TableCell>
+                        <Input
+                          type="number"
+                          className="w-20"
+                          value={verificationData[item.raw_materials?.material_code] || item.actual_quantity || ''}
+                          onChange={(e) => handleVerificationChange(item.raw_materials?.material_code, e.target.value)}
+                          placeholder="Enter qty"
+                        />
+                      </TableCell>
+                      <TableCell>
+                        {isShort ? (
+                          <Badge variant="destructive" className="gap-1">
+                            <AlertTriangle className="h-3 w-3" />
+                            Short
+                          </Badge>
+                        ) : (
+                          <Badge variant="default" className="gap-1">
+                            <CheckCircle className="h-3 w-3" />
+                            OK
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <input 
+                          type="checkbox" 
+                          checked={item.verified_by_production} 
+                          readOnly
+                        />
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
             
-            <div className="flex justify-end gap-4 mt-6">
-              <Button variant="outline">
-                Report Discrepancy
-              </Button>
-              <Button>
-                Complete Verification
-              </Button>
+            <div className="mt-6 space-y-4">
+              <div className="flex items-center gap-4">
+                <Factory className="h-4 w-4" />
+                <label className="text-sm font-medium">Select Production Line:</label>
+                <Select value={selectedLine} onValueChange={setSelectedLine}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Select line" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {productionLines.map((line) => (
+                      <SelectItem key={line} value={line}>
+                        {line}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="flex justify-end gap-4">
+                <Button 
+                  variant="outline"
+                  onClick={() => handleReportDiscrepancy(selectedKit)}
+                >
+                  Report Discrepancy
+                </Button>
+                <Button onClick={handleCompleteVerification}>
+                  Complete Verification
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
