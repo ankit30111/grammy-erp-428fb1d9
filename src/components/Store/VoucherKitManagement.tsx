@@ -66,6 +66,8 @@ export default function VoucherKitManagement({
   // Handler for sending components with enhanced stock validation and inventory deduction
   const handleSendComponent = async (voucherId: string, component: string) => {
     try {
+      console.log(`Starting to send component: ${component} for voucher: ${voucherId}`);
+      
       const canSend = await canSendComponent(voucherId, component);
       if (!canSend) {
         toast({
@@ -98,6 +100,8 @@ export default function VoucherKitManagement({
         return;
       }
 
+      console.log(`Found production order:`, productionOrder);
+
       // Check if kit preparation already exists
       const { data: existingKit, error: checkError } = await supabase
         .from("kit_preparation")
@@ -123,6 +127,9 @@ export default function VoucherKitManagement({
 
         if (kitError) throw kitError;
         kitPrepId = kitPrep.id;
+        console.log(`Created new kit preparation with ID: ${kitPrepId}`);
+      } else {
+        console.log(`Using existing kit preparation with ID: ${kitPrepId}`);
       }
 
       // Get BOM items for this product with component type filtering
@@ -135,6 +142,7 @@ export default function VoucherKitManagement({
         .eq("product_id", productionOrder.product_id);
 
       if (bomError) throw bomError;
+      console.log(`Found ${bomItems?.length || 0} BOM items for product`);
 
       // Map component names to BOM types
       const componentToBomType: Record<string, BomType> = {
@@ -151,6 +159,8 @@ export default function VoucherKitManagement({
           filteredBomItems = bomItems?.filter(item => item.bom_type === bomType) || [];
         }
       }
+
+      console.log(`Filtered BOM items for ${component}:`, filteredBomItems);
 
       if (!filteredBomItems || filteredBomItems.length === 0) {
         toast({
@@ -173,8 +183,9 @@ export default function VoucherKitManagement({
 
       // Filter out items that already exist
       const newBomItems = filteredBomItems.filter(item => !existingRawMaterialIds.has(item.raw_material_id));
+      console.log(`New BOM items to process:`, newBomItems);
 
-      // Create kit items for new components only
+      // Process each new BOM item for kit creation and inventory deduction
       if (newBomItems.length > 0) {
         const kitItems = newBomItems.map(bomItem => ({
           kit_preparation_id: kitPrepId,
@@ -188,10 +199,12 @@ export default function VoucherKitManagement({
           .insert(kitItems);
 
         if (itemsError) throw itemsError;
+        console.log(`Successfully created kit items`);
 
         // Deduct inventory quantities for each new kit item
         for (const bomItem of newBomItems) {
           const quantityToDeduct = bomItem.quantity * productionOrder.quantity;
+          console.log(`Processing deduction for material ${bomItem.raw_materials.material_code}: ${quantityToDeduct} units`);
           
           // Get current inventory for this raw material
           const { data: inventoryItem, error: inventoryError } = await supabase
@@ -206,7 +219,9 @@ export default function VoucherKitManagement({
           }
 
           if (inventoryItem) {
+            console.log(`Current inventory for ${bomItem.raw_materials.material_code}: ${inventoryItem.quantity} units`);
             const newQuantity = Math.max(0, inventoryItem.quantity - quantityToDeduct);
+            console.log(`New inventory quantity will be: ${newQuantity} units`);
             
             // Update inventory quantity
             const { error: updateError } = await supabase
@@ -219,11 +234,22 @@ export default function VoucherKitManagement({
 
             if (updateError) {
               console.error(`Error updating inventory for material ${bomItem.raw_material_id}:`, updateError);
+              toast({
+                title: "Inventory Update Error",
+                description: `Failed to update inventory for ${bomItem.raw_materials.material_code}`,
+                variant: "destructive",
+              });
             } else {
-              console.log(`Deducted ${quantityToDeduct} units from inventory for material ${bomItem.raw_materials.material_code}`);
+              console.log(`Successfully deducted ${quantityToDeduct} units from inventory for material ${bomItem.raw_materials.material_code}`);
+              console.log(`Previous quantity: ${inventoryItem.quantity}, New quantity: ${newQuantity}`);
             }
           } else {
-            console.warn(`No inventory record found for material ${bomItem.raw_material_id}`);
+            console.warn(`No inventory record found for material ${bomItem.raw_material_id} (${bomItem.raw_materials.material_code})`);
+            toast({
+              title: "Inventory Warning",
+              description: `No inventory record found for ${bomItem.raw_materials.material_code}`,
+              variant: "destructive",
+            });
           }
         }
       }
