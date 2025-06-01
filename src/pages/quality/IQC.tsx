@@ -4,7 +4,7 @@ import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Clock, FileCheck, Upload, X, CheckCircle } from "lucide-react";
+import { Clock, FileCheck, Upload, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
@@ -27,8 +27,6 @@ const IQC = () => {
   const [inspectionStatus, setInspectionStatus] = useState("");
   const [remarks, setRemarks] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [receivedQuantity, setReceivedQuantity] = useState("");
-  const [selectedInspection, setSelectedInspection] = useState<string | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -83,34 +81,11 @@ const IQC = () => {
     },
   });
 
-  // Fetch items pending store acceptance - only ACCEPTED items that haven't been store confirmed
-  const { data: pendingStoreAcceptance = [] } = useQuery({
-    queryKey: ["pending-store-acceptance"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("grn_items")
-        .select(`
-          *,
-          grn!inner(
-            grn_number,
-            vendors(name)
-          ),
-          raw_materials!inner(material_code, name)
-        `)
-        .eq("iqc_status", "ACCEPTED")
-        .eq("store_confirmed", false);
-      
-      if (error) throw error;
-      return data || [];
-    },
-  });
-
   // Find the selected GRN and material details
   const selectedGRNDetails = pendingGRNs.find(grn => grn.id === selectedGRN);
   const selectedMaterialDetails = selectedGRNDetails?.grn_items?.find((item: any) => 
     item.id === selectedMaterial && item.iqc_status === "PENDING"
   );
-  const selectedInspectionDetails = pendingStoreAcceptance.find(item => item.id === selectedInspection);
 
   // Handle file selection
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -146,11 +121,45 @@ const IQC = () => {
         .eq("id", grnItemId);
 
       if (error) throw error;
+
+      // If accepted, update inventory
+      if (status.toUpperCase() === "ACCEPTED" && approvedQuantity > 0) {
+        const grnItem = await supabase
+          .from("grn_items")
+          .select("raw_material_id")
+          .eq("id", grnItemId)
+          .single();
+
+        if (grnItem.data) {
+          const { data: existingInventory } = await supabase
+            .from("inventory")
+            .select("*")
+            .eq("raw_material_id", grnItem.data.raw_material_id)
+            .single();
+
+          if (existingInventory) {
+            await supabase
+              .from("inventory")
+              .update({
+                quantity: existingInventory.quantity + approvedQuantity,
+                last_updated: new Date().toISOString()
+              })
+              .eq("raw_material_id", grnItem.data.raw_material_id);
+          } else {
+            await supabase
+              .from("inventory")
+              .insert({
+                raw_material_id: grnItem.data.raw_material_id,
+                quantity: approvedQuantity,
+                last_updated: new Date().toISOString()
+              });
+          }
+        }
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["pending-grns"] });
       queryClient.invalidateQueries({ queryKey: ["completed-inspections"] });
-      queryClient.invalidateQueries({ queryKey: ["pending-store-acceptance"] });
       
       toast({
         title: "Inspection recorded",
@@ -169,82 +178,6 @@ const IQC = () => {
       toast({
         title: "Error",
         description: "Failed to submit inspection",
-        variant: "destructive",
-      });
-    },
-  });
-
-  // Store acceptance mutation
-  const storeAcceptanceMutation = useMutation({
-    mutationFn: async ({
-      grnItemId,
-      quantity,
-      rawMaterialId
-    }: {
-      grnItemId: string;
-      quantity: number;
-      rawMaterialId: string;
-    }) => {
-      // Update GRN item to mark as store confirmed
-      const { error: grnError } = await supabase
-        .from("grn_items")
-        .update({
-          store_confirmed: true,
-          store_confirmed_by: (await supabase.auth.getUser()).data.user?.id,
-          store_confirmed_at: new Date().toISOString()
-        })
-        .eq("id", grnItemId);
-
-      if (grnError) throw grnError;
-
-      // Check if inventory record exists for this material
-      const { data: existingInventory } = await supabase
-        .from("inventory")
-        .select("*")
-        .eq("raw_material_id", rawMaterialId)
-        .single();
-
-      if (existingInventory) {
-        // Update existing inventory
-        const { error: inventoryError } = await supabase
-          .from("inventory")
-          .update({
-            quantity: existingInventory.quantity + quantity,
-            last_updated: new Date().toISOString()
-          })
-          .eq("raw_material_id", rawMaterialId);
-
-        if (inventoryError) throw inventoryError;
-      } else {
-        // Create new inventory record
-        const { error: inventoryError } = await supabase
-          .from("inventory")
-          .insert({
-            raw_material_id: rawMaterialId,
-            quantity: quantity,
-            last_updated: new Date().toISOString()
-          });
-
-        if (inventoryError) throw inventoryError;
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["pending-store-acceptance"] });
-      
-      toast({
-        title: "Material accepted by store",
-        description: `Material has been received in store and inventory updated`,
-      });
-
-      // Reset form
-      setSelectedInspection(null);
-      setReceivedQuantity("");
-    },
-    onError: (error) => {
-      console.error("Error confirming store acceptance:", error);
-      toast({
-        title: "Error",
-        description: "Failed to confirm store acceptance",
         variant: "destructive",
       });
     },
@@ -273,35 +206,6 @@ const IQC = () => {
     });
   };
 
-  // Handle store acceptance
-  const handleStoreAcceptance = async () => {
-    if (!selectedInspection || !receivedQuantity) {
-      toast({
-        title: "Missing information",
-        description: "Please select an inspection and enter received quantity",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const qty = parseInt(receivedQuantity);
-    
-    if (qty <= 0 || qty > (selectedInspectionDetails?.accepted_quantity || 0)) {
-      toast({
-        title: "Invalid quantity",
-        description: "Please enter a valid quantity within accepted limits",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    storeAcceptanceMutation.mutate({
-      grnItemId: selectedInspection,
-      quantity: qty,
-      rawMaterialId: selectedInspectionDetails?.raw_material_id || ""
-    });
-  };
-
   return (
     <DashboardLayout>
       <div className="grid gap-4 md:gap-6">
@@ -315,10 +219,9 @@ const IQC = () => {
         </div>
 
         <Tabs value={selectedTab} onValueChange={setSelectedTab}>
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="pending">Pending Inspection</TabsTrigger>
             <TabsTrigger value="completed">Completed Inspections</TabsTrigger>
-            <TabsTrigger value="store">Store Acceptance</TabsTrigger>
             <TabsTrigger value="capa">CAPA Tracking</TabsTrigger>
           </TabsList>
           
@@ -537,107 +440,6 @@ const IQC = () => {
                     </TableBody>
                   </Table>
                 )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-          
-          <TabsContent value="store">
-            <Card>
-              <CardHeader>
-                <CardTitle>Store Acceptance of IQC Approved Materials</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                  <Card className="lg:col-span-2">
-                    <CardHeader>
-                      <CardTitle>Pending Store Acceptance</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      {pendingStoreAcceptance.length === 0 ? (
-                        <div className="text-center py-8 text-muted-foreground">
-                          No materials pending store acceptance
-                        </div>
-                      ) : (
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead></TableHead>
-                              <TableHead>GRN No</TableHead>
-                              <TableHead>Part Code</TableHead>
-                              <TableHead>Description</TableHead>
-                              <TableHead>Vendor</TableHead>
-                              <TableHead>Approved Qty</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {pendingStoreAcceptance.map((item: any) => (
-                              <TableRow key={item.id} className={selectedInspection === item.id ? "bg-accent" : ""}>
-                                <TableCell>
-                                  <input 
-                                    type="radio" 
-                                    name="inspection" 
-                                    checked={selectedInspection === item.id}
-                                    onChange={() => {
-                                      setSelectedInspection(item.id);
-                                      setReceivedQuantity(item.accepted_quantity?.toString() || "");
-                                    }} 
-                                  />
-                                </TableCell>
-                                <TableCell className="font-medium">{item.grn?.grn_number}</TableCell>
-                                <TableCell className="font-mono">{item.raw_materials?.material_code}</TableCell>
-                                <TableCell>{item.raw_materials?.name}</TableCell>
-                                <TableCell>{item.grn?.vendors?.name}</TableCell>
-                                <TableCell className="font-medium text-green-600">{item.accepted_quantity}</TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      )}
-                    </CardContent>
-                  </Card>
-
-                  {selectedInspection && selectedInspectionDetails && (
-                    <Card className="lg:col-span-1">
-                      <CardHeader>
-                        <CardTitle>Store Acceptance</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-4">
-                          <h3 className="font-medium">Material Details</h3>
-                          <div className="space-y-1">
-                            <p><span className="font-medium">GRN: </span>{selectedInspectionDetails.grn?.grn_number}</p>
-                            <p><span className="font-medium">Part Code: </span>{selectedInspectionDetails.raw_materials?.material_code}</p>
-                            <p><span className="font-medium">Description: </span>{selectedInspectionDetails.raw_materials?.name}</p>
-                            <p><span className="font-medium">Approved Qty: </span>{selectedInspectionDetails.accepted_quantity}</p>
-                          </div>
-                          
-                          <div className="space-y-2">
-                            <label htmlFor="quantity" className="text-sm font-medium">
-                              Received Quantity
-                            </label>
-                            <Input
-                              id="quantity"
-                              type="number"
-                              value={receivedQuantity}
-                              onChange={(e) => setReceivedQuantity(e.target.value)}
-                              placeholder="Enter actual quantity received"
-                              max={selectedInspectionDetails.accepted_quantity}
-                            />
-                          </div>
-                          
-                          <Button 
-                            className="w-full mt-4"
-                            onClick={handleStoreAcceptance}
-                            disabled={storeAcceptanceMutation.isPending}
-                          >
-                            <CheckCircle className="h-4 w-4 mr-2" />
-                            {storeAcceptanceMutation.isPending ? "Processing..." : "Confirm Receipt"}
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )}
-                </div>
               </CardContent>
             </Card>
           </TabsContent>

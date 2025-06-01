@@ -3,18 +3,29 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, Factory, Clock, Package } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Calendar, Factory, Clock, Package, Play, CheckCircle } from "lucide-react";
 import { useProductionSchedules, useUpdateProductionSchedule } from "@/hooks/useProductionSchedules";
 import { format } from "date-fns";
 import { useBOM } from "@/hooks/useBOM";
 import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
 
 const ProductionScheduleManagement = () => {
   const { data: schedules, isLoading } = useProductionSchedules();
   const updateSchedule = useUpdateProductionSchedule();
   const { data: bomData } = useBOM();
   const [selectedSchedule, setSelectedSchedule] = useState<string | null>(null);
+  const [productionLines, setProductionLines] = useState<Record<string, string>>({});
+  const { toast } = useToast();
+
+  const productionLineOptions = [
+    "Line 1",
+    "Line 2", 
+    "Sub Assembly 1",
+    "Sub Assembly 2"
+  ];
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -67,6 +78,84 @@ const ProductionScheduleManagement = () => {
     }
   };
 
+  const handleStartProduction = async (scheduleId: string) => {
+    const selectedLine = productionLines[scheduleId];
+    if (!selectedLine) {
+      toast({
+        title: "Production Line Required",
+        description: "Please select a production line before starting production",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // Update schedule status and production line
+      updateSchedule.mutate({
+        scheduleId,
+        updates: { 
+          status: 'IN_PRODUCTION',
+          production_line: selectedLine
+        }
+      });
+
+      toast({
+        title: "Production Started",
+        description: `Production started on ${selectedLine}`,
+      });
+    } catch (error) {
+      console.error('Error starting production:', error);
+      toast({
+        title: "Error",
+        description: "Failed to start production",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleCompleteProduction = async (scheduleId: string) => {
+    try {
+      // Update schedule status to completed
+      updateSchedule.mutate({
+        scheduleId,
+        updates: { status: 'COMPLETED' }
+      });
+
+      // Find the production order for this schedule and update it
+      const { data: productionOrder } = await supabase
+        .from('production_orders')
+        .select('id')
+        .eq('production_schedule_id', scheduleId)
+        .single();
+
+      if (productionOrder) {
+        await supabase
+          .from('production_orders')
+          .update({ status: 'PENDING_OQC' })
+          .eq('id', productionOrder.id);
+      }
+
+      toast({
+        title: "Production Completed",
+        description: "Production completed and moved to OQC queue",
+      });
+    } catch (error) {
+      console.error('Error completing production:', error);
+      toast({
+        title: "Error",
+        description: "Failed to complete production",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleProductionLineChange = (scheduleId: string, line: string) => {
+    setProductionLines(prev => ({
+      ...prev,
+      [scheduleId]: line
+    }));
+  };
+
   if (isLoading) {
     return (
       <Card>
@@ -97,7 +186,6 @@ const ProductionScheduleManagement = () => {
             <TableHeader>
               <TableRow>
                 <TableHead>Product</TableHead>
-                <TableHead>Customer</TableHead>
                 <TableHead>Scheduled Date</TableHead>
                 <TableHead>Quantity</TableHead>
                 <TableHead>Production Line</TableHead>
@@ -116,10 +204,29 @@ const ProductionScheduleManagement = () => {
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell>{schedule.projections?.customers?.name}</TableCell>
                   <TableCell>{format(new Date(schedule.scheduled_date), 'MMM dd, yyyy')}</TableCell>
                   <TableCell>{schedule.quantity}</TableCell>
-                  <TableCell>{schedule.production_line}</TableCell>
+                  <TableCell>
+                    {schedule.status === 'KIT_PREPARED' ? (
+                      <Select
+                        value={productionLines[schedule.id] || ""}
+                        onValueChange={(value) => handleProductionLineChange(schedule.id, value)}
+                      >
+                        <SelectTrigger className="w-[150px]">
+                          <SelectValue placeholder="Select Line" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {productionLineOptions.map((line) => (
+                            <SelectItem key={line} value={line}>
+                              {line}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      schedule.production_line || '-'
+                    )}
+                  </TableCell>
                   <TableCell>
                     <Badge variant={getStatusColor(schedule.status) as any}>
                       {schedule.status.replace('_', ' ')}
@@ -149,6 +256,27 @@ const ProductionScheduleManagement = () => {
                         >
                           <Factory className="h-4 w-4" />
                           Prepare Kit
+                        </Button>
+                      )}
+                      {schedule.status === 'KIT_PREPARED' && (
+                        <Button
+                          size="sm"
+                          onClick={() => handleStartProduction(schedule.id)}
+                          className="gap-2"
+                        >
+                          <Play className="h-4 w-4" />
+                          Start Production
+                        </Button>
+                      )}
+                      {schedule.status === 'IN_PRODUCTION' && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleCompleteProduction(schedule.id)}
+                          className="gap-2"
+                        >
+                          <CheckCircle className="h-4 w-4" />
+                          Complete Production
                         </Button>
                       )}
                     </div>

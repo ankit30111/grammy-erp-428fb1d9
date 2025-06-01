@@ -22,6 +22,7 @@ import { useProductionOrders } from "@/hooks/useProductionOrders";
 import { Layers, RefreshCw, Package, ChevronDown, Eye, AlertTriangle } from "lucide-react";
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
+import KitVerification from "@/components/Store/KitVerification";
 
 type BomType = "main_assembly" | "sub_assembly" | "accessory";
 
@@ -486,8 +487,9 @@ export default function StoreDashboard() {
       </div>
 
       <Tabs defaultValue="vouchers" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-7">
+        <TabsList className="grid w-full grid-cols-8">
           <TabsTrigger value="vouchers">Voucher & Kit Management</TabsTrigger>
+          <TabsTrigger value="kit-verification">Kit Verification</TabsTrigger>
           <TabsTrigger value="monthly-log">Monthly Kit Log</TabsTrigger>
           <TabsTrigger value="kit-tracker">Monthly Kit Tracker</TabsTrigger>
           <TabsTrigger value="grn">GRN Receiving</TabsTrigger>
@@ -602,6 +604,10 @@ export default function StoreDashboard() {
             }}
             sentComponents={selectedOrderForBOM ? sentComponents[selectedOrderForBOM.voucher_number] || [] : []}
           />
+        </TabsContent>
+
+        <TabsContent value="kit-verification">
+          <KitVerification />
         </TabsContent>
 
         <TabsContent value="monthly-log">
