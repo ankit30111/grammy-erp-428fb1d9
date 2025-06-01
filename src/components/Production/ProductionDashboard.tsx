@@ -34,6 +34,28 @@ const ProductionDashboard = () => {
     },
   });
 
+  // Get hourly production data for all active orders
+  const { data: hourlyProductionData = [] } = useQuery({
+    queryKey: ["all-hourly-production"],
+    queryFn: async () => {
+      if (productionOrders.length === 0) return [];
+      
+      const today = new Date().toISOString().split('T')[0];
+      const orderIds = productionOrders.map(order => order.id);
+      
+      const { data, error } = await supabase
+        .from("hourly_production")
+        .select("*")
+        .in("production_order_id", orderIds)
+        .gte("created_at", `${today}T00:00:00`)
+        .lt("created_at", `${today}T23:59:59`);
+      
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: productionOrders.length > 0,
+  });
+
   // Define all 4 production lines
   const allProductionLines = [
     "Line 1",
@@ -42,22 +64,36 @@ const ProductionDashboard = () => {
     "Sub Assembly 2"
   ];
 
-  // Create production lines data with current orders
+  // Create production lines data with current orders and production data
   const productionLines = allProductionLines.map((lineName) => {
     const currentOrder = productionOrders.find(
       order => order.production_schedules?.production_line === lineName
     );
+
+    // Calculate total produced for this order today
+    const orderHourlyData = currentOrder 
+      ? hourlyProductionData.filter(entry => entry.production_order_id === currentOrder.id)
+      : [];
+    
+    const produced = orderHourlyData.reduce((sum, entry) => sum + entry.production_units, 0);
+    
+    // Calculate average efficiency
+    const avgEfficiency = orderHourlyData.length > 0
+      ? Math.round(orderHourlyData.reduce((sum, entry) => sum + entry.efficiency_percentage, 0) / orderHourlyData.length)
+      : 0;
 
     return {
       id: lineName.replace(/\s+/g, '_').toLowerCase(),
       name: lineName,
       status: currentOrder ? "RUNNING" : "IDLE" as "IDLE" | "RUNNING" | "MAINTENANCE" | "SETUP",
       currentOrder: currentOrder || null,
-      efficiency: currentOrder ? 85 : 0, // Default efficiency when running
+      efficiency: currentOrder ? avgEfficiency : 0,
       target: currentOrder ? currentOrder.quantity : 0,
-      produced: 0, // This would come from hourly production data
+      produced: produced,
       operator: currentOrder ? "Assigned" : "",
-      lastUpdate: currentOrder ? new Date().toLocaleTimeString() : ""
+      lastUpdate: orderHourlyData.length > 0 
+        ? new Date(orderHourlyData[orderHourlyData.length - 1].created_at).toLocaleTimeString()
+        : ""
     };
   });
 
@@ -138,7 +174,10 @@ const ProductionDashboard = () => {
                       Voucher: {line.currentOrder.voucher_number}
                     </div>
                     <div className="text-sm">
-                      Quantity: {line.currentOrder.quantity} units
+                      Target: {line.currentOrder.quantity} units
+                    </div>
+                    <div className="text-sm">
+                      Produced: <span className={line.produced >= line.target ? "text-green-600 font-bold" : ""}>{line.produced} units</span>
                     </div>
                   </div>
                 ) : (
@@ -156,25 +195,27 @@ const ProductionDashboard = () => {
                 {/* Production Progress */}
                 <div className="space-y-1">
                   <div className="flex justify-between text-sm">
-                    <span>Daily Progress</span>
+                    <span>Progress</span>
                     <span>{line.produced}/{line.target} units</span>
                   </div>
                   <Progress 
-                    value={line.target > 0 ? (line.produced / line.target) * 100 : 0} 
+                    value={line.target > 0 ? Math.min((line.produced / line.target) * 100, 100) : 0} 
                     className="h-2"
                   />
                 </div>
 
                 {/* Efficiency */}
-                <div className="flex justify-between items-center">
-                  <span className="text-sm">Efficiency</span>
-                  <div className="flex items-center gap-2">
-                    <Zap className="h-4 w-4" />
-                    <span className={`font-medium ${getEfficiencyColor(line.efficiency)}`}>
-                      {line.efficiency}%
-                    </span>
+                {line.status === "RUNNING" && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm">Avg Efficiency</span>
+                    <div className="flex items-center gap-2">
+                      <Zap className="h-4 w-4" />
+                      <span className={`font-medium ${getEfficiencyColor(line.efficiency)}`}>
+                        {line.efficiency}%
+                      </span>
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {/* Operator Info */}
                 <div className="flex justify-between text-sm">
@@ -215,7 +256,12 @@ const ProductionDashboard = () => {
         <Card>
           <CardContent className="p-4">
             <div className="text-2xl font-bold">
-              {productionLines.length > 0 ? Math.round(productionLines.reduce((sum, line) => sum + line.efficiency, 0) / productionLines.length) : 0}%
+              {productionLines.filter(line => line.status === 'RUNNING').length > 0 
+                ? Math.round(productionLines
+                    .filter(line => line.status === 'RUNNING')
+                    .reduce((sum, line) => sum + line.efficiency, 0) / 
+                  productionLines.filter(line => line.status === 'RUNNING').length)
+                : 0}%
             </div>
             <div className="text-sm text-muted-foreground">Average Efficiency</div>
           </CardContent>

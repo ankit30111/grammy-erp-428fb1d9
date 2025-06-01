@@ -736,6 +736,53 @@ export type Database = {
           },
         ]
       }
+      hourly_production: {
+        Row: {
+          created_at: string
+          downtime_minutes: number
+          efficiency_percentage: number
+          hour: string
+          id: string
+          production_order_id: string
+          production_units: number
+          recorded_by: string | null
+          remarks: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          downtime_minutes?: number
+          efficiency_percentage?: number
+          hour: string
+          id?: string
+          production_order_id: string
+          production_units?: number
+          recorded_by?: string | null
+          remarks?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          downtime_minutes?: number
+          efficiency_percentage?: number
+          hour?: string
+          id?: string
+          production_order_id?: string
+          production_units?: number
+          recorded_by?: string | null
+          remarks?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_hourly_production_order"
+            columns: ["production_order_id"]
+            isOneToOne: false
+            referencedRelation: "production_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inventory: {
         Row: {
           bin_location: string | null

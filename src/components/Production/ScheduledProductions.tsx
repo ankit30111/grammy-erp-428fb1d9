@@ -1,18 +1,22 @@
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar, Play } from "lucide-react";
+import { Calendar, Play, Eye } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
+import ProductionDetailsDialog from "./ProductionDetailsDialog";
 
 const ScheduledProductions = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [selectedLines, setSelectedLines] = useState<Record<string, string>>({});
+  const [selectedProduction, setSelectedProduction] = useState<any>(null);
+  const [showDetailsDialog, setShowDetailsDialog] = useState(false);
 
   // Fetch scheduled productions with kit status information
   const { data: scheduledProductions = [] } = useQuery({
@@ -39,6 +43,7 @@ const ScheduledProductions = () => {
             )
           )
         `)
+        .in("status", ["PENDING", "IN_PROGRESS", "COMPLETED"])
         .order("scheduled_date", { ascending: true });
       
       if (error) throw error;
@@ -74,6 +79,7 @@ const ScheduledProductions = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["scheduled-productions"] });
+      queryClient.invalidateQueries({ queryKey: ["production-lines-orders"] });
       toast({
         title: "Production Started",
         description: "Production has been started successfully",
@@ -177,6 +183,11 @@ const ScheduledProductions = () => {
     startProductionMutation.mutate({ productionOrderId, productionLine: selectedLine });
   };
 
+  const handleViewDetails = (production: any) => {
+    setSelectedProduction(production);
+    setShowDetailsDialog(true);
+  };
+
   const productionLines = ["Line 1", "Line 2", "Sub Assembly 1", "Sub Assembly 2"];
 
   if (scheduledProductions.length === 0) {
@@ -259,7 +270,7 @@ const ScheduledProductions = () => {
                             ))}
                           </SelectContent>
                         </Select>
-                      ) : production.status === 'IN_PROGRESS' ? (
+                      ) : production.status === 'IN_PROGRESS' || production.status === 'COMPLETED' ? (
                         <span className="text-sm text-muted-foreground">
                           {production.production_schedules?.production_line || 'Assigned'}
                         </span>
@@ -269,6 +280,15 @@ const ScheduledProductions = () => {
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleViewDetails(production)}
+                          className="gap-2"
+                        >
+                          <Eye className="h-4 w-4" />
+                          Details
+                        </Button>
                         {canStartProduction(production) && (
                           <Button 
                             size="sm" 
@@ -289,6 +309,13 @@ const ScheduledProductions = () => {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Production Details Dialog */}
+      <ProductionDetailsDialog
+        open={showDetailsDialog}
+        onOpenChange={setShowDetailsDialog}
+        productionOrder={selectedProduction}
+      />
     </div>
   );
 };
