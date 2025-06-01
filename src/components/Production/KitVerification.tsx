@@ -40,7 +40,8 @@ const KitVerification = () => {
             raw_materials!inner(name, material_code)
           )
         `)
-        .eq("status", "PREPARING");
+        .in("status", ["PREPARING", "ACCESSORY COMPONENTS SENT", "SUB ASSEMBLY COMPONENTS SENT", "MAIN ASSEMBLY COMPONENTS SENT", "PARTIAL KIT SENT", "COMPLETE KIT SENT"])
+        .order("created_at", { ascending: false });
       
       return data || [];
     },
@@ -61,6 +62,7 @@ const KitVerification = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["kit-verification"] });
+      queryClient.invalidateQueries({ queryKey: ["production-orders"] });
       refetch();
     },
   });
@@ -104,8 +106,24 @@ const KitVerification = () => {
     switch (status) {
       case 'VERIFIED': return 'default';
       case 'DISCREPANCY': return 'destructive';
-      case 'PENDING': return 'warning';
+      case 'PREPARING': 
+      case 'ACCESSORY COMPONENTS SENT':
+      case 'SUB ASSEMBLY COMPONENTS SENT':
+      case 'MAIN ASSEMBLY COMPONENTS SENT':
+      case 'PARTIAL KIT SENT':
+      case 'COMPLETE KIT SENT': return 'warning';
       default: return 'secondary';
+    }
+  };
+
+  const getComponentsDescription = (status: string) => {
+    switch (status) {
+      case 'ACCESSORY COMPONENTS SENT': return 'Accessory Components';
+      case 'SUB ASSEMBLY COMPONENTS SENT': return 'Sub Assembly Components';
+      case 'MAIN ASSEMBLY COMPONENTS SENT': return 'Main Assembly Components';
+      case 'PARTIAL KIT SENT': return 'Partial Kit';
+      case 'COMPLETE KIT SENT': return 'Complete Kit';
+      default: return 'Kit Components';
     }
   };
 
@@ -210,6 +228,7 @@ const KitVerification = () => {
                 <TableHead>Voucher</TableHead>
                 <TableHead>Product</TableHead>
                 <TableHead>Customer</TableHead>
+                <TableHead>Components Sent</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
@@ -229,6 +248,7 @@ const KitVerification = () => {
                   <TableCell>{kit.production_orders?.voucher_number}</TableCell>
                   <TableCell>{kit.production_orders?.production_schedules?.projections?.products?.name}</TableCell>
                   <TableCell>{kit.production_orders?.production_schedules?.projections?.customers?.name}</TableCell>
+                  <TableCell>{getComponentsDescription(kit.status)}</TableCell>
                   <TableCell>
                     <Badge variant={getVerificationStatusColor(kit.status) as any}>
                       {kit.status}
@@ -251,7 +271,7 @@ const KitVerification = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <CheckCircle className="h-5 w-5" />
-              Kit Verification - {selectedKitDetails.kit_number}
+              Kit Verification - {selectedKitDetails.kit_number} ({getComponentsDescription(selectedKitDetails.status)})
             </CardTitle>
           </CardHeader>
           <CardContent>
