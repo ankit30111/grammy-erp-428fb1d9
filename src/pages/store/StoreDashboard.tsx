@@ -13,11 +13,12 @@ import InventoryManagement from "@/components/Store/InventoryManagement";
 import SpareOrdersPacking from "@/components/Store/SpareOrdersPacking";
 import BOMKitStatusView from "@/components/Store/BOMKitStatusView";
 import MonthlyKitLog from "@/components/Store/MonthlyKitLog";
+import MonthlyKitTracker from "@/components/Store/MonthlyKitTracker";
 import ProductionVoucherDetails from "@/components/Store/ProductionVoucherDetails";
 import { useToast } from "@/hooks/use-toast";
 import { useInventorySync } from "@/hooks/useInventorySync";
 import { useProductionOrders } from "@/hooks/useProductionOrders";
-import { Layers, RefreshCw, Package, ChevronDown, Eye } from "lucide-react";
+import { Layers, RefreshCw, Package, ChevronDown, Eye, AlertTriangle } from "lucide-react";
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -33,6 +34,7 @@ export default function StoreDashboard() {
   const [selectedOrderForBOM, setSelectedOrderForBOM] = useState<any>(null);
   const [isBOMViewOpen, setIsBOMViewOpen] = useState(false);
   const [voucherStatuses, setVoucherStatuses] = useState<Record<string, string>>({});
+  const [stockValidations, setStockValidations] = useState<Record<string, Record<string, boolean>>>({});
 
   // Auto-sync inventory on component mount
   useEffect(() => {
@@ -144,42 +146,25 @@ export default function StoreDashboard() {
     const productionOrder = productionOrders?.find(order => order.voucher_number === voucherId);
     if (!productionOrder) return false;
 
-    try {
-      const { data: bomItems, error } = await supabase
-        .from("bom")
-        .select(`
-          *,
-          raw_materials!inner(
-            inventory(quantity)
-          )
-        `)
-        .eq("product_id", productionOrder.product_id);
+    const componentToBomType: Record<string, string> = {
+      "Main Assembly": "main_assembly",
+      "Sub Assembly": "sub_assembly",
+      "Accessories": "accessory"
+    };
 
-      if (error) throw error;
+    const bomType = componentToBomType[component];
+    if (!bomType) return false;
 
-      // Map component names to BOM types
-      const componentToBomType: Record<string, string> = {
-        "Main Assembly": "main_assembly",
-        "Sub Assembly": "sub_assembly",
-        "Accessories": "accessory"
-      };
+    const validation = await validateStockForComponent(
+      productionOrder.product_id, 
+      productionOrder.quantity, 
+      bomType
+    );
 
-      const bomType = componentToBomType[component];
-      const filteredItems = bomType ? 
-        bomItems?.filter(item => item.bom_type === bomType) : bomItems;
-
-      return filteredItems?.every(item => {
-        const requiredQty = item.quantity * productionOrder.quantity;
-        const availableQty = item.raw_materials.inventory?.[0]?.quantity || 0;
-        return availableQty >= requiredQty;
-      }) || false;
-    } catch (error) {
-      console.error("Error checking component availability:", error);
-      return false;
-    }
+    return validation.isValid;
   };
 
-  // Handler for sending components with stock validation
+  // Handler for sending components with enhanced stock validation
   const handleSendComponent = async (voucherId: string, component: string) => {
     try {
       const canSend = await canSendComponent(voucherId, component);
@@ -374,6 +359,29 @@ export default function StoreDashboard() {
     return !alreadySent.includes(component);
   };
 
+  // Check stock availability for UI display
+  const checkStockAvailability = async (voucherId: string, component: string) => {
+    const productionOrder = productionOrders?.find(order => order.voucher_number === voucherId);
+    if (!productionOrder) return false;
+
+    const componentToBomType: Record<string, string> = {
+      "Main Assembly": "main_assembly",
+      "Sub Assembly": "sub_assembly", 
+      "Accessories": "accessory"
+    };
+
+    const bomType = componentToBomType[component];
+    if (!bomType) return false;
+
+    const validation = await validateStockForComponent(
+      productionOrder.product_id,
+      productionOrder.quantity,
+      bomType
+    );
+
+    return validation.isValid;
+  };
+
   const handleReceiveGRN = (id: string, quantity: number) => {
     const grn = grns.find(g => g.id === id);
     
@@ -475,9 +483,10 @@ export default function StoreDashboard() {
       </div>
 
       <Tabs defaultValue="vouchers" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="vouchers">Voucher & Kit Management</TabsTrigger>
           <TabsTrigger value="monthly-log">Monthly Kit Log</TabsTrigger>
+          <TabsTrigger value="kit-tracker">Monthly Kit Tracker</TabsTrigger>
           <TabsTrigger value="grn">GRN Receiving</TabsTrigger>
           <TabsTrigger value="feedback">Production Feedback</TabsTrigger>
           <TabsTrigger value="inventory">Inventory</TabsTrigger>
@@ -529,27 +538,27 @@ export default function StoreDashboard() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem 
-                                onClick={() => handleSendComponent(order.voucher_number, "Sub Assembly")}
-                                disabled={!canSendComponentSync(order.voucher_number, "Sub Assembly")}
-                              >
-                                Send Sub Assembly
-                                {!canSendComponentSync(order.voucher_number, "Sub Assembly") && " (Already Sent)"}
-                              </DropdownMenuItem>
-                              <DropdownMenuItem 
-                                onClick={() => handleSendComponent(order.voucher_number, "Accessories")}
-                                disabled={!canSendComponentSync(order.voucher_number, "Accessories")}
-                              >
-                                Send Accessories
-                                {!canSendComponentSync(order.voucher_number, "Accessories") && " (Already Sent)"}
-                              </DropdownMenuItem>
-                              <DropdownMenuItem 
-                                onClick={() => handleSendComponent(order.voucher_number, "Main Assembly")}
-                                disabled={!canSendComponentSync(order.voucher_number, "Main Assembly")}
-                              >
-                                Send Main Assembly
-                                {!canSendComponentSync(order.voucher_number, "Main Assembly") && " (Already Sent)"}
-                              </DropdownMenuItem>
+                              {["Sub Assembly", "Accessories", "Main Assembly"].map((component) => {
+                                const isAlreadySent = !canSendComponentSync(order.voucher_number, component);
+                                const voucherKey = `${order.voucher_number}-${component}`;
+                                const hasStock = stockValidations[voucherKey];
+                                
+                                return (
+                                  <DropdownMenuItem 
+                                    key={component}
+                                    onClick={() => !isAlreadySent && handleSendComponent(order.voucher_number, component)}
+                                    disabled={isAlreadySent}
+                                    className={!hasStock && !isAlreadySent ? "text-red-600" : ""}
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      {!hasStock && !isAlreadySent && <AlertTriangle className="h-4 w-4" />}
+                                      Send {component}
+                                      {isAlreadySent && " (Already Sent)"}
+                                      {!hasStock && !isAlreadySent && " (Insufficient Stock)"}
+                                    </div>
+                                  </DropdownMenuItem>
+                                );
+                              })}
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>
@@ -594,6 +603,10 @@ export default function StoreDashboard() {
 
         <TabsContent value="monthly-log">
           <MonthlyKitLog />
+        </TabsContent>
+
+        <TabsContent value="kit-tracker">
+          <MonthlyKitTracker />
         </TabsContent>
 
         <TabsContent value="grn">
