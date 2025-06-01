@@ -175,7 +175,7 @@ const Purchase = () => {
   // Get available vendors for selected materials
   const getAvailableVendors = () => {
     const selectedShortages = shortages.filter(s => selectedMaterials.includes(s.raw_material_id));
-    const vendorIds = new Set(selectedShortages.map(s => s.vendor_info?.id).filter(Boolean));
+    const vendorIds = new Set(selectedShortages.map(s => s.vendor_info?.vendor_id).filter(Boolean));
     return vendors?.filter(v => vendorIds.has(v.id)) || [];
   };
 
@@ -337,7 +337,7 @@ const Purchase = () => {
                           <TableHead>Required</TableHead>
                           <TableHead>Available</TableHead>
                           <TableHead>Shortage</TableHead>
-                          <TableHead>Critical</TableHead>
+                          <TableHead>Status</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>

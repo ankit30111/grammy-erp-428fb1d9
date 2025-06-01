@@ -1,4 +1,3 @@
-
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -292,7 +291,7 @@ const PPC = () => {
                       </div>
                       {shortage.vendor_info && (
                         <div className="text-sm text-blue-600">
-                          Primary Vendor: {shortage.vendor_info.name} ({shortage.vendor_info.vendor_code})
+                          Primary Vendor: {shortage.vendor_info.vendor_name} ({shortage.vendor_info.vendor_code})
                         </div>
                       )}
                     </div>
