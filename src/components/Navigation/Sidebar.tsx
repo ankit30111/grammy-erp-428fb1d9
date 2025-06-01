@@ -171,7 +171,7 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
                       <Button
                         variant="ghost"
                         className={cn(
-                          "nav-link w-full justify-start",
+                          "nav-link group w-full justify-start",
                           isItemActive && "active"
                         )}
                       >
@@ -220,7 +220,7 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
                   key={item.title}
                   to={item.href}
                   className={cn(
-                    "nav-link",
+                    "nav-link group",
                     isItemActive && "active"
                   )}
                   title={!isOpen ? item.title : undefined}
