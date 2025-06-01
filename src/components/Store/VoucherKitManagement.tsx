@@ -63,10 +63,11 @@ export default function VoucherKitManagement({
     return validation.isValid;
   };
 
-  // Handler for sending components with enhanced stock validation and inventory deduction
+  // Enhanced handler for sending components with proper inventory deduction
   const handleSendComponent = async (voucherId: string, component: string) => {
     try {
-      console.log(`Starting to send component: ${component} for voucher: ${voucherId}`);
+      console.log(`=== STARTING COMPONENT SEND PROCESS ===`);
+      console.log(`Voucher: ${voucherId}, Component: ${component}`);
       
       const canSend = await canSendComponent(voucherId, component);
       if (!canSend) {
@@ -191,7 +192,7 @@ export default function VoucherKitManagement({
           kit_preparation_id: kitPrepId,
           raw_material_id: bomItem.raw_material_id,
           required_quantity: bomItem.quantity * productionOrder.quantity,
-          actual_quantity: bomItem.quantity * productionOrder.quantity, // Assuming full quantity is sent
+          actual_quantity: bomItem.quantity * productionOrder.quantity,
         }));
 
         const { error: itemsError } = await supabase
@@ -201,57 +202,90 @@ export default function VoucherKitManagement({
         if (itemsError) throw itemsError;
         console.log(`Successfully created kit items`);
 
-        // Deduct inventory quantities for each new kit item
+        // CRITICAL: Deduct inventory quantities for each new kit item
+        console.log(`=== STARTING INVENTORY DEDUCTION ===`);
         for (const bomItem of newBomItems) {
           const quantityToDeduct = bomItem.quantity * productionOrder.quantity;
-          console.log(`Processing deduction for material ${bomItem.raw_materials.material_code}: ${quantityToDeduct} units`);
+          console.log(`Processing material: ${bomItem.raw_materials.material_code}`);
+          console.log(`Quantity to deduct: ${quantityToDeduct} units`);
           
           // Get current inventory for this raw material
           const { data: inventoryItem, error: inventoryError } = await supabase
             .from("inventory")
             .select("*")
             .eq("raw_material_id", bomItem.raw_material_id)
-            .maybeSingle();
+            .single();
 
           if (inventoryError) {
             console.error(`Error fetching inventory for material ${bomItem.raw_material_id}:`, inventoryError);
+            
+            // If no inventory record exists, create one with 0 quantity
+            if (inventoryError.code === 'PGRST116') {
+              console.log(`Creating new inventory record for material ${bomItem.raw_materials.material_code}`);
+              const { error: createError } = await supabase
+                .from("inventory")
+                .insert({
+                  raw_material_id: bomItem.raw_material_id,
+                  quantity: 0,
+                  location: "Default",
+                  bin_location: "N/A",
+                  minimum_stock: 0
+                });
+              
+              if (createError) {
+                console.error(`Error creating inventory record:`, createError);
+                toast({
+                  title: "Inventory Error",
+                  description: `Failed to create inventory record for ${bomItem.raw_materials.material_code}`,
+                  variant: "destructive",
+                });
+              }
+            }
             continue;
           }
 
           if (inventoryItem) {
             console.log(`Current inventory for ${bomItem.raw_materials.material_code}: ${inventoryItem.quantity} units`);
+            
+            if (inventoryItem.quantity < quantityToDeduct) {
+              console.warn(`Insufficient stock! Available: ${inventoryItem.quantity}, Required: ${quantityToDeduct}`);
+              toast({
+                title: "Inventory Warning",
+                description: `Insufficient stock for ${bomItem.raw_materials.material_code}. Available: ${inventoryItem.quantity}, Required: ${quantityToDeduct}`,
+                variant: "destructive",
+              });
+              // Continue with deduction but set to 0 if negative
+            }
+            
             const newQuantity = Math.max(0, inventoryItem.quantity - quantityToDeduct);
             console.log(`New inventory quantity will be: ${newQuantity} units`);
             
-            // Update inventory quantity
-            const { error: updateError } = await supabase
+            // Update inventory quantity with explicit transaction
+            const { data: updatedInventory, error: updateError } = await supabase
               .from("inventory")
               .update({ 
                 quantity: newQuantity,
                 last_updated: new Date().toISOString()
               })
-              .eq("id", inventoryItem.id);
+              .eq("id", inventoryItem.id)
+              .select()
+              .single();
 
             if (updateError) {
-              console.error(`Error updating inventory for material ${bomItem.raw_material_id}:`, updateError);
+              console.error(`CRITICAL ERROR updating inventory for material ${bomItem.raw_material_id}:`, updateError);
               toast({
-                title: "Inventory Update Error",
-                description: `Failed to update inventory for ${bomItem.raw_materials.material_code}`,
+                title: "Critical Inventory Error",
+                description: `Failed to update inventory for ${bomItem.raw_materials.material_code}. Please check manually.`,
                 variant: "destructive",
               });
             } else {
-              console.log(`Successfully deducted ${quantityToDeduct} units from inventory for material ${bomItem.raw_materials.material_code}`);
-              console.log(`Previous quantity: ${inventoryItem.quantity}, New quantity: ${newQuantity}`);
+              console.log(`✅ SUCCESS: Inventory updated for ${bomItem.raw_materials.material_code}`);
+              console.log(`Previous: ${inventoryItem.quantity} → New: ${updatedInventory.quantity}`);
+              console.log(`Deducted: ${quantityToDeduct} units`);
             }
-          } else {
-            console.warn(`No inventory record found for material ${bomItem.raw_material_id} (${bomItem.raw_materials.material_code})`);
-            toast({
-              title: "Inventory Warning",
-              description: `No inventory record found for ${bomItem.raw_materials.material_code}`,
-              variant: "destructive",
-            });
           }
         }
+        console.log(`=== INVENTORY DEDUCTION COMPLETE ===`);
       }
 
       // Update sent components tracking
@@ -299,15 +333,17 @@ export default function VoucherKitManagement({
       }));
 
       toast({
-        title: "Components Sent",
-        description: `${component} has been sent to production for voucher ${voucherId} and inventory has been updated`,
+        title: "Components Sent Successfully",
+        description: `${component} sent to production for voucher ${voucherId}. Inventory has been updated.`,
       });
 
+      console.log(`=== COMPONENT SEND PROCESS COMPLETE ===`);
+
     } catch (error) {
-      console.error("Error sending components:", error);
+      console.error("=== ERROR IN COMPONENT SEND PROCESS ===", error);
       toast({
         title: "Error",
-        description: "Failed to send components to production",
+        description: "Failed to send components to production. Please try again.",
         variant: "destructive",
       });
     }
