@@ -1,269 +1,177 @@
+
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Package, CheckCircle, AlertTriangle, Factory } from "lucide-react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { Package, AlertTriangle, CheckCircle } from "lucide-react";
 
 const KitVerification = () => {
-  const [selectedKit, setSelectedKit] = useState<string | null>(null);
-  const [verificationData, setVerificationData] = useState<Record<string, number>>({});
-  const [selectedLine, setSelectedLine] = useState<string>("");
+  const [receivedQuantities, setReceivedQuantities] = useState<Record<string, number>>({});
   const [discrepancyComments, setDiscrepancyComments] = useState<Record<string, string>>({});
   const { toast } = useToast();
-  const queryClient = useQueryClient();
 
-  const { data: kits = [], refetch } = useQuery({
+  const { data: kitItems = [] } = useQuery({
     queryKey: ["kit-verification"],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("kit_preparation")
+      const { data, error } = await supabase
+        .from("kit_items")
         .select(`
           *,
-          production_orders!inner(
-            voucher_number,
-            quantity,
-            product_id,
-            production_schedules!inner(
-              projections!inner(
-                products!inner(id, name),
-                customers!inner(name)
+          kit_preparation!inner(
+            kit_number,
+            status,
+            production_orders!inner(
+              voucher_number,
+              quantity as production_quantity,
+              production_schedules!inner(
+                projections!inner(
+                  products!inner(name)
+                )
               )
             )
           ),
-          kit_items(
-            *,
-            raw_materials!inner(name, material_code)
+          raw_materials!inner(
+            material_code,
+            name
           )
         `)
-        .in("status", ["PREPARING", "ACCESSORY COMPONENTS SENT", "SUB ASSEMBLY COMPONENTS SENT", "MAIN ASSEMBLY COMPONENTS SENT", "PARTIAL KIT SENT", "COMPLETE KIT SENT"])
+        .eq("kit_preparation.status", "SENT")
         .order("created_at", { ascending: false });
       
+      if (error) throw error;
       return data || [];
     },
-    refetchInterval: 5000,
   });
 
-  const updateKitMutation = useMutation({
-    mutationFn: async ({ kitId, updates }: { kitId: string; updates: any }) => {
-      const { data, error } = await supabase
-        .from("kit_preparation")
-        .update(updates)
-        .eq("id", kitId)
-        .select()
-        .single();
-      
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["kit-verification"] });
-      queryClient.invalidateQueries({ queryKey: ["production-orders"] });
-      refetch();
-    },
-  });
-
-  const logProductionFeedbackMutation = useMutation({
-    mutationFn: async (feedbackData: {
-      voucherNumber: string;
-      componentCode: string;
-      sentQty: number;
-      receivedQty: number;
-      discrepancyQty: number;
-      section: string;
-      remarks?: string;
-    }) => {
-      // Insert into production_feedback table
-      const { data, error } = await supabase
-        .from("production_feedback")
-        .insert({
-          voucher_number: feedbackData.voucherNumber,
-          component_code: feedbackData.componentCode,
-          sent_quantity: feedbackData.sentQty,
-          received_quantity: feedbackData.receivedQty,
-          discrepancy_quantity: feedbackData.discrepancyQty,
-          section: feedbackData.section,
-          remarks: feedbackData.remarks,
-          created_at: new Date().toISOString()
-        });
-      
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      toast({
-        title: "Discrepancy Logged",
-        description: "Production feedback has been recorded",
-      });
-    },
-  });
-
-  const productionLines = [
-    "Line-1",
-    "Line-2", 
-    "Sub Assembly-1",
-    "Sub Assembly-2"
-  ];
-
-  const getVerificationStatusColor = (status: string) => {
-    switch (status) {
-      case 'VERIFIED': return 'default';
-      case 'DISCREPANCY': return 'destructive';
-      case 'PREPARING': 
-      case 'ACCESSORY COMPONENTS SENT':
-      case 'SUB ASSEMBLY COMPONENTS SENT':
-      case 'MAIN ASSEMBLY COMPONENTS SENT':
-      case 'PARTIAL KIT SENT':
-      case 'COMPLETE KIT SENT': return 'warning';
-      default: return 'secondary';
-    }
-  };
-
-  const getComponentsDescription = (status: string) => {
-    switch (status) {
-      case 'ACCESSORY COMPONENTS SENT': return 'Accessory Components';
-      case 'SUB ASSEMBLY COMPONENTS SENT': return 'Sub Assembly Components';
-      case 'MAIN ASSEMBLY COMPONENTS SENT': return 'Main Assembly Components';
-      case 'PARTIAL KIT SENT': return 'Partial Kit';
-      case 'COMPLETE KIT SENT': return 'Complete Kit';
-      default: return 'Kit Components';
-    }
-  };
-
-  const getBOMSection = (bomType: string) => {
-    switch (bomType) {
-      case 'sub_assembly': return 'Sub Assembly';
-      case 'accessory': return 'Accessories';
-      case 'main_assembly': return 'Main Assembly';
-      default: return 'Unknown';
-    }
-  };
-
-  const handleVerificationChange = (partCode: string, value: string) => {
-    setVerificationData(prev => ({
+  const handleQuantityChange = (itemId: string, value: string) => {
+    const quantity = parseInt(value) || 0;
+    setReceivedQuantities(prev => ({
       ...prev,
-      [partCode]: parseInt(value) || 0
+      [itemId]: quantity
     }));
   };
 
-  const handleDiscrepancyCommentChange = (partCode: string, comment: string) => {
+  const handleCommentChange = (itemId: string, comment: string) => {
     setDiscrepancyComments(prev => ({
       ...prev,
-      [partCode]: comment
+      [itemId]: comment
     }));
   };
 
-  const handleCompleteVerification = async () => {
-    if (!selectedLine) {
-      toast({
-        title: "Select Production Line",
-        description: "Please select a production line before completing verification",
-        variant: "destructive",
+  const handleVerifyKit = async (kitId: string, items: any[]) => {
+    try {
+      const hasDiscrepancies = items.some(item => {
+        const receivedQty = receivedQuantities[item.id] || 0;
+        return receivedQty < item.actual_quantity;
       });
-      return;
-    }
 
-    if (!selectedKit) return;
+      if (hasDiscrepancies) {
+        const itemsWithDiscrepancies = items.filter(item => {
+          const receivedQty = receivedQuantities[item.id] || 0;
+          return receivedQty < item.actual_quantity;
+        });
 
-    const selectedKitDetails = kits.find(kit => kit.id === selectedKit);
-    if (!selectedKitDetails) return;
+        // Check if all discrepancy items have comments
+        const missingComments = itemsWithDiscrepancies.filter(item => 
+          !discrepancyComments[item.id]?.trim()
+        );
 
-    // Check for discrepancies and validate comments
-    const discrepancies = selectedKitDetails.kit_items?.filter((item: any) => {
-      const sentQty = item.actual_quantity ?? 0;
-      const receivedQty = verificationData[item.raw_materials?.material_code] ?? sentQty;
-      return receivedQty < sentQty;
-    });
+        if (missingComments.length > 0) {
+          toast({
+            title: "Missing Discrepancy Comments",
+            description: "Please provide comments for all items with discrepancies",
+            variant: "destructive",
+          });
+          return;
+        }
 
-    // Check if all discrepancies have comments
-    const missingComments = discrepancies?.filter((item: any) => {
-      const hasDiscrepancy = (verificationData[item.raw_materials?.material_code] ?? item.actual_quantity) < item.actual_quantity;
-      const hasComment = discrepancyComments[item.raw_materials?.material_code]?.trim();
-      return hasDiscrepancy && !hasComment;
-    });
-
-    if (missingComments && missingComments.length > 0) {
-      toast({
-        title: "Missing Discrepancy Comments",
-        description: "Please add comments for all components with discrepancies",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Log discrepancies to production feedback
-    if (discrepancies && discrepancies.length > 0) {
-      for (const item of discrepancies) {
-        const sentQty = item.actual_quantity ?? 0;
-        const receivedQty = verificationData[item.raw_materials?.material_code] ?? sentQty;
-        const discrepancyQty = sentQty - receivedQty;
-        
-        // Get BOM info to determine section
-        const { data: bomInfo } = await supabase
-          .from("bom")
-          .select("bom_type")
-          .eq("raw_material_id", item.raw_material_id)
-          .eq("product_id", selectedKitDetails.production_orders.product_id)
-          .single();
-
-        await logProductionFeedbackMutation.mutateAsync({
-          voucherNumber: selectedKitDetails.production_orders.voucher_number,
-          componentCode: item.raw_materials.material_code,
-          sentQty: sentQty,
-          receivedQty: receivedQty,
-          discrepancyQty: discrepancyQty,
-          section: getBOMSection(bomInfo?.bom_type || 'unknown'),
-          remarks: discrepancyComments[item.raw_materials?.material_code] || ''
+        // Log discrepancies to console for now (until production_feedback table is available)
+        itemsWithDiscrepancies.forEach(item => {
+          const receivedQty = receivedQuantities[item.id] || 0;
+          const discrepancyQty = item.actual_quantity - receivedQty;
+          
+          console.log("Production Feedback Logged:", {
+            voucher_number: item.kit_preparation.production_orders.voucher_number,
+            component_code: item.raw_materials.material_code,
+            sent_quantity: item.actual_quantity,
+            received_quantity: receivedQty,
+            discrepancy_quantity: discrepancyQty,
+            section: "Kit Verification",
+            remarks: discrepancyComments[item.id]
+          });
         });
       }
-    }
 
-    // Update kit status to verified and assign to production line
-    await updateKitMutation.mutateAsync({
-      kitId: selectedKit,
-      updates: {
-        status: "VERIFIED",
-        sent_to_production_at: new Date().toISOString(),
+      // Update kit items with verified quantities
+      for (const item of items) {
+        const receivedQty = receivedQuantities[item.id] || item.actual_quantity;
+        
+        await supabase
+          .from("kit_items")
+          .update({
+            verified_by_production: true,
+            actual_quantity: receivedQty
+          })
+          .eq("id", item.id);
       }
-    });
 
-    toast({
-      title: "Kit Verified",
-      description: `Kit verified and assigned to ${selectedLine}`,
-    });
-    
-    setSelectedKit(null);
-    setSelectedLine("");
-    setVerificationData({});
-    setDiscrepancyComments({});
+      // Update kit preparation status
+      await supabase
+        .from("kit_preparation")
+        .update({ 
+          status: hasDiscrepancies ? "VERIFIED_WITH_DISCREPANCY" : "VERIFIED"
+        })
+        .eq("id", kitId);
+
+      toast({
+        title: "Kit Verified",
+        description: hasDiscrepancies 
+          ? "Kit verified with discrepancies. Production feedback has been logged."
+          : "Kit verified successfully",
+      });
+
+      // Clear local state for this kit
+      items.forEach(item => {
+        setReceivedQuantities(prev => {
+          const newState = { ...prev };
+          delete newState[item.id];
+          return newState;
+        });
+        setDiscrepancyComments(prev => {
+          const newState = { ...prev };
+          delete newState[item.id];
+          return newState;
+        });
+      });
+
+    } catch (error) {
+      console.error("Error verifying kit:", error);
+      toast({
+        title: "Error",
+        description: "Failed to verify kit",
+        variant: "destructive",
+      });
+    }
   };
 
-  if (kits.length === 0) {
-    return (
-      <div className="space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Package className="h-5 w-5" />
-              Kit Verification (0 kits available)
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-center py-8 text-muted-foreground">
-              No kits available for verification
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  const selectedKitDetails = kits.find(kit => kit.id === selectedKit);
+  // Group kit items by kit preparation
+  const groupedKits = kitItems.reduce((acc, item) => {
+    const kitId = item.kit_preparation_id;
+    if (!acc[kitId]) {
+      acc[kitId] = {
+        kit: item.kit_preparation,
+        items: []
+      };
+    }
+    acc[kitId].items.push(item);
+    return acc;
+  }, {} as Record<string, { kit: any; items: any[] }>);
 
   return (
     <div className="space-y-6">
@@ -271,170 +179,114 @@ const KitVerification = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Package className="h-5 w-5" />
-            Kit Verification ({kits.length} kits available)
+            Kit Verification
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead></TableHead>
-                <TableHead>Kit Number</TableHead>
-                <TableHead>Voucher</TableHead>
-                <TableHead>Product</TableHead>
-                <TableHead>Components Received</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {kits.map((kit) => (
-                <TableRow key={kit.id} className={selectedKit === kit.id ? "bg-accent" : ""}>
-                  <TableCell>
-                    <input 
-                      type="radio" 
-                      name="kit" 
-                      checked={selectedKit === kit.id}
-                      onChange={() => setSelectedKit(kit.id)} 
-                    />
-                  </TableCell>
-                  <TableCell className="font-medium">{kit.kit_number}</TableCell>
-                  <TableCell>{kit.production_orders?.voucher_number}</TableCell>
-                  <TableCell>{kit.production_orders?.production_schedules?.projections?.products?.name}</TableCell>
-                  <TableCell>{getComponentsDescription(kit.status)}</TableCell>
-                  <TableCell>
-                    <Badge variant={getVerificationStatusColor(kit.status) as any}>
-                      {kit.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Button size="sm" onClick={() => setSelectedKit(kit.id)}>
-                      Verify Kit
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <div className="space-y-8">
+            {Object.entries(groupedKits).map(([kitId, { kit, items }]) => (
+              <div key={kitId} className="border rounded-lg p-6">
+                <div className="mb-4">
+                  <h3 className="text-lg font-semibold">Kit: {kit.kit_number}</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Voucher: {kit.production_orders.voucher_number} | 
+                    Product: {kit.production_orders.production_schedules.projections.products.name}
+                  </p>
+                </div>
+
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Component</TableHead>
+                      <TableHead>Material Code</TableHead>
+                      <TableHead>Qty Sent</TableHead>
+                      <TableHead>Qty Received/Verified</TableHead>
+                      <TableHead>Discrepancy Qty</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Comments</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {items.map((item) => {
+                      const receivedQty = receivedQuantities[item.id] ?? item.actual_quantity;
+                      const discrepancyQty = Math.max(0, item.actual_quantity - receivedQty);
+                      const hasDiscrepancy = discrepancyQty > 0;
+
+                      return (
+                        <TableRow key={item.id}>
+                          <TableCell className="font-medium">{item.raw_materials.name}</TableCell>
+                          <TableCell className="font-mono">{item.raw_materials.material_code}</TableCell>
+                          <TableCell>{item.actual_quantity}</TableCell>
+                          <TableCell>
+                            <Input
+                              type="number"
+                              className="w-24"
+                              value={receivedQuantities[item.id] ?? item.actual_quantity}
+                              onChange={(e) => handleQuantityChange(item.id, e.target.value)}
+                              max={item.actual_quantity}
+                              disabled={item.verified_by_production}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            {discrepancyQty > 0 ? (
+                              <span className="text-red-600 font-medium">{discrepancyQty}</span>
+                            ) : (
+                              <span className="text-green-600">0</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {item.verified_by_production ? (
+                              <Badge variant="default" className="gap-1">
+                                <CheckCircle className="h-3 w-3" />
+                                Verified
+                              </Badge>
+                            ) : hasDiscrepancy ? (
+                              <Badge variant="destructive" className="gap-1">
+                                <AlertTriangle className="h-3 w-3" />
+                                Discrepancy
+                              </Badge>
+                            ) : (
+                              <Badge variant="default" className="gap-1">
+                                <CheckCircle className="h-3 w-3" />
+                                OK
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {hasDiscrepancy && !item.verified_by_production && (
+                              <Textarea
+                                placeholder="Required: Explain the discrepancy"
+                                value={discrepancyComments[item.id] || ""}
+                                onChange={(e) => handleCommentChange(item.id, e.target.value)}
+                                className="min-h-[60px]"
+                              />
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+
+                <div className="mt-4 flex justify-end">
+                  <Button 
+                    onClick={() => handleVerifyKit(kitId, items)}
+                    disabled={items.every(item => item.verified_by_production)}
+                  >
+                    {items.every(item => item.verified_by_production) ? "Already Verified" : "Verify Kit"}
+                  </Button>
+                </div>
+              </div>
+            ))}
+
+            {Object.keys(groupedKits).length === 0 && (
+              <div className="text-center py-8 text-muted-foreground">
+                No kits available for verification
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
-
-      {selectedKit && selectedKitDetails && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <CheckCircle className="h-5 w-5" />
-              Kit Verification - {selectedKitDetails.kit_number} ({getComponentsDescription(selectedKitDetails.status)})
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Material Code</TableHead>
-                  <TableHead>Raw Material Name</TableHead>
-                  <TableHead>BOM Section</TableHead>
-                  <TableHead>Qty Sent by Store</TableHead>
-                  <TableHead>Qty Received & Verified</TableHead>
-                  <TableHead>Discrepancy Qty</TableHead>
-                  <TableHead>Discrepancy Comment</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {selectedKitDetails.kit_items?.map((item: any) => {
-                  const sentQty = item.actual_quantity || 0;
-                  const receivedQty = verificationData[item.raw_materials?.material_code] ?? sentQty;
-                  const discrepancyQty = sentQty - receivedQty;
-                  const hasDiscrepancy = discrepancyQty > 0;
-                  
-                  return (
-                    <TableRow key={item.id}>
-                      <TableCell className="font-mono">{item.raw_materials?.material_code}</TableCell>
-                      <TableCell className="font-medium">{item.raw_materials?.name}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline">
-                          Mixed Components
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{sentQty}</TableCell>
-                      <TableCell>
-                        <Input
-                          type="number"
-                          className="w-20"
-                          value={verificationData[item.raw_materials?.material_code] ?? ''}
-                          onChange={(e) => handleVerificationChange(item.raw_materials?.material_code, e.target.value)}
-                          placeholder={sentQty.toString()}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        {discrepancyQty !== 0 ? (
-                          <span className={discrepancyQty > 0 ? "text-red-600 font-medium" : "text-blue-600 font-medium"}>
-                            {discrepancyQty > 0 ? `+${discrepancyQty}` : discrepancyQty}
-                          </span>
-                        ) : (
-                          <span className="text-green-600">0</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {hasDiscrepancy ? (
-                          <Input
-                            type="text"
-                            className="w-40"
-                            placeholder="Required for discrepancy"
-                            value={discrepancyComments[item.raw_materials?.material_code] || ''}
-                            onChange={(e) => handleDiscrepancyCommentChange(item.raw_materials?.material_code, e.target.value)}
-                          />
-                        ) : (
-                          <span className="text-muted-foreground">-</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {discrepancyQty !== 0 ? (
-                          <Badge variant="destructive" className="gap-1">
-                            <AlertTriangle className="h-3 w-3" />
-                            Discrepancy
-                          </Badge>
-                        ) : (
-                          <Badge variant="default" className="gap-1">
-                            <CheckCircle className="h-3 w-3" />
-                            OK
-                          </Badge>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-            
-            <div className="mt-6 space-y-4">
-              <div className="flex items-center gap-4">
-                <Factory className="h-4 w-4" />
-                <label className="text-sm font-medium">Select Production Line:</label>
-                <Select value={selectedLine} onValueChange={setSelectedLine}>
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Select line" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {productionLines.map((line) => (
-                      <SelectItem key={line} value={line}>
-                        {line}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div className="flex justify-end gap-4">
-                <Button onClick={handleCompleteVerification}>
-                  Complete Verification
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 };

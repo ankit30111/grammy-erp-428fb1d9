@@ -50,16 +50,37 @@ export default function StoreDashboard() {
   const loadVoucherStatuses = async () => {
     if (!productionOrders) return;
 
-    const statusPromises = productionOrders.map(async (order) => {
-      const status = await checkVoucherStatus(order);
-      return { voucherNumber: order.voucher_number, status };
-    });
-
-    const statuses = await Promise.all(statusPromises);
     const statusMap: Record<string, string> = {};
-    statuses.forEach(({ voucherNumber, status }) => {
-      statusMap[voucherNumber] = status;
-    });
+    
+    for (const order of productionOrders) {
+      try {
+        const { data: bomItems, error } = await supabase
+          .from("bom")
+          .select(`
+            *,
+            raw_materials!inner(
+              id,
+              material_code,
+              inventory(quantity)
+            )
+          `)
+          .eq("product_id", order.product_id);
+
+        if (error) throw error;
+
+        const isReady = bomItems?.every(item => {
+          const requiredQty = item.quantity * order.quantity;
+          const availableQty = item.raw_materials.inventory?.[0]?.quantity || 0;
+          return availableQty >= requiredQty;
+        });
+
+        statusMap[order.voucher_number] = isReady ? "Ready" : "Not Ready";
+      } catch (error) {
+        console.error("Error checking voucher status:", error);
+        statusMap[order.voucher_number] = "Unknown";
+      }
+    }
+    
     setVoucherStatuses(statusMap);
   };
 
@@ -111,36 +132,6 @@ export default function StoreDashboard() {
 
   const handleSyncInventory = () => {
     syncRawMaterialsToInventory.mutate();
-  };
-
-  // Check voucher status based on BOM availability
-  const checkVoucherStatus = async (productionOrder: any): Promise<string> => {
-    try {
-      const { data: bomItems, error } = await supabase
-        .from("bom")
-        .select(`
-          *,
-          raw_materials!inner(
-            id,
-            material_code,
-            inventory(quantity)
-          )
-        `)
-        .eq("product_id", productionOrder.product_id);
-
-      if (error) throw error;
-
-      const isReady = bomItems?.every(item => {
-        const requiredQty = item.quantity * productionOrder.quantity;
-        const availableQty = item.raw_materials.inventory?.[0]?.quantity || 0;
-        return availableQty >= requiredQty;
-      });
-
-      return isReady ? "Ready" : "Not Ready";
-    } catch (error) {
-      console.error("Error checking voucher status:", error);
-      return "Unknown";
-    }
   };
 
   // Check if component can be sent based on stock availability
@@ -374,8 +365,8 @@ export default function StoreDashboard() {
     }
   };
 
-  // Check if component can be sent
-  const canSendComponent = (voucherId: string, component: string) => {
+  // Check if component can be sent (synchronous version for UI)
+  const canSendComponentSync = (voucherId: string, component: string) => {
     const alreadySent = sentComponents[voucherId] || [];
     if (component === "All Components") {
       return alreadySent.length === 0; // Can only send all if nothing has been sent
@@ -540,24 +531,24 @@ export default function StoreDashboard() {
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem 
                                 onClick={() => handleSendComponent(order.voucher_number, "Sub Assembly")}
-                                disabled={!canSendComponent(order.voucher_number, "Sub Assembly")}
+                                disabled={!canSendComponentSync(order.voucher_number, "Sub Assembly")}
                               >
                                 Send Sub Assembly
-                                {!canSendComponent(order.voucher_number, "Sub Assembly") && " (Already Sent)"}
+                                {!canSendComponentSync(order.voucher_number, "Sub Assembly") && " (Already Sent)"}
                               </DropdownMenuItem>
                               <DropdownMenuItem 
                                 onClick={() => handleSendComponent(order.voucher_number, "Accessories")}
-                                disabled={!canSendComponent(order.voucher_number, "Accessories")}
+                                disabled={!canSendComponentSync(order.voucher_number, "Accessories")}
                               >
                                 Send Accessories
-                                {!canSendComponent(order.voucher_number, "Accessories") && " (Already Sent)"}
+                                {!canSendComponentSync(order.voucher_number, "Accessories") && " (Already Sent)"}
                               </DropdownMenuItem>
                               <DropdownMenuItem 
                                 onClick={() => handleSendComponent(order.voucher_number, "Main Assembly")}
-                                disabled={!canSendComponent(order.voucher_number, "Main Assembly")}
+                                disabled={!canSendComponentSync(order.voucher_number, "Main Assembly")}
                               >
                                 Send Main Assembly
-                                {!canSendComponent(order.voucher_number, "Main Assembly") && " (Already Sent)"}
+                                {!canSendComponentSync(order.voucher_number, "Main Assembly") && " (Already Sent)"}
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
