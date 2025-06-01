@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -12,10 +11,11 @@ import EnhancedGRNReceiving from "@/components/Store/EnhancedGRNReceiving";
 import ProductionFeedback from "@/components/Store/ProductionFeedback";
 import InventoryManagement from "@/components/Store/InventoryManagement";
 import SpareOrdersPacking from "@/components/Store/SpareOrdersPacking";
+import BOMKitStatusView from "@/components/Store/BOMKitStatusView";
 import { useToast } from "@/hooks/use-toast";
 import { useInventorySync } from "@/hooks/useInventorySync";
 import { useProductionOrders } from "@/hooks/useProductionOrders";
-import { Layers, RefreshCw, Package, ChevronDown } from "lucide-react";
+import { Layers, RefreshCw, Package, ChevronDown, Eye } from "lucide-react";
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -28,6 +28,8 @@ export default function StoreDashboard() {
   const [materialRequests, setMaterialRequests] = useState<MaterialRequest[]>(mockMaterialRequests);
   const [kitStatuses, setKitStatuses] = useState<Record<string, string>>({});
   const [sentComponents, setSentComponents] = useState<Record<string, string[]>>({});
+  const [selectedOrderForBOM, setSelectedOrderForBOM] = useState<any>(null);
+  const [isBOMViewOpen, setIsBOMViewOpen] = useState(false);
 
   // Auto-sync inventory on component mount
   useEffect(() => {
@@ -62,16 +64,9 @@ export default function StoreDashboard() {
       existingKits?.forEach(kit => {
         const voucherNumber = kit.production_orders?.voucher_number;
         if (voucherNumber && kit.kit_items) {
-          // Determine which component types have been sent based on BOM types in kit items
-          const bomTypes = new Set<string>();
-          kit.kit_items.forEach((item: any) => {
-            // We'll need to get BOM type from the BOM table for this raw material
-            // For now, we'll track based on status
-          });
-
           // Parse status to determine sent components
           if (kit.status?.includes("ACCESSORY")) {
-            newSentComponents[voucherNumber] = [...(newSentComponents[voucherNumber] || []), "Accessory"];
+            newSentComponents[voucherNumber] = [...(newSentComponents[voucherNumber] || []), "Accessories"];
           }
           if (kit.status?.includes("SUB ASSEMBLY")) {
             newSentComponents[voucherNumber] = [...(newSentComponents[voucherNumber] || []), "Sub Assembly"];
@@ -80,7 +75,7 @@ export default function StoreDashboard() {
             newSentComponents[voucherNumber] = [...(newSentComponents[voucherNumber] || []), "Main Assembly"];
           }
           if (kit.status?.includes("COMPLETE KIT")) {
-            newSentComponents[voucherNumber] = ["Main Assembly", "Sub Assembly", "Accessory"];
+            newSentComponents[voucherNumber] = ["Main Assembly", "Sub Assembly", "Accessories"];
           }
 
           newKitStatuses[voucherNumber] = kit.status || "KIT NOT READY";
@@ -98,17 +93,34 @@ export default function StoreDashboard() {
     syncRawMaterialsToInventory.mutate();
   };
 
-  // Handler for updating kit status
-  const handleKitStatusChange = (voucherId: string, status: string) => {
-    setKitStatuses(prev => ({
-      ...prev,
-      [voucherId]: status
-    }));
-    
-    toast({
-      title: "Kit Status Updated",
-      description: `Kit status has been updated to ${status}`,
-    });
+  // Check voucher status based on BOM availability
+  const checkVoucherStatus = async (productionOrder: any) => {
+    try {
+      const { data: bomItems, error } = await supabase
+        .from("bom")
+        .select(`
+          *,
+          raw_materials!inner(
+            id,
+            material_code,
+            inventory(quantity)
+          )
+        `)
+        .eq("product_id", productionOrder.product_id);
+
+      if (error) throw error;
+
+      const isReady = bomItems?.every(item => {
+        const requiredQty = item.quantity * productionOrder.quantity;
+        const availableQty = item.raw_materials.inventory?.[0]?.quantity || 0;
+        return availableQty >= requiredQty;
+      });
+
+      return isReady ? "Ready" : "Not Ready";
+    } catch (error) {
+      console.error("Error checking voucher status:", error);
+      return "Unknown";
+    }
   };
 
   // Handler for sending components
@@ -178,7 +190,7 @@ export default function StoreDashboard() {
       const componentToBomType: Record<string, string> = {
         "Main Assembly": "main_assembly",
         "Sub Assembly": "sub_assembly",
-        "Accessory": "accessory"
+        "Accessories": "accessory"
       };
 
       // Filter BOM items based on component type
@@ -230,7 +242,7 @@ export default function StoreDashboard() {
 
       // Update sent components tracking
       const newSentComponents = component === "All Components" 
-        ? ["Main Assembly", "Sub Assembly", "Accessory"]
+        ? ["Main Assembly", "Sub Assembly", "Accessories"]
         : [...alreadySent, component];
 
       setSentComponents(prev => ({
@@ -244,14 +256,12 @@ export default function StoreDashboard() {
         newStatus = "COMPLETE KIT SENT";
       } else {
         // Check if all components have been sent
-        const allComponents = ["Main Assembly", "Sub Assembly", "Accessory"];
+        const allComponents = ["Main Assembly", "Sub Assembly", "Accessories"];
         const allSent = allComponents.every(comp => newSentComponents.includes(comp));
         
         if (allSent) {
           newStatus = "COMPLETE KIT SENT";
-        } else if (newSentComponents.includes("Main Assembly") && newSentComponents.includes("Sub Assembly") && newSentComponents.includes("Accessory")) {
-          newStatus = "COMPLETE KIT SENT";
-        } else if (newSentComponents.includes("Accessory") && newSentComponents.length === 1) {
+        } else if (newSentComponents.includes("Accessories") && newSentComponents.length === 1) {
           newStatus = "ACCESSORY COMPONENTS SENT";
         } else if (newSentComponents.includes("Sub Assembly") && newSentComponents.length === 1) {
           newStatus = "SUB ASSEMBLY COMPONENTS SENT";
@@ -298,7 +308,6 @@ export default function StoreDashboard() {
     return !alreadySent.includes(component);
   };
 
-  // Handler for receiving GRN
   const handleReceiveGRN = (id: string, quantity: number) => {
     const grn = grns.find(g => g.id === id);
     
@@ -320,7 +329,6 @@ export default function StoreDashboard() {
     );
   };
 
-  // Handler for GRN discrepancy reporting to purchase
   const handleDiscrepancyReport = (grnId: string, expectedQty: number, receivedQty: number, poNumber: string) => {
     console.log(`Discrepancy reported for GRN ${grnId}:`);
     console.log(`PO: ${poNumber}, Expected: ${expectedQty}, Received: ${receivedQty}`);
@@ -332,7 +340,6 @@ export default function StoreDashboard() {
     });
   };
 
-  // Handler for material request approval
   const handleApproveMaterialRequest = (id: string) => {
     setMaterialRequests(prev =>
       prev.map(request =>
@@ -346,7 +353,6 @@ export default function StoreDashboard() {
     });
   };
 
-  // Handler for material request rejection
   const handleRejectMaterialRequest = (id: string) => {
     setMaterialRequests(prev =>
       prev.map(request =>
@@ -362,8 +368,8 @@ export default function StoreDashboard() {
 
   const getKitStatusColor = (status: string) => {
     switch (status) {
-      case 'KIT NOT READY': return 'secondary';
-      case 'KIT READY': return 'default';
+      case 'Ready': return 'default';
+      case 'Not Ready': return 'destructive';
       case 'COMPLETE KIT SENT': return 'default';
       case 'ACCESSORY COMPONENTS SENT': return 'warning';
       case 'SUB ASSEMBLY COMPONENTS SENT': return 'warning';
@@ -373,11 +379,38 @@ export default function StoreDashboard() {
     }
   };
 
-  const getKitStatusDisplay = (voucherId: string, originalStatus: string) => {
-    const currentStatus = kitStatuses[voucherId];
-    if (currentStatus) return currentStatus;
-    
-    return originalStatus === 'NOT_PREPARED' ? 'KIT NOT READY' : 'KIT READY';
+  const getVoucherStatus = async (productionOrder: any) => {
+    try {
+      const { data: bomItems, error } = await supabase
+        .from("bom")
+        .select(`
+          *,
+          raw_materials!inner(
+            id,
+            material_code,
+            inventory(quantity)
+          )
+        `)
+        .eq("product_id", productionOrder.product_id);
+
+      if (error) throw error;
+
+      const isReady = bomItems?.every(item => {
+        const requiredQty = item.quantity * productionOrder.quantity;
+        const availableQty = item.raw_materials.inventory?.[0]?.quantity || 0;
+        return availableQty >= requiredQty;
+      });
+
+      return isReady ? "Ready" : "Not Ready";
+    } catch (error) {
+      console.error("Error checking voucher status:", error);
+      return "Unknown";
+    }
+  };
+
+  const handleViewBOMStatus = (order: any) => {
+    setSelectedOrderForBOM(order);
+    setIsBOMViewOpen(true);
   };
 
   return (
@@ -418,7 +451,7 @@ export default function StoreDashboard() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Package className="h-5 w-5" />
-                Production Voucher Management ({productionOrders?.length || 0})
+                Voucher & Kit Management ({productionOrders?.length || 0})
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -427,37 +460,27 @@ export default function StoreDashboard() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Voucher No.</TableHead>
-                      <TableHead>Product</TableHead>
-                      <TableHead>Customer</TableHead>
-                      <TableHead>Scheduled Date</TableHead>
+                      <TableHead>Product Name</TableHead>
+                      <TableHead>Scheduled Production Date</TableHead>
                       <TableHead>Quantity</TableHead>
-                      <TableHead>Kit Status</TableHead>
+                      <TableHead>Voucher Status</TableHead>
                       <TableHead>Send Components</TableHead>
-                      <TableHead>Status</TableHead>
+                      <TableHead>View BOM & Kit Status</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {productionOrders.map((order) => (
                       <TableRow key={order.id}>
                         <TableCell className="font-mono">{order.voucher_number}</TableCell>
-                        <TableCell>{order.production_schedules?.projections?.products?.name}</TableCell>
-                        <TableCell>{order.production_schedules?.projections?.customers?.name}</TableCell>
+                        <TableCell className="font-medium">
+                          {order.production_schedules?.projections?.products?.name}
+                        </TableCell>
                         <TableCell>{format(new Date(order.scheduled_date), 'MMM dd, yyyy')}</TableCell>
                         <TableCell>{order.quantity}</TableCell>
                         <TableCell>
-                          <Select onValueChange={(value) => handleKitStatusChange(order.voucher_number, value)}>
-                            <SelectTrigger className="w-[120px]">
-                              <SelectValue placeholder={
-                                <Badge variant={getKitStatusColor(getKitStatusDisplay(order.voucher_number, order.kit_status)) as any}>
-                                  {getKitStatusDisplay(order.voucher_number, order.kit_status)}
-                                </Badge>
-                              } />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="KIT NOT READY">Not Ready</SelectItem>
-                              <SelectItem value="KIT READY">Ready</SelectItem>
-                            </SelectContent>
-                          </Select>
+                          <Badge variant={getKitStatusColor(getVoucherStatus(order)) as any}>
+                            {getVoucherStatus(order)}
+                          </Badge>
                         </TableCell>
                         <TableCell>
                           <DropdownMenu>
@@ -469,11 +492,18 @@ export default function StoreDashboard() {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem 
-                                onClick={() => handleSendComponent(order.voucher_number, "All Components")}
-                                disabled={!canSendComponent(order.voucher_number, "All Components")}
+                                onClick={() => handleSendComponent(order.voucher_number, "Sub Assembly")}
+                                disabled={!canSendComponent(order.voucher_number, "Sub Assembly")}
                               >
-                                Send All Components
-                                {!canSendComponent(order.voucher_number, "All Components") && " (Already Sent)"}
+                                Send Sub Assembly
+                                {!canSendComponent(order.voucher_number, "Sub Assembly") && " (Already Sent)"}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={() => handleSendComponent(order.voucher_number, "Accessories")}
+                                disabled={!canSendComponent(order.voucher_number, "Accessories")}
+                              >
+                                Send Accessories
+                                {!canSendComponent(order.voucher_number, "Accessories") && " (Already Sent)"}
                               </DropdownMenuItem>
                               <DropdownMenuItem 
                                 onClick={() => handleSendComponent(order.voucher_number, "Main Assembly")}
@@ -482,27 +512,19 @@ export default function StoreDashboard() {
                                 Send Main Assembly
                                 {!canSendComponent(order.voucher_number, "Main Assembly") && " (Already Sent)"}
                               </DropdownMenuItem>
-                              <DropdownMenuItem 
-                                onClick={() => handleSendComponent(order.voucher_number, "Sub Assembly")}
-                                disabled={!canSendComponent(order.voucher_number, "Sub Assembly")}
-                              >
-                                Send Sub Assembly
-                                {!canSendComponent(order.voucher_number, "Sub Assembly") && " (Already Sent)"}
-                              </DropdownMenuItem>
-                              <DropdownMenuItem 
-                                onClick={() => handleSendComponent(order.voucher_number, "Accessory")}
-                                disabled={!canSendComponent(order.voucher_number, "Accessory")}
-                              >
-                                Send Accessory
-                                {!canSendComponent(order.voucher_number, "Accessory") && " (Already Sent)"}
-                              </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>
                         <TableCell>
-                          <Badge variant={getKitStatusColor(getKitStatusDisplay(order.voucher_number, order.kit_status)) as any}>
-                            {getKitStatusDisplay(order.voucher_number, order.kit_status)}
-                          </Badge>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="gap-2"
+                            onClick={() => handleViewBOMStatus(order)}
+                          >
+                            <Eye className="h-4 w-4" />
+                            View BOM & Kit Status
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -515,6 +537,21 @@ export default function StoreDashboard() {
               )}
             </CardContent>
           </Card>
+
+          <BOMKitStatusView
+            isOpen={isBOMViewOpen}
+            onClose={() => {
+              setIsBOMViewOpen(false);
+              setSelectedOrderForBOM(null);
+            }}
+            productionOrder={selectedOrderForBOM}
+            onComponentSent={(component) => {
+              if (selectedOrderForBOM) {
+                handleSendComponent(selectedOrderForBOM.voucher_number, component);
+              }
+            }}
+            sentComponents={selectedOrderForBOM ? sentComponents[selectedOrderForBOM.voucher_number] || [] : []}
+          />
         </TabsContent>
 
         <TabsContent value="grn">

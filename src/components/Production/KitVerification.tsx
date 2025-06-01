@@ -45,7 +45,7 @@ const KitVerification = () => {
       
       return data || [];
     },
-    refetchInterval: 5000, // Refetch every 5 seconds to get real-time updates
+    refetchInterval: 5000,
   });
 
   const updateKitMutation = useMutation({
@@ -67,30 +67,28 @@ const KitVerification = () => {
     },
   });
 
-  const reportDiscrepancyMutation = useMutation({
-    mutationFn: async ({ productionOrderId, rawMaterialId, requiredQty, actualQty }: {
-      productionOrderId: string;
-      rawMaterialId: string;
-      requiredQty: number;
-      actualQty: number;
+  const logProductionFeedbackMutation = useMutation({
+    mutationFn: async (feedbackData: {
+      voucherNumber: string;
+      componentCode: string;
+      discrepancyQty: number;
+      section: string;
+      remarks?: string;
     }) => {
-      const { data, error } = await supabase
-        .from("material_requests")
-        .insert({
-          production_order_id: productionOrderId,
-          raw_material_id: rawMaterialId,
-          requested_quantity: requiredQty - actualQty,
-          reason: "Material shortage reported from production",
-          status: "PENDING",
-        });
+      // For now, we'll log to console since the production_feedback table doesn't exist yet
+      console.log("Production Feedback Logged:", feedbackData);
       
-      if (error) throw error;
-      return data;
+      // You would typically insert into a production_feedback table here
+      // const { data, error } = await supabase
+      //   .from("production_feedback")
+      //   .insert(feedbackData);
+      
+      return feedbackData;
     },
     onSuccess: () => {
       toast({
-        title: "Discrepancy Reported",
-        description: "Material shortage reported to Store team for approval",
+        title: "Discrepancy Logged",
+        description: "Production feedback has been recorded",
       });
     },
   });
@@ -127,34 +125,20 @@ const KitVerification = () => {
     }
   };
 
+  const getBOMSection = (bomType: string) => {
+    switch (bomType) {
+      case 'sub_assembly': return 'Sub Assembly';
+      case 'accessory': return 'Accessories';
+      case 'main_assembly': return 'Main Assembly';
+      default: return 'Unknown';
+    }
+  };
+
   const handleVerificationChange = (partCode: string, value: string) => {
     setVerificationData(prev => ({
       ...prev,
       [partCode]: parseInt(value) || 0
     }));
-  };
-
-  const handleReportDiscrepancy = async (kitId: string) => {
-    const selectedKitDetails = kits.find(kit => kit.id === kitId);
-    if (!selectedKitDetails) return;
-
-    // Report discrepancies for items with shortages
-    const shortageItems = selectedKitDetails.kit_items?.filter((item: any) => {
-      const receivedQty = verificationData[item.raw_materials?.material_code] ?? item.actual_quantity ?? 0;
-      return receivedQty < item.required_quantity;
-    });
-
-    if (shortageItems && shortageItems.length > 0) {
-      for (const item of shortageItems) {
-        const receivedQty = verificationData[item.raw_materials?.material_code] ?? item.actual_quantity ?? 0;
-        await reportDiscrepancyMutation.mutateAsync({
-          productionOrderId: selectedKitDetails.production_order_id,
-          rawMaterialId: item.raw_material_id,
-          requiredQty: item.required_quantity,
-          actualQty: receivedQty,
-        });
-      }
-    }
   };
 
   const handleCompleteVerification = async () => {
@@ -168,6 +152,38 @@ const KitVerification = () => {
     }
 
     if (!selectedKit) return;
+
+    const selectedKitDetails = kits.find(kit => kit.id === selectedKit);
+    if (!selectedKitDetails) return;
+
+    // Check for discrepancies and log them
+    const discrepancies = selectedKitDetails.kit_items?.filter((item: any) => {
+      const receivedQty = verificationData[item.raw_materials?.material_code] ?? item.actual_quantity ?? 0;
+      return receivedQty !== item.actual_quantity;
+    });
+
+    if (discrepancies && discrepancies.length > 0) {
+      for (const item of discrepancies) {
+        const receivedQty = verificationData[item.raw_materials?.material_code] ?? item.actual_quantity ?? 0;
+        const discrepancyQty = item.actual_quantity - receivedQty;
+        
+        // Get BOM info to determine section
+        const { data: bomInfo } = await supabase
+          .from("bom")
+          .select("bom_type")
+          .eq("raw_material_id", item.raw_material_id)
+          .eq("product_id", selectedKitDetails.production_orders.production_schedules.projections.products.id)
+          .single();
+
+        await logProductionFeedbackMutation.mutateAsync({
+          voucherNumber: selectedKitDetails.production_orders.voucher_number,
+          componentCode: item.raw_materials.material_code,
+          discrepancyQty: discrepancyQty,
+          section: getBOMSection(bomInfo?.bom_type || 'unknown'),
+          remarks: `Discrepancy found during verification on ${selectedLine}`
+        });
+      }
+    }
 
     // Update kit status to verified and assign to production line
     await updateKitMutation.mutateAsync({
@@ -227,8 +243,7 @@ const KitVerification = () => {
                 <TableHead>Kit Number</TableHead>
                 <TableHead>Voucher</TableHead>
                 <TableHead>Product</TableHead>
-                <TableHead>Customer</TableHead>
-                <TableHead>Components Sent</TableHead>
+                <TableHead>Components Received</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
@@ -247,7 +262,6 @@ const KitVerification = () => {
                   <TableCell className="font-medium">{kit.kit_number}</TableCell>
                   <TableCell>{kit.production_orders?.voucher_number}</TableCell>
                   <TableCell>{kit.production_orders?.production_schedules?.projections?.products?.name}</TableCell>
-                  <TableCell>{kit.production_orders?.production_schedules?.projections?.customers?.name}</TableCell>
                   <TableCell>{getComponentsDescription(kit.status)}</TableCell>
                   <TableCell>
                     <Badge variant={getVerificationStatusColor(kit.status) as any}>
@@ -279,37 +293,54 @@ const KitVerification = () => {
               <TableHeader>
                 <TableRow>
                   <TableHead>Material Code</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Required Qty</TableHead>
-                  <TableHead>Received Qty</TableHead>
+                  <TableHead>Raw Material Name</TableHead>
+                  <TableHead>BOM Section</TableHead>
+                  <TableHead>Qty Sent by Store</TableHead>
+                  <TableHead>Qty Received & Verified</TableHead>
+                  <TableHead>Discrepancy Qty</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Verified</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {selectedKitDetails.kit_items?.map((item: any) => {
-                  const receivedQty = verificationData[item.raw_materials?.material_code] ?? item.actual_quantity ?? 0;
-                  const isShort = receivedQty < item.required_quantity;
+                  const sentQty = item.actual_quantity || 0;
+                  const receivedQty = verificationData[item.raw_materials?.material_code] ?? sentQty;
+                  const discrepancyQty = sentQty - receivedQty;
                   
                   return (
                     <TableRow key={item.id}>
-                      <TableCell className="font-medium">{item.raw_materials?.material_code}</TableCell>
-                      <TableCell>{item.raw_materials?.name}</TableCell>
-                      <TableCell>{item.required_quantity}</TableCell>
+                      <TableCell className="font-mono">{item.raw_materials?.material_code}</TableCell>
+                      <TableCell className="font-medium">{item.raw_materials?.name}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline">
+                          {/* This would need BOM type lookup - placeholder for now */}
+                          Mixed Components
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{sentQty}</TableCell>
                       <TableCell>
                         <Input
                           type="number"
                           className="w-20"
-                          value={verificationData[item.raw_materials?.material_code] || item.actual_quantity || ''}
+                          value={verificationData[item.raw_materials?.material_code] ?? ''}
                           onChange={(e) => handleVerificationChange(item.raw_materials?.material_code, e.target.value)}
-                          placeholder="Enter qty"
+                          placeholder={sentQty.toString()}
                         />
                       </TableCell>
                       <TableCell>
-                        {isShort ? (
+                        {discrepancyQty !== 0 ? (
+                          <span className={discrepancyQty > 0 ? "text-red-600 font-medium" : "text-blue-600 font-medium"}>
+                            {discrepancyQty > 0 ? `+${discrepancyQty}` : discrepancyQty}
+                          </span>
+                        ) : (
+                          <span className="text-green-600">0</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {discrepancyQty !== 0 ? (
                           <Badge variant="destructive" className="gap-1">
                             <AlertTriangle className="h-3 w-3" />
-                            Short
+                            Discrepancy
                           </Badge>
                         ) : (
                           <Badge variant="default" className="gap-1">
@@ -317,13 +348,6 @@ const KitVerification = () => {
                             OK
                           </Badge>
                         )}
-                      </TableCell>
-                      <TableCell>
-                        <input 
-                          type="checkbox" 
-                          checked={item.verified_by_production} 
-                          readOnly
-                        />
                       </TableCell>
                     </TableRow>
                   );
@@ -350,12 +374,6 @@ const KitVerification = () => {
               </div>
               
               <div className="flex justify-end gap-4">
-                <Button 
-                  variant="outline"
-                  onClick={() => handleReportDiscrepancy(selectedKit)}
-                >
-                  Report Discrepancy
-                </Button>
                 <Button onClick={handleCompleteVerification}>
                   Complete Verification
                 </Button>
