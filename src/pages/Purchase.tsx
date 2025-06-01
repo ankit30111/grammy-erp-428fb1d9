@@ -26,6 +26,7 @@ const Purchase = () => {
   const [selectedVendor, setSelectedVendor] = useState("");
   const [deliveryDate, setDeliveryDate] = useState("");
   const [notes, setNotes] = useState("");
+  const [editableQuantities, setEditableQuantities] = useState<Record<string, number>>({});
   
   const { data: projections } = useProjections();
   const { data: purchaseOrders } = usePurchaseOrders();
@@ -106,9 +107,30 @@ const Purchase = () => {
   const handleMaterialSelect = (materialId: string, checked: boolean) => {
     if (checked) {
       setSelectedMaterials([...selectedMaterials, materialId]);
+      // Initialize editable quantity with shortage quantity
+      const shortage = shortages.find(s => s.raw_material_id === materialId);
+      if (shortage) {
+        setEditableQuantities(prev => ({
+          ...prev,
+          [materialId]: shortage.shortage_quantity
+        }));
+      }
     } else {
       setSelectedMaterials(selectedMaterials.filter(id => id !== materialId));
+      // Remove from editable quantities
+      setEditableQuantities(prev => {
+        const newQuantities = { ...prev };
+        delete newQuantities[materialId];
+        return newQuantities;
+      });
     }
+  };
+
+  const handleQuantityChange = (materialId: string, quantity: number) => {
+    setEditableQuantities(prev => ({
+      ...prev,
+      [materialId]: quantity
+    }));
   };
 
   const handleCreatePO = async () => {
@@ -124,7 +146,7 @@ const Purchase = () => {
     const selectedShortages = shortages.filter(s => selectedMaterials.includes(s.raw_material_id));
     const items = selectedShortages.map(shortage => ({
       raw_material_id: shortage.raw_material_id,
-      quantity: shortage.shortage_quantity,
+      quantity: editableQuantities[shortage.raw_material_id] || shortage.shortage_quantity,
       unit_price: 0, // User can update this later
     }));
 
@@ -141,6 +163,7 @@ const Purchase = () => {
       setSelectedVendor("");
       setDeliveryDate("");
       setNotes("");
+      setEditableQuantities({});
       
       // Refresh shortages
       calculateShortages();
@@ -199,34 +222,75 @@ const Purchase = () => {
                         Create PO for Selected
                       </Button>
                     </DialogTrigger>
-                    <DialogContent>
+                    <DialogContent className="max-w-4xl">
                       <DialogHeader>
                         <DialogTitle>Create Purchase Order</DialogTitle>
                       </DialogHeader>
                       <div className="space-y-4">
-                        <div>
-                          <Label>Vendor</Label>
-                          <Select value={selectedVendor} onValueChange={setSelectedVendor}>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select vendor" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {getAvailableVendors().map((vendor) => (
-                                <SelectItem key={vendor.id} value={vendor.id}>
-                                  {vendor.name} ({vendor.vendor_code})
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <Label>Vendor</Label>
+                            <Select value={selectedVendor} onValueChange={setSelectedVendor}>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select vendor" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {getAvailableVendors().map((vendor) => (
+                                  <SelectItem key={vendor.id} value={vendor.id}>
+                                    {vendor.name} ({vendor.vendor_code})
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div>
+                            <Label>Expected Delivery Date</Label>
+                            <Input
+                              type="date"
+                              value={deliveryDate}
+                              onChange={(e) => setDeliveryDate(e.target.value)}
+                            />
+                          </div>
                         </div>
-                        <div>
-                          <Label>Expected Delivery Date</Label>
-                          <Input
-                            type="date"
-                            value={deliveryDate}
-                            onChange={(e) => setDeliveryDate(e.target.value)}
-                          />
-                        </div>
+
+                        {selectedMaterials.length > 0 && (
+                          <div>
+                            <Label>Selected Materials & Quantities</Label>
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead>Material Code</TableHead>
+                                  <TableHead>Material Name</TableHead>
+                                  <TableHead>Shortage Qty</TableHead>
+                                  <TableHead>Order Qty</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {selectedMaterials.map((materialId) => {
+                                  const shortage = shortages.find(s => s.raw_material_id === materialId);
+                                  if (!shortage) return null;
+                                  return (
+                                    <TableRow key={materialId}>
+                                      <TableCell className="font-mono">{shortage.material_code}</TableCell>
+                                      <TableCell>{shortage.material_name}</TableCell>
+                                      <TableCell>{shortage.shortage_quantity}</TableCell>
+                                      <TableCell>
+                                        <Input
+                                          type="number"
+                                          min="1"
+                                          value={editableQuantities[materialId] || shortage.shortage_quantity}
+                                          onChange={(e) => handleQuantityChange(materialId, parseInt(e.target.value) || 0)}
+                                          className="w-24"
+                                        />
+                                      </TableCell>
+                                    </TableRow>
+                                  );
+                                })}
+                              </TableBody>
+                            </Table>
+                          </div>
+                        )}
+
                         <div>
                           <Label>Notes</Label>
                           <Input

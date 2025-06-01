@@ -7,13 +7,14 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Package, Plus } from "lucide-react";
+import { Package, Plus, RefreshCw } from "lucide-react";
 import { usePurchaseOrders } from "@/hooks/usePurchaseOrders";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
 interface GRNItem {
   raw_material_id: string;
+  material_code: string;
   material_name: string;
   po_quantity: number;
   received_quantity: number;
@@ -26,7 +27,7 @@ const GRNForm = () => {
   const [grnItems, setGRNItems] = useState<GRNItem[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const { data: purchaseOrders } = usePurchaseOrders();
+  const { data: purchaseOrders, refetch: refetchPOs, isLoading } = usePurchaseOrders();
   const { toast } = useToast();
 
   const handlePOSelection = (poId: string) => {
@@ -35,6 +36,7 @@ const GRNForm = () => {
     if (po?.purchase_order_items) {
       const items: GRNItem[] = po.purchase_order_items.map(item => ({
         raw_material_id: item.raw_material_id,
+        material_code: item.raw_materials?.material_code || '',
         material_name: item.raw_materials?.name || '',
         po_quantity: item.quantity,
         received_quantity: 0
@@ -59,6 +61,18 @@ const GRNForm = () => {
       return;
     }
 
+    // Check if any items have been received
+    const hasReceivedItems = grnItems.some(item => item.received_quantity > 0);
+    
+    if (!hasReceivedItems) {
+      toast({
+        title: "No items received",
+        description: "Please enter received quantities for at least one item",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       // Create GRN - let the trigger generate the grn_number
@@ -78,8 +92,9 @@ const GRNForm = () => {
 
       if (grnError) throw grnError;
 
-      // Create GRN items
-      const grnItemsData = grnItems.map(item => ({
+      // Create GRN items only for items that were actually received
+      const receivedItems = grnItems.filter(item => item.received_quantity > 0);
+      const grnItemsData = receivedItems.map(item => ({
         grn_id: grn.id,
         raw_material_id: item.raw_material_id,
         po_quantity: item.po_quantity,
@@ -116,15 +131,30 @@ const GRNForm = () => {
     }
   };
 
-  const pendingPOs = purchaseOrders?.filter(po => po.status !== 'COMPLETED') || [];
+  // Filter for purchase orders that can have GRNs created
+  const availablePOs = purchaseOrders?.filter(po => 
+    po.status === 'PENDING' || po.status === 'SENT' || po.status === 'APPROVED'
+  ) || [];
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Package className="h-5 w-5" />
-          Create GRN (Goods Receipt Note)
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2">
+            <Package className="h-5 w-5" />
+            Create GRN (Goods Receipt Note)
+          </CardTitle>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => refetchPOs()}
+            disabled={isLoading}
+            className="gap-2"
+          >
+            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+            Refresh POs
+          </Button>
+        </div>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -132,16 +162,21 @@ const GRNForm = () => {
             <Label htmlFor="po-select">Purchase Order</Label>
             <Select value={selectedPO} onValueChange={handlePOSelection}>
               <SelectTrigger>
-                <SelectValue placeholder="Select PO" />
+                <SelectValue placeholder={availablePOs.length === 0 ? "No purchase orders available" : "Select PO"} />
               </SelectTrigger>
               <SelectContent>
-                {pendingPOs.map((po) => (
+                {availablePOs.map((po) => (
                   <SelectItem key={po.id} value={po.id}>
-                    {po.po_number} - {po.vendors?.name}
+                    {po.po_number} - {po.vendors?.name} ({po.status})
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+            {availablePOs.length === 0 && (
+              <p className="text-sm text-muted-foreground mt-1">
+                Create purchase orders first to generate GRNs
+              </p>
+            )}
           </div>
 
           <div>
@@ -171,7 +206,8 @@ const GRNForm = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Material</TableHead>
+                  <TableHead>Material Code</TableHead>
+                  <TableHead>Material Name</TableHead>
                   <TableHead>PO Quantity</TableHead>
                   <TableHead>Received Quantity</TableHead>
                 </TableRow>
@@ -179,12 +215,8 @@ const GRNForm = () => {
               <TableBody>
                 {grnItems.map((item, index) => (
                   <TableRow key={index}>
-                    <TableCell>
-                      <div>
-                        <div className="font-medium">{item.material_name}</div>
-                        <div className="text-sm text-muted-foreground">ID: {item.raw_material_id}</div>
-                      </div>
-                    </TableCell>
+                    <TableCell className="font-mono">{item.material_code}</TableCell>
+                    <TableCell>{item.material_name}</TableCell>
                     <TableCell>
                       <Badge variant="outline">{item.po_quantity}</Badge>
                     </TableCell>
@@ -225,7 +257,10 @@ const GRNForm = () => {
 
         {!selectedPO && (
           <div className="text-center py-8 text-muted-foreground">
-            Select a Purchase Order to begin creating GRN
+            {availablePOs.length === 0 
+              ? "No purchase orders available for GRN creation"
+              : "Select a Purchase Order to begin creating GRN"
+            }
           </div>
         )}
       </CardContent>
