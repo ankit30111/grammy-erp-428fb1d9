@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -92,7 +93,7 @@ const OQC = () => {
       if (status === "OQC_PASSED") {
         const { data: order } = await supabase
           .from("production_orders")
-          .select("product_id, quantity")
+          .select("product_id, quantity, voucher_number")
           .eq("id", orderId)
           .single();
 
@@ -103,7 +104,8 @@ const OQC = () => {
               product_id: order.product_id,
               quantity: order.quantity,
               quality_status: "APPROVED",
-              production_date: new Date().toISOString().split('T')[0]
+              production_date: new Date().toISOString().split('T')[0],
+              lot_number: order.voucher_number
             });
         }
       }
@@ -111,6 +113,7 @@ const OQC = () => {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["pending-oqc"] });
       queryClient.invalidateQueries({ queryKey: ["completed-oqc"] });
+      queryClient.invalidateQueries({ queryKey: ["finished-goods"] });
       
       toast({
         title: "OQC Inspection Completed",
