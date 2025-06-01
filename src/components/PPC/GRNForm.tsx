@@ -127,10 +127,11 @@ const GRNForm = () => {
     }
   };
 
-  // Filter for purchase orders that can have GRNs created
-  const availablePOs = purchaseOrders?.filter(po => 
-    po.status === 'PENDING' || po.status === 'SENT' || po.status === 'APPROVED'
-  ) || [];
+  // Show ALL purchase orders, not just filtered ones
+  const availablePOs = purchaseOrders || [];
+
+  console.log('Available POs:', availablePOs);
+  console.log('Total PO count:', availablePOs.length);
 
   return (
     <Card>
