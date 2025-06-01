@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -164,7 +163,7 @@ export default function StoreDashboard() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Store Dashboard</h1>
-          <p className="text-muted-foreground">Manage vouchers, inventory, GRN receiving, and material requests</p>
+          <p className="text-muted-foreground">Manage vouchers, kit preparation, inventory, GRN receiving, and material requests</p>
         </div>
         <div className="flex items-center gap-4">
           <Button 
@@ -184,9 +183,8 @@ export default function StoreDashboard() {
       </div>
 
       <Tabs defaultValue="vouchers" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-6">
-          <TabsTrigger value="vouchers">Voucher Management</TabsTrigger>
-          <TabsTrigger value="productions">Kit Management</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-5">
+          <TabsTrigger value="vouchers">Voucher & Kit Management</TabsTrigger>
           <TabsTrigger value="grn">GRN Receiving</TabsTrigger>
           <TabsTrigger value="feedback">Production Feedback</TabsTrigger>
           <TabsTrigger value="inventory">Inventory</TabsTrigger>
@@ -194,65 +192,65 @@ export default function StoreDashboard() {
         </TabsList>
 
         <TabsContent value="vouchers">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Package className="h-5 w-5" />
-                Production Voucher Management ({productionOrders?.length || 0})
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {productionOrders?.length ? (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Voucher No.</TableHead>
-                      <TableHead>Product</TableHead>
-                      <TableHead>Customer</TableHead>
-                      <TableHead>Scheduled Date</TableHead>
-                      <TableHead>Quantity</TableHead>
-                      <TableHead>Kit Status</TableHead>
-                      <TableHead>Production Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {productionOrders.map((order) => (
-                      <TableRow key={order.id}>
-                        <TableCell className="font-mono">{order.voucher_number}</TableCell>
-                        <TableCell>{order.production_schedules?.projections?.products?.name}</TableCell>
-                        <TableCell>{order.production_schedules?.projections?.customers?.name}</TableCell>
-                        <TableCell>{format(new Date(order.scheduled_date), 'MMM dd, yyyy')}</TableCell>
-                        <TableCell>{order.quantity}</TableCell>
-                        <TableCell>
-                          <Badge variant={getKitStatusColor(order.kit_status) as any}>
-                            {order.kit_status?.replace('_', ' ')}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={order.status === 'PENDING' ? 'secondary' : 'default'}>
-                            {order.status}
-                          </Badge>
-                        </TableCell>
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Package className="h-5 w-5" />
+                  Production Voucher Management ({productionOrders?.length || 0})
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {productionOrders?.length ? (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Voucher No.</TableHead>
+                        <TableHead>Product</TableHead>
+                        <TableHead>Customer</TableHead>
+                        <TableHead>Scheduled Date</TableHead>
+                        <TableHead>Quantity</TableHead>
+                        <TableHead>Kit Status</TableHead>
+                        <TableHead>Production Status</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  No production vouchers found
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
+                    </TableHeader>
+                    <TableBody>
+                      {productionOrders.map((order) => (
+                        <TableRow key={order.id}>
+                          <TableCell className="font-mono">{order.voucher_number}</TableCell>
+                          <TableCell>{order.production_schedules?.projections?.products?.name}</TableCell>
+                          <TableCell>{order.production_schedules?.projections?.customers?.name}</TableCell>
+                          <TableCell>{format(new Date(order.scheduled_date), 'MMM dd, yyyy')}</TableCell>
+                          <TableCell>{order.quantity}</TableCell>
+                          <TableCell>
+                            <Badge variant={getKitStatusColor(order.kit_status) as any}>
+                              {order.kit_status?.replace('_', ' ')}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={order.status === 'PENDING' ? 'secondary' : 'default'}>
+                              {order.status}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No production vouchers found
+                  </div>
+                )}
+              </CardContent>
+            </Card>
 
-        <TabsContent value="productions">
-          <EnhancedScheduledProduction 
-            productions={productions}
-            onStatusChange={handleKitStatusChange}
-            onKitReceivedChange={handleKitReceivedChange}
-            onShortageReportChange={handleShortageReportChange}
-          />
+            <EnhancedScheduledProduction 
+              productions={productions}
+              onStatusChange={handleKitStatusChange}
+              onKitReceivedChange={handleKitReceivedChange}
+              onShortageReportChange={handleShortageReportChange}
+            />
+          </div>
         </TabsContent>
 
         <TabsContent value="grn">

@@ -1,4 +1,3 @@
-
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -180,11 +179,10 @@ const PlanningDashboard = () => {
         </div>
 
         <Tabs defaultValue="projections" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="projections">Customer Projections</TabsTrigger>
             <TabsTrigger value="scheduling">Scheduling Production</TabsTrigger>
             <TabsTrigger value="schedule">Production Schedule</TabsTrigger>
-            <TabsTrigger value="materials">Raw Material Status</TabsTrigger>
           </TabsList>
 
           <TabsContent value="projections">
@@ -377,20 +375,6 @@ const PlanningDashboard = () => {
                     No production schedules available
                   </div>
                 )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="materials">
-            <Card>
-              <CardHeader>
-                <CardTitle>Raw Material Status</CardTitle>
-                <CardDescription>Track raw material availability and shortages</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-4 text-muted-foreground">
-                  Raw material status will be displayed here
-                </div>
               </CardContent>
             </Card>
           </TabsContent>
