@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Package, CheckCircle, AlertTriangle, Factory } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -16,8 +16,9 @@ const KitVerification = () => {
   const [verificationData, setVerificationData] = useState<Record<string, number>>({});
   const [selectedLine, setSelectedLine] = useState<string>("");
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
-  const { data: kits = [] } = useQuery({
+  const { data: kits = [], refetch } = useQuery({
     queryKey: ["kit-verification"],
     queryFn: async () => {
       const { data } = await supabase
@@ -26,7 +27,13 @@ const KitVerification = () => {
           *,
           production_orders!inner(
             voucher_number,
-            products!inner(name)
+            quantity,
+            production_schedules!inner(
+              projections!inner(
+                products!inner(name),
+                customers!inner(name)
+              )
+            )
           ),
           kit_items(
             *,
@@ -36,6 +43,53 @@ const KitVerification = () => {
         .eq("status", "PREPARING");
       
       return data || [];
+    },
+    refetchInterval: 5000, // Refetch every 5 seconds to get real-time updates
+  });
+
+  const updateKitMutation = useMutation({
+    mutationFn: async ({ kitId, updates }: { kitId: string; updates: any }) => {
+      const { data, error } = await supabase
+        .from("kit_preparation")
+        .update(updates)
+        .eq("id", kitId)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["kit-verification"] });
+      refetch();
+    },
+  });
+
+  const reportDiscrepancyMutation = useMutation({
+    mutationFn: async ({ productionOrderId, rawMaterialId, requiredQty, actualQty }: {
+      productionOrderId: string;
+      rawMaterialId: string;
+      requiredQty: number;
+      actualQty: number;
+    }) => {
+      const { data, error } = await supabase
+        .from("material_requests")
+        .insert({
+          production_order_id: productionOrderId,
+          raw_material_id: rawMaterialId,
+          requested_quantity: requiredQty - actualQty,
+          reason: "Material shortage reported from production",
+          status: "PENDING",
+        });
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      toast({
+        title: "Discrepancy Reported",
+        description: "Material shortage reported to Store team for approval",
+      });
     },
   });
 
@@ -62,16 +116,30 @@ const KitVerification = () => {
     }));
   };
 
-  const handleReportDiscrepancy = (kitId: string) => {
-    // Send discrepancy report back to store dashboard
-    console.log(`Reporting discrepancy for kit ${kitId}`);
-    toast({
-      title: "Discrepancy Reported",
-      description: "Material shortage reported to Store team for approval",
+  const handleReportDiscrepancy = async (kitId: string) => {
+    const selectedKitDetails = kits.find(kit => kit.id === kitId);
+    if (!selectedKitDetails) return;
+
+    // Report discrepancies for items with shortages
+    const shortageItems = selectedKitDetails.kit_items?.filter((item: any) => {
+      const receivedQty = verificationData[item.raw_materials?.material_code] ?? item.actual_quantity ?? 0;
+      return receivedQty < item.required_quantity;
     });
+
+    if (shortageItems && shortageItems.length > 0) {
+      for (const item of shortageItems) {
+        const receivedQty = verificationData[item.raw_materials?.material_code] ?? item.actual_quantity ?? 0;
+        await reportDiscrepancyMutation.mutateAsync({
+          productionOrderId: selectedKitDetails.production_order_id,
+          rawMaterialId: item.raw_material_id,
+          requiredQty: item.required_quantity,
+          actualQty: receivedQty,
+        });
+      }
+    }
   };
 
-  const handleCompleteVerification = () => {
+  const handleCompleteVerification = async () => {
     if (!selectedLine) {
       toast({
         title: "Select Production Line",
@@ -80,6 +148,17 @@ const KitVerification = () => {
       });
       return;
     }
+
+    if (!selectedKit) return;
+
+    // Update kit status to verified and assign to production line
+    await updateKitMutation.mutateAsync({
+      kitId: selectedKit,
+      updates: {
+        status: "VERIFIED",
+        sent_to_production_at: new Date().toISOString(),
+      }
+    });
 
     toast({
       title: "Kit Verified",
@@ -130,6 +209,7 @@ const KitVerification = () => {
                 <TableHead>Kit Number</TableHead>
                 <TableHead>Voucher</TableHead>
                 <TableHead>Product</TableHead>
+                <TableHead>Customer</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
@@ -147,7 +227,8 @@ const KitVerification = () => {
                   </TableCell>
                   <TableCell className="font-medium">{kit.kit_number}</TableCell>
                   <TableCell>{kit.production_orders?.voucher_number}</TableCell>
-                  <TableCell>{kit.production_orders?.products?.name}</TableCell>
+                  <TableCell>{kit.production_orders?.production_schedules?.projections?.products?.name}</TableCell>
+                  <TableCell>{kit.production_orders?.production_schedules?.projections?.customers?.name}</TableCell>
                   <TableCell>
                     <Badge variant={getVerificationStatusColor(kit.status) as any}>
                       {kit.status}

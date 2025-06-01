@@ -16,6 +16,7 @@ import { useInventorySync } from "@/hooks/useInventorySync";
 import { useProductionOrders } from "@/hooks/useProductionOrders";
 import { Layers, RefreshCw, Package, ChevronDown } from "lucide-react";
 import { format } from "date-fns";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function StoreDashboard() {
   const { toast } = useToast();
@@ -24,6 +25,7 @@ export default function StoreDashboard() {
   const [productions, setProductions] = useState<ScheduledProductionType[]>(mockScheduledProductions);
   const [grns, setGRNs] = useState<GRNItem[]>(mockGRNs);
   const [materialRequests, setMaterialRequests] = useState<MaterialRequest[]>(mockMaterialRequests);
+  const [kitStatuses, setKitStatuses] = useState<Record<string, string>>({});
 
   // Auto-sync inventory on component mount
   useEffect(() => {
@@ -36,7 +38,11 @@ export default function StoreDashboard() {
 
   // Handler for updating kit status
   const handleKitStatusChange = (voucherId: string, status: string) => {
-    // Update the kit status in the database
+    setKitStatuses(prev => ({
+      ...prev,
+      [voucherId]: status
+    }));
+    
     toast({
       title: "Kit Status Updated",
       description: `Kit status has been updated to ${status}`,
@@ -44,14 +50,105 @@ export default function StoreDashboard() {
   };
 
   // Handler for sending components
-  const handleSendComponent = (voucherId: string, component: string) => {
-    // Create kit preparation record for production verification
-    console.log(`Creating kit preparation for voucher ${voucherId} with component: ${component}`);
-    
-    toast({
-      title: "Component Sent",
-      description: `${component} has been sent to production for voucher ${voucherId}`,
-    });
+  const handleSendComponent = async (voucherId: string, component: string) => {
+    try {
+      // Find the production order
+      const productionOrder = productionOrders?.find(order => order.voucher_number === voucherId);
+      if (!productionOrder) {
+        toast({
+          title: "Error",
+          description: "Production order not found",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Create kit preparation record
+      const { data: kitPrep, error: kitError } = await supabase
+        .from("kit_preparation")
+        .insert({
+          production_order_id: productionOrder.id,
+          status: "PREPARING",
+        })
+        .select()
+        .single();
+
+      if (kitError) throw kitError;
+
+      // Get BOM items for this product
+      const { data: bomItems, error: bomError } = await supabase
+        .from("bom")
+        .select(`
+          *,
+          raw_materials!inner(*)
+        `)
+        .eq("product_id", productionOrder.product_id);
+
+      if (bomError) throw bomError;
+
+      // Filter BOM items based on component type
+      let filteredBomItems = bomItems;
+      if (component !== "All Components") {
+        // Filter based on component type (this would need to be enhanced based on your BOM structure)
+        filteredBomItems = bomItems.filter(item => {
+          // You'll need to add component type logic here based on your BOM structure
+          return true; // For now, include all items
+        });
+      }
+
+      // Create kit items
+      if (filteredBomItems && filteredBomItems.length > 0) {
+        const kitItems = filteredBomItems.map(bomItem => ({
+          kit_preparation_id: kitPrep.id,
+          raw_material_id: bomItem.raw_material_id,
+          required_quantity: bomItem.quantity * productionOrder.quantity,
+          actual_quantity: bomItem.quantity * productionOrder.quantity, // Assuming full quantity is sent
+        }));
+
+        const { error: itemsError } = await supabase
+          .from("kit_items")
+          .insert(kitItems);
+
+        if (itemsError) throw itemsError;
+      }
+
+      // Update kit status based on component sent
+      let newStatus = "";
+      switch (component) {
+        case "All Components":
+          newStatus = "COMPLETE KIT SENT";
+          break;
+        case "Main Assembly":
+          newStatus = "MAIN ASSEMBLY COMPONENTS SENT";
+          break;
+        case "Sub Assembly":
+          newStatus = "SUB ASSEMBLY COMPONENTS SENT";
+          break;
+        case "Accessory":
+          newStatus = "ACCESSORY COMPONENTS SENT";
+          break;
+        default:
+          newStatus = "COMPONENTS SENT";
+      }
+
+      setKitStatuses(prev => ({
+        ...prev,
+        [voucherId]: newStatus
+      }));
+
+      toast({
+        title: "Components Sent",
+        description: `${component} has been sent to production for voucher ${voucherId}`,
+      });
+
+    } catch (error) {
+      console.error("Error sending components:", error);
+      toast({
+        title: "Error",
+        description: "Failed to send components to production",
+        variant: "destructive",
+      });
+    }
   };
 
   // Handler for receiving GRN
@@ -118,10 +215,23 @@ export default function StoreDashboard() {
 
   const getKitStatusColor = (status: string) => {
     switch (status) {
-      case 'NOT_PREPARED': return 'secondary';
-      case 'PREPARED': return 'default';
+      case 'NOT_PREPARED': 
+      case 'KIT NOT READY': return 'secondary';
+      case 'PREPARED': 
+      case 'KIT READY': return 'default';
+      case 'COMPLETE KIT SENT': return 'default';
+      case 'ACCESSORY COMPONENTS SENT': return 'warning';
+      case 'SUB ASSEMBLY COMPONENTS SENT': return 'warning';
+      case 'MAIN ASSEMBLY COMPONENTS SENT': return 'warning';
       default: return 'secondary';
     }
+  };
+
+  const getKitStatusDisplay = (voucherId: string, originalStatus: string) => {
+    const currentStatus = kitStatuses[voucherId];
+    if (currentStatus) return currentStatus;
+    
+    return originalStatus === 'NOT_PREPARED' ? 'KIT NOT READY' : 'KIT READY';
   };
 
   return (
@@ -177,6 +287,7 @@ export default function StoreDashboard() {
                       <TableHead>Quantity</TableHead>
                       <TableHead>Kit Status</TableHead>
                       <TableHead>Send Components</TableHead>
+                      <TableHead>Status</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -225,6 +336,11 @@ export default function StoreDashboard() {
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={getKitStatusColor(getKitStatusDisplay(order.voucher_number, order.kit_status)) as any}>
+                            {getKitStatusDisplay(order.voucher_number, order.kit_status)}
+                          </Badge>
                         </TableCell>
                       </TableRow>
                     ))}
