@@ -23,6 +23,7 @@ const ProductionDashboard = () => {
           products!inner(name),
           production_schedules!inner(
             production_line,
+            scheduled_date,
             projections!inner(
               customers!inner(name)
             )
