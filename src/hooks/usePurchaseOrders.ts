@@ -27,7 +27,30 @@ export const usePurchaseOrders = () => {
         .order('created_at', { ascending: false });
       
       if (error) throw error;
-      return data;
+
+      // Get received quantities from the new view for each PO
+      const { data: receivedQuantities, error: receivedError } = await supabase
+        .from('purchase_order_received_quantities')
+        .select('*');
+
+      if (receivedError) throw receivedError;
+
+      // Merge the received quantities data with PO items
+      const enhancedData = data.map(po => ({
+        ...po,
+        purchase_order_items: po.purchase_order_items?.map(item => {
+          const receivedData = receivedQuantities?.find(
+            rq => rq.purchase_order_item_id === item.id
+          );
+          return {
+            ...item,
+            received_quantity: receivedData?.total_received_quantity || 0,
+            pending_quantity: receivedData?.pending_quantity || item.quantity
+          };
+        })
+      }));
+
+      return enhancedData;
     },
   });
 };

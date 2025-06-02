@@ -4,12 +4,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Edit, Eye, Save, X } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { usePurchaseOrders } from "@/hooks/usePurchaseOrders";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -21,6 +20,30 @@ export const EditablePurchaseOrders = () => {
   const [editFormData, setEditFormData] = useState<any>({});
   const queryClient = useQueryClient();
   const { toast } = useToast();
+
+  // Set up real-time subscription for GRN updates
+  useEffect(() => {
+    const channel = supabase
+      .channel('grn-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'grn_items'
+        },
+        (payload) => {
+          console.log('GRN item updated:', payload);
+          // Invalidate purchase orders to refresh received quantities
+          queryClient.invalidateQueries({ queryKey: ['purchase_orders'] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
 
   // Fetch vendors for the dropdown
   const { data: vendors = [] } = useQuery({
@@ -193,10 +216,10 @@ export const EditablePurchaseOrders = () => {
                   </div>
                 )}
 
-                {/* Show PO Items with quantity tracking */}
+                {/* Enhanced PO Items with real-time quantity tracking */}
                 {po.purchase_order_items && po.purchase_order_items.length > 0 && (
                   <div className="mt-4">
-                    <h4 className="font-medium mb-2">Order Items & Tracking:</h4>
+                    <h4 className="font-medium mb-2">Items & Real-time Tracking (IQC + Store Verified):</h4>
                     <Table>
                       <TableHeader>
                         <TableRow>
@@ -206,12 +229,14 @@ export const EditablePurchaseOrders = () => {
                           <TableHead>Received Qty</TableHead>
                           <TableHead>Pending Qty</TableHead>
                           <TableHead>Status</TableHead>
+                          <TableHead>Completion %</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {po.purchase_order_items.map((item) => {
                           const receivedQty = item.received_quantity || 0;
-                          const pendingQty = item.quantity - receivedQty;
+                          const pendingQty = item.pending_quantity || item.quantity;
+                          const completionPercentage = Math.round((receivedQty / item.quantity) * 100);
                           
                           return (
                             <TableRow key={item.id}>
@@ -233,6 +258,20 @@ export const EditablePurchaseOrders = () => {
                                    receivedQty > 0 ? "Partial" : "Pending"}
                                 </Badge>
                               </TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-2">
+                                  <div className="w-16 bg-gray-200 rounded-full h-2">
+                                    <div 
+                                      className={`h-2 rounded-full ${
+                                        completionPercentage === 100 ? 'bg-green-600' : 
+                                        completionPercentage > 0 ? 'bg-blue-600' : 'bg-gray-300'
+                                      }`}
+                                      style={{ width: `${Math.min(completionPercentage, 100)}%` }}
+                                    ></div>
+                                  </div>
+                                  <span className="text-xs font-medium">{completionPercentage}%</span>
+                                </div>
+                              </TableCell>
                             </TableRow>
                           );
                         })}
@@ -240,6 +279,14 @@ export const EditablePurchaseOrders = () => {
                     </Table>
                   </div>
                 )}
+
+                {/* Workflow Status Indicator */}
+                <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                  <p className="text-sm font-medium text-blue-800 mb-1">Material Acceptance Workflow:</p>
+                  <p className="text-xs text-blue-600">
+                    GRN Created → IQC Approval → Store Physical Verification → Inventory Update → PO Received Qty Updated
+                  </p>
+                </div>
 
                 {po.notes && !editingPO && (
                   <div className="mt-4 p-3 bg-gray-50 rounded-lg">

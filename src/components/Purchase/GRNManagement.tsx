@@ -3,19 +3,45 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Package, FileText, Edit, CheckCircle, XCircle } from "lucide-react";
+import { Package, FileText, Edit, CheckCircle, XCircle, AlertTriangle } from "lucide-react";
 import { useGRN, useUpdateGRNItem } from "@/hooks/useGRN";
 import { format } from "date-fns";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useQueryClient } from "@tanstack/react-query";
 
 const GRNManagement = () => {
   const { data: grns, isLoading } = useGRN();
   const updateGRNItem = useUpdateGRNItem();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [editingItem, setEditingItem] = useState<string | null>(null);
   const [editQuantity, setEditQuantity] = useState<string>("");
+
+  // Set up real-time subscription for inventory updates
+  useEffect(() => {
+    const channel = supabase
+      .channel('inventory-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'inventory'
+        },
+        () => {
+          // Refresh purchase orders when inventory updates
+          queryClient.invalidateQueries({ queryKey: ['purchase_orders'] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -87,6 +113,11 @@ const GRNManagement = () => {
         store_confirmed_at: new Date().toISOString(),
       }
     });
+
+    toast({
+      title: "Material Received to Store",
+      description: "Inventory updated and PO received quantity will be updated automatically",
+    });
   };
 
   if (isLoading) {
@@ -129,6 +160,39 @@ const GRNManagement = () => {
 
   return (
     <div className="space-y-6">
+      {/* Workflow Status Header */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 text-blue-600" />
+            Material Acceptance Workflow
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between text-sm bg-blue-50 p-4 rounded-lg">
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 bg-blue-600 rounded-full"></div>
+              <span>1. GRN Created</span>
+            </div>
+            <div className="text-gray-400">→</div>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 bg-orange-600 rounded-full"></div>
+              <span>2. IQC Approval</span>
+            </div>
+            <div className="text-gray-400">→</div>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 bg-purple-600 rounded-full"></div>
+              <span>3. Store Verification</span>
+            </div>
+            <div className="text-gray-400">→</div>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 bg-green-600 rounded-full"></div>
+              <span>4. Inventory & PO Updated</span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {grns.map((grn) => (
         <Card key={grn.id}>
           <CardHeader>
@@ -170,7 +234,7 @@ const GRNManagement = () => {
                   <TableHead>Received Qty</TableHead>
                   <TableHead>IQC Status</TableHead>
                   <TableHead>Store Status</TableHead>
-                  <TableHead>Actions</TableHead>
+                  <TableHead>Workflow Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -227,31 +291,29 @@ const GRNManagement = () => {
                     </TableCell>
                     <TableCell>
                       {item.store_confirmed ? (
-                        <Badge variant="default">Confirmed</Badge>
+                        <Badge variant="default">Received to Store</Badge>
                       ) : (
-                        <Badge variant="secondary">Pending</Badge>
+                        <Badge variant="secondary">Pending Receipt</Badge>
                       )}
                     </TableCell>
                     <TableCell>
-                      <div className="flex gap-2">
+                      <div className="flex gap-1 flex-wrap">
                         {item.iqc_status === 'PENDING' && (
                           <>
                             <Button
                               size="sm"
                               variant="outline"
                               onClick={() => handleIQCApproval(item.id, true)}
-                              className="text-green-600 border-green-300 hover:bg-green-50"
+                              className="text-green-600 border-green-300 hover:bg-green-50 text-xs"
                             >
-                              <CheckCircle className="h-4 w-4 mr-1" />
                               IQC Pass
                             </Button>
                             <Button
                               size="sm"
                               variant="outline"
                               onClick={() => handleIQCApproval(item.id, false)}
-                              className="text-red-600 border-red-300 hover:bg-red-50"
+                              className="text-red-600 border-red-300 hover:bg-red-50 text-xs"
                             >
-                              <XCircle className="h-4 w-4 mr-1" />
                               IQC Reject
                             </Button>
                           </>
@@ -260,10 +322,15 @@ const GRNManagement = () => {
                           <Button
                             size="sm"
                             onClick={() => handleStoreConfirmation(item.id)}
-                            className="bg-blue-600 hover:bg-blue-700"
+                            className="bg-blue-600 hover:bg-blue-700 text-xs"
                           >
                             Confirm to Store
                           </Button>
+                        )}
+                        {item.iqc_status === 'ACCEPTED' && item.store_confirmed && (
+                          <Badge variant="default" className="text-xs">
+                            Workflow Complete
+                          </Badge>
                         )}
                       </div>
                     </TableCell>
