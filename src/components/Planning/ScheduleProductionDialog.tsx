@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -46,6 +47,16 @@ export const ScheduleProductionDialog = ({
       toast({
         title: "Invalid Quantity",
         description: `Quantity must be between 1 and ${maxQuantity}`,
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Additional check against projection total
+    if (maxQuantity === 0) {
+      toast({
+        title: "Cannot Schedule More Production",
+        description: "Projected quantity for this product is already fully planned.",
         variant: "destructive"
       });
       return;
@@ -169,9 +180,13 @@ export const ScheduleProductionDialog = ({
                 placeholder="Enter quantity"
                 disabled={maxQuantity === 0}
               />
-              {maxQuantity === 0 && (
-                <p className="text-sm text-orange-600">
-                  This projection is fully scheduled
+              {maxQuantity === 0 ? (
+                <p className="text-sm text-red-600">
+                  Cannot schedule more production. Projected quantity for this product is already fully planned.
+                </p>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Enter quantity between 1 and {maxQuantity.toLocaleString()}
                 </p>
               )}
             </div>
@@ -186,6 +201,7 @@ export const ScheduleProductionDialog = ({
                       "w-full justify-start text-left font-normal",
                       !scheduledDate && "text-muted-foreground"
                     )}
+                    disabled={maxQuantity === 0}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
                     {scheduledDate ? format(scheduledDate, "PPP") : "Pick a date"}

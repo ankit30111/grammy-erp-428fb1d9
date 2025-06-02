@@ -22,7 +22,9 @@ export const ProjectionsOverview = () => {
 
   const handleScheduleProduction = (projection: any) => {
     const remaining = getRemainingQuantity(projection);
-    if (remaining <= 0) return;
+    if (remaining <= 0) {
+      return; // Don't open dialog if nothing can be scheduled
+    }
     
     setSelectedProjection(projection);
     setIsScheduleDialogOpen(true);

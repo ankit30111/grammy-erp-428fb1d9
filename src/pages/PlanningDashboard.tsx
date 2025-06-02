@@ -60,12 +60,16 @@ const PlanningDashboard = () => {
     },
   });
 
+  // Filter projections that still have remaining quantity to schedule
   const unscheduledProjections = projections?.filter(projection => {
-    return projection.quantity > 0;
+    const scheduledQty = projection.scheduled_quantity || 0;
+    const remainingQty = projection.quantity - scheduledQty;
+    return remainingQty > 0;
   }) || [];
 
   const selectedProjectionData = projections?.find(p => p.id === selectedProjection);
-  const maxQuantity = selectedProjectionData?.quantity || 0;
+  const maxQuantity = selectedProjectionData ? 
+    selectedProjectionData.quantity - (selectedProjectionData.scheduled_quantity || 0) : 0;
 
   const handleSchedule = async () => {
     if (!selectedDate || !selectedProjection || !quantity) {
@@ -77,10 +81,21 @@ const PlanningDashboard = () => {
       return;
     }
 
-    if (parseInt(quantity) > maxQuantity) {
+    const quantityNum = parseInt(quantity);
+    
+    if (quantityNum > maxQuantity) {
       toast({
-        title: "Invalid Quantity",
-        description: `Quantity exceeds the maximum available for this projection (${maxQuantity} units).`,
+        title: "Cannot Schedule More Production",
+        description: `Projected quantity for this product is already fully planned. Only ${maxQuantity} units can be scheduled.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (maxQuantity === 0) {
+      toast({
+        title: "Cannot Schedule More Production",
+        description: "Projected quantity for this product is already fully planned.",
         variant: "destructive",
       });
       return;
@@ -90,7 +105,7 @@ const PlanningDashboard = () => {
       await createSchedule.mutateAsync({
         projection_id: selectedProjection,
         scheduled_date: format(selectedDate, 'yyyy-MM-dd'),
-        quantity: parseInt(quantity),
+        quantity: quantityNum,
       });
 
       toast({
@@ -198,19 +213,42 @@ const PlanningDashboard = () => {
                       <TableRow>
                         <TableHead>Customer</TableHead>
                         <TableHead>Product</TableHead>
-                        <TableHead>Quantity</TableHead>
+                        <TableHead>Total Quantity</TableHead>
+                        <TableHead>Scheduled Quantity</TableHead>
+                        <TableHead>Remaining</TableHead>
                         <TableHead>Delivery Month</TableHead>
+                        <TableHead>Status</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {projections.map((projection) => (
-                        <TableRow key={projection.id}>
-                          <TableCell>{projection.customers?.name}</TableCell>
-                          <TableCell>{projection.products?.name}</TableCell>
-                          <TableCell>{projection.quantity}</TableCell>
-                          <TableCell>{projection.delivery_month}</TableCell>
-                        </TableRow>
-                      ))}
+                      {projections.map((projection) => {
+                        const scheduledQty = projection.scheduled_quantity || 0;
+                        const remainingQty = projection.quantity - scheduledQty;
+                        
+                        return (
+                          <TableRow key={projection.id}>
+                            <TableCell>{projection.customers?.name}</TableCell>
+                            <TableCell>{projection.products?.name}</TableCell>
+                            <TableCell>{projection.quantity}</TableCell>
+                            <TableCell className="font-medium text-blue-600">
+                              {scheduledQty}
+                            </TableCell>
+                            <TableCell className={remainingQty === 0 ? "text-green-600 font-medium" : "text-orange-600 font-medium"}>
+                              {remainingQty}
+                            </TableCell>
+                            <TableCell>{projection.delivery_month}</TableCell>
+                            <TableCell>
+                              <span className={`px-2 py-1 rounded text-xs font-medium ${
+                                remainingQty === 0 
+                                  ? 'bg-green-100 text-green-800' 
+                                  : 'bg-orange-100 text-orange-800'
+                              }`}>
+                                {remainingQty === 0 ? 'Fully Scheduled' : 'Pending'}
+                              </span>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
                     </TableBody>
                   </Table>
                 ) : (
@@ -265,18 +303,39 @@ const PlanningDashboard = () => {
                             <SelectValue placeholder="Select projection" />
                           </SelectTrigger>
                           <SelectContent>
-                            {unscheduledProjections.map((projection) => (
-                              <SelectItem key={projection.id} value={projection.id}>
-                                {projection.customers?.name} - {projection.products?.name} ({projection.quantity} units)
-                              </SelectItem>
-                            ))}
+                            {unscheduledProjections.map((projection) => {
+                              const remainingQty = projection.quantity - (projection.scheduled_quantity || 0);
+                              return (
+                                <SelectItem key={projection.id} value={projection.id}>
+                                  {projection.customers?.name} - {projection.products?.name} ({remainingQty} units remaining)
+                                </SelectItem>
+                              );
+                            })}
                           </SelectContent>
                         </Select>
                       </div>
 
-                      {selectedDate && (
+                      {selectedProjectionData && (
                         <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                          <p className="text-sm text-blue-800">
+                          <div className="text-sm">
+                            <div><strong>Product:</strong> {selectedProjectionData.products?.name}</div>
+                            <div><strong>Total Projection:</strong> {selectedProjectionData.quantity} units</div>
+                            <div><strong>Already Scheduled:</strong> {selectedProjectionData.scheduled_quantity || 0} units</div>
+                            <div className="font-medium text-blue-600">
+                              <strong>Available to Schedule:</strong> {maxQuantity} units
+                            </div>
+                            {maxQuantity === 0 && (
+                              <div className="text-red-600 font-medium mt-2">
+                                ⚠️ This projection is fully scheduled
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {selectedDate && (
+                        <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                          <p className="text-sm text-green-800">
                             <strong>Selected Date:</strong> {format(selectedDate, 'PPP')}
                           </p>
                         </div>
@@ -292,17 +351,23 @@ const PlanningDashboard = () => {
                           value={quantity}
                           onChange={(e) => setQuantity(e.target.value)}
                           placeholder="Enter quantity"
+                          disabled={maxQuantity === 0}
                         />
                         {selectedProjectionData && (
                           <p className="text-sm text-muted-foreground mt-1">
                             Maximum available: {maxQuantity} units
                           </p>
                         )}
+                        {maxQuantity === 0 && (
+                          <p className="text-sm text-red-600 mt-1">
+                            Cannot schedule more production. Projected quantity for this product is already fully planned.
+                          </p>
+                        )}
                       </div>
 
                       <Button
                         onClick={handleSchedule}
-                        disabled={!selectedDate || !selectedProjection || !quantity || createSchedule.isPending}
+                        disabled={!selectedDate || !selectedProjection || !quantity || createSchedule.isPending || maxQuantity === 0}
                         className="w-full gap-2"
                       >
                         <Factory className="h-4 w-4" />
@@ -311,7 +376,7 @@ const PlanningDashboard = () => {
 
                       {unscheduledProjections.length === 0 && (
                         <div className="text-center py-4 text-muted-foreground">
-                          No unscheduled projections available
+                          No projections available for scheduling. All projections are fully scheduled.
                         </div>
                       )}
                     </CardContent>
