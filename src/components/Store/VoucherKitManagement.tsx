@@ -27,8 +27,8 @@ export default function VoucherKitManagement({
 }: VoucherKitManagementProps) {
   const { toast } = useToast();
   const { data: productionOrders } = useProductionOrders();
-  const [selectedOrderForBOM, setSelectedOrderForBOM] = useState<any>(null);
-  const [isBOMViewOpen, setIsBOMViewOpen] = useState(false);
+  const [selectedVoucherId, setSelectedVoucherId] = useState<string | null>(null);
+  const [isDetailsViewOpen, setIsDetailsViewOpen] = useState(false);
 
   const getKitStatusColor = (status: string) => {
     switch (status) {
@@ -44,119 +44,80 @@ export default function VoucherKitManagement({
   };
 
   const handleViewProductionVoucher = (order: any) => {
-    setSelectedOrderForBOM(order);
-    setIsBOMViewOpen(true);
+    setSelectedVoucherId(order.id);
+    setIsDetailsViewOpen(true);
   };
 
-  const handleComponentSent = (componentType: string, materials: any[]) => {
-    if (!selectedOrderForBOM) return;
-
-    // Update sent components tracking
-    const voucherId = selectedOrderForBOM.voucher_number;
-    const alreadySent = sentComponents[voucherId] || [];
-    
-    if (!alreadySent.includes(componentType)) {
-      const newSentComponents = [...alreadySent, componentType];
-      setSentComponents(prev => ({
-        ...prev,
-        [voucherId]: newSentComponents
-      }));
-
-      // Determine new status based on what has been sent
-      let newStatus = "";
-      if (newSentComponents.length === 3) {
-        newStatus = "COMPLETE KIT SENT";
-      } else if (newSentComponents.includes("Accessories") && newSentComponents.length === 1) {
-        newStatus = "ACCESSORY COMPONENTS SENT";
-      } else if (newSentComponents.includes("Sub Assembly") && newSentComponents.length === 1) {
-        newStatus = "SUB ASSEMBLY COMPONENTS SENT";
-      } else if (newSentComponents.includes("Main Assembly") && newSentComponents.length === 1) {
-        newStatus = "MAIN ASSEMBLY COMPONENTS SENT";
-      } else {
-        newStatus = "PARTIAL KIT SENT";
-      }
-
-      setKitStatuses(prev => ({
-        ...prev,
-        [voucherId]: newStatus
-      }));
-
-      toast({
-        title: "Components Sent",
-        description: `${componentType} components have been sent to production`,
-      });
-    }
+  const handleCloseDetails = () => {
+    setIsDetailsViewOpen(false);
+    setSelectedVoucherId(null);
   };
+
+  if (isDetailsViewOpen && selectedVoucherId) {
+    return (
+      <ProductionVoucherDetails
+        voucherId={selectedVoucherId}
+        onBack={handleCloseDetails}
+      />
+    );
+  }
 
   return (
-    <>
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Package className="h-5 w-5" />
-            Voucher & Kit Management ({productionOrders?.length || 0})
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {productionOrders?.length ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Voucher No.</TableHead>
-                  <TableHead>Product Name</TableHead>
-                  <TableHead>Scheduled Production Date</TableHead>
-                  <TableHead>Quantity</TableHead>
-                  <TableHead>Voucher Status</TableHead>
-                  <TableHead>Production Voucher</TableHead>
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Package className="h-5 w-5" />
+          Voucher & Kit Management ({productionOrders?.length || 0})
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {productionOrders?.length ? (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Voucher No.</TableHead>
+                <TableHead>Product Name</TableHead>
+                <TableHead>Scheduled Production Date</TableHead>
+                <TableHead>Quantity</TableHead>
+                <TableHead>Voucher Status</TableHead>
+                <TableHead>Production Voucher</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {productionOrders.map((order) => (
+                <TableRow key={order.id}>
+                  <TableCell className="font-mono">{order.voucher_number}</TableCell>
+                  <TableCell className="font-medium">
+                    {order.production_schedules?.projections?.products?.name}
+                  </TableCell>
+                  <TableCell>{format(new Date(order.scheduled_date), 'MMM dd, yyyy')}</TableCell>
+                  <TableCell>{order.quantity}</TableCell>
+                  <TableCell>
+                    <Badge variant={getKitStatusColor(voucherStatuses[order.voucher_number] || "Unknown") as any}>
+                      {voucherStatuses[order.voucher_number] || "Loading..."}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="gap-2"
+                      onClick={() => handleViewProductionVoucher(order)}
+                    >
+                      <Eye className="h-4 w-4" />
+                      Production Voucher
+                    </Button>
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {productionOrders.map((order) => (
-                  <TableRow key={order.id}>
-                    <TableCell className="font-mono">{order.voucher_number}</TableCell>
-                    <TableCell className="font-medium">
-                      {order.production_schedules?.projections?.products?.name}
-                    </TableCell>
-                    <TableCell>{format(new Date(order.scheduled_date), 'MMM dd, yyyy')}</TableCell>
-                    <TableCell>{order.quantity}</TableCell>
-                    <TableCell>
-                      <Badge variant={getKitStatusColor(voucherStatuses[order.voucher_number] || "Unknown") as any}>
-                        {voucherStatuses[order.voucher_number] || "Loading..."}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="gap-2"
-                        onClick={() => handleViewProductionVoucher(order)}
-                      >
-                        <Eye className="h-4 w-4" />
-                        Production Voucher
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          ) : (
-            <div className="text-center py-8 text-muted-foreground">
-              No production vouchers found
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <ProductionVoucherDetails
-        isOpen={isBOMViewOpen}
-        onClose={() => {
-          setIsBOMViewOpen(false);
-          setSelectedOrderForBOM(null);
-        }}
-        productionOrder={selectedOrderForBOM}
-        onComponentSent={handleComponentSent}
-        sentComponents={selectedOrderForBOM ? sentComponents[selectedOrderForBOM.voucher_number] || [] : []}
-      />
-    </>
+              ))}
+            </TableBody>
+          </Table>
+        ) : (
+          <div className="text-center py-8 text-muted-foreground">
+            No production vouchers found
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

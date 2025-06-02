@@ -164,7 +164,7 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
           throw invError;
         }
 
-        // Log material movement
+        // Log material movement with reference_number
         const { error: movementError } = await supabase
           .from("material_movements")
           .insert({
@@ -173,6 +173,7 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
             quantity: quantityToSend,
             reference_id: voucherId,
             reference_type: "PRODUCTION_ORDER",
+            reference_number: productionOrder.voucher_number,
             notes: `Issued for production voucher ${productionOrder.voucher_number}`
           });
 
