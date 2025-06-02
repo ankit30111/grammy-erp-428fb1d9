@@ -12,7 +12,6 @@ export const useVendors = () => {
       const { data, error } = await supabase
         .from("vendors")
         .select("*")
-        .eq("is_active", true)
         .order("created_at", { ascending: false });
       
       console.log("Debug vendors data:", data);

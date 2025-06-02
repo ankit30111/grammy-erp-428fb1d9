@@ -1,3 +1,4 @@
+
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -24,7 +25,6 @@ export const useRawMaterials = () => {
             )
           )
         `)
-        .eq("is_active", true)
         .order("created_at", { ascending: false });
       
       console.log("Debug raw materials data:", data);
