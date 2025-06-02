@@ -33,12 +33,11 @@ const KitVerification = () => {
           ),
           kit_items(
             *,
-            raw_materials(material_code, name),
-            verified_by_production
+            raw_materials(material_code, name)
           )
         `)
         .in("status", ["COMPLETE KIT SENT", "PARTIAL KIT SENT", "MAIN ASSEMBLY COMPONENTS SENT", "SUB ASSEMBLY COMPONENTS SENT", "ACCESSORY COMPONENTS SENT"])
-        .eq("kit_items.verified_by_production", false);
+        .not("kit_items.verified_by_production", "eq", true);
 
       if (error) throw error;
       return data || [];
@@ -64,8 +63,7 @@ const KitVerification = () => {
           ),
           kit_items(
             *,
-            raw_materials(material_code, name),
-            verified_by_production
+            raw_materials(material_code, name)
           )
         `)
         .in("status", ["COMPLETE KIT SENT", "PARTIAL KIT SENT", "MAIN ASSEMBLY COMPONENTS SENT", "SUB ASSEMBLY COMPONENTS SENT", "ACCESSORY COMPONENTS SENT"])

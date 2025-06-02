@@ -836,6 +836,7 @@ export type Database = {
       }
       kit_items: {
         Row: {
+          actual_quantity: number | null
           created_at: string | null
           id: string
           issued_quantity: number | null
@@ -843,8 +844,10 @@ export type Database = {
           raw_material_id: string
           required_quantity: number
           updated_at: string | null
+          verified_by_production: boolean | null
         }
         Insert: {
+          actual_quantity?: number | null
           created_at?: string | null
           id?: string
           issued_quantity?: number | null
@@ -852,8 +855,10 @@ export type Database = {
           raw_material_id: string
           required_quantity: number
           updated_at?: string | null
+          verified_by_production?: boolean | null
         }
         Update: {
+          actual_quantity?: number | null
           created_at?: string | null
           id?: string
           issued_quantity?: number | null
@@ -861,6 +866,7 @@ export type Database = {
           raw_material_id?: string
           required_quantity?: number
           updated_at?: string | null
+          verified_by_production?: boolean | null
         }
         Relationships: [
           {

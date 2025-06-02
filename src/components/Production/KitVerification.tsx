@@ -111,14 +111,14 @@ const KitVerification = () => {
   const verifyKitMutation = useMutation({
     mutationFn: async ({ kitId, items }: { kitId: string; items: any[] }) => {
       const hasDiscrepancies = items.some(item => {
-        const receivedQty = receivedQuantities[item.id] || item.actual_quantity;
-        return receivedQty < item.actual_quantity;
+        const receivedQty = receivedQuantities[item.id] || item.actual_quantity || item.issued_quantity;
+        return receivedQty < (item.actual_quantity || item.issued_quantity);
       });
 
       if (hasDiscrepancies) {
         const itemsWithDiscrepancies = items.filter(item => {
-          const receivedQty = receivedQuantities[item.id] || item.actual_quantity;
-          return receivedQty < item.actual_quantity;
+          const receivedQty = receivedQuantities[item.id] || item.actual_quantity || item.issued_quantity;
+          return receivedQty < (item.actual_quantity || item.issued_quantity);
         });
 
         // Check if all discrepancy items have comments
@@ -133,7 +133,7 @@ const KitVerification = () => {
 
       // Update kit items with verified quantities
       for (const item of items) {
-        const receivedQty = receivedQuantities[item.id] || item.actual_quantity;
+        const receivedQty = receivedQuantities[item.id] || item.actual_quantity || item.issued_quantity;
         
         await supabase
           .from("kit_items")
@@ -237,23 +237,24 @@ const KitVerification = () => {
             </TableHeader>
             <TableBody>
               {items.map((item: any) => {
-                const receivedQty = receivedQuantities[item.id] ?? item.actual_quantity;
-                const discrepancyQty = Math.max(0, item.actual_quantity - receivedQty);
+                const sentQty = item.actual_quantity || item.issued_quantity;
+                const receivedQty = receivedQuantities[item.id] ?? sentQty;
+                const discrepancyQty = Math.max(0, sentQty - receivedQty);
                 const hasDiscrepancy = discrepancyQty > 0;
 
                 return (
                   <TableRow key={item.id}>
                     <TableCell className="font-medium">{item.raw_materials.name}</TableCell>
                     <TableCell className="font-mono">{item.raw_materials.material_code}</TableCell>
-                    <TableCell>{item.actual_quantity}</TableCell>
+                    <TableCell>{sentQty}</TableCell>
                     <TableCell>
                       {showActions ? (
                         <Input
                           type="number"
                           className="w-24"
-                          value={receivedQuantities[item.id] ?? item.actual_quantity}
+                          value={receivedQuantities[item.id] ?? sentQty}
                           onChange={(e) => handleQuantityChange(item.id, e.target.value)}
-                          max={item.actual_quantity}
+                          max={sentQty}
                         />
                       ) : (
                         <span>{receivedQty}</span>

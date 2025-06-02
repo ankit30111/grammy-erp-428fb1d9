@@ -13,8 +13,6 @@ import { useKitPreparation, useCreateKitPreparation, useUpdateKitItem } from "@/
 import { useLogMaterialMovement } from "@/hooks/useMaterialMovements";
 import { useUpdateInventory } from "@/hooks/useInventory";
 
-type BomType = "main_assembly" | "sub_assembly" | "accessory";
-
 interface EnhancedProductionVoucherDetailsProps {
   isOpen: boolean;
   onClose: () => void;
@@ -110,7 +108,7 @@ const EnhancedProductionVoucherDetails = ({
 
       // Check if kit item exists for this material
       let kitItem = kitPreparation?.kit_items?.find(
-        item => item.raw_material_id === bomItem.raw_material_id
+        (item: any) => item.raw_material_id === bomItem.raw_material_id
       );
 
       if (!kitItem) {
@@ -180,7 +178,7 @@ const EnhancedProductionVoucherDetails = ({
 
   const getIssuedQuantity = (rawMaterialId: string) => {
     const kitItem = kitPreparation?.kit_items?.find(
-      item => item.raw_material_id === rawMaterialId
+      (item: any) => item.raw_material_id === rawMaterialId
     );
     return kitItem?.issued_quantity || 0;
   };
