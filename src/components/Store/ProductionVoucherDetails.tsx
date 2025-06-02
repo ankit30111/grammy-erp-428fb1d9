@@ -36,11 +36,13 @@ const ProductionVoucherDetails = ({
   const queryClient = useQueryClient();
   const [materialDispatchQuantities, setMaterialDispatchQuantities] = useState<Record<string, number>>({});
 
-  // Fetch BOM data with inventory information
+  // Fetch BOM data with live inventory information
   const { data: bomData = [] } = useQuery({
     queryKey: ["production-voucher-bom", productionOrder?.id],
     queryFn: async () => {
       if (!productionOrder) return [];
+      
+      console.log("🔍 Fetching BOM data for production order:", productionOrder.id);
       
       const { data, error } = await supabase
         .from("bom")
@@ -49,16 +51,53 @@ const ProductionVoucherDetails = ({
           raw_materials!inner(
             id,
             material_code,
-            name,
-            inventory(quantity)
+            name
           )
         `)
         .eq("product_id", productionOrder.product_id);
       
-      if (error) throw error;
+      if (error) {
+        console.error("❌ Error fetching BOM:", error);
+        throw error;
+      }
+      
+      console.log("📋 BOM data fetched:", data);
       return data || [];
     },
     enabled: !!productionOrder && isOpen,
+  });
+
+  // Fetch live inventory data
+  const { data: inventoryData = [] } = useQuery({
+    queryKey: ["live-inventory", productionOrder?.id],
+    queryFn: async () => {
+      if (!bomData.length) return [];
+      
+      console.log("📦 Fetching live inventory data...");
+      
+      const materialIds = bomData.map(item => item.raw_material_id);
+      
+      const { data, error } = await supabase
+        .from("inventory")
+        .select(`
+          *,
+          raw_materials!raw_material_id(
+            id,
+            material_code,
+            name
+          )
+        `)
+        .in("raw_material_id", materialIds);
+      
+      if (error) {
+        console.error("❌ Error fetching inventory:", error);
+        throw error;
+      }
+      
+      console.log("📊 Live inventory data:", data);
+      return data || [];
+    },
+    enabled: !!bomData.length && isOpen,
   });
 
   // Fetch existing kit items to get previously issued quantities
@@ -66,6 +105,8 @@ const ProductionVoucherDetails = ({
     queryKey: ["kit-items", productionOrder?.id],
     queryFn: async () => {
       if (!productionOrder) return [];
+      
+      console.log("🎁 Fetching existing kit items for production order:", productionOrder.id);
       
       const { data, error } = await supabase
         .from("kit_items")
@@ -76,7 +117,12 @@ const ProductionVoucherDetails = ({
         `)
         .eq("kit_preparation.production_order_id", productionOrder.id);
       
-      if (error) throw error;
+      if (error) {
+        console.error("❌ Error fetching kit items:", error);
+        throw error;
+      }
+      
+      console.log("📝 Existing kit items:", data);
       return data || [];
     },
     enabled: !!productionOrder && isOpen,
@@ -85,6 +131,8 @@ const ProductionVoucherDetails = ({
   // Mutation to send materials
   const sendMaterialsMutation = useMutation({
     mutationFn: async ({ componentType, materials }: { componentType: string, materials: MaterialDispatch[] }) => {
+      console.log("🚀 Starting material dispatch for:", componentType);
+      
       // First, ensure kit preparation record exists
       let { data: kitPrep, error: kitError } = await supabase
         .from("kit_preparation")
@@ -112,6 +160,8 @@ const ProductionVoucherDetails = ({
       // Process each material dispatch
       for (const material of materials) {
         if (material.quantityToIssue <= 0) continue;
+
+        console.log(`📤 Processing dispatch for material ${material.rawMaterialId}: ${material.quantityToIssue}`);
 
         // Check if kit item already exists
         const { data: existingKitItem } = await supabase
@@ -154,10 +204,13 @@ const ProductionVoucherDetails = ({
           .maybeSingle();
 
         if (inventoryItem) {
+          const newQuantity = Math.max(0, inventoryItem.quantity - material.quantityToIssue);
+          console.log(`📦 Updating inventory: ${inventoryItem.quantity} → ${newQuantity}`);
+          
           await supabase
             .from("inventory")
             .update({
-              quantity: Math.max(0, inventoryItem.quantity - material.quantityToIssue),
+              quantity: newQuantity,
               last_updated: new Date().toISOString()
             })
             .eq("id", inventoryItem.id);
@@ -203,6 +256,7 @@ const ProductionVoucherDetails = ({
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["kit-items", productionOrder?.id] });
+      queryClient.invalidateQueries({ queryKey: ["live-inventory", productionOrder?.id] });
       queryClient.invalidateQueries({ queryKey: ["inventory"] });
       queryClient.invalidateQueries({ queryKey: ["kits-to-verify"] });
       
@@ -215,7 +269,7 @@ const ProductionVoucherDetails = ({
       });
     },
     onError: (error) => {
-      console.error("Error sending materials:", error);
+      console.error("❌ Error sending materials:", error);
       toast({
         title: "Error",
         description: "Failed to send materials to production",
@@ -262,6 +316,11 @@ const ProductionVoucherDetails = ({
     sendMaterialsMutation.mutate({ componentType, materials: materialsToSend });
   };
 
+  const getCurrentInventoryStock = (rawMaterialId: string) => {
+    const inventoryItem = inventoryData.find(item => item.raw_material_id === rawMaterialId);
+    return inventoryItem?.quantity || 0;
+  };
+
   const getIssuedQuantity = (rawMaterialId: string) => {
     const kitItem = kitItems.find(item => item.raw_material_id === rawMaterialId);
     return kitItem?.issued_quantity || 0;
@@ -297,16 +356,16 @@ const ProductionVoucherDetails = ({
             <TableHead>Material Code</TableHead>
             <TableHead>Component Name</TableHead>
             <TableHead>Required Qty</TableHead>
-            <TableHead>Available Qty</TableHead>
-            <TableHead>Qty to Issue</TableHead>
-            <TableHead>Qty Issued</TableHead>
+            <TableHead>Current Inventory Stock</TableHead>
+            <TableHead>Already Issued</TableHead>
+            <TableHead>Qty to Issue Now</TableHead>
             <TableHead>Pending Qty</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {items.map((item) => {
             const requiredQty = item.quantity * (productionOrder?.quantity || 1);
-            const availableQty = item.raw_materials.inventory?.[0]?.quantity || 0;
+            const currentStock = getCurrentInventoryStock(item.raw_material_id);
             const issuedQty = getIssuedQuantity(item.raw_material_id);
             const pendingQty = Math.max(0, requiredQty - issuedQty);
             const quantityToIssue = materialDispatchQuantities[item.raw_material_id] || 0;
@@ -315,26 +374,27 @@ const ProductionVoucherDetails = ({
               <TableRow key={item.id}>
                 <TableCell className="font-mono">{item.raw_materials.material_code}</TableCell>
                 <TableCell>{item.raw_materials.name}</TableCell>
-                <TableCell>{requiredQty}</TableCell>
+                <TableCell className="font-medium">{requiredQty}</TableCell>
                 <TableCell>
-                  <span className={availableQty >= requiredQty ? "text-green-600" : "text-red-600"}>
-                    {availableQty}
+                  <span className={currentStock >= pendingQty ? "text-green-600 font-medium" : "text-red-600 font-medium"}>
+                    {currentStock}
                   </span>
                 </TableCell>
+                <TableCell className="text-blue-600 font-medium">{issuedQty}</TableCell>
                 <TableCell>
                   <Input
                     type="number"
                     min="0"
-                    max={Math.min(availableQty, pendingQty)}
+                    max={Math.min(currentStock, pendingQty)}
                     value={quantityToIssue}
                     onChange={(e) => handleQuantityChange(item.raw_material_id, e.target.value)}
                     className="w-20"
                     disabled={sentComponents.includes(displayName)}
+                    placeholder="0"
                   />
                 </TableCell>
-                <TableCell>{issuedQty}</TableCell>
                 <TableCell>
-                  <span className={pendingQty > 0 ? "text-orange-600" : "text-green-600"}>
+                  <span className={pendingQty > 0 ? "text-orange-600 font-medium" : "text-green-600 font-medium"}>
                     {pendingQty}
                   </span>
                 </TableCell>
