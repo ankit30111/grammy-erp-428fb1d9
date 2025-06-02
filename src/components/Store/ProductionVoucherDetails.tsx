@@ -20,7 +20,7 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch production order details with BOM and inventory data
+  // Fetch production order details with BOM
   const { data: productionOrder, isLoading } = useQuery({
     queryKey: ["production-order-details", voucherId],
     queryFn: async () => {
@@ -42,12 +42,7 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
                     id,
                     material_code,
                     name,
-                    category,
-                    inventory!raw_material_id (
-                      quantity,
-                      location,
-                      last_updated
-                    )
+                    category
                   )
                 )
               )
@@ -65,6 +60,36 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
       console.log("📊 Production order data:", data);
       return data;
     },
+  });
+
+  // Fetch real-time inventory data separately
+  const { data: inventoryData = [], refetch: refetchInventory } = useQuery({
+    queryKey: ["inventory-for-voucher", voucherId],
+    queryFn: async () => {
+      console.log("🔍 Fetching real-time inventory data...");
+      
+      const { data, error } = await supabase
+        .from("inventory")
+        .select(`
+          *,
+          raw_materials!raw_material_id (
+            id,
+            material_code,
+            name,
+            category
+          )
+        `)
+        .order("last_updated", { ascending: false });
+      
+      if (error) {
+        console.error("❌ Error fetching inventory:", error);
+        throw error;
+      }
+
+      console.log("📦 Current inventory data:", data);
+      return data || [];
+    },
+    refetchInterval: 5000, // Refetch every 5 seconds for real-time data
   });
 
   // Fetch previously issued quantities for this voucher
@@ -85,11 +110,22 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
     },
   });
 
+  // Create a map of current inventory quantities by material ID
+  const inventoryMap = new Map();
+  inventoryData.forEach(item => {
+    inventoryMap.set(item.raw_material_id, item.quantity);
+  });
+
   // Calculate total issued quantities by material
   const getIssuedQuantity = (materialId: string) => {
     return issuedQuantities
       .filter(item => item.raw_material_id === materialId)
       .reduce((sum, item) => sum + item.actual_quantity, 0);
+  };
+
+  // Get current stock from real-time inventory
+  const getCurrentStock = (materialId: string) => {
+    return inventoryMap.get(materialId) || 0;
   };
 
   // Send materials mutation with validation and inventory update
@@ -99,7 +135,7 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
       
       // Validate quantities before proceeding
       for (const material of materialsToSend) {
-        const currentStock = material.raw_materials.inventory?.[0]?.quantity || 0;
+        const currentStock = getCurrentStock(material.raw_materials.id);
         const quantityToSend = quantities[material.raw_materials.id] || 0;
         
         if (quantityToSend > currentStock) {
@@ -148,7 +184,7 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
         }
 
         // Update inventory - subtract the issued quantity
-        const currentStock = material.raw_materials.inventory?.[0]?.quantity || 0;
+        const currentStock = getCurrentStock(material.raw_materials.id);
         const newStock = currentStock - quantityToSend;
 
         const { error: invError } = await supabase
@@ -197,7 +233,11 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
       setQuantities({});
       queryClient.invalidateQueries({ queryKey: ["production-order-details", voucherId] });
       queryClient.invalidateQueries({ queryKey: ["issued-quantities", voucherId] });
+      queryClient.invalidateQueries({ queryKey: ["inventory-for-voucher", voucherId] });
       queryClient.invalidateQueries({ queryKey: ["inventory"] });
+      
+      // Force immediate inventory refresh
+      refetchInventory();
     },
     onError: (error: Error) => {
       console.error("❌ Failed to send materials:", error);
@@ -235,6 +275,11 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
     sendMaterialsMutation.mutate(materialsWithQuantities);
   };
 
+  // Auto-refresh inventory when component mounts or voucher changes
+  useEffect(() => {
+    refetchInventory();
+  }, [voucherId, refetchInventory]);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-8">
@@ -268,6 +313,9 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Production Vouchers
         </Button>
+        <div className="text-sm text-muted-foreground">
+          Last updated: {new Date().toLocaleTimeString()}
+        </div>
       </div>
 
       <Card>
@@ -300,7 +348,7 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
           </div>
 
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Bill of Materials</h3>
+            <h3 className="text-lg font-semibold">Bill of Materials - Real Time Inventory</h3>
             
             <Table>
               <TableHeader>
@@ -319,11 +367,10 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
               <TableBody>
                 {bom.map((item) => {
                   const requiredQty = item.quantity * orderQuantity;
-                  const currentStock = item.raw_materials.inventory?.[0]?.quantity || 0;
+                  const currentStock = getCurrentStock(item.raw_materials.id);
                   const alreadyIssued = getIssuedQuantity(item.raw_materials.id);
                   const qtyToIssue = quantities[item.raw_materials.id] || 0;
                   const pending = requiredQty - alreadyIssued - qtyToIssue;
-                  const canIssue = currentStock >= qtyToIssue && qtyToIssue > 0;
                   const hasError = qtyToIssue > currentStock;
 
                   return (
@@ -336,6 +383,7 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
                       <TableCell className="font-semibold">{requiredQty}</TableCell>
                       <TableCell className={`font-medium ${currentStock > 0 ? 'text-green-600' : 'text-red-600'}`}>
                         {currentStock}
+                        <div className="text-xs text-muted-foreground">Live Stock</div>
                       </TableCell>
                       <TableCell className="text-muted-foreground">{alreadyIssued}</TableCell>
                       <TableCell>
