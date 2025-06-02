@@ -27,7 +27,7 @@ const EnhancedProductionVoucherDetails = ({
   const { toast } = useToast();
   const [quantitiesToSend, setQuantitiesToSend] = useState<Record<string, number>>({});
   
-  const { data: kitPreparation } = useKitPreparation(productionOrder?.id);
+  const { data: kitPreparation, refetch: refetchKitPreparation } = useKitPreparation(productionOrder?.id);
   const createKitPreparation = useCreateKitPreparation();
   const updateKitItem = useUpdateKitItem();
   const logMaterialMovement = useLogMaterialMovement();
@@ -112,7 +112,7 @@ const EnhancedProductionVoucherDetails = ({
       );
 
       if (!kitItem) {
-        // Create new kit item
+        // Create new kit item with raw_materials relation
         const { data: newKitItem, error } = await supabase
           .from("kit_items")
           .insert({
@@ -121,7 +121,14 @@ const EnhancedProductionVoucherDetails = ({
             required_quantity: bomItem.quantity * productionOrder.quantity,
             issued_quantity: quantityToSend,
           })
-          .select()
+          .select(`
+            *,
+            raw_materials (
+              id,
+              material_code,
+              name
+            )
+          `)
           .single();
 
         if (error) throw error;
@@ -160,6 +167,9 @@ const EnhancedProductionVoucherDetails = ({
         ...prev,
         [bomItem.id]: 0
       }));
+
+      // Refetch kit preparation to get updated data
+      await refetchKitPreparation();
 
       toast({
         title: "Material Sent",
