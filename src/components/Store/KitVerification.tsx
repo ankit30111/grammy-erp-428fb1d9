@@ -4,15 +4,18 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CheckCircle, Clock, Package } from "lucide-react";
+import { CheckCircle, Clock, Package, Eye } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 const KitVerification = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [selectedKit, setSelectedKit] = useState<any>(null);
+  const [isDetailViewOpen, setIsDetailViewOpen] = useState(false);
 
   // Fetch kits that have been sent to production but not yet verified
   const { data: kitsToVerify = [] } = useQuery({
@@ -112,6 +115,11 @@ const KitVerification = () => {
     verifyKitMutation.mutate({ kitId });
   };
 
+  const handleViewKitDetails = (kit: any) => {
+    setSelectedKit(kit);
+    setIsDetailViewOpen(true);
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'COMPLETE KIT SENT': return 'default';
@@ -124,109 +132,172 @@ const KitVerification = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Kits to Be Verified */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Clock className="h-5 w-5" />
-              Kits to Be Verified ({kitsToVerify.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {kitsToVerify.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                No kits pending verification
-              </div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Kit Number</TableHead>
-                    <TableHead>Voucher</TableHead>
-                    <TableHead>Product</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Action</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {kitsToVerify.map((kit: any) => (
-                    <TableRow key={kit.id}>
-                      <TableCell className="font-mono">{kit.kit_number}</TableCell>
-                      <TableCell>{kit.production_orders?.voucher_number}</TableCell>
-                      <TableCell>{kit.production_orders?.production_schedules?.projections?.products?.name}</TableCell>
-                      <TableCell>
-                        <Badge variant={getStatusColor(kit.status) as any}>
-                          {kit.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Button
-                          size="sm"
-                          onClick={() => handleVerifyKit(kit.id)}
-                          disabled={verifyKitMutation.isPending}
-                          className="gap-2"
-                        >
-                          <CheckCircle className="h-4 w-4" />
-                          Verify
-                        </Button>
-                      </TableCell>
+    <>
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Kits to Be Verified */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Clock className="h-5 w-5" />
+                Kits to Be Verified ({kitsToVerify.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {kitsToVerify.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  No kits pending verification
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Kit Number</TableHead>
+                      <TableHead>Voucher</TableHead>
+                      <TableHead>Product</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Actions</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
+                  </TableHeader>
+                  <TableBody>
+                    {kitsToVerify.map((kit: any) => (
+                      <TableRow key={kit.id}>
+                        <TableCell className="font-mono">{kit.kit_number}</TableCell>
+                        <TableCell>{kit.production_orders?.voucher_number}</TableCell>
+                        <TableCell>{kit.production_orders?.production_schedules?.projections?.products?.name}</TableCell>
+                        <TableCell>
+                          <Badge variant={getStatusColor(kit.status) as any}>
+                            {kit.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleViewKitDetails(kit)}
+                              className="gap-2"
+                            >
+                              <Eye className="h-4 w-4" />
+                              View
+                            </Button>
+                            <Button
+                              size="sm"
+                              onClick={() => handleVerifyKit(kit.id)}
+                              disabled={verifyKitMutation.isPending}
+                              className="gap-2"
+                            >
+                              <CheckCircle className="h-4 w-4" />
+                              Verify
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
 
-        {/* Kits Verified */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Package className="h-5 w-5" />
-              Kits Verified ({verifiedKits.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {verifiedKits.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                No verified kits yet
+          {/* Kits Verified */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Package className="h-5 w-5" />
+                Kits Verified ({verifiedKits.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {verifiedKits.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  No verified kits yet
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Kit Number</TableHead>
+                      <TableHead>Voucher</TableHead>
+                      <TableHead>Product</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Verified Date</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {verifiedKits.map((kit: any) => (
+                      <TableRow key={kit.id}>
+                        <TableCell className="font-mono">{kit.kit_number}</TableCell>
+                        <TableCell>{kit.production_orders?.voucher_number}</TableCell>
+                        <TableCell>{kit.production_orders?.production_schedules?.projections?.products?.name}</TableCell>
+                        <TableCell>
+                          <Badge variant="default">
+                            Verified
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {kit.updated_at ? format(new Date(kit.updated_at), 'MMM dd, yyyy') : '-'}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      {/* Kit Details Dialog */}
+      <Dialog open={isDetailViewOpen} onOpenChange={setIsDetailViewOpen}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>Kit Details - {selectedKit?.kit_number}</DialogTitle>
+          </DialogHeader>
+          {selectedKit && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4 p-4 bg-muted rounded-lg">
+                <div>
+                  <span className="text-sm text-muted-foreground">Voucher:</span>
+                  <p className="font-medium">{selectedKit.production_orders?.voucher_number}</p>
+                </div>
+                <div>
+                  <span className="text-sm text-muted-foreground">Product:</span>
+                  <p className="font-medium">{selectedKit.production_orders?.production_schedules?.projections?.products?.name}</p>
+                </div>
               </div>
-            ) : (
+              
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Kit Number</TableHead>
-                    <TableHead>Voucher</TableHead>
-                    <TableHead>Product</TableHead>
+                    <TableHead>Material Code</TableHead>
+                    <TableHead>Material Name</TableHead>
+                    <TableHead>Required Qty</TableHead>
+                    <TableHead>Issued Qty</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>Verified Date</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {verifiedKits.map((kit: any) => (
-                    <TableRow key={kit.id}>
-                      <TableCell className="font-mono">{kit.kit_number}</TableCell>
-                      <TableCell>{kit.production_orders?.voucher_number}</TableCell>
-                      <TableCell>{kit.production_orders?.production_schedules?.projections?.products?.name}</TableCell>
+                  {selectedKit.kit_items?.map((item: any) => (
+                    <TableRow key={item.id}>
+                      <TableCell className="font-mono">{item.raw_materials?.material_code}</TableCell>
+                      <TableCell>{item.raw_materials?.name}</TableCell>
+                      <TableCell>{item.required_quantity}</TableCell>
+                      <TableCell>{item.issued_quantity || 0}</TableCell>
                       <TableCell>
-                        <Badge variant="default">
-                          Verified
+                        <Badge variant={item.verified_by_production ? "default" : "secondary"}>
+                          {item.verified_by_production ? "Verified" : "Pending"}
                         </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {kit.sent_to_production_at ? format(new Date(kit.sent_to_production_at), 'MMM dd, yyyy') : '-'}
                       </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-    </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };
 
