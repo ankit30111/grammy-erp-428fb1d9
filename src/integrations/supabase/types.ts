@@ -828,7 +828,7 @@ export type Database = {
           {
             foreignKeyName: "inventory_raw_material_id_fkey"
             columns: ["raw_material_id"]
-            isOneToOne: false
+            isOneToOne: true
             referencedRelation: "raw_materials"
             referencedColumns: ["id"]
           },

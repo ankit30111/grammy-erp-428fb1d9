@@ -27,7 +27,7 @@ export const calculateMaterialShortages = async (projectionIds: string[]): Promi
   if (!projectionIds.length) return [];
 
   try {
-    // Get material requirements from the view, excluding those with active POs
+    // Get material requirements from the view
     const { data: requirements, error } = await supabase
       .from('material_requirements_view')
       .select('*')
@@ -35,7 +35,7 @@ export const calculateMaterialShortages = async (projectionIds: string[]): Promi
 
     if (error) throw error;
 
-    // Get materials that have active purchase orders (not yet fully received)
+    // Get materials that have active purchase orders (pending + sent, not fully received)
     const { data: activePOs, error: poError } = await supabase
       .from('purchase_order_items')
       .select(`
@@ -44,16 +44,19 @@ export const calculateMaterialShortages = async (projectionIds: string[]): Promi
         received_quantity,
         purchase_orders!inner(status)
       `)
-      .in('purchase_orders.status', ['PENDING', 'SENT', 'PARTIAL']);
+      .in('purchase_orders.status', ['PENDING', 'SENT']);
 
     if (poError) throw poError;
 
-    // Create a set of materials with active POs
-    const materialsWithActivePOs = new Set(
-      activePOs
-        ?.filter(po => (po.received_quantity || 0) < po.quantity)
-        .map(po => po.raw_material_id) || []
-    );
+    // Calculate pending quantities from active POs (quantity - received_quantity)
+    const pendingQuantities = new Map<string, number>();
+    activePOs?.forEach(po => {
+      const pending = po.quantity - (po.received_quantity || 0);
+      if (pending > 0) {
+        const current = pendingQuantities.get(po.raw_material_id) || 0;
+        pendingQuantities.set(po.raw_material_id, current + pending);
+      }
+    });
 
     // Group requirements by material and calculate shortages
     const materialMap = new Map<string, {
@@ -102,16 +105,13 @@ export const calculateMaterialShortages = async (projectionIds: string[]): Promi
       });
     });
 
-    // Calculate shortages, excluding materials with active POs
+    // Calculate shortages, considering pending PO quantities
     const shortages: MaterialShortage[] = [];
     
     materialMap.forEach((data, materialId) => {
-      // Skip materials that have active purchase orders
-      if (materialsWithActivePOs.has(materialId)) {
-        return;
-      }
-
-      const shortage = data.total_required - data.available_quantity;
+      const pendingQuantity = pendingQuantities.get(materialId) || 0;
+      const totalAvailable = data.available_quantity + pendingQuantity;
+      const shortage = data.total_required - totalAvailable;
       
       if (shortage > 0) {
         shortages.push({
@@ -119,7 +119,7 @@ export const calculateMaterialShortages = async (projectionIds: string[]): Promi
           material_code: data.material_code,
           material_name: data.material_name,
           required_quantity: data.total_required,
-          available_quantity: data.available_quantity,
+          available_quantity: totalAvailable,
           shortage_quantity: shortage,
           vendor_info: vendorMap.get(materialId),
         });

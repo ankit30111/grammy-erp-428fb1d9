@@ -1,4 +1,3 @@
-
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -208,6 +207,7 @@ const Purchase = () => {
         <Tabs defaultValue="shortages" className="space-y-4">
           <TabsList>
             <TabsTrigger value="shortages">Material Shortages</TabsTrigger>
+            <TabsTrigger value="create-po">Create PO</TabsTrigger>
             <TabsTrigger value="purchase-orders">Purchase Orders</TabsTrigger>
           </TabsList>
 
@@ -389,6 +389,131 @@ const Purchase = () => {
             </div>
           </TabsContent>
 
+          <TabsContent value="create-po">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Plus className="h-5 w-5" />
+                  Create Purchase Orders
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {shortages.length > 0 ? (
+                  <div className="space-y-6">
+                    <div className="flex items-center gap-4">
+                      <Dialog open={poDialogOpen} onOpenChange={setPODialogOpen}>
+                        <DialogTrigger asChild>
+                          <Button className="gap-2" disabled={selectedMaterials.length === 0}>
+                            <Plus className="h-4 w-4" />
+                            Create PO for Selected
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-4xl">
+                          <DialogHeader>
+                            <DialogTitle>Create Purchase Order</DialogTitle>
+                          </DialogHeader>
+                          <div className="space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div>
+                                <Label>Vendor</Label>
+                                <Select value={selectedVendor} onValueChange={setSelectedVendor}>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select vendor" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {getAvailableVendors().map((vendor) => (
+                                      <SelectItem key={vendor.id} value={vendor.id}>
+                                        {vendor.name} ({vendor.vendor_code})
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div>
+                                <Label>Expected Delivery Date</Label>
+                                <Input
+                                  type="date"
+                                  value={deliveryDate}
+                                  onChange={(e) => setDeliveryDate(e.target.value)}
+                                />
+                              </div>
+                            </div>
+
+                            {selectedMaterials.length > 0 && (
+                              <div>
+                                <Label>Selected Materials & Quantities</Label>
+                                <Table>
+                                  <TableHeader>
+                                    <TableRow>
+                                      <TableHead>Material Code</TableHead>
+                                      <TableHead>Material Name</TableHead>
+                                      <TableHead>Shortage Qty</TableHead>
+                                      <TableHead>Order Qty</TableHead>
+                                    </TableRow>
+                                  </TableHeader>
+                                  <TableBody>
+                                    {selectedMaterials.map((materialId) => {
+                                      const shortage = shortages.find(s => s.raw_material_id === materialId);
+                                      if (!shortage) return null;
+                                      return (
+                                        <TableRow key={materialId}>
+                                          <TableCell className="font-mono">{shortage.material_code}</TableCell>
+                                          <TableCell>{shortage.material_name}</TableCell>
+                                          <TableCell>{shortage.shortage_quantity}</TableCell>
+                                          <TableCell>
+                                            <Input
+                                              type="number"
+                                              min="1"
+                                              value={editableQuantities[materialId] || shortage.shortage_quantity}
+                                              onChange={(e) => handleQuantityChange(materialId, parseInt(e.target.value) || 0)}
+                                              className="w-24"
+                                            />
+                                          </TableCell>
+                                        </TableRow>
+                                      );
+                                    })}
+                                  </TableBody>
+                                </Table>
+                              </div>
+                            )}
+
+                            <div>
+                              <Label>Notes</Label>
+                              <Input
+                                value={notes}
+                                onChange={(e) => setNotes(e.target.value)}
+                                placeholder="Additional notes"
+                              />
+                            </div>
+                            <div className="flex justify-end gap-2">
+                              <Button variant="outline" onClick={() => setPODialogOpen(false)}>
+                                Cancel
+                              </Button>
+                              <Button onClick={handleCreatePO} disabled={createPO.isPending}>
+                                {createPO.isPending ? "Creating..." : "Create PO"}
+                              </Button>
+                            </div>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+                      <span className="text-sm text-muted-foreground">
+                        {selectedMaterials.length} materials selected
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="text-lg font-medium mb-2">No Material Shortages</h3>
+                    <p className="text-muted-foreground">
+                      Calculate material shortages first to create purchase orders
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           <TabsContent value="purchase-orders">
             <div className="space-y-4">
               {purchaseOrders && purchaseOrders.length > 0 ? (
@@ -404,7 +529,7 @@ const Purchase = () => {
                         </div>
                       </CardHeader>
                       <CardContent>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                           <div>
                             <p className="text-sm text-muted-foreground">Vendor</p>
                             <p className="font-medium">{po.vendors?.name}</p>
@@ -424,6 +549,45 @@ const Purchase = () => {
                             <p className="font-medium">{po.purchase_order_items?.length || 0} items</p>
                           </div>
                         </div>
+
+                        {/* Show PO Items */}
+                        {po.purchase_order_items && po.purchase_order_items.length > 0 && (
+                          <div className="mt-4">
+                            <h4 className="font-medium mb-2">Order Items:</h4>
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead>Part Code</TableHead>
+                                  <TableHead>Material Name</TableHead>
+                                  <TableHead>Ordered Qty</TableHead>
+                                  <TableHead>Received Qty</TableHead>
+                                  <TableHead>Status</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {po.purchase_order_items.map((item) => (
+                                  <TableRow key={item.id}>
+                                    <TableCell className="font-mono">
+                                      {item.raw_materials?.material_code}
+                                    </TableCell>
+                                    <TableCell>{item.raw_materials?.name}</TableCell>
+                                    <TableCell>{item.quantity}</TableCell>
+                                    <TableCell>{item.received_quantity || 0}</TableCell>
+                                    <TableCell>
+                                      <Badge variant={
+                                        (item.received_quantity || 0) >= item.quantity ? "default" : 
+                                        (item.received_quantity || 0) > 0 ? "warning" : "destructive"
+                                      }>
+                                        {(item.received_quantity || 0) >= item.quantity ? "Complete" : 
+                                         (item.received_quantity || 0) > 0 ? "Partial" : "Pending"}
+                                      </Badge>
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </div>
+                        )}
                       </CardContent>
                     </Card>
                   ))}

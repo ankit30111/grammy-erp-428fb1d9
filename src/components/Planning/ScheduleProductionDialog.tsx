@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -47,6 +46,17 @@ export const ScheduleProductionDialog = ({
       toast({
         title: "Invalid Quantity",
         description: `Quantity must be between 1 and ${maxQuantity}`,
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Check if scheduling this quantity would exceed the projection total
+    const currentScheduled = projection.scheduled_quantity || 0;
+    if (currentScheduled + quantityNum > projection.quantity) {
+      toast({
+        title: "Cannot Over-Schedule",
+        description: `This would exceed the projection quantity. Only ${projection.quantity - currentScheduled} units can be scheduled.`,
         variant: "destructive"
       });
       return;
@@ -139,6 +149,11 @@ export const ScheduleProductionDialog = ({
                 <div className="font-medium text-blue-600">
                   Available to Schedule: {maxQuantity.toLocaleString()}
                 </div>
+                {maxQuantity === 0 && (
+                  <div className="text-red-600 font-medium mt-2">
+                    ⚠️ This projection is fully scheduled
+                  </div>
+                )}
               </div>
             </div>
             

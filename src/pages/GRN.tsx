@@ -1,19 +1,70 @@
-
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Package, Clock, Check, X, Trash2 } from "lucide-react";
+import { Package, Clock, Edit } from "lucide-react";
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { useGRN } from "@/hooks/useGRN";
 import GRNForm from "@/components/PPC/GRNForm";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 const GRN = () => {
   const [activeTab, setActiveTab] = useState("create");
   const [selectedGRN, setSelectedGRN] = useState<string | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingGRN, setEditingGRN] = useState<any>(null);
+  const [editQuantities, setEditQuantities] = useState<Record<string, number>>({});
   
-  const { data: existingGRNs, isLoading: grnLoading } = useGRN();
+  const { data: existingGRNs, isLoading: grnLoading, refetch } = useGRN();
+  const { toast } = useToast();
+
+  const handleEditGRN = (grn: any) => {
+    setEditingGRN(grn);
+    const quantities: Record<string, number> = {};
+    grn.grn_items?.forEach((item: any) => {
+      quantities[item.id] = item.received_quantity;
+    });
+    setEditQuantities(quantities);
+    setEditDialogOpen(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingGRN) return;
+
+    try {
+      // Update each GRN item with new quantities
+      const updates = Object.entries(editQuantities).map(([itemId, quantity]) => {
+        return supabase
+          .from('grn_items')
+          .update({ received_quantity: quantity })
+          .eq('id', itemId);
+      });
+
+      await Promise.all(updates);
+
+      toast({
+        title: "GRN Updated",
+        description: "GRN quantities have been updated successfully",
+      });
+
+      setEditDialogOpen(false);
+      setEditingGRN(null);
+      setEditQuantities({});
+      refetch();
+    } catch (error) {
+      console.error('Error updating GRN:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update GRN",
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
     <DashboardLayout>
@@ -89,13 +140,22 @@ const GRN = () => {
                                 {grn.status}
                               </Badge>
                             </TableCell>
-                            <TableCell>
+                            <TableCell className="space-x-2">
                               <Button 
                                 variant="outline" 
                                 size="sm"
                                 onClick={() => setSelectedGRN(selectedGRN === grn.id ? null : grn.id)}
                               >
                                 {selectedGRN === grn.id ? "Hide Details" : "View Details"}
+                              </Button>
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => handleEditGRN(grn)}
+                                className="gap-1"
+                              >
+                                <Edit className="h-4 w-4" />
+                                Edit
                               </Button>
                             </TableCell>
                           </TableRow>
@@ -159,25 +219,6 @@ const GRN = () => {
                             ))}
                           </TableBody>
                         </Table>
-                        
-                        <div className="mt-4 flex justify-end gap-2">
-                          {existingGRNs.find(grn => grn.id === selectedGRN)?.status === "RECEIVED" && (
-                            <>
-                              <Button variant="outline" size="sm" className="border-green-500 text-green-600 hover:bg-green-50">
-                                <Check size={16} className="mr-1" />
-                                Approve
-                              </Button>
-                              <Button variant="outline" size="sm" className="border-red-500 text-red-600 hover:bg-red-50">
-                                <X size={16} className="mr-1" />
-                                Reject
-                              </Button>
-                            </>
-                          )}
-                          <Button variant="outline" size="sm">
-                            <Trash2 size={16} className="mr-1" />
-                            Delete
-                          </Button>
-                        </div>
                       </div>
                     )}
                   </>
@@ -192,6 +233,59 @@ const GRN = () => {
             </Card>
           </div>
         )}
+
+        {/* Edit GRN Dialog */}
+        <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+          <DialogContent className="max-w-4xl">
+            <DialogHeader>
+              <DialogTitle>Edit GRN: {editingGRN?.grn_number}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              {editingGRN?.grn_items && (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Material Code</TableHead>
+                      <TableHead>Material Name</TableHead>
+                      <TableHead>PO Quantity</TableHead>
+                      <TableHead>Received Quantity</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {editingGRN.grn_items.map((item: any) => (
+                      <TableRow key={item.id}>
+                        <TableCell className="font-mono">{item.raw_materials?.material_code}</TableCell>
+                        <TableCell>{item.raw_materials?.name}</TableCell>
+                        <TableCell>{item.po_quantity}</TableCell>
+                        <TableCell>
+                          <Input
+                            type="number"
+                            min="0"
+                            max={item.po_quantity}
+                            value={editQuantities[item.id] || 0}
+                            onChange={(e) => setEditQuantities(prev => ({
+                              ...prev,
+                              [item.id]: parseInt(e.target.value) || 0
+                            }))}
+                            className="w-24"
+                          />
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+              <div className="flex justify-end gap-2 pt-4">
+                <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={handleSaveEdit}>
+                  Save Changes
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );
