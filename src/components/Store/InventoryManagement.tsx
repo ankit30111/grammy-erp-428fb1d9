@@ -4,13 +4,16 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Search, Package, MapPin, AlertTriangle, TrendingDown, TrendingUp } from "lucide-react";
+import { Search, Package, MapPin, AlertTriangle, TrendingDown, TrendingUp, RefreshCw } from "lucide-react";
 import { format } from "date-fns";
 import { StatusBadge } from "@/components/ui/custom/StatusBadge";
-import { useInventory } from "@/hooks/useInventory";
+import { useInventory, useManualInventorySync } from "@/hooks/useInventory";
+import { useToast } from "@/hooks/use-toast";
 
 export default function InventoryManagement() {
-  const { data: inventory = [], isLoading } = useInventory();
+  const { data: inventory = [], isLoading, refetch } = useInventory();
+  const manualSync = useManualInventorySync();
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("ALL");
 
@@ -49,6 +52,26 @@ export default function InventoryManagement() {
     }
   };
 
+  const handleManualSync = () => {
+    manualSync.mutate(undefined, {
+      onSuccess: () => {
+        toast({
+          title: "Inventory Synced",
+          description: "Inventory has been synced with store confirmed materials",
+        });
+        refetch();
+      },
+      onError: (error) => {
+        console.error("Sync error:", error);
+        toast({
+          title: "Sync Failed",
+          description: "Failed to sync inventory. Please try again.",
+          variant: "destructive",
+        });
+      }
+    });
+  };
+
   const totalItems = inventory.length;
   const lowStockItems = inventory.filter(item => {
     const status = getInventoryStatus(item.quantity, item.minimum_stock || 0);
@@ -76,6 +99,16 @@ export default function InventoryManagement() {
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-medium">Raw Material Inventory</h3>
         <div className="flex space-x-2">
+          <Button 
+            variant="outline"
+            size="sm"
+            onClick={handleManualSync}
+            disabled={manualSync.isPending}
+            className="gap-2"
+          >
+            <RefreshCw className={`h-4 w-4 ${manualSync.isPending ? 'animate-spin' : ''}`} />
+            Sync Inventory
+          </Button>
           <div className="relative w-64">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
@@ -208,7 +241,7 @@ export default function InventoryManagement() {
           {inventory.length === 0 ? (
             <>
               <p>No inventory items found</p>
-              <p className="text-sm">Raw materials need to be linked to inventory. Please contact system administrator.</p>
+              <p className="text-sm">Materials received by store will appear here. Try clicking "Sync Inventory" button.</p>
             </>
           ) : (
             <>
