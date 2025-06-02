@@ -9,6 +9,7 @@ export const useRawMaterials = () => {
   const { data: rawMaterials = [], isLoading } = useQuery({
     queryKey: ["raw-materials"],
     queryFn: async () => {
+      console.log("Debug: Fetching raw materials...");
       const { data, error } = await supabase
         .from("raw_materials")
         .select(`
@@ -25,6 +26,9 @@ export const useRawMaterials = () => {
         `)
         .eq("is_active", true)
         .order("created_at", { ascending: false });
+      
+      console.log("Debug raw materials data:", data);
+      console.log("Debug raw materials error:", error);
       
       if (error) throw error;
       return data || [];

@@ -837,29 +837,35 @@ export type Database = {
       kit_items: {
         Row: {
           actual_quantity: number | null
-          created_at: string
+          created_at: string | null
           id: string
+          issued_quantity: number | null
           kit_preparation_id: string
           raw_material_id: string
           required_quantity: number
+          updated_at: string | null
           verified_by_production: boolean | null
         }
         Insert: {
           actual_quantity?: number | null
-          created_at?: string
+          created_at?: string | null
           id?: string
+          issued_quantity?: number | null
           kit_preparation_id: string
           raw_material_id: string
           required_quantity: number
+          updated_at?: string | null
           verified_by_production?: boolean | null
         }
         Update: {
           actual_quantity?: number | null
-          created_at?: string
+          created_at?: string | null
           id?: string
+          issued_quantity?: number | null
           kit_preparation_id?: string
           raw_material_id?: string
           required_quantity?: number
+          updated_at?: string | null
           verified_by_production?: boolean | null
         }
         Relationships: [
@@ -881,34 +887,28 @@ export type Database = {
       }
       kit_preparation: {
         Row: {
-          created_at: string
+          created_at: string | null
           id: string
           kit_number: string
-          prepared_at: string | null
-          prepared_by: string | null
           production_order_id: string
-          sent_to_production_at: string | null
           status: string
+          updated_at: string | null
         }
         Insert: {
-          created_at?: string
-          id?: string
-          kit_number: string
-          prepared_at?: string | null
-          prepared_by?: string | null
-          production_order_id: string
-          sent_to_production_at?: string | null
-          status?: string
-        }
-        Update: {
-          created_at?: string
+          created_at?: string | null
           id?: string
           kit_number?: string
-          prepared_at?: string | null
-          prepared_by?: string | null
-          production_order_id?: string
-          sent_to_production_at?: string | null
+          production_order_id: string
           status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          kit_number?: string
+          production_order_id?: string
+          status?: string
+          updated_at?: string | null
         }
         Relationships: [
           {
@@ -958,6 +958,56 @@ export type Database = {
           },
           {
             foreignKeyName: "material_blocking_raw_material_id_fkey"
+            columns: ["raw_material_id"]
+            isOneToOne: false
+            referencedRelation: "raw_materials"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      material_movements: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          id: string
+          issued_to: string | null
+          movement_type: string
+          notes: string | null
+          quantity: number
+          raw_material_id: string
+          reference_id: string
+          reference_number: string
+          reference_type: string
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          issued_to?: string | null
+          movement_type: string
+          notes?: string | null
+          quantity: number
+          raw_material_id: string
+          reference_id: string
+          reference_number: string
+          reference_type: string
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          issued_to?: string | null
+          movement_type?: string
+          notes?: string | null
+          quantity?: number
+          raw_material_id?: string
+          reference_id?: string
+          reference_number?: string
+          reference_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "material_movements_raw_material_id_fkey"
             columns: ["raw_material_id"]
             isOneToOne: false
             referencedRelation: "raw_materials"
