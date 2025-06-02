@@ -1,14 +1,14 @@
-
 import { useState } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Search, Package, MapPin, AlertTriangle, TrendingDown, TrendingUp, RefreshCw } from "lucide-react";
+import { Search, Package, MapPin, AlertTriangle, TrendingDown, TrendingUp, RefreshCw, Bug } from "lucide-react";
 import { format } from "date-fns";
 import { StatusBadge } from "@/components/ui/custom/StatusBadge";
 import { useInventory, useManualInventorySync } from "@/hooks/useInventory";
 import { useToast } from "@/hooks/use-toast";
+import InventoryDiagnostics from "./InventoryDiagnostics";
 
 export default function InventoryManagement() {
   const { data: inventory = [], isLoading, refetch } = useInventory();
@@ -16,6 +16,7 @@ export default function InventoryManagement() {
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("ALL");
+  const [showDiagnostics, setShowDiagnostics] = useState(false);
 
   const getInventoryStatus = (quantity: number, minimumStock: number) => {
     if (quantity === 0) return "OUT_OF_STOCK";
@@ -54,10 +55,10 @@ export default function InventoryManagement() {
 
   const handleManualSync = () => {
     manualSync.mutate(undefined, {
-      onSuccess: () => {
+      onSuccess: (result) => {
         toast({
           title: "Inventory Synced",
-          description: "Inventory has been synced with store confirmed materials",
+          description: `Inventory corrected. Processed ${result.correctedItems} materials.`,
         });
         refetch();
       },
@@ -102,12 +103,21 @@ export default function InventoryManagement() {
           <Button 
             variant="outline"
             size="sm"
+            onClick={() => setShowDiagnostics(!showDiagnostics)}
+            className="gap-2"
+          >
+            <Bug className="h-4 w-4" />
+            {showDiagnostics ? "Hide" : "Show"} Diagnostics
+          </Button>
+          <Button 
+            variant="outline"
+            size="sm"
             onClick={handleManualSync}
             disabled={manualSync.isPending}
             className="gap-2"
           >
             <RefreshCw className={`h-4 w-4 ${manualSync.isPending ? 'animate-spin' : ''}`} />
-            Sync Inventory
+            Sync & Fix Inventory
           </Button>
           <div className="relative w-64">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -139,6 +149,24 @@ export default function InventoryManagement() {
           >
             Out of Stock
           </Button>
+        </div>
+      </div>
+
+      {/* Diagnostics Panel */}
+      {showDiagnostics && (
+        <InventoryDiagnostics />
+      )}
+
+      {/* Error Prevention Notice */}
+      <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+        <div className="flex items-center space-x-2">
+          <AlertTriangle className="h-5 w-5 text-orange-600" />
+          <div>
+            <p className="text-sm font-medium text-orange-900">Inventory Protection Enabled</p>
+            <p className="text-xs text-orange-700">
+              Enhanced safety checks prevent duplicate processing. Use "Sync & Fix Inventory" to correct any discrepancies.
+            </p>
+          </div>
         </div>
       </div>
 
@@ -241,7 +269,7 @@ export default function InventoryManagement() {
           {inventory.length === 0 ? (
             <>
               <p>No inventory items found</p>
-              <p className="text-sm">Materials received by store will appear here. Try clicking "Sync Inventory" button.</p>
+              <p className="text-sm">Materials received by store will appear here. Try clicking "Sync & Fix Inventory" button.</p>
             </>
           ) : (
             <>
