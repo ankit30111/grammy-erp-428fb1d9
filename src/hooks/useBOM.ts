@@ -18,7 +18,12 @@ export const useBOM = () => {
           raw_materials (
             id,
             name,
-            material_code
+            material_code,
+            vendor_id,
+            vendors (
+              id,
+              name
+            )
           )
         `);
       
@@ -39,7 +44,12 @@ export const useBOMByProduct = (productId: string) => {
           raw_materials (
             id,
             name,
-            material_code
+            material_code,
+            vendor_id,
+            vendors (
+              id,
+              name
+            )
           )
         `)
         .eq('product_id', productId);
