@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -10,6 +9,14 @@ export const useRawMaterials = () => {
     queryKey: ["raw-materials"],
     queryFn: async () => {
       console.log("Debug: Fetching raw materials...");
+      
+      // Test connection first
+      const { data: testData, error: testError } = await supabase
+        .from("raw_materials")
+        .select("count", { count: 'exact' });
+      
+      console.log("Debug: Raw materials count test:", testData, testError);
+      
       const { data, error } = await supabase
         .from("raw_materials")
         .select(`
@@ -36,6 +43,8 @@ export const useRawMaterials = () => {
       }
       return data || [];
     },
+    retry: 3,
+    retryDelay: 1000,
   });
 
   const addRawMaterial = useMutation({

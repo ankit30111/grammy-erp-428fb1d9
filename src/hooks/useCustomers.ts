@@ -7,6 +7,14 @@ export const useCustomers = () => {
     queryKey: ["customers"],
     queryFn: async () => {
       console.log("Debug: Fetching customers...");
+      
+      // Test connection first
+      const { data: testData, error: testError } = await supabase
+        .from("customers")
+        .select("count", { count: 'exact' });
+      
+      console.log("Debug: Customers count test:", testData, testError);
+      
       const { data, error } = await supabase
         .from("customers")
         .select("*")
@@ -21,5 +29,7 @@ export const useCustomers = () => {
       }
       return data || [];
     },
+    retry: 3,
+    retryDelay: 1000,
   });
 };

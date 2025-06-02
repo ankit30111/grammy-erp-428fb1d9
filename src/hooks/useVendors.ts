@@ -9,6 +9,14 @@ export const useVendors = () => {
     queryKey: ["vendors"],
     queryFn: async () => {
       console.log("Debug: Fetching vendors...");
+      
+      // Test connection first
+      const { data: testData, error: testError } = await supabase
+        .from("vendors")
+        .select("count", { count: 'exact' });
+      
+      console.log("Debug: Vendors count test:", testData, testError);
+      
       const { data, error } = await supabase
         .from("vendors")
         .select("*")
@@ -23,6 +31,8 @@ export const useVendors = () => {
       }
       return data || [];
     },
+    retry: 3,
+    retryDelay: 1000,
   });
 
   const addVendor = useMutation({

@@ -7,6 +7,14 @@ export const useProducts = () => {
     queryKey: ["products"],
     queryFn: async () => {
       console.log("Debug: Fetching products...");
+      
+      // Test connection first
+      const { data: testData, error: testError } = await supabase
+        .from("products")
+        .select("count", { count: 'exact' });
+      
+      console.log("Debug: Products count test:", testData, testError);
+      
       const { data, error } = await supabase
         .from("products")
         .select("*")
@@ -21,5 +29,7 @@ export const useProducts = () => {
       }
       return data || [];
     },
+    retry: 3,
+    retryDelay: 1000,
   });
 };
