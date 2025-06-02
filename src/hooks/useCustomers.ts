@@ -16,8 +16,11 @@ export const useCustomers = () => {
       console.log("Debug customers data:", data);
       console.log("Debug customers error:", error);
       
-      if (error) throw error;
-      return data;
+      if (error) {
+        console.error("Error fetching customers:", error);
+        throw error;
+      }
+      return data || [];
     },
   });
 };

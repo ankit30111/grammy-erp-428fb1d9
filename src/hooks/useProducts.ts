@@ -16,8 +16,11 @@ export const useProducts = () => {
       console.log("Debug products data:", data);
       console.log("Debug products error:", error);
       
-      if (error) throw error;
-      return data;
+      if (error) {
+        console.error("Error fetching products:", error);
+        throw error;
+      }
+      return data || [];
     },
   });
 };

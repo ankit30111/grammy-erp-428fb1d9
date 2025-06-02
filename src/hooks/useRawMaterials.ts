@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -17,6 +16,7 @@ export const useRawMaterials = () => {
           raw_material_vendors(
             id,
             is_primary,
+            vendor_id,
             vendors(
               id,
               name,
@@ -30,7 +30,10 @@ export const useRawMaterials = () => {
       console.log("Debug raw materials data:", data);
       console.log("Debug raw materials error:", error);
       
-      if (error) throw error;
+      if (error) {
+        console.error("Error fetching raw materials:", error);
+        throw error;
+      }
       return data || [];
     },
   });

@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -19,7 +18,10 @@ export const useVendors = () => {
       console.log("Debug vendors data:", data);
       console.log("Debug vendors error:", error);
       
-      if (error) throw error;
+      if (error) {
+        console.error("Error fetching vendors:", error);
+        throw error;
+      }
       return data || [];
     },
   });
