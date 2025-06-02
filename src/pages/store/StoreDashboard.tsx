@@ -7,6 +7,7 @@ import ProductionFeedback from "@/components/Store/ProductionFeedback";
 import InventoryManagement from "@/components/Store/InventoryManagement";
 import SpareOrdersPacking from "@/components/Store/SpareOrdersPacking";
 import VoucherKitManagement from "@/components/Store/VoucherKitManagement";
+import MaterialMovementLogBook from "@/components/Store/MaterialMovementLogBook";
 import StoreDashboardHeader from "@/components/Store/StoreDashboardHeader";
 import { useToast } from "@/hooks/use-toast";
 import { useInventorySync } from "@/hooks/useInventorySync";
@@ -102,12 +103,13 @@ export default function StoreDashboard() {
       />
 
       <Tabs defaultValue="production-vouchers" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="production-vouchers">Production Voucher Management</TabsTrigger>
           <TabsTrigger value="grn">GRN Receiving</TabsTrigger>
           <TabsTrigger value="feedback">Production Feedback</TabsTrigger>
           <TabsTrigger value="inventory">Inventory</TabsTrigger>
           <TabsTrigger value="spare-orders">Spare Orders</TabsTrigger>
+          <TabsTrigger value="log-book">Log Book</TabsTrigger>
         </TabsList>
 
         <TabsContent value="production-vouchers">
@@ -142,6 +144,10 @@ export default function StoreDashboard() {
 
         <TabsContent value="spare-orders">
           <SpareOrdersPacking />
+        </TabsContent>
+
+        <TabsContent value="log-book">
+          <MaterialMovementLogBook />
         </TabsContent>
       </Tabs>
     </div>
