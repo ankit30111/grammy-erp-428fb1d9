@@ -6,12 +6,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, AlertTriangle } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
+import { useProjectionValidation } from "./ProjectionValidation";
+import { ProjectionProgressIndicator } from "./ProjectionProgressIndicator";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface ScheduleProductionDialogProps {
   projection: any;
@@ -31,6 +34,12 @@ export const ScheduleProductionDialog = ({
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { validateScheduling } = useProjectionValidation();
+
+  // Validate the current quantity input
+  const validationResult = projection && quantity ? 
+    validateScheduling(projection.id, parseInt(quantity) || 0) : 
+    null;
 
   const handleSchedule = async () => {
     if (!projection || !scheduledDate || !quantity) {
@@ -43,31 +52,21 @@ export const ScheduleProductionDialog = ({
     }
 
     const quantityNum = parseInt(quantity);
-    if (quantityNum <= 0 || quantityNum > maxQuantity) {
+    if (quantityNum <= 0) {
       toast({
         title: "Invalid Quantity",
-        description: `Quantity must be between 1 and ${maxQuantity}`,
+        description: "Quantity must be greater than 0",
         variant: "destructive"
       });
       return;
     }
 
-    // Additional check against projection total
-    if (maxQuantity === 0) {
+    // Strict validation before proceeding
+    const validation = validateScheduling(projection.id, quantityNum);
+    if (!validation.isValid) {
       toast({
-        title: "Cannot Schedule More Production",
-        description: "Projected quantity for this product is already fully planned.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    // Check if scheduling this quantity would exceed the projection total
-    const currentScheduled = projection.scheduled_quantity || 0;
-    if (currentScheduled + quantityNum > projection.quantity) {
-      toast({
-        title: "Cannot Over-Schedule",
-        description: `This would exceed the projection quantity. Only ${projection.quantity - currentScheduled} units can be scheduled.`,
+        title: "Cannot Schedule Production",
+        description: validation.error,
         variant: "destructive"
       });
       return;
@@ -109,7 +108,7 @@ export const ScheduleProductionDialog = ({
 
       toast({
         title: "Production Scheduled",
-        description: `${quantityNum} units scheduled for ${format(scheduledDate, "PPP")}`
+        description: `${quantityNum} units scheduled for ${format(scheduledDate, "PPP")} with voucher ${voucherNumber}`
       });
 
       // Refresh data
@@ -135,7 +134,7 @@ export const ScheduleProductionDialog = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>Schedule Production</DialogTitle>
         </DialogHeader>
@@ -152,24 +151,30 @@ export const ScheduleProductionDialog = ({
               <div className="text-sm font-medium">{projection.products?.name}</div>
             </div>
 
-            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-              <div className="text-sm">
-                <div className="font-medium">Projection Summary:</div>
-                <div>Total Quantity: {projection.quantity?.toLocaleString()}</div>
-                <div>Already Scheduled: {(projection.scheduled_quantity || 0).toLocaleString()}</div>
-                <div className="font-medium text-blue-600">
-                  Available to Schedule: {maxQuantity.toLocaleString()}
-                </div>
-                {maxQuantity === 0 && (
-                  <div className="text-red-600 font-medium mt-2">
-                    ⚠️ This projection is fully scheduled
-                  </div>
-                )}
-              </div>
+            <div className="space-y-2">
+              <Label>Projection Progress</Label>
+              <ProjectionProgressIndicator 
+                projectionId={projection.id} 
+                showDetails={true} 
+              />
             </div>
+
+            {maxQuantity === 0 && (
+              <Alert variant="destructive">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>
+                  Cannot schedule more production. Projected quantity for this product is already fully planned.
+                </AlertDescription>
+              </Alert>
+            )}
             
             <div className="space-y-2">
-              <Label htmlFor="quantity">Quantity to Schedule (Max: {maxQuantity.toLocaleString()})</Label>
+              <Label htmlFor="quantity">
+                Quantity to Schedule 
+                {maxQuantity > 0 && (
+                  <span className="text-muted-foreground">(Max: {maxQuantity.toLocaleString()})</span>
+                )}
+              </Label>
               <Input
                 id="quantity"
                 type="number"
@@ -180,13 +185,17 @@ export const ScheduleProductionDialog = ({
                 placeholder="Enter quantity"
                 disabled={maxQuantity === 0}
               />
-              {maxQuantity === 0 ? (
-                <p className="text-sm text-red-600">
-                  Cannot schedule more production. Projected quantity for this product is already fully planned.
-                </p>
-              ) : (
+              
+              {validationResult && !validationResult.isValid && (
+                <Alert variant="destructive">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription>{validationResult.error}</AlertDescription>
+                </Alert>
+              )}
+              
+              {maxQuantity > 0 && (
                 <p className="text-sm text-muted-foreground">
-                  Enter quantity between 1 and {maxQuantity.toLocaleString()}
+                  Available to schedule: {maxQuantity.toLocaleString()} units
                 </p>
               )}
             </div>
@@ -227,7 +236,13 @@ export const ScheduleProductionDialog = ({
           </Button>
           <Button 
             onClick={handleSchedule} 
-            disabled={isLoading || maxQuantity === 0}
+            disabled={
+              isLoading || 
+              maxQuantity === 0 || 
+              !quantity || 
+              !scheduledDate ||
+              (validationResult && !validationResult.isValid)
+            }
           >
             {isLoading ? "Scheduling..." : "Schedule Production"}
           </Button>

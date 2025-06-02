@@ -13,6 +13,7 @@ import { useProjections } from "@/hooks/useProjections";
 import { useProductionSchedules, useCreateProductionSchedule, useDeleteProductionSchedule } from "@/hooks/useProductionSchedules";
 import { useProductionOrders } from "@/hooks/useProductionOrders";
 import { useInventory } from "@/hooks/useInventory";
+import { useProjectionValidation } from "@/components/Planning/ProjectionValidation";
 import {
   Table,
   TableBody,
@@ -25,6 +26,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertTriangle } from "lucide-react";
 
 const PlanningDashboard = () => {
   const [selectedDate, setSelectedDate] = useState<Date>();
@@ -39,6 +42,7 @@ const PlanningDashboard = () => {
   const createSchedule = useCreateProductionSchedule();
   const deleteSchedule = useDeleteProductionSchedule();
   const { toast } = useToast();
+  const { validateScheduling } = useProjectionValidation();
 
   // BOM query without vendor_id reference
   const { data: bomData } = useQuery({
@@ -71,6 +75,11 @@ const PlanningDashboard = () => {
   const maxQuantity = selectedProjectionData ? 
     selectedProjectionData.quantity - (selectedProjectionData.scheduled_quantity || 0) : 0;
 
+  // Validate the current quantity input
+  const validationResult = selectedProjection && quantity ? 
+    validateScheduling(selectedProjection, parseInt(quantity) || 0) : 
+    null;
+
   const handleSchedule = async () => {
     if (!selectedDate || !selectedProjection || !quantity) {
       toast({
@@ -83,19 +92,12 @@ const PlanningDashboard = () => {
 
     const quantityNum = parseInt(quantity);
     
-    if (quantityNum > maxQuantity) {
+    // Strict validation before proceeding
+    const validation = validateScheduling(selectedProjection, quantityNum);
+    if (!validation.isValid) {
       toast({
-        title: "Cannot Schedule More Production",
-        description: `Projected quantity for this product is already fully planned. Only ${maxQuantity} units can be scheduled.`,
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (maxQuantity === 0) {
-      toast({
-        title: "Cannot Schedule More Production",
-        description: "Projected quantity for this product is already fully planned.",
+        title: "Cannot Schedule Production",
+        description: validation.error,
         variant: "destructive",
       });
       return;
@@ -264,7 +266,7 @@ const PlanningDashboard = () => {
             <Card>
               <CardHeader>
                 <CardTitle>Schedule Production</CardTitle>
-                <CardDescription>Plan production based on customer projections</CardDescription>
+                <CardDescription>Plan production based on customer projections with strict quantity validation</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -287,7 +289,7 @@ const PlanningDashboard = () => {
                     </CardContent>
                   </Card>
 
-                  {/* Scheduling Form */}
+                  {/* Enhanced Scheduling Form */}
                   <Card>
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
@@ -353,6 +355,14 @@ const PlanningDashboard = () => {
                           placeholder="Enter quantity"
                           disabled={maxQuantity === 0}
                         />
+                        
+                        {validationResult && !validationResult.isValid && (
+                          <Alert variant="destructive" className="mt-2">
+                            <AlertTriangle className="h-4 w-4" />
+                            <AlertDescription>{validationResult.error}</AlertDescription>
+                          </Alert>
+                        )}
+                        
                         {selectedProjectionData && (
                           <p className="text-sm text-muted-foreground mt-1">
                             Maximum available: {maxQuantity} units
@@ -367,7 +377,14 @@ const PlanningDashboard = () => {
 
                       <Button
                         onClick={handleSchedule}
-                        disabled={!selectedDate || !selectedProjection || !quantity || createSchedule.isPending || maxQuantity === 0}
+                        disabled={
+                          !selectedDate || 
+                          !selectedProjection || 
+                          !quantity || 
+                          createSchedule.isPending || 
+                          maxQuantity === 0 ||
+                          (validationResult && !validationResult.isValid)
+                        }
                         className="w-full gap-2"
                       >
                         <Factory className="h-4 w-4" />

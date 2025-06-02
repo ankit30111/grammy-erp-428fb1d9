@@ -7,6 +7,7 @@ import { Calendar, Package2, AlertTriangle } from "lucide-react";
 import { useProjections } from "@/hooks/useProjections";
 import { useProductionSchedules } from "@/hooks/useProductionSchedules";
 import { ScheduleProductionDialog } from "./ScheduleProductionDialog";
+import { ProjectionProgressIndicator } from "./ProjectionProgressIndicator";
 import { useState } from "react";
 
 export const ProjectionsOverview = () => {
@@ -83,6 +84,7 @@ export const ProjectionsOverview = () => {
                 <TableHead>Customer</TableHead>
                 <TableHead>Product</TableHead>
                 <TableHead>Delivery Month</TableHead>
+                <TableHead>Progress</TableHead>
                 <TableHead>Total Quantity</TableHead>
                 <TableHead>Scheduled</TableHead>
                 <TableHead>Remaining</TableHead>
@@ -102,6 +104,9 @@ export const ProjectionsOverview = () => {
                     </TableCell>
                     <TableCell>{projection.products?.name}</TableCell>
                     <TableCell>{projection.delivery_month}</TableCell>
+                    <TableCell className="w-32">
+                      <ProjectionProgressIndicator projectionId={projection.id} />
+                    </TableCell>
                     <TableCell>{projection.quantity.toLocaleString()}</TableCell>
                     <TableCell className="font-medium text-blue-600">
                       {scheduled.toLocaleString()}
