@@ -920,6 +920,57 @@ export type Database = {
           },
         ]
       }
+      line_rejections: {
+        Row: {
+          created_at: string
+          id: string
+          production_order_id: string
+          quantity_rejected: number
+          raw_material_id: string
+          reason: string
+          rejected_by: string | null
+          rejection_date: string
+          remarks: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          production_order_id: string
+          quantity_rejected: number
+          raw_material_id: string
+          reason: string
+          rejected_by?: string | null
+          rejection_date?: string
+          remarks: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          production_order_id?: string
+          quantity_rejected?: number
+          raw_material_id?: string
+          reason?: string
+          rejected_by?: string | null
+          rejection_date?: string
+          remarks?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "line_rejections_production_order_id_fkey"
+            columns: ["production_order_id"]
+            isOneToOne: false
+            referencedRelation: "production_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "line_rejections_raw_material_id_fkey"
+            columns: ["raw_material_id"]
+            isOneToOne: false
+            referencedRelation: "raw_materials"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       material_blocking: {
         Row: {
           blocked_at: string
@@ -1243,6 +1294,53 @@ export type Database = {
             columns: ["reviewer_id"]
             isOneToOne: false
             referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pqc_reports: {
+        Row: {
+          created_at: string
+          id: string
+          production_order_id: string
+          remarks: string
+          report_file_url: string | null
+          status: string
+          time_period: string
+          upload_date: string
+          upload_time: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          production_order_id: string
+          remarks: string
+          report_file_url?: string | null
+          status: string
+          time_period: string
+          upload_date?: string
+          upload_time?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          production_order_id?: string
+          remarks?: string
+          report_file_url?: string | null
+          status?: string
+          time_period?: string
+          upload_date?: string
+          upload_time?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pqc_reports_production_order_id_fkey"
+            columns: ["production_order_id"]
+            isOneToOne: false
+            referencedRelation: "production_orders"
             referencedColumns: ["id"]
           },
         ]
@@ -1709,6 +1807,41 @@ export type Database = {
         }
         Relationships: []
       }
+      rca_reports: {
+        Row: {
+          created_at: string
+          id: string
+          line_rejection_id: string
+          rca_file_url: string | null
+          received_quantity: number
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          line_rejection_id: string
+          rca_file_url?: string | null
+          received_quantity: number
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          line_rejection_id?: string
+          rca_file_url?: string | null
+          received_quantity?: number
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rca_reports_line_rejection_id_fkey"
+            columns: ["line_rejection_id"]
+            isOneToOne: false
+            referencedRelation: "line_rejections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       skills: {
         Row: {
           category: string
@@ -1901,6 +2034,60 @@ export type Database = {
             columns: ["department_id"]
             isOneToOne: false
             referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vendor_capa: {
+        Row: {
+          capa_file_url: string | null
+          closed_at: string | null
+          closed_by: string | null
+          created_at: string
+          id: string
+          initiated_by: string | null
+          line_rejection_id: string
+          status: string
+          updated_at: string
+          vendor_id: string
+        }
+        Insert: {
+          capa_file_url?: string | null
+          closed_at?: string | null
+          closed_by?: string | null
+          created_at?: string
+          id?: string
+          initiated_by?: string | null
+          line_rejection_id: string
+          status?: string
+          updated_at?: string
+          vendor_id: string
+        }
+        Update: {
+          capa_file_url?: string | null
+          closed_at?: string | null
+          closed_by?: string | null
+          created_at?: string
+          id?: string
+          initiated_by?: string | null
+          line_rejection_id?: string
+          status?: string
+          updated_at?: string
+          vendor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_capa_line_rejection_id_fkey"
+            columns: ["line_rejection_id"]
+            isOneToOne: false
+            referencedRelation: "line_rejections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_capa_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
             referencedColumns: ["id"]
           },
         ]

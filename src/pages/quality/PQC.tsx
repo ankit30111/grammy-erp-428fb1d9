@@ -18,10 +18,12 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
+import PQCActionsDialog from "@/components/quality/PQCActionsDialog";
 
 const PQC = () => {
   const [selectedTab, setSelectedTab] = useState("active");
   const [selectedProduction, setSelectedProduction] = useState<string | null>(null);
+  const [showActionsDialog, setShowActionsDialog] = useState(false);
 
   // Fetch active production orders
   const { data: activeProduction = [] } = useQuery({
@@ -68,6 +70,11 @@ const PQC = () => {
       return data || [];
     },
   });
+
+  const handleActionsClick = (productionId: string) => {
+    setSelectedProduction(productionId);
+    setShowActionsDialog(true);
+  };
 
   return (
     <DashboardLayout>
@@ -123,8 +130,12 @@ const PQC = () => {
                             </Badge>
                           </TableCell>
                           <TableCell>
-                            <Button size="sm" variant="outline">
-                              Quality Check
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => handleActionsClick(prod.id)}
+                            >
+                              Actions
                             </Button>
                           </TableCell>
                         </TableRow>
@@ -198,6 +209,18 @@ const PQC = () => {
             </Card>
           </TabsContent>
         </Tabs>
+
+        {/* PQC Actions Dialog */}
+        {selectedProduction && (
+          <PQCActionsDialog
+            productionOrderId={selectedProduction}
+            isOpen={showActionsDialog}
+            onClose={() => {
+              setShowActionsDialog(false);
+              setSelectedProduction(null);
+            }}
+          />
+        )}
       </div>
     </DashboardLayout>
   );
