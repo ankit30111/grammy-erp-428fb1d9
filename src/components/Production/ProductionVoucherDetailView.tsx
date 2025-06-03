@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,7 +10,8 @@ import { Badge } from "@/components/ui/badge";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Package, AlertTriangle, Settings } from "lucide-react";
+import { Package, AlertTriangle, Settings, TrendingUp } from "lucide-react";
+import ProductionStatusSummary from "./ProductionStatusSummary";
 
 interface ProductionVoucherDetailViewProps {
   production: any;
@@ -19,8 +21,12 @@ interface ProductionVoucherDetailViewProps {
 
 const ProductionVoucherDetailView = ({ production, isOpen, onClose }: ProductionVoucherDetailViewProps) => {
   const [receivedQuantities, setReceivedQuantities] = useState<Record<string, number>>({});
+  const [lineAssignments, setLineAssignments] = useState<Record<string, string>>({});
+  const [showStatusSummary, setShowStatusSummary] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  const productionLines = ["Line 1", "Line 2", "Sub Assembly 1", "Sub Assembly 2"];
 
   // Fetch BOM data for the product
   const { data: bomData = [] } = useQuery({
@@ -47,7 +53,7 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
     enabled: !!production?.product_id && isOpen,
   });
 
-  // Fetch materials actually sent by store (from kit_items table)
+  // Fetch materials actually sent by store
   const { data: sentMaterials = [] } = useQuery({
     queryKey: ["sent-materials-detail", production?.id],
     queryFn: async () => {
@@ -75,14 +81,14 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
     enabled: !!production?.id && isOpen,
   });
 
-  // Group BOM items by type - using lowercase keys to match database enum
+  // Group BOM items by assembly type
   const groupedBOM = {
-    main_assembly: bomData.filter(item => item.bom_type === 'main_assembly'),
     sub_assembly: bomData.filter(item => item.bom_type === 'sub_assembly'),
+    main_assembly: bomData.filter(item => item.bom_type === 'main_assembly'),
     accessory: bomData.filter(item => item.bom_type === 'accessory')
   };
 
-  // Get quantity sent by store for a material from actual kit_items
+  // Get quantity sent by store for a material
   const getQuantitySent = (materialId: string) => {
     return sentMaterials
       .filter(item => item.raw_material_id === materialId)
@@ -95,6 +101,14 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
     setReceivedQuantities(prev => ({
       ...prev,
       [materialId]: quantity
+    }));
+  };
+
+  // Handle line assignment change
+  const handleLineAssignmentChange = (bomType: string, line: string) => {
+    setLineAssignments(prev => ({
+      ...prev,
+      [bomType]: line
     }));
   };
 
@@ -121,8 +135,31 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
     },
   });
 
-  // Handle save all quantities
+  // Save line assignments mutation
+  const saveLineAssignments = useMutation({
+    mutationFn: async () => {
+      // Update production order with line assignments
+      const { error } = await supabase
+        .from("production_orders")
+        .update({
+          production_lines: lineAssignments,
+          updated_at: new Date().toISOString()
+        })
+        .eq("id", production.id);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({
+        title: "Line Assignments Saved",
+        description: "Production line assignments have been updated",
+      });
+    },
+  });
+
+  // Handle save all quantities and assignments
   const handleSaveQuantities = () => {
+    // Log discrepancies
     Object.entries(receivedQuantities).forEach(([materialId, quantityReceived]) => {
       const quantitySent = getQuantitySent(materialId);
       const difference = quantityReceived - quantitySent;
@@ -140,17 +177,45 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
         });
       }
     });
+
+    // Save line assignments if any
+    if (Object.keys(lineAssignments).length > 0) {
+      saveLineAssignments.mutate();
+    }
   };
 
   const renderBOMSection = (sectionName: string, items: any[], sectionKey: string) => (
     <Card className="mb-6">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Package className="h-5 w-5" />
-          {sectionName}
-          <Badge variant="outline">{items.length} items</Badge>
+        <CardTitle className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Package className="h-5 w-5" />
+            {sectionName}
+            <Badge variant="outline">{items.length} items</Badge>
+          </div>
+          
+          {/* Line Assignment Dropdown */}
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">Assign to Line:</span>
+            <Select
+              value={lineAssignments[sectionKey] || ""}
+              onValueChange={(value) => handleLineAssignmentChange(sectionKey, value)}
+            >
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder="Select Line" />
+              </SelectTrigger>
+              <SelectContent>
+                {productionLines.map((line) => (
+                  <SelectItem key={line} value={line}>
+                    {line}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </CardTitle>
       </CardHeader>
+      
       <CardContent>
         <Table>
           <TableHeader>
@@ -160,6 +225,7 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
               <TableHead>Required Qty</TableHead>
               <TableHead>Qty Sent by Store</TableHead>
               <TableHead>Qty Received by Production</TableHead>
+              <TableHead>Remaining Qty</TableHead>
               <TableHead>Status</TableHead>
             </TableRow>
           </TableHeader>
@@ -168,6 +234,7 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
               const requiredQty = item.quantity * production.quantity;
               const quantitySent = getQuantitySent(item.raw_material_id);
               const quantityReceived = receivedQuantities[item.raw_material_id] || quantitySent;
+              const remainingQty = requiredQty - quantityReceived;
               const difference = quantityReceived - quantitySent;
               
               return (
@@ -183,6 +250,9 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
                       onChange={(e) => handleReceivedQuantityChange(item.raw_material_id, e.target.value)}
                       className="w-24"
                     />
+                  </TableCell>
+                  <TableCell className={remainingQty > 0 ? "text-orange-600 font-medium" : "text-green-600 font-medium"}>
+                    {remainingQty}
                   </TableCell>
                   <TableCell>
                     {difference === 0 ? (
@@ -204,7 +274,7 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
             })}
             {items.length === 0 && (
               <TableRow>
-                <TableCell colSpan={6} className="text-center text-muted-foreground">
+                <TableCell colSpan={7} className="text-center text-muted-foreground">
                   No materials sent for this assembly type
                 </TableCell>
               </TableRow>
@@ -217,7 +287,7 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Settings className="h-5 w-5" />
@@ -248,22 +318,43 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
 
           {/* Materials Sent by Store - Grouped by Assembly Type */}
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Materials Sent by Store</h3>
-            {renderBOMSection("Main Assembly", groupedBOM.main_assembly, "main_assembly")}
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold">Materials Sent by Store</h3>
+              <Button
+                variant="outline"
+                onClick={() => setShowStatusSummary(true)}
+                className="gap-2"
+              >
+                <TrendingUp className="h-4 w-4" />
+                Production Status
+              </Button>
+            </div>
+            
             {renderBOMSection("Sub Assembly", groupedBOM.sub_assembly, "sub_assembly")}
-            {renderBOMSection("Accessory", groupedBOM.accessory, "accessory")}
+            {renderBOMSection("Main Assembly", groupedBOM.main_assembly, "main_assembly")}
+            {renderBOMSection("Accessories", groupedBOM.accessory, "accessory")}
           </div>
 
           {/* Action Buttons */}
           <div className="flex justify-end gap-4 pt-4 border-t">
             <Button
               onClick={handleSaveQuantities}
-              disabled={saveDiscrepancyMutation.isPending}
+              disabled={saveDiscrepancyMutation.isPending || saveLineAssignments.isPending}
             >
-              Save Quantities & Log Discrepancies
+              Save Quantities & Line Assignments
             </Button>
           </div>
         </div>
+
+        {/* Production Status Summary Dialog */}
+        {showStatusSummary && (
+          <ProductionStatusSummary
+            productionId={production.id}
+            voucherNumber={production.voucher_number}
+            isOpen={showStatusSummary}
+            onClose={() => setShowStatusSummary(false)}
+          />
+        )}
       </DialogContent>
     </Dialog>
   );

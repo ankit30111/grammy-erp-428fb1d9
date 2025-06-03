@@ -1,7 +1,7 @@
 
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import ProductionDashboard from "@/components/Production/ProductionDashboard";
+import ProductionLinesOverview from "@/components/Production/ProductionLinesOverview";
 import ScheduledProductions from "@/components/Production/ScheduledProductions";
 import MaterialRequests from "@/components/Production/MaterialRequests";
 import OQCRejections from "@/components/Production/OQCRejections";
@@ -17,17 +17,17 @@ export default function Production() {
           <h1 className="text-2xl font-bold">Production Management - Grammy Electronics</h1>
         </div>
 
-        <Tabs defaultValue="dashboard" className="space-y-4">
+        <Tabs defaultValue="production-lines" className="space-y-4">
           <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="dashboard">Production Lines</TabsTrigger>
+            <TabsTrigger value="production-lines">Production Lines</TabsTrigger>
             <TabsTrigger value="scheduled">Scheduled Productions</TabsTrigger>
             <TabsTrigger value="completed">Completed Production</TabsTrigger>
             <TabsTrigger value="material-requests">Material Requests</TabsTrigger>
             <TabsTrigger value="oqc-rejections">OQC Rejections</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="dashboard" className="space-y-4">
-            <ProductionDashboard />
+          <TabsContent value="production-lines" className="space-y-4">
+            <ProductionLinesOverview />
           </TabsContent>
 
           <TabsContent value="scheduled" className="space-y-4">

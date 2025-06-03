@@ -3,17 +3,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, Eye, Settings } from "lucide-react";
+import { Calendar, Eye } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
 import ProductionVoucherDetailView from "./ProductionVoucherDetailView";
-import ProductionLineManager from "./ProductionLineManager";
 
 const ScheduledProductions = () => {
   const [selectedProduction, setSelectedProduction] = useState<any>(null);
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
-  const [showLineManager, setShowLineManager] = useState<string | null>(null);
 
   // Fetch scheduled productions
   const { data: scheduledProductions = [] } = useQuery({
@@ -48,24 +46,6 @@ const ScheduledProductions = () => {
     setSelectedProduction(production);
     setShowDetailsDialog(true);
   };
-
-  const handleManageLines = (productionId: string) => {
-    setShowLineManager(productionId);
-  };
-
-  if (showLineManager) {
-    return (
-      <div className="space-y-4">
-        <Button 
-          variant="outline" 
-          onClick={() => setShowLineManager(null)}
-        >
-          ← Back to Scheduled Productions
-        </Button>
-        <ProductionLineManager productionOrderId={showLineManager} />
-      </div>
-    );
-  }
 
   if (scheduledProductions.length === 0) {
     return (
@@ -121,26 +101,15 @@ const ScheduledProductions = () => {
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleViewDetails(production)}
-                        className="gap-2"
-                      >
-                        <Eye className="h-4 w-4" />
-                        Details
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleManageLines(production.id)}
-                        className="gap-2"
-                      >
-                        <Settings className="h-4 w-4" />
-                        Manage Lines
-                      </Button>
-                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleViewDetails(production)}
+                      className="gap-2"
+                    >
+                      <Eye className="h-4 w-4" />
+                      View Details
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))}
