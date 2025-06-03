@@ -19,11 +19,6 @@ interface ProductionVoucherDetailViewProps {
 
 const ProductionVoucherDetailView = ({ production, isOpen, onClose }: ProductionVoucherDetailViewProps) => {
   const [receivedQuantities, setReceivedQuantities] = useState<Record<string, number>>({});
-  const [productionLines, setProductionLines] = useState({
-    MAIN_ASSEMBLY: '',
-    SUB_ASSEMBLY: '',
-    ACCESSORY: ''
-  });
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -52,9 +47,9 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
     enabled: !!production?.product_id && isOpen,
   });
 
-  // Fetch kit items that were sent by store
-  const { data: kitItems = [] } = useQuery({
-    queryKey: ["production-kit-items", production?.id],
+  // Fetch materials actually sent by store (from kit_items table)
+  const { data: sentMaterials = [] } = useQuery({
+    queryKey: ["sent-materials-detail", production?.id],
     queryFn: async () => {
       if (!production?.id) return [];
       
@@ -80,24 +75,18 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
     enabled: !!production?.id && isOpen,
   });
 
-  // Load existing production lines when dialog opens
-  useEffect(() => {
-    if (production?.production_lines) {
-      setProductionLines(production.production_lines);
-    }
-  }, [production]);
-
   // Group BOM items by type - using lowercase keys to match database enum
   const groupedBOM = {
-    MAIN_ASSEMBLY: bomData.filter(item => item.bom_type === 'main_assembly'),
-    SUB_ASSEMBLY: bomData.filter(item => item.bom_type === 'sub_assembly'),
-    ACCESSORY: bomData.filter(item => item.bom_type === 'accessory')
+    main_assembly: bomData.filter(item => item.bom_type === 'main_assembly'),
+    sub_assembly: bomData.filter(item => item.bom_type === 'sub_assembly'),
+    accessory: bomData.filter(item => item.bom_type === 'accessory')
   };
 
-  // Get quantity sent by store for a material
+  // Get quantity sent by store for a material from actual kit_items
   const getQuantitySent = (materialId: string) => {
-    const kitItem = kitItems.find(item => item.raw_material_id === materialId);
-    return kitItem?.actual_quantity || 0;
+    return sentMaterials
+      .filter(item => item.raw_material_id === materialId)
+      .reduce((sum, item) => sum + item.actual_quantity, 0);
   };
 
   // Handle received quantity change
@@ -132,26 +121,6 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
     },
   });
 
-  // Update production lines mutation - fix to use the correct column
-  const updateProductionLinesMutation = useMutation({
-    mutationFn: async (lines: any) => {
-      const { error } = await supabase
-        .from("production_orders")
-        .update({
-          production_lines: lines
-        })
-        .eq("id", production.id);
-      
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast({
-        title: "Production Lines Updated",
-        description: "Production line assignments have been saved",
-      });
-    },
-  });
-
   // Handle save all quantities
   const handleSaveQuantities = () => {
     Object.entries(receivedQuantities).forEach(([materialId, quantityReceived]) => {
@@ -173,39 +142,13 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
     });
   };
 
-  // Production line options
-  const productionLineOptions = [
-    "Line 1",
-    "Line 2", 
-    "Sub Assembly 1",
-    "Sub Assembly 2",
-    "Accessory Line 1",
-    "Accessory Line 2"
-  ];
-
   const renderBOMSection = (sectionName: string, items: any[], sectionKey: string) => (
     <Card className="mb-6">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Package className="h-5 w-5" />
           {sectionName}
-          <div className="ml-auto">
-            <Select
-              value={productionLines[sectionKey as keyof typeof productionLines]}
-              onValueChange={(value) => setProductionLines(prev => ({ ...prev, [sectionKey]: value }))}
-            >
-              <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder="Assign Production Line" />
-              </SelectTrigger>
-              <SelectContent>
-                {productionLineOptions.map((line) => (
-                  <SelectItem key={line} value={line}>
-                    {line}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          <Badge variant="outline">{items.length} items</Badge>
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -232,7 +175,7 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
                   <TableCell className="font-mono">{item.raw_materials.material_code}</TableCell>
                   <TableCell>{item.raw_materials.name}</TableCell>
                   <TableCell className="font-medium">{requiredQty}</TableCell>
-                  <TableCell>{quantitySent}</TableCell>
+                  <TableCell className="font-medium text-blue-600">{quantitySent}</TableCell>
                   <TableCell>
                     <Input
                       type="number"
@@ -259,6 +202,13 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
                 </TableRow>
               );
             })}
+            {items.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={6} className="text-center text-muted-foreground">
+                  No materials sent for this assembly type
+                </TableCell>
+              </TableRow>
+            )}
           </TableBody>
         </Table>
       </CardContent>
@@ -296,20 +246,16 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
             </CardContent>
           </Card>
 
-          {/* BOM Sections */}
-          {renderBOMSection("Main Assembly", groupedBOM.MAIN_ASSEMBLY, "MAIN_ASSEMBLY")}
-          {renderBOMSection("Sub Assembly", groupedBOM.SUB_ASSEMBLY, "SUB_ASSEMBLY")}
-          {renderBOMSection("Accessory", groupedBOM.ACCESSORY, "ACCESSORY")}
+          {/* Materials Sent by Store - Grouped by Assembly Type */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold">Materials Sent by Store</h3>
+            {renderBOMSection("Main Assembly", groupedBOM.main_assembly, "main_assembly")}
+            {renderBOMSection("Sub Assembly", groupedBOM.sub_assembly, "sub_assembly")}
+            {renderBOMSection("Accessory", groupedBOM.accessory, "accessory")}
+          </div>
 
           {/* Action Buttons */}
           <div className="flex justify-end gap-4 pt-4 border-t">
-            <Button
-              variant="outline"
-              onClick={() => updateProductionLinesMutation.mutate(productionLines)}
-              disabled={updateProductionLinesMutation.isPending}
-            >
-              Save Production Lines
-            </Button>
             <Button
               onClick={handleSaveQuantities}
               disabled={saveDiscrepancyMutation.isPending}
