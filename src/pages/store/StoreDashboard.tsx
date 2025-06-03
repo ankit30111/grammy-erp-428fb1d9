@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScheduledProduction as ScheduledProductionType, mockScheduledProductions, mockGRNs, mockMaterialRequests, GRNItem, MaterialRequest } from "@/types/store";
@@ -129,12 +130,7 @@ export default function StoreDashboard() {
         </TabsContent>
 
         <TabsContent value="feedback">
-          <ProductionFeedback 
-            materialRequests={materialRequests}
-            productions={productions}
-            onApproveMaterialRequest={handleApproveMaterialRequest}
-            onRejectMaterialRequest={handleRejectMaterialRequest}
-          />
+          <ProductionFeedback />
         </TabsContent>
 
         <TabsContent value="inventory">

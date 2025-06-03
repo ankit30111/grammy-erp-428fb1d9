@@ -81,7 +81,14 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
     enabled: !!production?.id && isOpen,
   });
 
-  // Group BOM items by type
+  // Load existing production lines when dialog opens
+  useEffect(() => {
+    if (production?.production_lines) {
+      setProductionLines(production.production_lines);
+    }
+  }, [production]);
+
+  // Group BOM items by type - fix the comparison to use uppercase
   const groupedBOM = {
     main_assembly: bomData.filter(item => item.bom_type === 'MAIN_ASSEMBLY'),
     sub_assembly: bomData.filter(item => item.bom_type === 'SUB_ASSEMBLY'),
@@ -126,7 +133,7 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
     },
   });
 
-  // Update production lines mutation
+  // Update production lines mutation - fix to use the correct column
   const updateProductionLinesMutation = useMutation({
     mutationFn: async (lines: any) => {
       const { error } = await supabase

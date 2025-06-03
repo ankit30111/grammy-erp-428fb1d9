@@ -1253,6 +1253,7 @@ export type Database = {
           id: string
           kit_status: string | null
           product_id: string
+          production_lines: Json | null
           production_schedule_id: string
           quantity: number
           scheduled_date: string
@@ -1265,6 +1266,7 @@ export type Database = {
           id?: string
           kit_status?: string | null
           product_id: string
+          production_lines?: Json | null
           production_schedule_id: string
           quantity: number
           scheduled_date: string
@@ -1277,6 +1279,7 @@ export type Database = {
           id?: string
           kit_status?: string | null
           product_id?: string
+          production_lines?: Json | null
           production_schedule_id?: string
           quantity?: number
           scheduled_date?: string
