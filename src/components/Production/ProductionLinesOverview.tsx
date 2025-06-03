@@ -17,33 +17,49 @@ const ProductionLinesOverview = () => {
     { id: "sub-assembly-2", name: "Sub Assembly 2", type: "Sub Assembly" }
   ];
 
-  // Fetch production orders for each line
+  // Fetch production orders for each line using the correct relationship
   const { data: lineData = [] } = useQuery({
     queryKey: ["production-lines-overview"],
     queryFn: async () => {
+      console.log("🔍 Fetching production line data...");
+      
       const { data, error } = await supabase
         .from("production_orders")
         .select(`
           *,
           products!inner(name),
-          production_schedules!inner(production_line)
+          production_schedules!production_schedule_id!inner(
+            production_line,
+            scheduled_date
+          )
         `)
         .in("status", ["IN_PROGRESS", "SCHEDULED"])
         .order("scheduled_date", { ascending: true });
       
-      if (error) throw error;
+      if (error) {
+        console.error("❌ Error fetching production line data:", error);
+        throw error;
+      }
+      
+      console.log("📊 Production line data:", data);
       return data || [];
     },
+    refetchInterval: 30000, // Refresh every 30 seconds
   });
 
   const getLineStatus = (lineName: string) => {
-    const ongoingProduction = lineData.find(
-      order => order.production_schedules?.production_line === lineName && order.status === "IN_PROGRESS"
-    );
+    console.log(`🔍 Getting status for line: ${lineName}`);
     
-    const scheduledCount = lineData.filter(
-      order => order.production_schedules?.production_line === lineName && order.status === "SCHEDULED"
-    ).length;
+    const lineOrders = lineData.filter(order => {
+      const hasLineMatch = order.production_schedules?.production_line === lineName;
+      console.log(`Order ${order.voucher_number}: line=${order.production_schedules?.production_line}, matches=${hasLineMatch}`);
+      return hasLineMatch;
+    });
+
+    console.log(`📋 Line ${lineName} orders:`, lineOrders);
+    
+    const ongoingProduction = lineOrders.find(order => order.status === "IN_PROGRESS");
+    const scheduledCount = lineOrders.filter(order => order.status === "SCHEDULED").length;
 
     if (ongoingProduction) {
       return {

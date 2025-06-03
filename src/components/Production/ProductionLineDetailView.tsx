@@ -2,7 +2,6 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Clock, Factory, Package, CheckCircle } from "lucide-react";
@@ -23,22 +22,32 @@ const ProductionLineDetailView = ({ lineName, onBack }: ProductionLineDetailView
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch ongoing and scheduled production for this line
+  // Fetch ongoing and scheduled production for this line using the correct relationship
   const { data: lineProduction = [] } = useQuery({
     queryKey: ["line-production", lineName],
     queryFn: async () => {
+      console.log(`🔍 Fetching production for line: ${lineName}`);
+      
       const { data, error } = await supabase
         .from("production_orders")
         .select(`
           *,
           products!inner(name),
-          production_schedules!inner(production_line)
+          production_schedules!production_schedule_id!inner(
+            production_line,
+            scheduled_date
+          )
         `)
         .eq("production_schedules.production_line", lineName)
         .in("status", ["IN_PROGRESS", "SCHEDULED"])
         .order("scheduled_date", { ascending: true });
       
-      if (error) throw error;
+      if (error) {
+        console.error(`❌ Error fetching line production for ${lineName}:`, error);
+        throw error;
+      }
+      
+      console.log(`📊 Line ${lineName} production:`, data);
       return data || [];
     },
     refetchInterval: 5000, // Refresh every 5 seconds
@@ -96,6 +105,7 @@ const ProductionLineDetailView = ({ lineName, onBack }: ProductionLineDetailView
         description: "Production voucher has been marked as completed",
       });
       queryClient.invalidateQueries({ queryKey: ["line-production"] });
+      queryClient.invalidateQueries({ queryKey: ["production-lines-overview"] });
       setShowCompletionDialog(false);
     },
   });

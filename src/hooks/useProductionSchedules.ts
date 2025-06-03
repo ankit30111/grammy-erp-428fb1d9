@@ -1,3 +1,4 @@
+
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -62,20 +63,27 @@ export const useCreateProductionSchedule = () => {
 
   return useMutation({
     mutationFn: async (scheduleData: any) => {
-      // First create the production schedule
+      console.log('🎯 Creating production schedule with data:', scheduleData);
+      
+      // First create the production schedule with the selected production line
       const { data: schedule, error: scheduleError } = await supabase
         .from('production_schedules')
         .insert({
           projection_id: scheduleData.projection_id,
           scheduled_date: scheduleData.scheduled_date,
           quantity: scheduleData.quantity,
-          production_line: 'Default Line',
+          production_line: scheduleData.production_line, // This is crucial
           status: 'SCHEDULED',
         })
         .select()
         .single();
 
-      if (scheduleError) throw scheduleError;
+      if (scheduleError) {
+        console.error('❌ Schedule creation error:', scheduleError);
+        throw scheduleError;
+      }
+
+      console.log('✅ Schedule created:', schedule);
 
       // Generate voucher number
       const voucherNumber = await generateVoucherNumber(scheduleData.scheduled_date);
@@ -87,9 +95,12 @@ export const useCreateProductionSchedule = () => {
         .eq('id', scheduleData.projection_id)
         .single();
 
-      if (projectionError) throw projectionError;
+      if (projectionError) {
+        console.error('❌ Projection fetch error:', projectionError);
+        throw projectionError;
+      }
 
-      // Create production order with voucher number
+      // Create production order with voucher number and link to schedule
       const { data: productionOrder, error: orderError } = await supabase
         .from('production_orders')
         .insert({
@@ -98,26 +109,35 @@ export const useCreateProductionSchedule = () => {
           quantity: scheduleData.quantity,
           scheduled_date: scheduleData.scheduled_date,
           voucher_number: voucherNumber,
-          status: 'PENDING',
+          status: 'SCHEDULED',
           kit_status: 'NOT_PREPARED'
         })
         .select()
         .single();
 
-      if (orderError) throw orderError;
+      if (orderError) {
+        console.error('❌ Production order creation error:', orderError);
+        throw orderError;
+      }
 
+      console.log('✅ Production order created:', productionOrder);
+      
       return { schedule, productionOrder };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['production_schedules'] });
       queryClient.invalidateQueries({ queryKey: ['projections'] });
       queryClient.invalidateQueries({ queryKey: ['production-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['scheduled-productions'] });
+      queryClient.invalidateQueries({ queryKey: ['production-lines-overview'] });
+      queryClient.invalidateQueries({ queryKey: ['production-queue'] });
       toast({
         title: "Success",
-        description: "Production scheduled successfully with voucher number",
+        description: "Production scheduled successfully and assigned to production line",
       });
     },
     onError: (error) => {
+      console.error('❌ Schedule creation failed:', error);
       toast({
         title: "Error",
         description: "Failed to schedule production",

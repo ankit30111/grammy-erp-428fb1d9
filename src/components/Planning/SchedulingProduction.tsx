@@ -20,15 +20,16 @@ const SchedulingProduction = () => {
   const { data: projections } = useProjections();
   const createSchedule = useCreateProductionSchedule();
 
-  const productionLines = ["Line 1", "Line 2", "Line 3", "Line 4"];
+  const productionLines = ["Line 1", "Line 2", "Sub Assembly 1", "Sub Assembly 2"];
 
   const unscheduledProjections = projections?.filter(projection => {
     // Filter projections that still have remaining quantity to schedule
-    return projection.quantity > 0; // This would need proper calculation
+    return projection.quantity > (projection.scheduled_quantity || 0);
   }) || [];
 
   const selectedProjectionData = projections?.find(p => p.id === selectedProjection);
-  const maxQuantity = selectedProjectionData?.quantity || 0;
+  const maxQuantity = selectedProjectionData ? 
+    selectedProjectionData.quantity - (selectedProjectionData.scheduled_quantity || 0) : 0;
 
   const handleSchedule = async () => {
     if (!selectedDate || !selectedProjection || !quantity || !productionLine) {
@@ -92,7 +93,8 @@ const SchedulingProduction = () => {
               <SelectContent>
                 {unscheduledProjections.map((projection) => (
                   <SelectItem key={projection.id} value={projection.id}>
-                    {projection.customers?.name} - {projection.products?.name} ({projection.quantity} units)
+                    {projection.customers?.name} - {projection.products?.name} 
+                    ({maxQuantity > 0 ? maxQuantity : 0} units remaining)
                   </SelectItem>
                 ))}
               </SelectContent>
