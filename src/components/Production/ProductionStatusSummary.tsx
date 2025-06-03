@@ -14,6 +14,12 @@ interface ProductionStatusSummaryProps {
   onClose: () => void;
 }
 
+interface ProductionLineAssignments {
+  sub_assembly?: string;
+  main_assembly?: string;
+  accessory?: string;
+}
+
 const ProductionStatusSummary = ({ 
   productionId, 
   voucherNumber, 
@@ -62,13 +68,13 @@ const ProductionStatusSummary = ({
   const targetQuantity = productionOrder.quantity;
   const completionPercentage = Math.round((totalProduced / targetQuantity) * 100);
 
-  // Get line assignments from production_lines jsonb field
-  const lineAssignments = productionOrder.production_lines || {};
+  // Get line assignments from production_lines jsonb field with proper typing
+  const lineAssignments = (productionOrder.production_lines as ProductionLineAssignments) || {};
   
   const assemblySections = [
-    { key: 'sub_assembly', name: 'Sub Assembly', line: lineAssignments.sub_assembly },
-    { key: 'main_assembly', name: 'Main Assembly', line: lineAssignments.main_assembly },
-    { key: 'accessory', name: 'Accessories', line: lineAssignments.accessory }
+    { key: 'sub_assembly' as const, name: 'Sub Assembly', line: lineAssignments.sub_assembly },
+    { key: 'main_assembly' as const, name: 'Main Assembly', line: lineAssignments.main_assembly },
+    { key: 'accessory' as const, name: 'Accessories', line: lineAssignments.accessory }
   ];
 
   return (
