@@ -8,17 +8,10 @@ import { Clock, FileCheck, Upload, Search } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from "@/components/ui/select";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
-import PQCActionsDialog from "@/components/quality/PQCActionsDialog";
+import EnhancedPQCActionsDialog from "@/components/quality/EnhancedPQCActionsDialog";
 
 const PQC = () => {
   const [selectedTab, setSelectedTab] = useState("active");
@@ -210,9 +203,9 @@ const PQC = () => {
           </TabsContent>
         </Tabs>
 
-        {/* PQC Actions Dialog */}
+        {/* Enhanced PQC Actions Dialog */}
         {selectedProduction && (
-          <PQCActionsDialog
+          <EnhancedPQCActionsDialog
             productionOrderId={selectedProduction}
             isOpen={showActionsDialog}
             onClose={() => {

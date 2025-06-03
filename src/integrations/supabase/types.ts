@@ -145,6 +145,72 @@ export type Database = {
           },
         ]
       }
+      customer_complaints: {
+        Row: {
+          bill_number: string
+          brand_name: string
+          complaint_date: string
+          complaint_reason: string
+          created_at: string
+          created_by: string | null
+          customer_id: string
+          id: string
+          product_id: string
+          purchase_date: string | null
+          quantity: number
+          status: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          bill_number: string
+          brand_name: string
+          complaint_date?: string
+          complaint_reason: string
+          created_at?: string
+          created_by?: string | null
+          customer_id: string
+          id?: string
+          product_id: string
+          purchase_date?: string | null
+          quantity: number
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          bill_number?: string
+          brand_name?: string
+          complaint_date?: string
+          complaint_reason?: string
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string
+          id?: string
+          product_id?: string
+          purchase_date?: string | null
+          quantity?: number
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_complaints_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_complaints_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customer_warehouses: {
         Row: {
           address: string
@@ -688,6 +754,8 @@ export type Database = {
           id: string
           iqc_approved_at: string | null
           iqc_approved_by: string | null
+          iqc_completed_at: string | null
+          iqc_completed_by: string | null
           iqc_status: string | null
           po_quantity: number
           raw_material_id: string
@@ -704,6 +772,8 @@ export type Database = {
           id?: string
           iqc_approved_at?: string | null
           iqc_approved_by?: string | null
+          iqc_completed_at?: string | null
+          iqc_completed_by?: string | null
           iqc_status?: string | null
           po_quantity: number
           raw_material_id: string
@@ -720,6 +790,8 @@ export type Database = {
           id?: string
           iqc_approved_at?: string | null
           iqc_approved_by?: string | null
+          iqc_completed_at?: string | null
+          iqc_completed_by?: string | null
           iqc_status?: string | null
           po_quantity?: number
           raw_material_id?: string
@@ -923,6 +995,7 @@ export type Database = {
       line_rejections: {
         Row: {
           created_at: string
+          created_by: string | null
           id: string
           production_order_id: string
           quantity_rejected: number
@@ -934,6 +1007,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          created_by?: string | null
           id?: string
           production_order_id: string
           quantity_rejected: number
@@ -945,6 +1019,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          created_by?: string | null
           id?: string
           production_order_id?: string
           quantity_rejected?: number
@@ -1301,6 +1376,7 @@ export type Database = {
       pqc_reports: {
         Row: {
           created_at: string
+          created_by: string | null
           id: string
           production_order_id: string
           remarks: string
@@ -1313,6 +1389,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          created_by?: string | null
           id?: string
           production_order_id: string
           remarks: string
@@ -1325,6 +1402,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          created_by?: string | null
           id?: string
           production_order_id?: string
           remarks?: string

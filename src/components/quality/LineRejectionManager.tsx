@@ -3,23 +3,25 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
-import { FileText, Upload, CheckCircle, XCircle } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { FileUp, Upload, CheckCircle, AlertTriangle } from "lucide-react";
 
 const LineRejectionManager = () => {
   const [selectedRejection, setSelectedRejection] = useState<any>(null);
+  const [showRCADialog, setShowRCADialog] = useState(false);
+  const [showCAPADialog, setShowCAPADialog] = useState(false);
   const [receivedQuantity, setReceivedQuantity] = useState("");
   const [rcaFile, setRcaFile] = useState<File | null>(null);
-  const [vendorCapaFile, setVendorCapaFile] = useState<File | null>(null);
-  const [showRCADialog, setShowRCADialog] = useState(false);
-  const [showCapaDialog, setShowCapaDialog] = useState(false);
+  const [capaFile, setCAPAFile] = useState<File | null>(null);
+  const [capaStatus, setCAPAStatus] = useState("");
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -32,9 +34,7 @@ const LineRejectionManager = () => {
         .select(`
           *,
           raw_materials!inner(material_code, name),
-          production_orders!inner(voucher_number, products!inner(name)),
-          rca_reports(*),
-          vendor_capa(*)
+          production_orders!inner(voucher_number, products!inner(name))
         `)
         .order("rejection_date", { ascending: false });
       
@@ -43,43 +43,47 @@ const LineRejectionManager = () => {
     },
   });
 
-  // Create RCA Report mutation
-  const createRCAMutation = useMutation({
-    mutationFn: async ({ rejectionId, data }: { rejectionId: string; data: any }) => {
-      const { data: result, error } = await supabase
+  // Fetch RCA reports for rejections
+  const { data: rcaReports = [] } = useQuery({
+    queryKey: ["rca-reports"],
+    queryFn: async () => {
+      const { data, error } = await supabase
         .from("rca_reports")
-        .insert([{
-          line_rejection_id: rejectionId,
-          received_quantity: parseInt(data.receivedQuantity),
-          rca_file_url: data.rcaFileUrl || null,
-        }])
-        .select()
-        .single();
+        .select("*");
       
       if (error) throw error;
-      return result;
-    },
-    onSuccess: () => {
-      toast({
-        title: "Success",
-        description: "RCA report created successfully",
-      });
-      queryClient.invalidateQueries({ queryKey: ["all-line-rejections"] });
-      setShowRCADialog(false);
-      setReceivedQuantity("");
-      setRcaFile(null);
+      return data || [];
     },
   });
 
-  // Create Vendor CAPA mutation
-  const createVendorCapaMutation = useMutation({
-    mutationFn: async ({ rejectionId, vendorId, capaFileUrl }: any) => {
+  // Fetch vendor CAPA records
+  const { data: vendorCAPAs = [] } = useQuery({
+    queryKey: ["vendor-capas"],
+    queryFn: async () => {
       const { data, error } = await supabase
         .from("vendor_capa")
+        .select(`
+          *,
+          vendors!inner(name)
+        `);
+      
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  const updateRCAMutation = useMutation({
+    mutationFn: async ({ rejectionId, quantity, fileUrl }: any) => {
+      const user = await supabase.auth.getUser();
+      if (!user.data.user) throw new Error("User not authenticated");
+
+      const { data, error } = await supabase
+        .from("rca_reports")
         .insert([{
           line_rejection_id: rejectionId,
-          vendor_id: vendorId,
-          capa_file_url: capaFileUrl || null,
+          received_quantity: quantity,
+          rca_file_url: fileUrl || "pending_upload",
+          uploaded_by: user.data.user.id
         }])
         .select()
         .single();
@@ -90,22 +94,82 @@ const LineRejectionManager = () => {
     onSuccess: () => {
       toast({
         title: "Success",
-        description: "Vendor CAPA initiated successfully",
+        description: "RCA report uploaded successfully",
       });
-      queryClient.invalidateQueries({ queryKey: ["all-line-rejections"] });
-      setShowCapaDialog(false);
-      setVendorCapaFile(null);
+      setShowRCADialog(false);
+      setReceivedQuantity("");
+      setRcaFile(null);
+      queryClient.invalidateQueries({ queryKey: ["rca-reports"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to upload RCA report",
+        variant: "destructive",
+      });
     },
   });
 
-  // Close CAPA mutation
-  const closeCapaMutation = useMutation({
+  const createCAPAMutation = useMutation({
+    mutationFn: async ({ rejectionId, fileUrl, vendorId }: any) => {
+      const user = await supabase.auth.getUser();
+      if (!user.data.user) throw new Error("User not authenticated");
+
+      // Get vendor from raw material
+      const rejection = lineRejections.find(r => r.id === rejectionId);
+      if (!rejection) throw new Error("Rejection not found");
+
+      const { data: materialVendor } = await supabase
+        .from("raw_material_vendors")
+        .select("vendor_id")
+        .eq("raw_material_id", rejection.raw_material_id)
+        .eq("is_primary", true)
+        .single();
+
+      const { data, error } = await supabase
+        .from("vendor_capa")
+        .insert([{
+          line_rejection_id: rejectionId,
+          vendor_id: materialVendor?.vendor_id || vendorId,
+          capa_file_url: fileUrl || "pending_upload",
+          initiated_by: user.data.user.id,
+          status: "Open"
+        }])
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "CAPA initiated successfully",
+      });
+      setShowCAPADialog(false);
+      setCAPAFile(null);
+      queryClient.invalidateQueries({ queryKey: ["vendor-capas"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to initiate CAPA",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const closeCAPAMutation = useMutation({
     mutationFn: async (capaId: string) => {
+      const user = await supabase.auth.getUser();
+      if (!user.data.user) throw new Error("User not authenticated");
+
       const { data, error } = await supabase
         .from("vendor_capa")
         .update({
           status: "Closed",
-          closed_at: new Date().toISOString(),
+          closed_by: user.data.user.id,
+          closed_at: new Date().toISOString()
         })
         .eq("id", capaId)
         .select()
@@ -119,12 +183,19 @@ const LineRejectionManager = () => {
         title: "Success",
         description: "CAPA marked as closed",
       });
-      queryClient.invalidateQueries({ queryKey: ["all-line-rejections"] });
+      queryClient.invalidateQueries({ queryKey: ["vendor-capas"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to close CAPA",
+        variant: "destructive",
+      });
     },
   });
 
-  const handleCreateRCA = async () => {
-    if (!selectedRejection || !receivedQuantity) {
+  const handleRCAUpload = () => {
+    if (!receivedQuantity || !rcaFile) {
       toast({
         title: "Validation Error",
         description: "Please fill in all required fields",
@@ -133,26 +204,36 @@ const LineRejectionManager = () => {
       return;
     }
 
-    const data = {
-      receivedQuantity,
-      rcaFileUrl: rcaFile ? `temp_url_for_${rcaFile.name}` : null,
-    };
+    const quantity = parseInt(receivedQuantity);
+    if (isNaN(quantity) || quantity <= 0) {
+      toast({
+        title: "Validation Error",
+        description: "Please enter a valid quantity",
+        variant: "destructive",
+      });
+      return;
+    }
 
-    createRCAMutation.mutate({ rejectionId: selectedRejection.id, data });
+    updateRCAMutation.mutate({
+      rejectionId: selectedRejection.id,
+      quantity,
+      fileUrl: rcaFile.name // In real implementation, upload to storage first
+    });
   };
 
-  const handleInitiateCapa = async () => {
-    if (!selectedRejection) return;
+  const handleCAPAUpload = () => {
+    if (!capaFile) {
+      toast({
+        title: "Validation Error",
+        description: "Please select a CAPA file",
+        variant: "destructive",
+      });
+      return;
+    }
 
-    // In a real implementation, you'd need to determine the vendor ID
-    // For now, using a placeholder
-    const vendorId = "placeholder-vendor-id";
-    const capaFileUrl = vendorCapaFile ? `temp_url_for_${vendorCapaFile.name}` : null;
-
-    createVendorCapaMutation.mutate({
+    createCAPAMutation.mutate({
       rejectionId: selectedRejection.id,
-      vendorId,
-      capaFileUrl,
+      fileUrl: capaFile.name // In real implementation, upload to storage first
     });
   };
 
@@ -164,19 +245,26 @@ const LineRejectionManager = () => {
     }
   };
 
-  const getCapaStatusColor = (status: string) => {
-    switch (status) {
-      case 'Open': return 'destructive';
-      case 'Closed': return 'default';
-      default: return 'outline';
-    }
+  const hasRCA = (rejectionId: string) => {
+    return rcaReports.some(rca => rca.line_rejection_id === rejectionId);
+  };
+
+  const hasCAPAForRejection = (rejectionId: string) => {
+    return vendorCAPAs.some(capa => capa.line_rejection_id === rejectionId);
+  };
+
+  const getCAPAForRejection = (rejectionId: string) => {
+    return vendorCAPAs.find(capa => capa.line_rejection_id === rejectionId);
   };
 
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Line Rejections - IQC Management</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5" />
+            Line Rejections from Production
+          </CardTitle>
         </CardHeader>
         <CardContent>
           {lineRejections.length === 0 ? (
@@ -188,150 +276,153 @@ const LineRejectionManager = () => {
               <TableHeader>
                 <TableRow>
                   <TableHead>Date</TableHead>
-                  <TableHead>Voucher</TableHead>
-                  <TableHead>Product</TableHead>
+                  <TableHead>Voucher Number</TableHead>
                   <TableHead>Part Code</TableHead>
                   <TableHead>Reason</TableHead>
                   <TableHead>Quantity</TableHead>
-                  <TableHead>RCA Status</TableHead>
-                  <TableHead>CAPA Status</TableHead>
+                  <TableHead>Status</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {lineRejections.map((rejection) => (
-                  <TableRow key={rejection.id}>
-                    <TableCell>
-                      {new Date(rejection.rejection_date).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell className="font-medium">
-                      {rejection.production_orders.voucher_number}
-                    </TableCell>
-                    <TableCell>
-                      {rejection.production_orders.products.name}
-                    </TableCell>
-                    <TableCell>
-                      {rejection.raw_materials.material_code}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={getReasonColor(rejection.reason) as any}>
-                        {rejection.reason}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{rejection.quantity_rejected}</TableCell>
-                    <TableCell>
-                      {rejection.rca_reports.length > 0 ? (
-                        <Badge variant="default">Completed</Badge>
-                      ) : (
-                        <Badge variant="secondary">Pending</Badge>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {rejection.vendor_capa.length > 0 ? (
-                        <Badge variant={getCapaStatusColor(rejection.vendor_capa[0].status) as any}>
-                          {rejection.vendor_capa[0].status}
+                {lineRejections.map((rejection) => {
+                  const hasRCAReport = hasRCA(rejection.id);
+                  const capa = getCAPAForRejection(rejection.id);
+                  const needsCAPAForFaultyPart = rejection.reason === 'Part Faulty' && hasRCAReport && !capa;
+                  const canCloseCAPAForFaultyPart = rejection.reason === 'Part Faulty' && hasRCAReport && capa && capa.status === 'Open';
+
+                  return (
+                    <TableRow key={rejection.id}>
+                      <TableCell>
+                        {new Date(rejection.rejection_date).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell>
+                        {rejection.production_orders?.voucher_number}
+                      </TableCell>
+                      <TableCell>
+                        {rejection.raw_materials.material_code}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={getReasonColor(rejection.reason) as any}>
+                          {rejection.reason}
                         </Badge>
-                      ) : rejection.reason === 'Part Faulty' ? (
-                        <Badge variant="secondary">Not Initiated</Badge>
-                      ) : (
-                        <span className="text-muted-foreground">N/A</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        {rejection.rca_reports.length === 0 && (
-                          <Dialog open={showRCADialog} onOpenChange={setShowRCADialog}>
-                            <DialogTrigger asChild>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => setSelectedRejection(rejection)}
+                      </TableCell>
+                      <TableCell>{rejection.quantity_rejected}</TableCell>
+                      <TableCell>
+                        <div className="flex flex-col gap-1">
+                          {hasRCAReport ? (
+                            <Badge variant="default" className="text-xs">RCA Done</Badge>
+                          ) : (
+                            <Badge variant="secondary" className="text-xs">RCA Pending</Badge>
+                          )}
+                          {rejection.reason === 'Part Faulty' && (
+                            capa ? (
+                              <Badge 
+                                variant={capa.status === 'Closed' ? 'default' : 'destructive'} 
+                                className="text-xs"
                               >
-                                <FileText className="h-3 w-3 mr-1" />
-                                RCA
-                              </Button>
-                            </DialogTrigger>
-                            <DialogContent>
-                              <DialogHeader>
-                                <DialogTitle>Create RCA Report</DialogTitle>
-                              </DialogHeader>
-                              <div className="space-y-4">
-                                <div>
-                                  <Label htmlFor="received-quantity">Received Quantity</Label>
-                                  <Input
-                                    id="received-quantity"
-                                    type="number"
-                                    value={receivedQuantity}
-                                    onChange={(e) => setReceivedQuantity(e.target.value)}
-                                    placeholder="Enter received quantity"
-                                  />
-                                </div>
-                                <div>
-                                  <Label htmlFor="rca-file">RCA Report PDF</Label>
-                                  <Input
-                                    id="rca-file"
-                                    type="file"
-                                    accept=".pdf"
-                                    onChange={(e) => setRcaFile(e.target.files?.[0] || null)}
-                                  />
-                                </div>
-                                <Button onClick={handleCreateRCA} className="w-full">
-                                  <Upload className="h-4 w-4 mr-2" />
-                                  Create RCA Report
+                                CAPA {capa.status}
+                              </Badge>
+                            ) : hasRCAReport ? (
+                              <Badge variant="secondary" className="text-xs">CAPA Pending</Badge>
+                            ) : null
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-1 flex-wrap">
+                          {!hasRCAReport && (
+                            <Dialog open={showRCADialog && selectedRejection?.id === rejection.id} onOpenChange={setShowRCADialog}>
+                              <DialogTrigger asChild>
+                                <Button 
+                                  size="sm" 
+                                  variant="outline"
+                                  onClick={() => setSelectedRejection(rejection)}
+                                >
+                                  RCA
                                 </Button>
-                              </div>
-                            </DialogContent>
-                          </Dialog>
-                        )}
-
-                        {rejection.reason === 'Part Faulty' && rejection.vendor_capa.length === 0 && (
-                          <Dialog open={showCapaDialog} onOpenChange={setShowCapaDialog}>
-                            <DialogTrigger asChild>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => setSelectedRejection(rejection)}
-                              >
-                                Initiate CAPA
-                              </Button>
-                            </DialogTrigger>
-                            <DialogContent>
-                              <DialogHeader>
-                                <DialogTitle>Initiate Vendor CAPA</DialogTitle>
-                              </DialogHeader>
-                              <div className="space-y-4">
-                                <div>
-                                  <Label htmlFor="capa-file">Vendor CAPA Document</Label>
-                                  <Input
-                                    id="capa-file"
-                                    type="file"
-                                    accept=".pdf"
-                                    onChange={(e) => setVendorCapaFile(e.target.files?.[0] || null)}
-                                  />
+                              </DialogTrigger>
+                              <DialogContent>
+                                <DialogHeader>
+                                  <DialogTitle>Upload RCA Report</DialogTitle>
+                                </DialogHeader>
+                                <div className="space-y-4">
+                                  <div>
+                                    <Label htmlFor="received-qty">Received Quantity</Label>
+                                    <Input
+                                      id="received-qty"
+                                      type="number"
+                                      value={receivedQuantity}
+                                      onChange={(e) => setReceivedQuantity(e.target.value)}
+                                      placeholder="Enter received quantity"
+                                    />
+                                  </div>
+                                  <div>
+                                    <Label htmlFor="rca-file">RCA Document</Label>
+                                    <Input
+                                      id="rca-file"
+                                      type="file"
+                                      onChange={(e) => setRcaFile(e.target.files?.[0] || null)}
+                                    />
+                                  </div>
+                                  <Button onClick={handleRCAUpload} disabled={updateRCAMutation.isPending}>
+                                    <Upload className="h-4 w-4 mr-2" />
+                                    Upload RCA
+                                  </Button>
                                 </div>
-                                <Button onClick={handleInitiateCapa} className="w-full">
-                                  <Upload className="h-4 w-4 mr-2" />
-                                  Initiate CAPA
-                                </Button>
-                              </div>
-                            </DialogContent>
-                          </Dialog>
-                        )}
+                              </DialogContent>
+                            </Dialog>
+                          )}
 
-                        {rejection.vendor_capa.length > 0 && rejection.vendor_capa[0].status === 'Open' && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => closeCapaMutation.mutate(rejection.vendor_capa[0].id)}
-                          >
-                            <CheckCircle className="h-3 w-3 mr-1" />
-                            Close CAPA
-                          </Button>
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                          {needsCAPAForFaultyPart && (
+                            <Dialog open={showCAPADialog && selectedRejection?.id === rejection.id} onOpenChange={setShowCAPADialog}>
+                              <DialogTrigger asChild>
+                                <Button 
+                                  size="sm" 
+                                  variant="outline"
+                                  onClick={() => setSelectedRejection(rejection)}
+                                >
+                                  CAPA
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent>
+                                <DialogHeader>
+                                  <DialogTitle>Initiate Vendor CAPA</DialogTitle>
+                                </DialogHeader>
+                                <div className="space-y-4">
+                                  <div>
+                                    <Label htmlFor="capa-file">CAPA Document</Label>
+                                    <Input
+                                      id="capa-file"
+                                      type="file"
+                                      onChange={(e) => setCAPAFile(e.target.files?.[0] || null)}
+                                    />
+                                  </div>
+                                  <Button onClick={handleCAPAUpload} disabled={createCAPAMutation.isPending}>
+                                    <Upload className="h-4 w-4 mr-2" />
+                                    Initiate CAPA
+                                  </Button>
+                                </div>
+                              </DialogContent>
+                            </Dialog>
+                          )}
+
+                          {canCloseCAPAForFaultyPart && (
+                            <Button 
+                              size="sm" 
+                              variant="default"
+                              onClick={() => closeCAPAMutation.mutate(capa.id)}
+                              disabled={closeCAPAMutation.isPending}
+                            >
+                              <CheckCircle className="h-4 w-4 mr-1" />
+                              Close CAPA
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           )}

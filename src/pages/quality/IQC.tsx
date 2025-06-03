@@ -12,11 +12,14 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import LineRejectionManager from "@/components/quality/LineRejectionManager";
+import IQCInspectionDialog from "@/components/quality/IQCInspectionDialog";
 
 const IQC = () => {
   const [selectedTab, setSelectedTab] = useState("pending");
+  const [selectedGRN, setSelectedGRN] = useState<any>(null);
+  const [showInspectionDialog, setShowInspectionDialog] = useState(false);
 
-  // Fetch pending GRNs for IQC
+  // Fetch pending GRNs for IQC - only those with pending or null IQC status
   const { data: pendingGRNs = [] } = useQuery({
     queryKey: ["pending-grns"],
     queryFn: async () => {
@@ -30,13 +33,21 @@ const IQC = () => {
             raw_materials!inner(name, material_code)
           )
         `)
-        .eq("status", "RECEIVED");
+        .eq("status", "RECEIVED")
+        .or("iqc_status.is.null,iqc_status.eq.PENDING", { foreignTable: "grn_items" });
       
-      return data || [];
+      // Filter out GRNs where all items are already completed
+      const filteredData = data?.filter(grn => 
+        grn.grn_items.some((item: any) => 
+          !item.iqc_status || item.iqc_status === 'PENDING'
+        )
+      ) || [];
+      
+      return filteredData;
     },
   });
 
-  // Fetch completed GRNs
+  // Fetch completed GRNs - those with approved or rejected IQC status
   const { data: completedGRNs = [] } = useQuery({
     queryKey: ["completed-grns"],
     queryFn: async () => {
@@ -50,13 +61,36 @@ const IQC = () => {
             raw_materials!inner(name, material_code)
           )
         `)
-        .eq("status", "COMPLETED")
+        .in("status", ["COMPLETED", "RECEIVED"])
         .order("updated_at", { ascending: false })
-        .limit(10);
+        .limit(20);
       
-      return data || [];
+      // Filter to show only GRNs with completed IQC items
+      const filteredData = data?.filter(grn => 
+        grn.grn_items.some((item: any) => 
+          item.iqc_status === 'APPROVED' || item.iqc_status === 'REJECTED'
+        )
+      ) || [];
+      
+      return filteredData;
     },
   });
+
+  const handleInspectClick = (grn: any) => {
+    setSelectedGRN(grn);
+    setShowInspectionDialog(true);
+  };
+
+  const getStatusBadge = (grn: any) => {
+    const allApproved = grn.grn_items.every((item: any) => item.iqc_status === 'APPROVED');
+    const hasRejected = grn.grn_items.some((item: any) => item.iqc_status === 'REJECTED');
+    const hasPending = grn.grn_items.some((item: any) => !item.iqc_status || item.iqc_status === 'PENDING');
+    
+    if (hasPending) return <Badge variant="secondary">Pending IQC</Badge>;
+    if (hasRejected) return <Badge variant="destructive">Partially Rejected</Badge>;
+    if (allApproved) return <Badge variant="default">Approved</Badge>;
+    return <Badge variant="outline">In Progress</Badge>;
+  };
 
   return (
     <DashboardLayout>
@@ -107,11 +141,13 @@ const IQC = () => {
                           <TableCell>{grn.vendors?.name}</TableCell>
                           <TableCell>{new Date(grn.received_date).toLocaleDateString()}</TableCell>
                           <TableCell>{grn.grn_items?.length || 0}</TableCell>
+                          <TableCell>{getStatusBadge(grn)}</TableCell>
                           <TableCell>
-                            <Badge variant="secondary">Pending IQC</Badge>
-                          </TableCell>
-                          <TableCell>
-                            <Button size="sm" variant="outline">
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => handleInspectClick(grn)}
+                            >
                               <FileCheck className="h-3 w-3 mr-1" />
                               Inspect
                             </Button>
@@ -158,9 +194,7 @@ const IQC = () => {
                           <TableCell>{grn.vendors?.name}</TableCell>
                           <TableCell>{new Date(grn.updated_at).toLocaleDateString()}</TableCell>
                           <TableCell>{grn.grn_items?.length || 0}</TableCell>
-                          <TableCell>
-                            <Badge variant="default">Completed</Badge>
-                          </TableCell>
+                          <TableCell>{getStatusBadge(grn)}</TableCell>
                           <TableCell>
                             <Button variant="outline" size="sm">
                               <FileCheck className="h-3 w-3 mr-1" />
@@ -193,6 +227,18 @@ const IQC = () => {
             </Card>
           </TabsContent>
         </Tabs>
+
+        {/* IQC Inspection Dialog */}
+        {selectedGRN && (
+          <IQCInspectionDialog
+            grn={selectedGRN}
+            isOpen={showInspectionDialog}
+            onClose={() => {
+              setShowInspectionDialog(false);
+              setSelectedGRN(null);
+            }}
+          />
+        )}
       </div>
     </DashboardLayout>
   );
