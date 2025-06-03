@@ -21,9 +21,9 @@ interface ProductionVoucherDetailViewProps {
 const ProductionVoucherDetailView = ({ production, isOpen, onClose }: ProductionVoucherDetailViewProps) => {
   const [receivedQuantities, setReceivedQuantities] = useState<Record<string, number>>({});
   const [productionLines, setProductionLines] = useState({
-    main_assembly: '',
-    sub_assembly: '',
-    accessory: ''
+    MAIN_ASSEMBLY: '',
+    SUB_ASSEMBLY: '',
+    ACCESSORY: ''
   });
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -88,11 +88,11 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
     }
   }, [production]);
 
-  // Group BOM items by type - fix the comparison to use uppercase
+  // Group BOM items by type - using uppercase keys to match database enum
   const groupedBOM = {
-    main_assembly: bomData.filter(item => item.bom_type === 'MAIN_ASSEMBLY'),
-    sub_assembly: bomData.filter(item => item.bom_type === 'SUB_ASSEMBLY'),
-    accessory: bomData.filter(item => item.bom_type === 'ACCESSORY')
+    MAIN_ASSEMBLY: bomData.filter(item => item.bom_type === 'MAIN_ASSEMBLY'),
+    SUB_ASSEMBLY: bomData.filter(item => item.bom_type === 'SUB_ASSEMBLY'),
+    ACCESSORY: bomData.filter(item => item.bom_type === 'ACCESSORY')
   };
 
   // Get quantity sent by store for a material
@@ -298,9 +298,9 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
           </Card>
 
           {/* BOM Sections */}
-          {renderBOMSection("Main Assembly", groupedBOM.main_assembly, "main_assembly")}
-          {renderBOMSection("Sub Assembly", groupedBOM.sub_assembly, "sub_assembly")}
-          {renderBOMSection("Accessory", groupedBOM.accessory, "accessory")}
+          {renderBOMSection("Main Assembly", groupedBOM.MAIN_ASSEMBLY, "MAIN_ASSEMBLY")}
+          {renderBOMSection("Sub Assembly", groupedBOM.SUB_ASSEMBLY, "SUB_ASSEMBLY")}
+          {renderBOMSection("Accessory", groupedBOM.ACCESSORY, "ACCESSORY")}
 
           {/* Action Buttons */}
           <div className="flex justify-end gap-4 pt-4 border-t">
