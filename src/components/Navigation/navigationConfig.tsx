@@ -20,7 +20,7 @@ export interface NavigationItem {
   to: string;
   icon: LucideIcon;
   label: string;
-  badge?: string | number;
+  badge?: string;
   subItems?: Array<{
     to: string;
     label: string;
