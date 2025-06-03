@@ -1,119 +1,62 @@
-import { 
-  Home, 
-  Package, 
-  Users, 
-  ShoppingCart, 
-  Package2, 
-  BarChart3, 
-  FileText, 
-  Calendar,
-  Settings,
-  UserCheck,
-  ClipboardCheck,
-  Truck,
-  MessageSquare
-} from "lucide-react";
-import { LucideIcon } from "lucide-react";
+import { Home, Plus, Wrench, Calendar, Package, BarChart2, Layers, ClipboardCheck, DollarSign, Users, FileText, UserPlus, Building2, User } from "lucide-react";
 
-export interface NavigationItem {
+interface NavigationSubItem {
   to: string;
-  icon: LucideIcon;
   label: string;
-  badge?: string | number;
-  subItems?: Array<{
-    to: string;
-    label: string;
-    badge?: string | number;
-  }>;
+  badge?: number;
+}
+
+interface NavigationItem {
+  to: string;
+  icon: React.ReactElement;
+  label: string;
+  badge?: number;
+  subItems?: NavigationSubItem[];
 }
 
 export const navigationItems: NavigationItem[] = [
-  {
-    to: "/",
-    icon: Home,
-    label: "Home",
-  },
-  {
-    to: "/projections",
-    icon: BarChart3,
-    label: "Projections",
-  },
-  {
-    to: "/planning",
-    icon: Calendar,
-    label: "Planning",
-  },
+  { to: "/", icon: <Home size={20} />, label: "Dashboard" },
+  { to: "/projection", icon: <Plus size={20} />, label: "Add Projection" },
+  { to: "/spare-orders", icon: <Wrench size={20} />, label: "Spare Orders" },
   {
     to: "/ppc",
-    icon: Settings,
+    icon: <Calendar size={20} />,
     label: "PPC",
+    subItems: [
+      { to: "/planning", label: "Planning" },
+      { to: "/purchase", label: "Purchase" },
+      { to: "/grn", label: "GRN", badge: 3 }
+    ]
   },
-  {
-    to: "/store",
-    icon: Package,
-    label: "Store",
-  },
-  {
-    to: "/production",
-    icon: Package2,
-    label: "Production",
-  },
+  { to: "/inventory", icon: <Package size={20} />, label: "Store" },
+  { to: "/production", icon: <BarChart2 size={20} />, label: "Production" },
+  { to: "/finished-goods", icon: <Layers size={20} />, label: "Finished Goods" },
   {
     to: "/quality",
-    icon: ClipboardCheck,
-    label: "Quality",
+    icon: <ClipboardCheck size={20} />,
+    label: "Quality Control",
     subItems: [
-      { to: "/quality/iqc", label: "IQC" },
-      { to: "/quality/pqc", label: "PQC" },
-      { to: "/quality/oqc", label: "OQC" },
+      { to: "/quality/iqc", label: "IQC", badge: 3 },
+      { to: "/quality/pqc", label: "PQC", badge: 2 },
+      { to: "/quality/oqc", label: "OQC", badge: 1 }
     ]
   },
   {
-    to: "/dispatch",
-    icon: Truck,
-    label: "Dispatch",
+    to: "/sales",
+    icon: <DollarSign size={20} />,
+    label: "Sales",
+    subItems: [
+      { to: "/sales/spare-dispatch", label: "Spare Dispatch" },
+      { to: "/dispatch", label: "Regular Dispatch" }
+    ]
   },
-  {
-    to: "/customer-complaints",
-    icon: MessageSquare,
-    label: "Customer Complaints",
-  },
+  { to: "/hr-management", icon: <Users size={20} />, label: "Human Resources" }
 ];
 
 export const managementItems: NavigationItem[] = [
-  {
-    to: "/purchase",
-    icon: ShoppingCart,
-    label: "Purchase",
-  },
-  {
-    to: "/vendors",
-    icon: Users,
-    label: "Vendors",
-  },
-  {
-    to: "/inventory",
-    icon: Package,
-    label: "Inventory",
-  },
-  {
-    to: "/finished-goods",
-    icon: Package2,
-    label: "Finished Goods",
-  },
-  {
-    to: "/spare-orders",
-    icon: FileText,
-    label: "Spare Orders",
-  },
-  {
-    to: "/management",
-    icon: Settings,
-    label: "Management",
-  },
-  {
-    to: "/user-management",
-    icon: UserCheck,
-    label: "User Management",
-  },
+  { to: "/management/products", icon: <FileText size={20} />, label: "Products" },
+  { to: "/management/raw-materials", icon: <Layers size={20} />, label: "Raw Materials" },
+  { to: "/management/customers", icon: <UserPlus size={20} />, label: "Customers" },
+  { to: "/vendors", icon: <Building2 size={20} />, label: "Vendors" },
+  { to: "/user-management", icon: <User size={20} />, label: "User Management" }
 ];
