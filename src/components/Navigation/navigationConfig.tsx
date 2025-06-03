@@ -14,8 +14,20 @@ import {
   Truck,
   MessageSquare
 } from "lucide-react";
+import { LucideIcon } from "lucide-react";
 
-export const navigationItems = [
+export interface NavigationItem {
+  to: string;
+  icon: LucideIcon;
+  label: string;
+  badge?: string | number;
+  subItems?: Array<{
+    to: string;
+    label: string;
+  }>;
+}
+
+export const navigationItems: NavigationItem[] = [
   {
     to: "/",
     icon: Home,
@@ -68,7 +80,7 @@ export const navigationItems = [
   },
 ];
 
-export const managementItems = [
+export const managementItems: NavigationItem[] = [
   {
     to: "/purchase",
     icon: ShoppingCart,

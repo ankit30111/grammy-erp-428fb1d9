@@ -49,6 +49,7 @@ export function Sidebar() {
                 label={item.label}
                 collapsed={collapsed}
                 allowedTabs={allowedTabs}
+                badge={item.badge}
               />
             ))}
           </ul>
