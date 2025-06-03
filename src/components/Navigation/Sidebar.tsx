@@ -21,7 +21,7 @@ export function Sidebar() {
             <NavItem
               key={item.to}
               to={item.to}
-              icon={item.icon}
+              icon={<item.icon className="h-4 w-4" />}
               label={item.label}
               collapsed={collapsed}
               allowedTabs={allowedTabs}
@@ -45,7 +45,7 @@ export function Sidebar() {
               <NavItem
                 key={item.to}
                 to={item.to}
-                icon={item.icon}
+                icon={<item.icon className="h-4 w-4" />}
                 label={item.label}
                 collapsed={collapsed}
                 allowedTabs={allowedTabs}
