@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -88,11 +87,11 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
     }
   }, [production]);
 
-  // Group BOM items by type - using uppercase keys to match database enum
+  // Group BOM items by type - using lowercase keys to match database enum
   const groupedBOM = {
-    MAIN_ASSEMBLY: bomData.filter(item => item.bom_type === 'MAIN_ASSEMBLY'),
-    SUB_ASSEMBLY: bomData.filter(item => item.bom_type === 'SUB_ASSEMBLY'),
-    ACCESSORY: bomData.filter(item => item.bom_type === 'ACCESSORY')
+    MAIN_ASSEMBLY: bomData.filter(item => item.bom_type === 'main_assembly'),
+    SUB_ASSEMBLY: bomData.filter(item => item.bom_type === 'sub_assembly'),
+    ACCESSORY: bomData.filter(item => item.bom_type === 'accessory')
   };
 
   // Get quantity sent by store for a material
