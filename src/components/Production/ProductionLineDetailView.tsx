@@ -1,10 +1,9 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Clock, Factory, Package, CheckCircle } from "lucide-react";
+import { ArrowLeft, Clock, Factory, Package, CheckCircle, Play } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -78,6 +77,7 @@ const ProductionLineDetailView = ({ lineName, onBack }: ProductionLineDetailView
 
   const ongoingProduction = lineProduction.filter(p => p.status === "IN_PROGRESS");
   const scheduledProduction = lineProduction.filter(p => p.status === "SCHEDULED");
+  const isLineEmpty = ongoingProduction.length === 0;
 
   const getTotalProduced = (voucherId: string) => {
     return hourlyData
@@ -111,6 +111,29 @@ const ProductionLineDetailView = ({ lineName, onBack }: ProductionLineDetailView
       queryClient.invalidateQueries({ queryKey: ["line-production"] });
       queryClient.invalidateQueries({ queryKey: ["production-lines-overview"] });
       setShowCompletionDialog(false);
+    },
+  });
+
+  // Start production mutation
+  const startProductionMutation = useMutation({
+    mutationFn: async (voucherId: string) => {
+      const { error } = await supabase
+        .from("production_orders")
+        .update({ 
+          status: "IN_PROGRESS",
+          updated_at: new Date().toISOString()
+        })
+        .eq("id", voucherId);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({
+        title: "Production Started",
+        description: "Production has been started for this voucher",
+      });
+      queryClient.invalidateQueries({ queryKey: ["line-production"] });
+      queryClient.invalidateQueries({ queryKey: ["production-lines-overview"] });
     },
   });
 
@@ -205,12 +228,15 @@ const ProductionLineDetailView = ({ lineName, onBack }: ProductionLineDetailView
         </CardContent>
       </Card>
 
-      {/* Scheduled Production Queue */}
+      {/* Production Queue */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Package className="h-5 w-5" />
             Production Queue ({scheduledProduction.length})
+            {!isLineEmpty && (
+              <Badge variant="secondary" className="ml-2">Line Occupied</Badge>
+            )}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -228,6 +254,7 @@ const ProductionLineDetailView = ({ lineName, onBack }: ProductionLineDetailView
                   <TableHead>Quantity</TableHead>
                   <TableHead>Scheduled Date</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -242,6 +269,17 @@ const ProductionLineDetailView = ({ lineName, onBack }: ProductionLineDetailView
                     <TableCell>{new Date(voucher.scheduled_date).toLocaleDateString()}</TableCell>
                     <TableCell>
                       <Badge variant="secondary">Queued</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        size="sm"
+                        onClick={() => startProductionMutation.mutate(voucher.id)}
+                        disabled={!isLineEmpty || index !== 0}
+                        className="gap-2"
+                      >
+                        <Play className="h-4 w-4" />
+                        Start Production
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}
