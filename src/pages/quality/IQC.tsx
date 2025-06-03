@@ -16,7 +16,7 @@ import LineRejectionManager from "@/components/quality/LineRejectionManager";
 const IQC = () => {
   const [selectedTab, setSelectedTab] = useState("pending");
 
-  // Fetch pending GRNs for IQC
+  // Fetch pending GRNs for IQC - only those with PENDING or no IQC status
   const { data: pendingGRNs = [] } = useQuery({
     queryKey: ["pending-grns"],
     queryFn: async () => {
@@ -30,13 +30,14 @@ const IQC = () => {
             raw_materials!inner(name, material_code)
           )
         `)
-        .eq("status", "RECEIVED");
+        .eq("status", "RECEIVED")
+        .or("iqc_status.is.null,iqc_status.eq.PENDING", { foreignTable: "grn_items" });
       
       return data || [];
     },
   });
 
-  // Fetch completed GRNs
+  // Fetch completed GRNs - those with APPROVED IQC status
   const { data: completedGRNs = [] } = useQuery({
     queryKey: ["completed-grns"],
     queryFn: async () => {
@@ -50,7 +51,7 @@ const IQC = () => {
             raw_materials!inner(name, material_code)
           )
         `)
-        .eq("status", "COMPLETED")
+        .eq("grn_items.iqc_status", "APPROVED")
         .order("updated_at", { ascending: false })
         .limit(10);
       
