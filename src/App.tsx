@@ -1,4 +1,3 @@
-
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Index from "@/pages/Index";
 import Auth from "@/pages/Auth";
@@ -30,6 +29,7 @@ import Resources from "@/pages/Resources";
 import UserManagement from "@/pages/UserManagement";
 import StoreDashboard from "@/pages/store/StoreDashboard";
 import NotFound from "@/pages/NotFound";
+import CustomerComplaints from "@/pages/CustomerComplaints";
 
 function App() {
   return (
@@ -56,6 +56,7 @@ function App() {
           <Route path="/finished-goods" element={<FinishedGoods />} />
           <Route path="/dispatch" element={<Dispatch />} />
           <Route path="/spare-orders" element={<SpareOrders />} />
+          <Route path="/customer-complaints" element={<CustomerComplaints />} />
           <Route path="/vendors" element={<Vendors />} />
           <Route path="/management" element={<Management />} />
           <Route path="/management/products" element={<ProductsManagement />} />

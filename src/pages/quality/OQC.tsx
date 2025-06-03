@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import ProductionDetailsDialog from "@/components/Production/ProductionDetailsDialog";
+import CustomerComplaintHandling from "@/components/quality/CustomerComplaintHandling";
 
 const OQC = () => {
   const [selectedTab, setSelectedTab] = useState("pending");
@@ -156,9 +156,10 @@ const OQC = () => {
         </div>
 
         <Tabs value={selectedTab} onValueChange={setSelectedTab}>
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="pending">Pending OQC ({pendingOQC.length})</TabsTrigger>
             <TabsTrigger value="completed">Completed OQC</TabsTrigger>
+            <TabsTrigger value="complaints">Customer Complaint Handling</TabsTrigger>
             <TabsTrigger value="reports">Quality Reports</TabsTrigger>
           </TabsList>
           
@@ -297,6 +298,10 @@ const OQC = () => {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+          
+          <TabsContent value="complaints">
+            <CustomerComplaintHandling />
           </TabsContent>
           
           <TabsContent value="reports">

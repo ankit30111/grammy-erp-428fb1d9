@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import LineRejectionManager from "@/components/quality/LineRejectionManager";
 import IQCInspectionDialog from "@/components/quality/IQCInspectionDialog";
+import PartAnalysis from "@/components/quality/PartAnalysis";
 
 const IQC = () => {
   const [selectedTab, setSelectedTab] = useState("pending");
@@ -105,10 +105,11 @@ const IQC = () => {
         </div>
 
         <Tabs value={selectedTab} onValueChange={setSelectedTab}>
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="pending">Pending IQC</TabsTrigger>
             <TabsTrigger value="completed">Completed IQC</TabsTrigger>
             <TabsTrigger value="line-rejection">Line Rejection</TabsTrigger>
+            <TabsTrigger value="part-analysis">Part Analysis</TabsTrigger>
             <TabsTrigger value="analytics">Analytics</TabsTrigger>
           </TabsList>
           
@@ -212,6 +213,10 @@ const IQC = () => {
 
           <TabsContent value="line-rejection">
             <LineRejectionManager />
+          </TabsContent>
+          
+          <TabsContent value="part-analysis">
+            <PartAnalysis />
           </TabsContent>
           
           <TabsContent value="analytics">

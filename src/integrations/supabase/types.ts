@@ -145,6 +145,81 @@ export type Database = {
           },
         ]
       }
+      customer_complaint_parts: {
+        Row: {
+          analyzed_at: string | null
+          analyzed_by: string | null
+          capa_document_url: string | null
+          closed_at: string | null
+          closed_by: string | null
+          complaint_id: string
+          created_at: string
+          id: string
+          raw_material_id: string
+          rca_document_url: string | null
+          reason: string | null
+          remarks: string | null
+          sent_to_iqc_at: string | null
+          sent_to_iqc_by: string | null
+          serial_number: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          analyzed_at?: string | null
+          analyzed_by?: string | null
+          capa_document_url?: string | null
+          closed_at?: string | null
+          closed_by?: string | null
+          complaint_id: string
+          created_at?: string
+          id?: string
+          raw_material_id: string
+          rca_document_url?: string | null
+          reason?: string | null
+          remarks?: string | null
+          sent_to_iqc_at?: string | null
+          sent_to_iqc_by?: string | null
+          serial_number?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          analyzed_at?: string | null
+          analyzed_by?: string | null
+          capa_document_url?: string | null
+          closed_at?: string | null
+          closed_by?: string | null
+          complaint_id?: string
+          created_at?: string
+          id?: string
+          raw_material_id?: string
+          rca_document_url?: string | null
+          reason?: string | null
+          remarks?: string | null
+          sent_to_iqc_at?: string | null
+          sent_to_iqc_by?: string | null
+          serial_number?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_complaint_parts_complaint_id_fkey"
+            columns: ["complaint_id"]
+            isOneToOne: false
+            referencedRelation: "customer_complaints"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_complaint_parts_raw_material_id_fkey"
+            columns: ["raw_material_id"]
+            isOneToOne: false
+            referencedRelation: "raw_materials"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customer_complaints: {
         Row: {
           bill_number: string
