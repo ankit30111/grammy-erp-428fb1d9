@@ -56,9 +56,9 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
     },
   });
 
-  // Fetch real-time inventory data
+  // Fetch real-time inventory data with auto-refresh
   const { data: inventoryData = [], refetch: refetchInventory } = useQuery({
-    queryKey: ["inventory-for-voucher", voucherId],
+    queryKey: ["inventory-real-time", voucherId],
     queryFn: async () => {
       console.log("🔍 Fetching real-time inventory data...");
       
@@ -80,38 +80,39 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
         throw error;
       }
 
-      console.log("📦 Current inventory data:", data);
+      console.log("📦 Real-time inventory data:", data);
       return data || [];
     },
-    refetchInterval: 5000,
+    refetchInterval: 3000, // Auto-refresh every 3 seconds
   });
 
-  // Fetch dispatched materials for this voucher from kit_items
+  // Fetch dispatched materials for this voucher
   const { data: dispatchedItems = [] } = useQuery({
-    queryKey: ["dispatched-items", voucherId],
+    queryKey: ["dispatched-materials", voucherId],
     queryFn: async () => {
-      console.log("🔍 Fetching dispatched items for voucher:", voucherId);
+      console.log("🔍 Fetching dispatched materials for voucher:", voucherId);
       
       const { data, error } = await supabase
         .from("kit_items")
         .select(`
           raw_material_id,
           actual_quantity,
+          created_at,
           kit_preparation!inner(production_order_id)
         `)
         .eq("kit_preparation.production_order_id", voucherId);
 
       if (error) {
-        console.error("❌ Error fetching dispatched items:", error);
+        console.error("❌ Error fetching dispatched materials:", error);
         throw error;
       }
 
-      console.log("📋 Dispatched items:", data);
+      console.log("📋 Dispatched materials:", data);
       return data || [];
     },
   });
 
-  // Create inventory map for quick lookups
+  // Create inventory lookup map
   const inventoryMap = new Map();
   inventoryData.forEach(item => {
     inventoryMap.set(item.raw_material_id, item.quantity);
@@ -129,36 +130,42 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
     return inventoryMap.get(materialId) || 0;
   };
 
-  // Enhanced material dispatch mutation with proper validation and inventory deduction
+  // Enhanced material dispatch mutation with real-time inventory deduction and logging
   const sendMaterialsMutation = useMutation({
     mutationFn: async (materialsToSend: any[]) => {
-      console.log("🚀 Starting enhanced material dispatch process...");
-      console.log("📋 Materials to send:", materialsToSend);
+      console.log("🚀 Starting enhanced material dispatch with real-time inventory deduction...");
+      console.log("📋 Materials to dispatch:", materialsToSend);
       
-      // Pre-validation: Check if any materials have insufficient stock
+      // Pre-validation: Check inventory availability for all materials
       const validationErrors: string[] = [];
-      const materialValidations = [];
+      const dispatchPlan = [];
       
       for (const material of materialsToSend) {
         const currentStock = getCurrentStock(material.raw_materials.id);
         const quantityToSend = quantities[material.raw_materials.id] || 0;
         
-        console.log(`🧮 Validating ${material.raw_materials.material_code}: Stock=${currentStock}, ToSend=${quantityToSend}`);
+        console.log(`🧮 Validating ${material.raw_materials.material_code}:`);
+        console.log(`   - Current Stock: ${currentStock}`);
+        console.log(`   - Quantity to Send: ${quantityToSend}`);
         
         if (quantityToSend <= 0) {
           validationErrors.push(`Invalid quantity for ${material.raw_materials.material_code}`);
+          continue;
         }
         
         if (quantityToSend > currentStock) {
           validationErrors.push(`Insufficient stock for ${material.raw_materials.material_code}: Required ${quantityToSend}, Available ${currentStock}`);
+          continue;
         }
 
-        materialValidations.push({
+        dispatchPlan.push({
           materialId: material.raw_materials.id,
           materialCode: material.raw_materials.material_code,
+          materialName: material.raw_materials.name,
           currentStock,
           quantityToSend,
-          newStock: currentStock - quantityToSend
+          newStock: currentStock - quantityToSend,
+          requiredQuantity: material.quantity * productionOrder.quantity
         });
       }
 
@@ -167,10 +174,10 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
         throw new Error(validationErrors.join('; '));
       }
 
-      console.log("✅ Validation passed, proceeding with dispatch...");
+      console.log("✅ Validation passed. Dispatch plan:", dispatchPlan);
 
       try {
-        // 1. Create kit preparation record
+        // 1. Create kit preparation record with proper status
         const { data: kitPrep, error: kitError } = await supabase
           .from("kit_preparation")
           .insert({
@@ -187,52 +194,52 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
 
         console.log("✅ Kit preparation created:", kitPrep);
 
-        // 2. Process each material dispatch with inventory deduction
+        // 2. Process each material dispatch with real-time inventory deduction and logging
         const dispatchResults = [];
         
-        for (const validation of materialValidations) {
-          console.log(`📦 Processing dispatch for ${validation.materialCode}`);
+        for (const plan of dispatchPlan) {
+          console.log(`📦 Processing dispatch for ${plan.materialCode}...`);
           
           // Create kit item record
           const { error: itemError } = await supabase
             .from("kit_items")
             .insert({
               kit_preparation_id: kitPrep.id,
-              raw_material_id: validation.materialId,
-              required_quantity: materialsToSend.find(m => m.raw_materials.id === validation.materialId)?.quantity * productionOrder.quantity,
-              actual_quantity: validation.quantityToSend
+              raw_material_id: plan.materialId,
+              required_quantity: plan.requiredQuantity,
+              actual_quantity: plan.quantityToSend
             });
 
           if (itemError) {
             console.error("❌ Error creating kit item:", itemError);
-            throw new Error(`Failed to create kit item: ${itemError.message}`);
+            throw new Error(`Failed to create kit item for ${plan.materialCode}: ${itemError.message}`);
           }
 
-          // Update inventory - deduct the dispatched quantity
+          // CRITICAL: Update inventory - deduct the dispatched quantity in real-time
           const { error: invError } = await supabase
             .from("inventory")
             .update({
-              quantity: validation.newStock,
+              quantity: plan.newStock,
               last_updated: new Date().toISOString()
             })
-            .eq("raw_material_id", validation.materialId);
+            .eq("raw_material_id", plan.materialId);
 
           if (invError) {
             console.error("❌ Error updating inventory:", invError);
-            throw new Error(`Failed to update inventory: ${invError.message}`);
+            throw new Error(`Failed to update inventory for ${plan.materialCode}: ${invError.message}`);
           }
 
-          // Log material movement for tracking
+          // Log material movement for audit trail
           const { error: movementError } = await supabase
             .from("material_movements")
             .insert({
-              raw_material_id: validation.materialId,
+              raw_material_id: plan.materialId,
               movement_type: "ISSUED_TO_PRODUCTION",
-              quantity: validation.quantityToSend,
+              quantity: plan.quantityToSend,
               reference_id: voucherId,
               reference_type: "PRODUCTION_ORDER",
               reference_number: productionOrder.voucher_number,
-              notes: `Dispatched from Store to Production for voucher ${productionOrder.voucher_number}. Stock reduced from ${validation.currentStock} to ${validation.newStock}`
+              notes: `Store Dispatch: ${plan.materialCode} (${plan.materialName}) dispatched to Production Voucher ${productionOrder.voucher_number}. Stock: ${plan.currentStock} → ${plan.newStock}`
             });
 
           if (movementError) {
@@ -242,17 +249,25 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
           }
 
           dispatchResults.push({
-            material_code: validation.materialCode,
-            quantity_sent: validation.quantityToSend,
-            previous_stock: validation.currentStock,
-            new_stock: validation.newStock
+            material_code: plan.materialCode,
+            material_name: plan.materialName,
+            quantity_sent: plan.quantityToSend,
+            previous_stock: plan.currentStock,
+            new_stock: plan.newStock,
+            voucher_number: productionOrder.voucher_number
           });
 
-          console.log(`✅ Successfully dispatched ${validation.materialCode}: ${validation.quantityToSend} units. Stock: ${validation.currentStock} → ${validation.newStock}`);
+          console.log(`✅ Successfully dispatched ${plan.materialCode}: ${plan.quantityToSend} units`);
+          console.log(`   - Inventory updated: ${plan.currentStock} → ${plan.newStock}`);
         }
 
-        console.log("🎉 All materials dispatched successfully");
-        return { success: true, kitPrepId: kitPrep.id, results: dispatchResults };
+        console.log("🎉 All materials dispatched successfully with real-time inventory deduction");
+        return { 
+          success: true, 
+          kitPrepId: kitPrep.id, 
+          results: dispatchResults,
+          voucherNumber: productionOrder.voucher_number
+        };
 
       } catch (error) {
         console.error("❌ Dispatch transaction failed:", error);
@@ -264,17 +279,17 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
       
       toast({
         title: "Materials Dispatched Successfully",
-        description: `${result.results.length} materials dispatched to production. Inventory updated in real-time.`,
+        description: `${result.results.length} materials dispatched to Production Voucher ${result.voucherNumber}. Inventory updated in real-time.`,
       });
       
       // Clear quantities and refresh all relevant data
       setQuantities({});
       queryClient.invalidateQueries({ queryKey: ["production-order-details"] });
-      queryClient.invalidateQueries({ queryKey: ["dispatched-items"] });
+      queryClient.invalidateQueries({ queryKey: ["dispatched-materials"] });
       queryClient.invalidateQueries({ queryKey: ["inventory"] });
-      queryClient.invalidateQueries({ queryKey: ["inventory-for-voucher"] });
+      queryClient.invalidateQueries({ queryKey: ["inventory-real-time"] });
       
-      // Force refresh inventory
+      // Force immediate refresh of inventory
       refetchInventory();
     },
     onError: (error: Error) => {
@@ -310,13 +325,30 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
       return;
     }
 
+    // Additional validation before dispatch
+    const insufficientStockMaterials = materialsWithQuantities.filter(material => {
+      const currentStock = getCurrentStock(material.raw_materials.id);
+      const quantityToSend = quantities[material.raw_materials.id];
+      return quantityToSend > currentStock;
+    });
+
+    if (insufficientStockMaterials.length > 0) {
+      const materialNames = insufficientStockMaterials.map(m => m.raw_materials.material_code).join(', ');
+      toast({
+        title: "Insufficient Stock",
+        description: `Cannot dispatch materials with insufficient stock: ${materialNames}. Please check inventory levels.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     console.log("🚀 Initiating material dispatch for:", materialsWithQuantities.length, "materials");
     sendMaterialsMutation.mutate(materialsWithQuantities);
   };
 
   // Auto-refresh inventory when component mounts or voucher changes
   useEffect(() => {
-    console.log("🔄 Auto-refreshing inventory data");
+    console.log("🔄 Auto-refreshing inventory data for real-time sync");
     refetchInventory();
   }, [voucherId, refetchInventory]);
 
@@ -354,7 +386,7 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
           Back to Production Vouchers
         </Button>
         <div className="text-sm text-muted-foreground">
-          Last updated: {new Date().toLocaleTimeString()}
+          Real-time sync: {new Date().toLocaleTimeString()}
         </div>
       </div>
 
@@ -384,7 +416,7 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
           </div>
 
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Material Dispatch - Real Time Inventory</h3>
+            <h3 className="text-lg font-semibold">Material Dispatch - Real Time Inventory Sync</h3>
             
             <Table>
               <TableHeader>
@@ -407,7 +439,7 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
                   const alreadyDispatched = getDispatchedQuantity(item.raw_materials.id);
                   const qtyToDispatch = quantities[item.raw_materials.id] || 0;
                   const remainingNeed = Math.max(0, requiredQty - alreadyDispatched - qtyToDispatch);
-                  const hasError = qtyToDispatch > currentStock;
+                  const hasInsufficientStock = qtyToDispatch > currentStock;
                   const isFullyDispatched = alreadyDispatched >= requiredQty;
 
                   return (
@@ -424,7 +456,7 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
                       </TableCell>
                       <TableCell className="text-blue-600 font-medium">
                         {alreadyDispatched}
-                        <div className="text-xs text-muted-foreground">From Kit Items</div>
+                        <div className="text-xs text-muted-foreground">Total Sent</div>
                       </TableCell>
                       <TableCell>
                         <Input
@@ -433,13 +465,13 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
                           max={Math.min(currentStock, remainingNeed)}
                           value={quantities[item.raw_materials.id] || ""}
                           onChange={(e) => handleQuantityChange(item.raw_materials.id, e.target.value)}
-                          className={`w-24 ${hasError ? 'border-red-500' : ''}`}
+                          className={`w-24 ${hasInsufficientStock ? 'border-red-500' : ''}`}
                           placeholder="0"
                           disabled={isFullyDispatched}
                         />
-                        {hasError && (
+                        {hasInsufficientStock && (
                           <p className="text-xs text-red-500 mt-1">
-                            Exceeds stock ({currentStock})
+                            Insufficient stock ({currentStock} available)
                           </p>
                         )}
                       </TableCell>
@@ -457,10 +489,15 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
                             <AlertTriangle className="h-3 w-3" />
                             No Stock
                           </Badge>
+                        ) : hasInsufficientStock ? (
+                          <Badge variant="destructive" className="gap-1">
+                            <AlertTriangle className="h-3 w-3" />
+                            Insufficient
+                          </Badge>
                         ) : (
                           <Badge variant="secondary" className="gap-1">
                             <Package className="h-3 w-3" />
-                            Pending
+                            Ready
                           </Badge>
                         )}
                       </TableCell>

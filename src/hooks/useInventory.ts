@@ -68,6 +68,93 @@ export const useUpdateInventory = () => {
   });
 };
 
+// Enhanced inventory deduction for material dispatch
+export const useInventoryDeduction = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({
+      rawMaterialId,
+      quantityToDeduct,
+      referenceId,
+      referenceNumber,
+      notes,
+    }: {
+      rawMaterialId: string;
+      quantityToDeduct: number;
+      referenceId: string;
+      referenceNumber: string;
+      notes?: string;
+    }) => {
+      console.log(`🔄 Processing inventory deduction for material ${rawMaterialId}`);
+      
+      // Get current inventory
+      const { data: currentInventory, error: invError } = await supabase
+        .from("inventory")
+        .select("quantity")
+        .eq("raw_material_id", rawMaterialId)
+        .single();
+
+      if (invError) {
+        console.error("❌ Error fetching current inventory:", invError);
+        throw new Error(`Failed to fetch inventory: ${invError.message}`);
+      }
+
+      const currentStock = currentInventory.quantity;
+      
+      if (currentStock < quantityToDeduct) {
+        throw new Error(`Insufficient stock: Available ${currentStock}, Required ${quantityToDeduct}`);
+      }
+
+      const newStock = currentStock - quantityToDeduct;
+
+      // Update inventory
+      const { error: updateError } = await supabase
+        .from("inventory")
+        .update({
+          quantity: newStock,
+          last_updated: new Date().toISOString()
+        })
+        .eq("raw_material_id", rawMaterialId);
+
+      if (updateError) {
+        console.error("❌ Error updating inventory:", updateError);
+        throw new Error(`Failed to update inventory: ${updateError.message}`);
+      }
+
+      // Log material movement
+      const { error: movementError } = await supabase
+        .from("material_movements")
+        .insert({
+          raw_material_id: rawMaterialId,
+          movement_type: "ISSUED_TO_PRODUCTION",
+          quantity: quantityToDeduct,
+          reference_id: referenceId,
+          reference_type: "PRODUCTION_ORDER",
+          reference_number: referenceNumber,
+          notes: notes || `Material dispatched to production. Stock: ${currentStock} → ${newStock}`
+        });
+
+      if (movementError) {
+        console.error("❌ Error logging material movement:", movementError);
+        // Don't fail the transaction for logging errors
+      }
+
+      console.log(`✅ Inventory deduction successful: ${currentStock} → ${newStock}`);
+      return {
+        previousStock: currentStock,
+        newStock,
+        quantityDeducted: quantityToDeduct
+      };
+    },
+    onSuccess: () => {
+      // Invalidate all inventory-related queries
+      queryClient.invalidateQueries({ queryKey: ["inventory"] });
+      queryClient.invalidateQueries({ queryKey: ["inventory-real-time"] });
+    },
+  });
+};
+
 // Updated manual sync with better error checking and duplicate prevention
 export const useManualInventorySync = () => {
   const queryClient = useQueryClient();
@@ -224,5 +311,37 @@ export const useCheckMaterialInventory = () => {
         grnEntries: grnItems
       };
     },
+  });
+};
+
+// Real-time inventory monitoring
+export const useRealTimeInventory = () => {
+  return useQuery({
+    queryKey: ["inventory-real-time"],
+    queryFn: async () => {
+      console.log("🔍 Fetching real-time inventory data...");
+      
+      const { data, error } = await supabase
+        .from("inventory")
+        .select(`
+          *,
+          raw_materials!raw_material_id (
+            id,
+            material_code,
+            name,
+            category
+          )
+        `)
+        .order("last_updated", { ascending: false });
+      
+      if (error) {
+        console.error("❌ Error fetching real-time inventory:", error);
+        throw error;
+      }
+
+      console.log("📦 Real-time inventory data:", data);
+      return data || [];
+    },
+    refetchInterval: 2000, // Refresh every 2 seconds for real-time sync
   });
 };
