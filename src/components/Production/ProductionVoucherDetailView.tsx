@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,9 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ArrowLeft, CheckCircle2, PackageCheck } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "@/hooks/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { Separator } from "@/components/ui/separator";
 import {
   Table,
@@ -69,8 +69,15 @@ const ProductionVoucherDetailView = ({ voucherId, onBack }: ProductionVoucherDet
       console.log(`🔍 Fetching BOM data for product: ${voucherData.product_id}`);
       
       const { data, error } = await supabase
-        .from("bom_items")
-        .select("*")
+        .from("bom")
+        .select(`
+          *,
+          raw_materials!inner(
+            material_code,
+            name,
+            specification
+          )
+        `)
         .eq("product_id", voucherData.product_id);
       
       if (error) {
@@ -262,17 +269,23 @@ const ProductionVoucherDetailView = ({ voucherId, onBack }: ProductionVoucherDet
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Part Code</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead>Quantity</TableHead>
+                <TableHead>Material Code</TableHead>
+                <TableHead>Material Name</TableHead>
+                <TableHead>Quantity Required</TableHead>
+                <TableHead>BOM Type</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {bomData.map((bomItem) => (
                 <TableRow key={bomItem.id}>
-                  <TableCell>{bomItem.part_code}</TableCell>
-                  <TableCell>{bomItem.description}</TableCell>
+                  <TableCell>{bomItem.raw_materials?.material_code}</TableCell>
+                  <TableCell>{bomItem.raw_materials?.name}</TableCell>
                   <TableCell>{bomItem.quantity}</TableCell>
+                  <TableCell>
+                    <Badge variant={bomItem.is_critical ? "destructive" : "secondary"}>
+                      {bomItem.bom_type}
+                    </Badge>
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>

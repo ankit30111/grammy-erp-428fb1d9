@@ -10,8 +10,8 @@ import { useState } from "react";
 import ProductionVoucherDetailView from "./ProductionVoucherDetailView";
 
 const ScheduledProductions = () => {
-  const [selectedProduction, setSelectedProduction] = useState<any>(null);
-  const [showDetailsDialog, setShowDetailsDialog] = useState(false);
+  const [selectedVoucherId, setSelectedVoucherId] = useState<string | null>(null);
+  const [showDetailsView, setShowDetailsView] = useState(false);
 
   // Fetch scheduled productions
   const { data: scheduledProductions = [] } = useQuery({
@@ -42,10 +42,22 @@ const ScheduledProductions = () => {
     }
   };
 
-  const handleViewDetails = (production: any) => {
-    setSelectedProduction(production);
-    setShowDetailsDialog(true);
+  const handleViewDetails = (voucherId: string) => {
+    setSelectedVoucherId(voucherId);
+    setShowDetailsView(true);
   };
+
+  if (showDetailsView && selectedVoucherId) {
+    return (
+      <ProductionVoucherDetailView
+        voucherId={selectedVoucherId}
+        onBack={() => {
+          setShowDetailsView(false);
+          setSelectedVoucherId(null);
+        }}
+      />
+    );
+  }
 
   if (scheduledProductions.length === 0) {
     return (
@@ -104,7 +116,7 @@ const ScheduledProductions = () => {
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => handleViewDetails(production)}
+                      onClick={() => handleViewDetails(production.id)}
                       className="gap-2"
                     >
                       <Eye className="h-4 w-4" />
@@ -117,18 +129,6 @@ const ScheduledProductions = () => {
           </Table>
         </CardContent>
       </Card>
-
-      {/* Production Voucher Detail View Dialog */}
-      {selectedProduction && (
-        <ProductionVoucherDetailView
-          production={selectedProduction}
-          isOpen={showDetailsDialog}
-          onClose={() => {
-            setShowDetailsDialog(false);
-            setSelectedProduction(null);
-          }}
-        />
-      )}
     </div>
   );
 };
