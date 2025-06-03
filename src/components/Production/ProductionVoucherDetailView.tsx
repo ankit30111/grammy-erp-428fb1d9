@@ -28,6 +28,21 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
 
   const productionLines = ["Line 1", "Line 2", "Sub Assembly 1", "Sub Assembly 2"];
 
+  // Initialize line assignments from existing production order data
+  useEffect(() => {
+    if (production?.production_lines) {
+      try {
+        const existingAssignments = typeof production.production_lines === 'string' 
+          ? JSON.parse(production.production_lines) 
+          : production.production_lines;
+        setLineAssignments(existingAssignments || {});
+      } catch (error) {
+        console.log("No existing line assignments found");
+        setLineAssignments({});
+      }
+    }
+  }, [production]);
+
   // Fetch BOM data for the product
   const { data: bomData = [] } = useQuery({
     queryKey: ["production-bom", production?.id],
@@ -135,25 +150,39 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
     },
   });
 
-  // Save line assignments mutation
+  // Save line assignments mutation - Updated to change status to IN_PROGRESS
   const saveLineAssignments = useMutation({
     mutationFn: async () => {
-      // Update production order with line assignments
+      console.log("🏭 Saving line assignments:", lineAssignments);
+      
+      // Update production order with line assignments and change status to IN_PROGRESS
       const { error } = await supabase
         .from("production_orders")
         .update({
           production_lines: lineAssignments,
+          status: 'IN_PROGRESS',  // Change status to make it appear in production lines
           updated_at: new Date().toISOString()
         })
         .eq("id", production.id);
       
-      if (error) throw error;
+      if (error) {
+        console.error("❌ Error updating production order:", error);
+        throw error;
+      }
+      
+      console.log("✅ Line assignments saved and status updated to IN_PROGRESS");
     },
     onSuccess: () => {
       toast({
         title: "Line Assignments Saved",
-        description: "Production line assignments have been updated",
+        description: "Production line assignments have been updated and production started",
       });
+      
+      // Refresh all related queries
+      queryClient.invalidateQueries({ queryKey: ["production-lines-overview"] });
+      queryClient.invalidateQueries({ queryKey: ["line-production"] });
+      queryClient.invalidateQueries({ queryKey: ["scheduled-productions"] });
+      queryClient.invalidateQueries({ queryKey: ["production-orders"] });
     },
   });
 

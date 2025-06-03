@@ -22,7 +22,7 @@ const ProductionLineDetailView = ({ lineName, onBack }: ProductionLineDetailView
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch ongoing and scheduled production for this line using the correct relationship
+  // Fetch production orders assigned to this line
   const { data: lineProduction = [] } = useQuery({
     queryKey: ["line-production", lineName],
     queryFn: async () => {
@@ -32,14 +32,10 @@ const ProductionLineDetailView = ({ lineName, onBack }: ProductionLineDetailView
         .from("production_orders")
         .select(`
           *,
-          products!inner(name),
-          production_schedules!production_schedule_id!inner(
-            production_line,
-            scheduled_date
-          )
+          products!inner(name)
         `)
-        .eq("production_schedules.production_line", lineName)
         .in("status", ["IN_PROGRESS", "SCHEDULED"])
+        .not("production_lines", "is", null)
         .order("scheduled_date", { ascending: true });
       
       if (error) {
@@ -47,8 +43,16 @@ const ProductionLineDetailView = ({ lineName, onBack }: ProductionLineDetailView
         throw error;
       }
       
-      console.log(`📊 Line ${lineName} production:`, data);
-      return data || [];
+      // Filter orders that are assigned to this specific line
+      const filteredData = (data || []).filter(order => {
+        const productionLines = order.production_lines || {};
+        const isAssigned = Object.values(productionLines).includes(lineName);
+        console.log(`Order ${order.voucher_number}: assigned to ${lineName} = ${isAssigned}`);
+        return isAssigned;
+      });
+      
+      console.log(`📊 Line ${lineName} production:`, filteredData);
+      return filteredData;
     },
     refetchInterval: 5000, // Refresh every 5 seconds
   });

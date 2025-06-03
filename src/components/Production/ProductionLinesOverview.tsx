@@ -17,7 +17,7 @@ const ProductionLinesOverview = () => {
     { id: "sub-assembly-2", name: "Sub Assembly 2", type: "Sub Assembly" }
   ];
 
-  // Fetch production orders for each line using the correct relationship
+  // Fetch production orders that have line assignments
   const { data: lineData = [] } = useQuery({
     queryKey: ["production-lines-overview"],
     queryFn: async () => {
@@ -27,13 +27,10 @@ const ProductionLinesOverview = () => {
         .from("production_orders")
         .select(`
           *,
-          products!inner(name),
-          production_schedules!production_schedule_id!inner(
-            production_line,
-            scheduled_date
-          )
+          products!inner(name)
         `)
         .in("status", ["IN_PROGRESS", "SCHEDULED"])
+        .not("production_lines", "is", null)
         .order("scheduled_date", { ascending: true });
       
       if (error) {
@@ -51,9 +48,11 @@ const ProductionLinesOverview = () => {
     console.log(`🔍 Getting status for line: ${lineName}`);
     
     const lineOrders = lineData.filter(order => {
-      const hasLineMatch = order.production_schedules?.production_line === lineName;
-      console.log(`Order ${order.voucher_number}: line=${order.production_schedules?.production_line}, matches=${hasLineMatch}`);
-      return hasLineMatch;
+      // Check if this line is assigned to any section of the production order
+      const productionLines = order.production_lines || {};
+      const isAssignedToLine = Object.values(productionLines).includes(lineName);
+      console.log(`Order ${order.voucher_number}: production_lines=${JSON.stringify(productionLines)}, assigned to ${lineName}=${isAssignedToLine}`);
+      return isAssignedToLine;
     });
 
     console.log(`📋 Line ${lineName} orders:`, lineOrders);
