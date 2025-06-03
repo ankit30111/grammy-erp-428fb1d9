@@ -9,11 +9,11 @@ interface NavItemProps {
   icon: React.ReactNode;
   label: string;
   collapsed: boolean;
-  badge?: number;
+  badge?: string | number;
   subItems?: {
     to: string;
     label: string;
-    badge?: number;
+    badge?: string | number;
   }[];
   allowedTabs?: string[];
 }
@@ -75,7 +75,7 @@ export const NavItem = ({
         )}
         {!collapsed && badge !== undefined && (
           <span className="ml-auto bg-sidebar-primary text-sidebar-primary-foreground text-xs rounded-full px-2 py-0.5">
-            {badge > 99 ? "99+" : badge}
+            {typeof badge === 'number' && badge > 99 ? "99+" : badge}
           </span>
         )}
       </NavLink>
@@ -94,7 +94,7 @@ export const NavItem = ({
                 <span className="text-sidebar-foreground">{item.label}</span>
                 {item.badge !== undefined && (
                   <span className="ml-auto bg-sidebar-primary text-sidebar-primary-foreground text-xs rounded-full px-2 py-0.5">
-                    {item.badge > 99 ? "99+" : item.badge}
+                    {typeof item.badge === 'number' && item.badge > 99 ? "99+" : item.badge}
                   </span>
                 )}
               </NavLink>

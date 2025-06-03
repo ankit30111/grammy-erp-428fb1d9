@@ -1,4 +1,3 @@
-
 import { 
   Home, 
   Package, 
@@ -20,10 +19,11 @@ export interface NavigationItem {
   to: string;
   icon: LucideIcon;
   label: string;
-  badge?: string;
+  badge?: string | number;
   subItems?: Array<{
     to: string;
     label: string;
+    badge?: string | number;
   }>;
 }
 
