@@ -21,47 +21,45 @@ const IQCRejections = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch rejections on hold using raw SQL to avoid type issues
+  // Fetch rejections on hold using existing grn_items table
   const { data: rejectionsOnHold = [] } = useQuery({
     queryKey: ["iqc-rejections-on-hold"],
     queryFn: async () => {
-      // Use raw SQL query to avoid TypeScript type issues
-      const { data, error } = await supabase.rpc('get_iqc_rejections_on_hold');
+      console.log("Fetching rejected GRN items from grn_items table");
+      const { data, error } = await supabase
+        .from("grn_items")
+        .select(`
+          *,
+          grn!inner(
+            id, grn_number, vendor_id,
+            purchase_orders!inner(po_number),
+            vendors!inner(name, contact_person_name, contact_number, email)
+          ),
+          raw_materials!inner(material_code, name)
+        `)
+        .eq("iqc_status", "REJECTED")
+        .order("iqc_completed_at", { ascending: false });
       
-      // Fallback to direct query if RPC doesn't exist
       if (error) {
-        console.log("Using fallback query for rejections on hold");
-        const { data: fallbackData, error: fallbackError } = await supabase
-          .from("grn_items")
-          .select(`
-            *,
-            grn!inner(
-              id, grn_number, vendor_id,
-              purchase_orders!inner(po_number),
-              vendors!inner(name, contact_person_name, contact_number, email)
-            ),
-            raw_materials!inner(material_code, name)
-          `)
-          .eq("iqc_status", "REJECTED")
-          .order("iqc_completed_at", { ascending: false });
-        
-        if (fallbackError) throw fallbackError;
-        return fallbackData?.map(item => ({
-          id: item.id,
-          po_number: item.grn?.purchase_orders?.po_number,
-          grn: { grn_number: item.grn?.grn_number },
-          vendors: item.grn?.vendors,
-          raw_materials: item.raw_materials,
-          total_quantity: item.received_quantity,
-          accepted_quantity: item.accepted_quantity || 0,
-          rejected_quantity: item.rejected_quantity || 0
-        })) || [];
+        console.error("Error fetching rejected GRN items:", error);
+        throw error;
       }
-      return data || [];
+      
+      console.log("Fetched rejected GRN items:", data);
+      return data?.map(item => ({
+        id: item.id,
+        po_number: item.grn?.purchase_orders?.po_number,
+        grn: { grn_number: item.grn?.grn_number },
+        vendors: item.grn?.vendors,
+        raw_materials: item.raw_materials,
+        total_quantity: item.received_quantity,
+        accepted_quantity: item.accepted_quantity || 0,
+        rejected_quantity: item.rejected_quantity || 0
+      })) || [];
     },
   });
 
-  // Fetch materials sent back
+  // Fetch materials sent back (placeholder for now)
   const { data: materialsSentBack = [] } = useQuery({
     queryKey: ["materials-sent-back"],
     queryFn: async () => {
@@ -149,7 +147,7 @@ const IQCRejections = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {rejectionsOnHold.map((rejection) => (
+                  {Array.isArray(rejectionsOnHold) && rejectionsOnHold.map((rejection) => (
                     <TableRow key={rejection.id}>
                       <TableCell className="font-medium">{rejection.po_number}</TableCell>
                       <TableCell>{rejection.grn?.grn_number}</TableCell>
@@ -184,7 +182,7 @@ const IQCRejections = () => {
                 </TableBody>
               </Table>
               
-              {rejectionsOnHold.length === 0 && (
+              {!Array.isArray(rejectionsOnHold) || rejectionsOnHold.length === 0 && (
                 <div className="text-center py-8 text-muted-foreground">
                   No materials on hold
                 </div>
@@ -205,7 +203,7 @@ const IQCRejections = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {materialsSentBack.map((rejection: any) => (
+                  {Array.isArray(materialsSentBack) && materialsSentBack.map((rejection: any) => (
                     <TableRow key={rejection.id}>
                       <TableCell className="font-medium">{rejection.po_number}</TableCell>
                       <TableCell>{rejection.grn?.grn_number}</TableCell>
@@ -221,7 +219,7 @@ const IQCRejections = () => {
                 </TableBody>
               </Table>
               
-              {materialsSentBack.length === 0 && (
+              {!Array.isArray(materialsSentBack) || materialsSentBack.length === 0 && (
                 <div className="text-center py-8 text-muted-foreground">
                   No materials sent back to vendors
                 </div>
