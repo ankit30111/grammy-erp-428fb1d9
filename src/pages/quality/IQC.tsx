@@ -3,7 +3,7 @@ import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Clock, FileCheck, Upload, Search, AlertTriangle } from "lucide-react";
+import { Clock, FileCheck, Upload, Search, AlertTriangle, Phone } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -28,6 +28,7 @@ const IQC = () => {
         .select(`
           *,
           vendors!inner(name),
+          purchase_orders!inner(po_number),
           grn_items!inner(
             *,
             raw_materials!inner(name, material_code)
@@ -47,7 +48,7 @@ const IQC = () => {
     },
   });
 
-  // Fetch completed GRNs - those with approved or rejected IQC status
+  // Fetch completed GRNs - those with approved, rejected, or segregated IQC status
   const { data: completedGRNs = [] } = useQuery({
     queryKey: ["completed-grns"],
     queryFn: async () => {
@@ -56,23 +57,17 @@ const IQC = () => {
         .select(`
           *,
           vendors!inner(name),
+          purchase_orders!inner(po_number),
           grn_items!inner(
             *,
             raw_materials!inner(name, material_code)
           )
         `)
-        .in("status", ["COMPLETED", "RECEIVED"])
+        .eq("status", "IQC_COMPLETED")
         .order("updated_at", { ascending: false })
         .limit(20);
       
-      // Filter to show only GRNs with completed IQC items
-      const filteredData = data?.filter(grn => 
-        grn.grn_items.some((item: any) => 
-          item.iqc_status === 'APPROVED' || item.iqc_status === 'REJECTED'
-        )
-      ) || [];
-      
-      return filteredData;
+      return data || [];
     },
   });
 
@@ -84,12 +79,30 @@ const IQC = () => {
   const getStatusBadge = (grn: any) => {
     const allApproved = grn.grn_items.every((item: any) => item.iqc_status === 'APPROVED');
     const hasRejected = grn.grn_items.some((item: any) => item.iqc_status === 'REJECTED');
+    const hasSegregated = grn.grn_items.some((item: any) => item.iqc_status === 'SEGREGATED');
     const hasPending = grn.grn_items.some((item: any) => !item.iqc_status || item.iqc_status === 'PENDING');
     
     if (hasPending) return <Badge variant="secondary">Pending IQC</Badge>;
-    if (hasRejected) return <Badge variant="destructive">Partially Rejected</Badge>;
+    if (hasRejected) return <Badge variant="destructive">Rejected</Badge>;
+    if (hasSegregated) return <Badge variant="outline">Segregated</Badge>;
     if (allApproved) return <Badge variant="default">Approved</Badge>;
-    return <Badge variant="outline">In Progress</Badge>;
+    return <Badge variant="outline">Mixed Results</Badge>;
+  };
+
+  const getNotifyVendorButton = (grn: any) => {
+    const hasRejectedOrSegregated = grn.grn_items.some((item: any) => 
+      item.iqc_status === 'REJECTED' || item.iqc_status === 'SEGREGATED'
+    );
+
+    if (hasRejectedOrSegregated) {
+      return (
+        <Button variant="outline" size="sm" className="ml-2">
+          <Phone className="h-3 w-3 mr-1" />
+          Notify Vendor
+        </Button>
+      );
+    }
+    return null;
   };
 
   return (
@@ -128,6 +141,7 @@ const IQC = () => {
                     <TableHeader>
                       <TableRow>
                         <TableHead>GRN Number</TableHead>
+                        <TableHead>PO Number</TableHead>
                         <TableHead>Vendor</TableHead>
                         <TableHead>Received Date</TableHead>
                         <TableHead>Items Count</TableHead>
@@ -139,6 +153,7 @@ const IQC = () => {
                       {pendingGRNs.map((grn) => (
                         <TableRow key={grn.id}>
                           <TableCell className="font-medium">{grn.grn_number}</TableCell>
+                          <TableCell className="font-medium text-blue-600">{grn.purchase_orders?.po_number}</TableCell>
                           <TableCell>{grn.vendors?.name}</TableCell>
                           <TableCell>{new Date(grn.received_date).toLocaleDateString()}</TableCell>
                           <TableCell>{grn.grn_items?.length || 0}</TableCell>
@@ -181,6 +196,7 @@ const IQC = () => {
                     <TableHeader>
                       <TableRow>
                         <TableHead>GRN Number</TableHead>
+                        <TableHead>PO Number</TableHead>
                         <TableHead>Vendor</TableHead>
                         <TableHead>Completion Date</TableHead>
                         <TableHead>Items Count</TableHead>
@@ -192,15 +208,19 @@ const IQC = () => {
                       {completedGRNs.map((grn) => (
                         <TableRow key={grn.id}>
                           <TableCell className="font-medium">{grn.grn_number}</TableCell>
+                          <TableCell className="font-medium text-blue-600">{grn.purchase_orders?.po_number}</TableCell>
                           <TableCell>{grn.vendors?.name}</TableCell>
                           <TableCell>{new Date(grn.updated_at).toLocaleDateString()}</TableCell>
                           <TableCell>{grn.grn_items?.length || 0}</TableCell>
                           <TableCell>{getStatusBadge(grn)}</TableCell>
                           <TableCell>
-                            <Button variant="outline" size="sm">
-                              <FileCheck className="h-3 w-3 mr-1" />
-                              Report
-                            </Button>
+                            <div className="flex gap-1">
+                              <Button variant="outline" size="sm">
+                                <FileCheck className="h-3 w-3 mr-1" />
+                                Report
+                              </Button>
+                              {getNotifyVendorButton(grn)}
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}

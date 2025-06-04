@@ -36,8 +36,9 @@ export default function EnhancedGRNReceiving({
           ),
           raw_materials!inner(material_code, name)
         `)
-        .eq("iqc_status", "ACCEPTED")
-        .eq("store_confirmed", false);
+        .in("iqc_status", ["APPROVED", "SEGREGATED"])
+        .eq("store_confirmed", false)
+        .gt("accepted_quantity", 0);
       
       if (error) throw error;
       console.log("📋 Pending GRN items for store confirmation:", data);
@@ -50,12 +51,14 @@ export default function EnhancedGRNReceiving({
   };
 
   const handleReceiveGRN = async (item: any) => {
+    // Use accepted_quantity instead of received_quantity for segregated items
+    const maxQuantity = item.accepted_quantity || item.received_quantity;
     const receivedQuantity = parseInt(quantityInputs[item.id] || "0");
     
-    if (receivedQuantity <= 0 || receivedQuantity > item.accepted_quantity) {
+    if (receivedQuantity <= 0 || receivedQuantity > maxQuantity) {
       toast({
         title: "Invalid Quantity",
-        description: "Please enter a valid quantity within approved limits",
+        description: `Please enter a valid quantity within accepted limits (max: ${maxQuantity})`,
         variant: "destructive"
       });
       return;
@@ -216,7 +219,7 @@ export default function EnhancedGRNReceiving({
           <div>
             <p className="text-sm font-medium text-blue-900">Material Receiving Process</p>
             <p className="text-xs text-blue-700">
-              These materials have passed IQC inspection. Verify and confirm receipt to update inventory.
+              These materials have passed IQC inspection. Only accepted quantities are shown for receiving.
             </p>
           </div>
         </div>
@@ -244,7 +247,8 @@ export default function EnhancedGRNReceiving({
               <TableHead>Part Code</TableHead>
               <TableHead>Description</TableHead>
               <TableHead>Vendor</TableHead>
-              <TableHead>Approved Qty</TableHead>
+              <TableHead>IQC Status</TableHead>
+              <TableHead>Accepted Qty</TableHead>
               <TableHead>Received Qty</TableHead>
               <TableHead>Action</TableHead>
             </TableRow>
@@ -257,6 +261,13 @@ export default function EnhancedGRNReceiving({
                 <TableCell className="font-mono">{item.raw_materials?.material_code}</TableCell>
                 <TableCell>{item.raw_materials?.name}</TableCell>
                 <TableCell>{item.grn?.vendors?.name}</TableCell>
+                <TableCell>
+                  {item.iqc_status === 'SEGREGATED' ? (
+                    <Badge variant="secondary">Segregated</Badge>
+                  ) : (
+                    <Badge variant="default">Approved</Badge>
+                  )}
+                </TableCell>
                 <TableCell className="font-medium text-green-600">{item.accepted_quantity}</TableCell>
                 <TableCell>
                   <Input
