@@ -13,7 +13,7 @@ interface SidebarFooterProps {
   isLoading: boolean;
 }
 
-export const SidebarFooter = ({ collapsed, allowedTabs, userPermissions, isLoading }: SidebarFooterProps) => {
+export const SidebarFooter = ({ collapsed }: SidebarFooterProps) => {
   const navigate = useNavigate();
   
   const handleSignOut = async () => {
@@ -32,25 +32,16 @@ export const SidebarFooter = ({ collapsed, allowedTabs, userPermissions, isLoadi
   };
 
   return (
-    <>
-      <div className="p-2 mt-auto border-t border-sidebar-border space-y-2">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleSignOut}
-          className={cn("w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent", collapsed && "justify-center px-2")}
-        >
-          <LogOut size={20} />
-          {!collapsed && <span className="ml-2">Sign Out</span>}
-        </Button>
-      </div>
-      
-      {/* Show current user department if not collapsed */}
-      {!collapsed && userPermissions && typeof userPermissions === 'object' && 'departmentName' in userPermissions && !isLoading && (
-        <div className="p-2 text-xs text-sidebar-foreground/60 border-t border-sidebar-border">
-          Department: {userPermissions.departmentName}
-        </div>
-      )}
-    </>
+    <div className="p-2 mt-auto border-t border-sidebar-border space-y-2">
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={handleSignOut}
+        className={cn("w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent", collapsed && "justify-center px-2")}
+      >
+        <LogOut size={20} />
+        {!collapsed && <span className="ml-2">Sign Out</span>}
+      </Button>
+    </div>
   );
 };

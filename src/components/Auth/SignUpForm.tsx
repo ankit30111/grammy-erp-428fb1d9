@@ -5,27 +5,18 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
-import { useDepartments } from "@/hooks/useDepartments";
 
 export function SignUpForm() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [departmentId, setDepartmentId] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const { data: departments, isLoading: departmentsLoading } = useDepartments();
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!departmentId) {
-      toast.error("Please select a department");
-      return;
-    }
 
     setLoading(true);
 
@@ -47,14 +38,13 @@ export function SignUpForm() {
       }
 
       if (authData.user) {
-        // Create user account record with department
+        // Create user account record without department restriction
         const { error: accountError } = await supabase
           .from("user_accounts")
           .insert({
             username: email,
             email: email,
             full_name: name,
-            department_id: departmentId,
             role: "user",
             password_hash: "managed_by_auth" // Placeholder since auth is handled by Supabase
           });
@@ -111,26 +101,7 @@ export function SignUpForm() {
           minLength={6}
         />
       </div>
-      <div>
-        <Label htmlFor="department">Department</Label>
-        <Select value={departmentId} onValueChange={setDepartmentId} required>
-          <SelectTrigger>
-            <SelectValue placeholder="Select your department" />
-          </SelectTrigger>
-          <SelectContent>
-            {departmentsLoading ? (
-              <SelectItem value="loading" disabled>Loading departments...</SelectItem>
-            ) : (
-              departments?.map((dept) => (
-                <SelectItem key={dept.id} value={dept.id}>
-                  {dept.name}
-                </SelectItem>
-              ))
-            )}
-          </SelectContent>
-        </Select>
-      </div>
-      <Button type="submit" className="w-full" disabled={loading || departmentsLoading}>
+      <Button type="submit" className="w-full" disabled={loading}>
         {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
         Sign Up
       </Button>

@@ -29,21 +29,11 @@ export const NavItem = ({
 }: NavItemProps) => {
   const [expanded, setExpanded] = useState(false);
   
-  // Extract the tab name from the route
-  const tabName = to.substring(1) || "dashboard"; // Remove leading slash, default to dashboard
+  // Universal access - all items are always allowed
+  const isAllowed = true;
   
-  // Check if this tab is allowed for the current user
-  const isAllowed = allowedTabs.length === 0 || allowedTabs.includes(tabName) || tabName === "dashboard";
-  
-  // Filter subItems based on permissions
-  const filteredSubItems = subItems?.filter(item => {
-    const subTabName = item.to.substring(1);
-    return allowedTabs.includes(subTabName);
-  });
-  
-  if (!isAllowed && (!filteredSubItems || filteredSubItems.length === 0)) {
-    return null;
-  }
+  // All subItems are always visible in universal access mode
+  const filteredSubItems = subItems;
   
   const handleExpandClick = (e: React.MouseEvent) => {
     if (filteredSubItems?.length) {

@@ -1,25 +1,24 @@
+
 import { ReactNode, useState, useEffect } from "react";
 import { Sidebar } from "@/components/Navigation/Sidebar";
-import { Bell, User, Search, LogOut, Mail, Phone, Building2 } from "lucide-react";
+import { Bell, User, Search, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
-import { useUserPermissions } from "@/hooks/useUserPermissions";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
+
 interface DashboardLayoutProps {
   children: ReactNode;
 }
+
 interface UserProfile {
   full_name: string;
   email: string;
-  mobile_number?: string;
-  department_name?: string;
 }
-export function DashboardLayout({
-  children
-}: DashboardLayoutProps) {
+
+export function DashboardLayout({ children }: DashboardLayoutProps) {
   const [userId, setUserId] = useState<string | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const navigate = useNavigate();
@@ -27,57 +26,43 @@ export function DashboardLayout({
   // Get current user ID
   useEffect(() => {
     const getCurrentUser = async () => {
-      const {
-        data: {
-          user
-        }
-      } = await supabase.auth.getUser();
+      const { data: { user } } = await supabase.auth.getUser();
       setUserId(user?.id || null);
+      
       if (user) {
-        // Fetch user profile from user_accounts table with department information
-        const {
-          data: profile,
-          error
-        } = await supabase.from("user_accounts").select(`
+        // Fetch user profile from user_accounts table without department restrictions
+        const { data: profile, error } = await supabase
+          .from("user_accounts")
+          .select(`
             full_name,
-            email,
-            departments!department_id (
-              name
-            )
-          `).eq("id", user.id).single();
+            email
+          `)
+          .eq("id", user.id)
+          .single();
+          
         if (error) {
           console.error("Error fetching user profile:", error);
         } else if (profile) {
           setUserProfile({
             full_name: profile.full_name || "User",
             email: profile.email || "",
-            mobile_number: "",
-            // Not available in user_accounts table
-            department_name: profile.departments?.name || "N/A"
           });
         }
       }
     };
+    
     getCurrentUser();
-    const {
-      data: {
-        subscription
-      }
-    } = supabase.auth.onAuthStateChange((event, session) => {
+    
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setUserId(session?.user?.id || null);
     });
+    
     return () => subscription.unsubscribe();
   }, []);
 
-  // Get user permissions based on their department
-  const {
-    data: userPermissions
-  } = useUserPermissions(userId);
   const handleSignOut = async () => {
     try {
-      const {
-        error
-      } = await supabase.auth.signOut();
+      const { error } = await supabase.auth.signOut();
       if (error) {
         toast.error("Error signing out");
         return;
@@ -89,7 +74,9 @@ export function DashboardLayout({
       toast.error("An unexpected error occurred");
     }
   };
-  return <div className="flex h-screen bg-background">
+
+  return (
+    <div className="flex h-screen bg-background">
       <Sidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
         <header className="bg-card border-b h-14 flex items-center px-4 gap-4">
@@ -150,11 +137,6 @@ export function DashboardLayout({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-64">
-                
-                <DropdownMenuSeparator />
-                
-                
-                
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer text-destructive focus:text-destructive">
                   <LogOut className="mr-2 h-4 w-4" />
@@ -167,5 +149,6 @@ export function DashboardLayout({
 
         <main className="flex-1 overflow-auto p-6">{children}</main>
       </div>
-    </div>;
+    </div>
+  );
 }

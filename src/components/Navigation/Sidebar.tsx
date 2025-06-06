@@ -5,11 +5,14 @@ import { NavItem } from "./NavItem";
 import { SidebarHeader } from "./SidebarHeader";
 import { SidebarFooter } from "./SidebarFooter";
 import { navigationItems, managementItems } from "./navigationConfig";
-import { useSidebarAuth } from "./useSidebarAuth";
 
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
-  const { userPermissions, allowedTabs, isLoading } = useSidebarAuth();
+  
+  // Universal access - no permission checking needed
+  const allowedTabs: string[] = [];
+  const userPermissions = null;
+  const isLoading = false;
   
   return (
     <div className={cn("bg-sidebar h-screen flex flex-col transition-all duration-300 border-r border-sidebar-border", collapsed ? "w-16" : "w-64")}>

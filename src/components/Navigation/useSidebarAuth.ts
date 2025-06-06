@@ -1,7 +1,6 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useUserPermissions } from "@/hooks/useUserPermissions";
 
 export const useSidebarAuth = () => {
   const [userId, setUserId] = useState<string | null>(null);
@@ -22,13 +21,10 @@ export const useSidebarAuth = () => {
     return () => subscription.unsubscribe();
   }, []);
   
-  // Get user permissions based on their department
-  const { data: userPermissions, isLoading } = useUserPermissions(userId);
-  
-  // Type guard to ensure userPermissions has the correct structure
-  const allowedTabs = userPermissions && typeof userPermissions === 'object' && 'allowedTabs' in userPermissions 
-    ? userPermissions.allowedTabs 
-    : [];
+  // Universal access - no permission restrictions
+  const userPermissions = null;
+  const allowedTabs: string[] = [];
+  const isLoading = false;
   
   return {
     userId,

@@ -2,8 +2,6 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import {
   Form,
@@ -25,7 +23,6 @@ import { useForm } from "react-hook-form";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
-import { useDepartments } from "@/hooks/useDepartments";
 
 interface CreateUserFormData {
   username: string;
@@ -34,13 +31,11 @@ interface CreateUserFormData {
   confirmPassword: string;
   fullName: string;
   role: "admin" | "manager" | "user";
-  departmentId: string;
   isActive: boolean;
 }
 
 export function CreateUserForm() {
   const [isLoading, setIsLoading] = useState(false);
-  const { data: departments, isLoading: departmentsLoading } = useDepartments();
   
   const form = useForm<CreateUserFormData>({
     defaultValues: {
@@ -50,7 +45,6 @@ export function CreateUserForm() {
       confirmPassword: "",
       fullName: "",
       role: "user",
-      departmentId: "",
       isActive: true,
     },
   });
@@ -63,11 +57,6 @@ export function CreateUserForm() {
 
     if (data.password.length < 6) {
       toast.error("Password must be at least 6 characters long");
-      return;
-    }
-
-    if (!data.departmentId) {
-      toast.error("Please select a department");
       return;
     }
 
@@ -85,7 +74,6 @@ export function CreateUserForm() {
           password_hash: passwordHash,
           full_name: data.fullName,
           role: data.role,
-          department_id: data.departmentId,
           is_active: data.isActive,
         })
         .select()
@@ -208,56 +196,28 @@ export function CreateUserForm() {
               />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="role"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Role</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a role" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="user">User</SelectItem>
-                        <SelectItem value="manager">Manager</SelectItem>
-                        <SelectItem value="admin">Admin</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="departmentId"
-                rules={{ required: "Department is required" }}
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Department</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a department" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {departments?.map((dept) => (
-                          <SelectItem key={dept.id} value={dept.id}>
-                            {dept.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+            <FormField
+              control={form.control}
+              name="role"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Role</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a role" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="user">User</SelectItem>
+                      <SelectItem value="manager">Manager</SelectItem>
+                      <SelectItem value="admin">Admin</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <FormField
               control={form.control}
@@ -280,7 +240,7 @@ export function CreateUserForm() {
               )}
             />
 
-            <Button type="submit" className="w-full" disabled={isLoading || departmentsLoading}>
+            <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Create User
             </Button>
