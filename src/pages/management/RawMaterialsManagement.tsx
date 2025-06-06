@@ -1,4 +1,3 @@
-
 import { useState, useRef } from "react";
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 import { 
@@ -27,7 +26,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { Search, Plus, Layers, FileText, Package, Upload, Edit, Trash2, History, Download } from "lucide-react";
+import { Search, Plus, Layers, FileText, Package, Upload, Edit, Trash2, History, Download, Eye } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useRawMaterials, useSpecificationHistory } from "@/hooks/useRawMaterials";
@@ -57,7 +56,9 @@ const RawMaterialsManagement = () => {
   const [filterCategory, setFilterCategory] = useState("all");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [selectedMaterial, setSelectedMaterial] = useState<any>(null);
+  const [viewMaterial, setViewMaterial] = useState<any>(null);
   const [selectedVendors, setSelectedVendors] = useState<string[]>([]);
   const [primaryVendor, setPrimaryVendor] = useState<string>("");
   const [specificationFile, setSpecificationFile] = useState<File | null>(null);
@@ -140,6 +141,16 @@ const RawMaterialsManagement = () => {
       return;
     }
 
+    console.log("Debug: Updating material with:", {
+      id: selectedMaterial.id,
+      ...newMaterial,
+      vendorIds: selectedVendors,
+      primaryVendorId: primaryVendor,
+      specificationFile: specificationFile?.name,
+      iqcChecklistFile: iqcChecklistFile?.name,
+      changesDescription,
+    });
+
     updateRawMaterial.mutate({
       id: selectedMaterial.id,
       ...newMaterial,
@@ -152,6 +163,11 @@ const RawMaterialsManagement = () => {
 
     setIsEditDialogOpen(false);
     setSelectedMaterial(null);
+  };
+
+  const handleViewMaterial = (material: any) => {
+    setViewMaterial(material);
+    setIsViewDialogOpen(true);
   };
 
   const handleVendorChange = (vendorId: string, checked: boolean) => {
@@ -195,6 +211,19 @@ const RawMaterialsManagement = () => {
     } catch (error) {
       console.error("Error downloading file:", error);
       toast.error("Failed to download file");
+    }
+  };
+
+  const getDocumentUrl = async (fileName: string) => {
+    try {
+      const { data } = await supabase.storage
+        .from("raw-material-documents")
+        .createSignedUrl(fileName, 60 * 60); // 1 hour expiry
+      
+      return data?.signedUrl;
+    } catch (error) {
+      console.error("Error getting document URL:", error);
+      return null;
     }
   };
 
@@ -401,7 +430,19 @@ const RawMaterialsManagement = () => {
                 ) : (
                   filteredMaterials.map((material) => (
                     <TableRow key={material.id}>
-                      <TableCell className="font-medium">{material.material_code}</TableCell>
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-2">
+                          {material.material_code}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleViewMaterial(material)}
+                            title="View Material Details"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
                       <TableCell>{material.name}</TableCell>
                       <TableCell>{material.category}</TableCell>
                       <TableCell>
@@ -486,6 +527,103 @@ const RawMaterialsManagement = () => {
             </Table>
           </CardContent>
         </Card>
+
+        {/* View Material Dialog */}
+        <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>View Material: {viewMaterial?.material_code}</DialogTitle>
+            </DialogHeader>
+            {viewMaterial && (
+              <div className="grid gap-6 py-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium text-muted-foreground">Part Name</Label>
+                    <p className="font-medium">{viewMaterial.name}</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium text-muted-foreground">Category</Label>
+                    <p>{viewMaterial.category}</p>
+                  </div>
+                </div>
+
+                {viewMaterial.specification && (
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium text-muted-foreground">Specification</Label>
+                    <p className="text-sm bg-muted p-3 rounded">{viewMaterial.specification}</p>
+                  </div>
+                )}
+
+                <div className="space-y-4">
+                  <Label className="text-sm font-medium text-muted-foreground">Documents</Label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {viewMaterial.specification_sheet_url && (
+                      <div className="border rounded-lg p-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <h4 className="font-medium">Specification Sheet</h4>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => downloadDocument(viewMaterial.specification_sheet_url, "specification.pdf")}
+                          >
+                            <Download className="h-4 w-4 mr-2" />
+                            Download
+                          </Button>
+                        </div>
+                        <div className="bg-muted rounded h-40 flex items-center justify-center">
+                          <FileText className="h-12 w-12 text-muted-foreground" />
+                        </div>
+                      </div>
+                    )}
+                    
+                    {viewMaterial.iqc_checklist_url && (
+                      <div className="border rounded-lg p-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <h4 className="font-medium">IQC Checklist</h4>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => downloadDocument(viewMaterial.iqc_checklist_url, "iqc_checklist.pdf")}
+                          >
+                            <Download className="h-4 w-4 mr-2" />
+                            Download
+                          </Button>
+                        </div>
+                        <div className="bg-muted rounded h-40 flex items-center justify-center">
+                          <Package className="h-12 w-12 text-muted-foreground" />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {!viewMaterial.specification_sheet_url && !viewMaterial.iqc_checklist_url && (
+                    <p className="text-muted-foreground text-center py-8">No documents uploaded</p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-muted-foreground">Vendors</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {viewMaterial.raw_material_vendors?.map((rv: any) => (
+                      <Badge 
+                        key={rv.id} 
+                        variant={rv.is_primary ? "default" : "secondary"}
+                      >
+                        {rv.vendors.vendor_code} - {rv.vendors.name}
+                        {rv.is_primary && " (Primary)"}
+                      </Badge>
+                    )) || <span className="text-muted-foreground">No vendors assigned</span>}
+                  </div>
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsViewDialogOpen(false)}>
+                Close
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Edit Dialog */}
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
@@ -578,6 +716,9 @@ const RawMaterialsManagement = () => {
                     accept=".pdf"
                     onChange={(e) => setSpecificationFile(e.target.files?.[0] || null)}
                   />
+                  {selectedMaterial?.specification_sheet_url && (
+                    <p className="text-xs text-muted-foreground">Current file will be replaced if new file is uploaded</p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="edit-iqc-file">New IQC Checklist (PDF)</Label>
@@ -587,6 +728,9 @@ const RawMaterialsManagement = () => {
                     accept=".pdf"
                     onChange={(e) => setIqcChecklistFile(e.target.files?.[0] || null)}
                   />
+                  {selectedMaterial?.iqc_checklist_url && (
+                    <p className="text-xs text-muted-foreground">Current file will be replaced if new file is uploaded</p>
+                  )}
                 </div>
               </div>
 
@@ -603,7 +747,17 @@ const RawMaterialsManagement = () => {
               )}
             </div>
             <DialogFooter>
-              <Button type="submit" onClick={handleUpdateMaterial} disabled={updateRawMaterial.isPending}>
+              <Button 
+                variant="outline" 
+                onClick={() => setIsEditDialogOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button 
+                type="submit" 
+                onClick={handleUpdateMaterial} 
+                disabled={updateRawMaterial.isPending}
+              >
                 {updateRawMaterial.isPending ? "Updating..." : "Update Material"}
               </Button>
             </DialogFooter>
