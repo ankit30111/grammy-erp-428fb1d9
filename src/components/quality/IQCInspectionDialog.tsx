@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -49,7 +48,7 @@ const IQCInspectionDialog = ({ grn, isOpen, onClose }: IQCInspectionDialogProps)
     });
     
     setInspectionResults(initialResults);
-  }, [grn]);
+  });
 
   // Handle file upload
   const handleFileChange = (itemId: string, event: React.ChangeEvent<HTMLInputElement>) => {
