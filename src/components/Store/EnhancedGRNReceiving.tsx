@@ -1,311 +1,410 @@
-import { useState } from "react";
+import React, { useState, useMemo } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Check, AlertTriangle, Search, FileText } from "lucide-react";
-import { format } from "date-fns";
-import { useToast } from "@/hooks/use-toast";
-import { useQuery } from "@tanstack/react-query";
+import { Label } from "@/components/ui/label";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { AlertTriangle, CheckCircle, PackageOpen, Search, ShoppingCart, Truck, FileText } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 
 interface EnhancedGRNReceivingProps {
   onReceiveGRN?: (id: string, quantity: number) => void;
   onDiscrepancyReport?: (grnId: string, expectedQty: number, receivedQty: number, poNumber: string) => void;
 }
 
-export default function EnhancedGRNReceiving({ 
-  onReceiveGRN, 
-  onDiscrepancyReport 
-}: EnhancedGRNReceivingProps) {
+const EnhancedGRNReceiving = ({
+  onReceiveGRN,
+  onDiscrepancyReport
+}: EnhancedGRNReceivingProps) => {
+  const queryClient = useQueryClient();
   const { toast } = useToast();
-  const [quantityInputs, setQuantityInputs] = useState<Record<string, string>>({});
-  const [searchTerm, setSearchTerm] = useState("");
 
-  // Fetch IQC approved materials pending store acceptance
-  const { data: pendingGRNItems = [], isLoading, refetch } = useQuery({
-    queryKey: ["pending-store-grn"],
+  const [selectedGRN, setSelectedGRN] = useState<any>(null);
+  const [receiveDialogOpen, setReceiveDialogOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [verifiedQuantities, setVerifiedQuantities] = useState<Record<string, number>>({});
+
+  // Fetch GRNs that have passed IQC but not yet received by store
+  const { data: pendingGRNs = [] } = useQuery({
+    queryKey: ["pending-store-grns"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("grn_items")
+        .from("grn")
         .select(`
           *,
-          grn!inner(
-            grn_number,
-            vendors(name),
-            purchase_orders(po_number)
-          ),
-          raw_materials!inner(material_code, name)
+          vendors (name),
+          purchase_orders (po_number),
+          grn_items (
+            id,
+            raw_material_id,
+            po_quantity,
+            received_quantity,
+            accepted_quantity,
+            rejected_quantity,
+            iqc_status,
+            store_confirmed,
+            store_confirmed_at,
+            raw_materials (id, name, material_code)
+          )
         `)
-        .in("iqc_status", ["APPROVED", "SEGREGATED"])
-        .eq("store_confirmed", false)
-        .gt("accepted_quantity", 0);
+        .eq("status", "IQC_COMPLETED")
+        .order("received_date", { ascending: false });
       
-      if (error) throw error;
-      console.log("📋 Pending GRN items for store confirmation:", data);
+      if (error) {
+        console.error("Error fetching pending store GRNs:", error);
+        throw error;
+      }
+
+      // Filter out GRNs where all items are already confirmed by store
+      return (data || []).filter(grn => 
+        grn.grn_items.some((item: any) => 
+          !item.store_confirmed && 
+          (item.iqc_status === 'APPROVED' || 
+           (item.iqc_status === 'SEGREGATED' && item.accepted_quantity > 0))
+        )
+      );
+    },
+  });
+
+  // Fetch already confirmed GRNs
+  const { data: confirmedGRNs = [] } = useQuery({
+    queryKey: ["confirmed-store-grns"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("grn")
+        .select(`
+          *,
+          vendors (name),
+          purchase_orders (po_number),
+          grn_items (
+            id,
+            raw_material_id,
+            po_quantity,
+            received_quantity,
+            accepted_quantity,
+            rejected_quantity,
+            iqc_status,
+            store_confirmed,
+            store_confirmed_at,
+            raw_materials (id, name, material_code)
+          )
+        `)
+        .eq("status", "STORE_RECEIVED")
+        .order("received_date", { ascending: false })
+        .limit(20);
+      
+      if (error) {
+        console.error("Error fetching confirmed store GRNs:", error);
+        throw error;
+      }
+
       return data || [];
     },
   });
 
-  const handleQuantityChange = (id: string, value: string) => {
-    setQuantityInputs(prev => ({ ...prev, [id]: value }));
+  // Filter GRNs based on search query
+  const filteredPendingGRNs = useMemo(() => {
+    if (!searchQuery) return pendingGRNs;
+    
+    return pendingGRNs.filter(grn => 
+      grn.grn_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (grn.purchase_orders?.po_number || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (grn.vendors?.name || "").toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [pendingGRNs, searchQuery]);
+
+  // Initialize verified quantities when opening dialog
+  const handleOpenReceiveDialog = (grn: any) => {
+    const initialQuantities: Record<string, number> = {};
+    
+    grn.grn_items.forEach((item: any) => {
+      if (!item.store_confirmed) {
+        if (item.iqc_status === 'APPROVED') {
+          initialQuantities[item.id] = item.received_quantity;
+        } else if (item.iqc_status === 'SEGREGATED') {
+          initialQuantities[item.id] = item.accepted_quantity;
+        }
+      }
+    });
+    
+    setVerifiedQuantities(initialQuantities);
+    setSelectedGRN(grn);
+    setReceiveDialogOpen(true);
   };
 
-  const handleReceiveGRN = async (item: any) => {
-    // Use accepted_quantity instead of received_quantity for segregated items
-    const maxQuantity = item.accepted_quantity || item.received_quantity;
-    const receivedQuantity = parseInt(quantityInputs[item.id] || "0");
-    
-    if (receivedQuantity <= 0 || receivedQuantity > maxQuantity) {
-      toast({
-        title: "Invalid Quantity",
-        description: `Please enter a valid quantity within accepted limits (max: ${maxQuantity})`,
-        variant: "destructive"
-      });
-      return;
-    }
-
-    try {
-      console.log(`🔄 Processing store confirmation for material ${item.raw_materials.material_code}`);
-      console.log(`   - GRN Item ID: ${item.id}`);
-      console.log(`   - Material ID: ${item.raw_material_id}`);
-      console.log(`   - Quantity to receive: ${receivedQuantity}`);
-
-      // Check if this item is already store confirmed (safety check)
-      const { data: checkItem, error: checkError } = await supabase
-        .from("grn_items")
-        .select("store_confirmed")
-        .eq("id", item.id)
-        .single();
-
-      if (checkError) throw checkError;
-
-      if (checkItem.store_confirmed) {
-        toast({
-          title: "Already Processed",
-          description: "This material has already been confirmed by store",
-          variant: "destructive"
-        });
-        refetch(); // Refresh the list
-        return;
-      }
-
-      // Update GRN item to mark as store confirmed
-      const { error: grnError } = await supabase
-        .from("grn_items")
-        .update({
-          store_confirmed: true,
-          store_confirmed_by: (await supabase.auth.getUser()).data.user?.id,
-          store_confirmed_at: new Date().toISOString()
-        })
-        .eq("id", item.id);
-
-      if (grnError) throw grnError;
-
-      console.log(`✅ GRN item ${item.id} marked as store confirmed`);
-
-      // Get current inventory to check existing quantity
-      const { data: existingInventory, error: inventoryCheckError } = await supabase
-        .from("inventory")
-        .select("*")
-        .eq("raw_material_id", item.raw_material_id)
-        .maybeSingle();
-
-      if (inventoryCheckError) throw inventoryCheckError;
-
-      console.log(`📦 Current inventory for material ${item.raw_materials.material_code}:`, existingInventory);
-
-      if (existingInventory) {
-        // Update existing inventory - ADD to existing quantity
-        const newQuantity = existingInventory.quantity + receivedQuantity;
-        console.log(`🔄 Updating inventory: ${existingInventory.quantity} + ${receivedQuantity} = ${newQuantity}`);
-        
-        const { error: inventoryError } = await supabase
-          .from("inventory")
-          .update({
-            quantity: newQuantity,
-            last_updated: new Date().toISOString()
-          })
-          .eq("raw_material_id", item.raw_material_id);
-
-        if (inventoryError) throw inventoryError;
-        console.log(`✅ Inventory updated to ${newQuantity} for material ${item.raw_materials.material_code}`);
-      } else {
-        // Create new inventory record
-        console.log(`🆕 Creating new inventory record with quantity ${receivedQuantity}`);
-        const { error: inventoryError } = await supabase
-          .from("inventory")
-          .insert({
-            raw_material_id: item.raw_material_id,
-            quantity: receivedQuantity,
-            location: 'Main Store',
-            last_updated: new Date().toISOString()
-          });
-
-        if (inventoryError) throw inventoryError;
-        console.log(`✅ New inventory record created with quantity ${receivedQuantity}`);
-      }
-
-      // Create material movement record for tracking
-      await supabase
-        .from("material_movements")
-        .insert({
-          raw_material_id: item.raw_material_id,
-          quantity: receivedQuantity,
-          movement_type: "RECEIPT",
-          reference_type: "GRN",
-          reference_id: item.grn_id,
-          reference_number: item.grn.grn_number,
-          notes: `Store received from GRN ${item.grn.grn_number} - ${item.grn.vendors?.name || 'Unknown Vendor'}`,
-        });
-
-      toast({
-        title: "Material Received Successfully",
-        description: `${receivedQuantity} units of ${item.raw_materials.material_code} received and added to inventory`,
-      });
-
-      // Clear the input and trigger refetch
-      setQuantityInputs(prev => ({ ...prev, [item.id]: "" }));
-      refetch(); // Refresh the pending items list
+  // Handle confirmation of GRN by store
+  const confirmGRNMutation = useMutation({
+    mutationFn: async () => {
+      if (!selectedGRN) return;
       
-      // Call the callback if provided
-      if (onReceiveGRN) {
-        onReceiveGRN(item.id, receivedQuantity);
+      // Update each GRN item
+      const updatePromises = Object.entries(verifiedQuantities).map(async ([itemId, quantity]) => {
+        const { error } = await supabase
+          .from("grn_items")
+          .update({
+            store_confirmed: true,
+            store_confirmed_at: new Date().toISOString(),
+            store_confirmed_by: null, // Would be set from auth in real app
+            accepted_quantity: quantity, // This is the physically verified quantity
+          })
+          .eq("id", itemId);
+        
+        if (error) throw error;
+      });
+      
+      await Promise.all(updatePromises);
+      
+      // Check if all items in the GRN are now confirmed
+      const allItemsConfirmed = selectedGRN.grn_items.every((item: any) => 
+        item.store_confirmed || verifiedQuantities[item.id] !== undefined
+      );
+      
+      if (allItemsConfirmed) {
+        await supabase
+          .from("grn")
+          .update({ status: "STORE_RECEIVED" })
+          .eq("id", selectedGRN.id);
       }
-
-    } catch (error) {
-      console.error("❌ Error receiving material:", error);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["pending-store-grns"] });
+      queryClient.invalidateQueries({ queryKey: ["confirmed-store-grns"] });
+      queryClient.invalidateQueries({ queryKey: ["inventory"] });
+      
+      toast({
+        title: "GRN Received",
+        description: "Materials have been added to inventory",
+      });
+      
+      setReceiveDialogOpen(false);
+      setSelectedGRN(null);
+      setVerifiedQuantities({});
+    },
+    onError: (error) => {
+      console.error("Error confirming GRN:", error);
       toast({
         title: "Error",
-        description: "Failed to receive material. Please try again.",
+        description: "Failed to confirm GRN reception",
         variant: "destructive",
       });
-    }
-  };
-
-  const filteredGRNItems = pendingGRNItems.filter(item => 
-    item.grn?.grn_number?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    item.raw_materials?.material_code?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.grn?.purchase_orders?.po_number?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  if (isLoading) {
-    return (
-      <div className="space-y-4">
-        <div className="text-center py-8 text-muted-foreground">
-          Loading IQC approved materials...
-        </div>
-      </div>
-    );
-  }
+    },
+  });
 
   return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h3 className="text-lg font-medium">IQC-Approved Material Receiving</h3>
-        <div className="relative w-64">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search GRN, Part Code, or PO..." 
-            className="pl-9"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
-      </div>
+    <div className="space-y-6">
+      <Tabs defaultValue="pending" className="w-full">
+        <TabsList className="grid w-full grid-cols-2 mb-4">
+          <TabsTrigger value="pending">Pending GRNs</TabsTrigger>
+          <TabsTrigger value="received">Received GRNs</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="pending">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                Pending GRNs ({filteredPendingGRNs.length})
+              </CardTitle>
+              <div className="relative w-64">
+                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by GRN or PO..."
+                  className="pl-8"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+            </CardHeader>
+            <CardContent>
+              {filteredPendingGRNs.length === 0 ? (
+                <div className="text-center py-8">
+                  <PackageOpen className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-muted-foreground">No pending GRNs to receive</p>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>GRN Number</TableHead>
+                      <TableHead>PO Number</TableHead>
+                      <TableHead>Vendor</TableHead>
+                      <TableHead>Received Date</TableHead>
+                      <TableHead>IQC Status</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredPendingGRNs.map((grn) => (
+                      <TableRow key={grn.id}>
+                        <TableCell className="font-medium">{grn.grn_number}</TableCell>
+                        <TableCell>{grn.purchase_orders?.po_number}</TableCell>
+                        <TableCell>{grn.vendors?.name}</TableCell>
+                        <TableCell>{new Date(grn.received_date).toLocaleDateString()}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                            IQC Completed
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleOpenReceiveDialog(grn)}
+                            className="gap-2"
+                          >
+                            <Truck className="h-4 w-4" />
+                            Receive Material
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="received">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm font-medium">
+                Received GRNs ({confirmedGRNs.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {confirmedGRNs.length === 0 ? (
+                <div className="text-center py-8">
+                  <PackageOpen className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-muted-foreground">No GRNs have been received yet</p>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>GRN Number</TableHead>
+                      <TableHead>PO Number</TableHead>
+                      <TableHead>Vendor</TableHead>
+                      <TableHead>Received Date</TableHead>
+                      <TableHead>Confirmed Date</TableHead>
+                      <TableHead>Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {confirmedGRNs.map((grn) => (
+                      <TableRow key={grn.id}>
+                        <TableCell className="font-medium">{grn.grn_number}</TableCell>
+                        <TableCell>{grn.purchase_orders?.po_number}</TableCell>
+                        <TableCell>{grn.vendors?.name}</TableCell>
+                        <TableCell>{new Date(grn.received_date).toLocaleDateString()}</TableCell>
+                        <TableCell>
+                          {grn.grn_items[0]?.store_confirmed_at
+                            ? new Date(grn.grn_items[0].store_confirmed_at).toLocaleDateString()
+                            : "-"}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                            <CheckCircle className="h-3 w-3 mr-1" />
+                            Received
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <div className="flex items-center space-x-2">
-          <FileText className="h-5 w-5 text-blue-600" />
-          <div>
-            <p className="text-sm font-medium text-blue-900">Material Receiving Process</p>
-            <p className="text-xs text-blue-700">
-              These materials have passed IQC inspection. Only accepted quantities are shown for receiving.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Safety Warning */}
-      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-        <div className="flex items-center space-x-2">
-          <AlertTriangle className="h-5 w-5 text-yellow-600" />
-          <div>
-            <p className="text-sm font-medium text-yellow-900">Important: One-Time Processing</p>
-            <p className="text-xs text-yellow-700">
-              Each material can only be received once. Double-check quantities before confirming receipt.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>GRN No</TableHead>
-              <TableHead>PO No</TableHead>
-              <TableHead>Part Code</TableHead>
-              <TableHead>Description</TableHead>
-              <TableHead>Vendor</TableHead>
-              <TableHead>IQC Status</TableHead>
-              <TableHead>Accepted Qty</TableHead>
-              <TableHead>Received Qty</TableHead>
-              <TableHead>Action</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredGRNItems.map((item) => (
-              <TableRow key={item.id}>
-                <TableCell className="font-medium">{item.grn?.grn_number}</TableCell>
-                <TableCell className="font-medium text-blue-600">{item.grn?.purchase_orders?.po_number}</TableCell>
-                <TableCell className="font-mono">{item.raw_materials?.material_code}</TableCell>
-                <TableCell>{item.raw_materials?.name}</TableCell>
-                <TableCell>{item.grn?.vendors?.name}</TableCell>
-                <TableCell>
-                  {item.iqc_status === 'SEGREGATED' ? (
-                    <Badge variant="secondary">Segregated</Badge>
-                  ) : (
-                    <Badge variant="default">Approved</Badge>
-                  )}
-                </TableCell>
-                <TableCell className="font-medium text-green-600">{item.accepted_quantity}</TableCell>
-                <TableCell>
-                  <Input
-                    type="number"
-                    min="1"
-                    max={item.accepted_quantity}
-                    className="w-24"
-                    value={quantityInputs[item.id] || ""}
-                    onChange={(e) => handleQuantityChange(item.id, e.target.value)}
-                    placeholder={item.accepted_quantity?.toString()}
-                  />
-                </TableCell>
-                <TableCell>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => handleReceiveGRN(item)}
-                    disabled={!quantityInputs[item.id] || parseInt(quantityInputs[item.id]) <= 0}
-                    className="bg-green-50 hover:bg-green-100 border-green-300 text-green-700"
-                  >
-                    <Check className="mr-1 h-4 w-4" />
-                    Receive
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
-
-      {filteredGRNItems.length === 0 && (
-        <div className="text-center py-8 text-muted-foreground">
-          <FileText className="mx-auto h-12 w-12 opacity-50 mb-4" />
-          <p>No IQC approved materials pending store acceptance</p>
-          <p className="text-sm">All materials have been received or are still in IQC</p>
-        </div>
+      {/* GRN Receive Dialog */}
+      {selectedGRN && (
+        <Dialog open={receiveDialogOpen} onOpenChange={setReceiveDialogOpen}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Receive GRN: {selectedGRN.grn_number}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="bg-muted/20 p-4 rounded-md text-sm">
+                <div><strong>PO Number:</strong> {selectedGRN.purchase_orders?.po_number}</div>
+                <div><strong>Vendor:</strong> {selectedGRN.vendors?.name}</div>
+                <div><strong>Received Date:</strong> {new Date(selectedGRN.received_date).toLocaleDateString()}</div>
+              </div>
+              
+              <div>
+                <h3 className="text-sm font-medium mb-2">Materials to Receive</h3>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Material Code</TableHead>
+                      <TableHead>Description</TableHead>
+                      <TableHead>IQC Accepted Qty</TableHead>
+                      <TableHead>Physically Verified Qty</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {selectedGRN.grn_items.filter((item: any) => 
+                      !item.store_confirmed && 
+                      (item.iqc_status === 'APPROVED' || 
+                      (item.iqc_status === 'SEGREGATED' && item.accepted_quantity > 0))
+                    ).map((item: any) => {
+                      const maxQty = item.iqc_status === 'APPROVED' 
+                        ? item.received_quantity 
+                        : item.accepted_quantity;
+                      
+                      return (
+                        <TableRow key={item.id}>
+                          <TableCell className="font-mono text-xs">
+                            {item.raw_materials?.material_code}
+                          </TableCell>
+                          <TableCell>{item.raw_materials?.name}</TableCell>
+                          <TableCell>{maxQty}</TableCell>
+                          <TableCell>
+                            <Input
+                              type="number"
+                              min={0}
+                              max={maxQty}
+                              value={verifiedQuantities[item.id] || 0}
+                              onChange={(e) => {
+                                const value = Math.min(parseInt(e.target.value) || 0, maxQty);
+                                setVerifiedQuantities(prev => ({
+                                  ...prev,
+                                  [item.id]: value
+                                }));
+                              }}
+                              className="w-24"
+                            />
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+              
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setReceiveDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={() => confirmGRNMutation.mutate()}
+                  disabled={confirmGRNMutation.isPending}
+                >
+                  {confirmGRNMutation.isPending ? "Processing..." : "Confirm Receipt"}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );
-}
+};
+
+export default EnhancedGRNReceiving;

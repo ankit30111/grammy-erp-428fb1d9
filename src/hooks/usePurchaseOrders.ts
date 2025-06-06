@@ -65,7 +65,7 @@ export const useCreatePurchaseOrder = () => {
       const { data: poData, error: poError } = await supabase
         .from('purchase_orders')
         .insert({
-          po_number: '', // Empty string will be replaced by trigger
+          po_number: '', // Empty string will be replaced by trigger using PO-MM-XX format
           vendor_id: orderData.vendor_id,
           status: 'PENDING',
           notes: orderData.notes,
@@ -103,16 +103,60 @@ export const useCreatePurchaseOrder = () => {
       return poData;
     },
     onSuccess: () => {
+      // Invalidate both purchase orders and material shortages queries
       queryClient.invalidateQueries({ queryKey: ['purchase_orders'] });
+      queryClient.invalidateQueries({ queryKey: ['materials-for-po'] });
+      queryClient.invalidateQueries({ queryKey: ['material-shortages-calculated'] });
+      
       toast({
         title: "Success",
         description: "Purchase order created successfully",
       });
     },
     onError: (error) => {
+      console.error('Error creating PO:', error);
       toast({
         title: "Error",
         description: "Failed to create purchase order",
+        variant: "destructive",
+      });
+    },
+  });
+};
+
+// Function to update PO status - used when sending to vendor
+export const useUpdatePOStatus = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async ({ poId, status }: { poId: string, status: string }) => {
+      const { error } = await supabase
+        .from('purchase_orders')
+        .update({ status })
+        .eq('id', poId);
+      
+      if (error) throw error;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['purchase_orders'] });
+      
+      const statusMap: Record<string, string> = {
+        'SENT': 'sent to vendor',
+        'APPROVED': 'approved',
+        'CANCELLED': 'cancelled'
+      };
+      
+      toast({
+        title: "PO Updated",
+        description: `Purchase order ${statusMap[variables.status] || variables.status.toLowerCase()}`,
+      });
+    },
+    onError: (error) => {
+      console.error('Error updating PO status:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update purchase order status",
         variant: "destructive",
       });
     },
