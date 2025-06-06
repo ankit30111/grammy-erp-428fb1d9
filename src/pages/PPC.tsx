@@ -2,19 +2,7 @@ import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { 
-  Calendar, 
-  ShoppingCart, 
-  Package, 
-  TrendingUp, 
-  AlertTriangle, 
-  CheckCircle,
-  Clock,
-  ArrowRight,
-  BarChart3,
-  DollarSign,
-  RefreshCw
-} from "lucide-react";
+import { Calendar, ShoppingCart, Package, TrendingUp, AlertTriangle, CheckCircle, Clock, ArrowRight, BarChart3, DollarSign, RefreshCw } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useProjections } from "@/hooks/useProjections";
 import { useProductionSchedules } from "@/hooks/useProductionSchedules";
@@ -24,15 +12,22 @@ import { calculateMaterialShortages, MaterialShortage } from "@/utils/materialSh
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import IQCRejections from "@/components/PPC/IQCRejections";
-
 const PPC = () => {
   const [shortages, setShortages] = useState<MaterialShortage[]>([]);
   const [isCalculating, setIsCalculating] = useState(false);
   const [selectedTab, setSelectedTab] = useState("planning");
-  const { data: projections } = useProjections();
-  const { data: schedules } = useProductionSchedules();
-  const { data: purchaseOrders } = usePurchaseOrders();
-  const { toast } = useToast();
+  const {
+    data: projections
+  } = useProjections();
+  const {
+    data: schedules
+  } = useProductionSchedules();
+  const {
+    data: purchaseOrders
+  } = usePurchaseOrders();
+  const {
+    toast
+  } = useToast();
 
   // Calculate material shortages
   const calculateShortages = async () => {
@@ -40,26 +35,24 @@ const PPC = () => {
       toast({
         title: "No Projections",
         description: "Please add customer projections first to calculate material shortages",
-        variant: "destructive",
+        variant: "destructive"
       });
       return;
     }
-
     setIsCalculating(true);
     try {
       console.log('Starting shortage calculation for projections:', projections.map(p => p.id));
       const calculatedShortages = await calculateMaterialShortages(projections.map(p => p.id));
       setShortages(calculatedShortages);
-      
       if (calculatedShortages.length > 0) {
         toast({
           title: "Material Shortages Calculated",
-          description: `Found ${calculatedShortages.length} materials with shortages`,
+          description: `Found ${calculatedShortages.length} materials with shortages`
         });
       } else {
         toast({
           title: "No Shortages Found",
-          description: "All required materials are available in stock",
+          description: "All required materials are available in stock"
         });
       }
     } catch (error) {
@@ -67,7 +60,7 @@ const PPC = () => {
       toast({
         title: "Calculation Error",
         description: "Failed to calculate material shortages",
-        variant: "destructive",
+        variant: "destructive"
       });
     } finally {
       setIsCalculating(false);
@@ -80,25 +73,15 @@ const PPC = () => {
       calculateShortages();
     }
   }, [projections]);
-
   const totalOrderValue = purchaseOrders?.reduce((sum, po) => sum + (po.total_amount || 0), 0) || 0;
   const pendingPOs = purchaseOrders?.filter(po => po.status === 'PENDING').length || 0;
-  const unscheduledProjections = projections?.length ? 
-    projections.length - (schedules?.length || 0) : 0;
-
-  return (
-    <DashboardLayout>
+  const unscheduledProjections = projections?.length ? projections.length - (schedules?.length || 0) : 0;
+  return <DashboardLayout>
       <div className="grid gap-4 md:gap-6">
         <h1 className="text-2xl font-bold">Production Planning & Control</h1>
         
         <Tabs value={selectedTab} onValueChange={setSelectedTab}>
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="planning">Planning</TabsTrigger>
-            <TabsTrigger value="purchase">Purchase</TabsTrigger>
-            <TabsTrigger value="grn">GRN</TabsTrigger>
-            <TabsTrigger value="schedule">Schedule</TabsTrigger>
-            <TabsTrigger value="iqc-rejections">IQC Rejections</TabsTrigger>
-          </TabsList>
+          
           
           <TabsContent value="planning">
             <div className="flex items-center justify-between">
@@ -107,17 +90,8 @@ const PPC = () => {
                 <p className="text-muted-foreground">Production Planning & Control Overview</p>
               </div>
               <div className="flex items-center gap-4">
-                <Button 
-                  onClick={calculateShortages}
-                  disabled={isCalculating}
-                  variant="outline"
-                  className="gap-2"
-                >
-                  {isCalculating ? (
-                    <RefreshCw className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <RefreshCw className="h-4 w-4" />
-                  )}
+                <Button onClick={calculateShortages} disabled={isCalculating} variant="outline" className="gap-2">
+                  {isCalculating ? <RefreshCw className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
                   Refresh Shortages
                 </Button>
                 <div className="flex items-center gap-2">
@@ -287,8 +261,7 @@ const PPC = () => {
             </div>
 
             {/* Material Shortages Detail */}
-            {shortages.length > 0 && (
-              <Card>
+            {shortages.length > 0 && <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <AlertTriangle className="h-5 w-5 text-orange-600" />
@@ -297,37 +270,30 @@ const PPC = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
-                    {shortages.slice(0, 5).map((shortage) => (
-                      <div key={shortage.raw_material_id} className="flex items-center justify-between p-3 border rounded-lg">
+                    {shortages.slice(0, 5).map(shortage => <div key={shortage.raw_material_id} className="flex items-center justify-between p-3 border rounded-lg">
                         <div>
                           <div className="font-medium">{shortage.material_code} - {shortage.material_name}</div>
                           <div className="text-sm text-muted-foreground">
                             Shortage: {shortage.shortage_quantity} | Available: {shortage.available_quantity}
                           </div>
-                          {shortage.vendor_info && (
-                            <div className="text-sm text-blue-600">
+                          {shortage.vendor_info && <div className="text-sm text-blue-600">
                               Primary Vendor: {shortage.vendor_info.vendor_name} ({shortage.vendor_info.vendor_code})
-                            </div>
-                          )}
+                            </div>}
                         </div>
                         <Badge variant="destructive">
                           {shortage.shortage_quantity} short
                         </Badge>
-                      </div>
-                    ))}
-                    {shortages.length > 5 && (
-                      <div className="text-center pt-2">
+                      </div>)}
+                    {shortages.length > 5 && <div className="text-center pt-2">
                         <Link to="/purchase">
                           <Button variant="outline" size="sm">
                             View All {shortages.length} Shortages
                           </Button>
                         </Link>
-                      </div>
-                    )}
+                      </div>}
                   </div>
                 </CardContent>
-              </Card>
-            )}
+              </Card>}
           </TabsContent>
 
           <TabsContent value="purchase">
@@ -347,8 +313,6 @@ const PPC = () => {
           </TabsContent>
         </Tabs>
       </div>
-    </DashboardLayout>
-  );
+    </DashboardLayout>;
 };
-
 export default PPC;
