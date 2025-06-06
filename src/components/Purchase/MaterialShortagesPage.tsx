@@ -17,6 +17,7 @@ interface MaterialShortage {
   total_required: number;
   available_quantity: number;
   pending_po_quantity: number;
+  received_quantity: number;
   shortage_quantity: number;
   is_critical: boolean;
   projection_details: Array<{
@@ -36,7 +37,7 @@ export const MaterialShortagesPage = () => {
   const [showDetails, setShowDetails] = useState(false);
   const { toast } = useToast();
 
-  // Fetch material shortages from the new view
+  // Fetch material shortages from the updated view
   const { data: materialShortages = [], refetch, isLoading } = useQuery({
     queryKey: ["material-shortages-calculated"],
     queryFn: async () => {
@@ -183,6 +184,7 @@ export const MaterialShortagesPage = () => {
                   <TableHead>Part Name</TableHead>
                   <TableHead>Total Required</TableHead>
                   <TableHead>Current Stock</TableHead>
+                  <TableHead>Received Qty</TableHead>
                   <TableHead>Pending PO</TableHead>
                   <TableHead>Net Shortage</TableHead>
                   <TableHead>Status</TableHead>
@@ -201,6 +203,9 @@ export const MaterialShortagesPage = () => {
                     <TableCell>{shortage.material_name}</TableCell>
                     <TableCell>{shortage.total_required.toLocaleString()}</TableCell>
                     <TableCell>{shortage.available_quantity.toLocaleString()}</TableCell>
+                    <TableCell className="text-green-600 font-medium">
+                      {shortage.received_quantity.toLocaleString()}
+                    </TableCell>
                     <TableCell>
                       {shortage.pending_po_quantity > 0 ? (
                         <Badge variant="outline">{shortage.pending_po_quantity.toLocaleString()}</Badge>

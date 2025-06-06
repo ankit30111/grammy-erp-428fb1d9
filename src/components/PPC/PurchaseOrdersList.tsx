@@ -108,7 +108,7 @@ const PurchaseOrdersList = ({ onViewDetails }: PurchaseOrdersListProps) => {
               <TableHead>PO Number</TableHead>
               <TableHead>Vendor</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead>Creation Date</TableHead>
+              <TableHead>PO Creation Date</TableHead>
               <TableHead>Items</TableHead>
               <TableHead>Progress</TableHead>
               <TableHead>Total Amount</TableHead>
@@ -134,7 +134,7 @@ const PurchaseOrdersList = ({ onViewDetails }: PurchaseOrdersListProps) => {
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <Calendar className="h-4 w-4 text-muted-foreground" />
-                      {format(new Date(po.created_at), 'MMM dd, yyyy')}
+                      {format(new Date(po.created_at), 'dd-MM-yyyy')}
                     </div>
                   </TableCell>
                   <TableCell>

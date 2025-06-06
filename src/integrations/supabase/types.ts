@@ -2340,6 +2340,7 @@ export type Database = {
           pending_po_quantity: number | null
           projection_details: Json[] | null
           raw_material_id: string | null
+          received_quantity: number | null
           shortage_quantity: number | null
           total_required: number | null
         }

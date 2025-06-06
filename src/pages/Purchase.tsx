@@ -191,196 +191,216 @@ const Purchase = () => {
           </div>
         </div>
 
-        <Tabs defaultValue="material-shortages" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="material-shortages">Material Shortages</TabsTrigger>
-            <TabsTrigger value="create-po">Create PO</TabsTrigger>
-            <TabsTrigger value="purchase-orders">Purchase Orders</TabsTrigger>
-          </TabsList>
+        {/* Updated Tabs with centered navigation styling */}
+        <div className="flex justify-center">
+          <Tabs defaultValue="material-shortages" className="w-full max-w-4xl">
+            <div className="flex justify-center mb-6">
+              <TabsList className="grid w-full grid-cols-3 max-w-md bg-muted rounded-lg p-1">
+                <TabsTrigger 
+                  value="material-shortages" 
+                  className="rounded-md data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm font-medium"
+                >
+                  Material Shortages
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="create-po"
+                  className="rounded-md data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm font-medium"
+                >
+                  Create PO
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="purchase-orders"
+                  className="rounded-md data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm font-medium"
+                >
+                  Purchase Orders
+                </TabsTrigger>
+              </TabsList>
+            </div>
 
-          <TabsContent value="material-shortages">
-            <MaterialShortagesPage />
-          </TabsContent>
+            <TabsContent value="material-shortages" className="space-y-4">
+              <MaterialShortagesPage />
+            </TabsContent>
 
-          <TabsContent value="create-po">
-            <div className="space-y-6">
-              {materialsForPO.length > 0 && (
-                <div className="flex items-center gap-4">
-                  <Dialog open={poDialogOpen} onOpenChange={setPODialogOpen}>
-                    <DialogTrigger asChild>
-                      <Button className="gap-2" disabled={selectedMaterials.length === 0}>
-                        <ShoppingCart className="h-4 w-4" />
-                        Create PO for Selected ({selectedMaterials.length})
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="max-w-4xl">
-                      <DialogHeader>
-                        <DialogTitle>Create Purchase Order</DialogTitle>
-                      </DialogHeader>
-                      <div className="space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <Label>Vendor</Label>
-                            <Select value={selectedVendor} onValueChange={setSelectedVendor}>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select vendor" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {getAvailableVendors().map((vendor) => (
-                                  <SelectItem key={vendor.id} value={vendor.id}>
-                                    {vendor.name} ({vendor.vendor_code})
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+            <TabsContent value="create-po" className="space-y-4">
+              <div className="space-y-6">
+                {materialsForPO.length > 0 && (
+                  <div className="flex items-center gap-4">
+                    <Dialog open={poDialogOpen} onOpenChange={setPODialogOpen}>
+                      <DialogTrigger asChild>
+                        <Button className="gap-2" disabled={selectedMaterials.length === 0}>
+                          <ShoppingCart className="h-4 w-4" />
+                          Create PO for Selected ({selectedMaterials.length})
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="max-w-4xl">
+                        <DialogHeader>
+                          <DialogTitle>Create Purchase Order</DialogTitle>
+                        </DialogHeader>
+                        <div className="space-y-4">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <Label>Vendor</Label>
+                              <Select value={selectedVendor} onValueChange={setSelectedVendor}>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select vendor" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {getAvailableVendors().map((vendor) => (
+                                    <SelectItem key={vendor.id} value={vendor.id}>
+                                      {vendor.name} ({vendor.vendor_code})
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div>
+                              <Label>Expected Delivery Date</Label>
+                              <Input
+                                type="date"
+                                value={deliveryDate}
+                                onChange={(e) => setDeliveryDate(e.target.value)}
+                              />
+                            </div>
                           </div>
+
+                          {selectedMaterials.length > 0 && (
+                            <div>
+                              <Label>Selected Materials & Quantities</Label>
+                              <Table>
+                                <TableHeader>
+                                  <TableRow>
+                                    <TableHead>Material Code</TableHead>
+                                    <TableHead>Material Name</TableHead>
+                                    <TableHead>Shortage Qty</TableHead>
+                                    <TableHead>Order Qty</TableHead>
+                                  </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                  {selectedMaterials.map((materialId) => {
+                                    const material = materialsForPO.find(m => m.raw_material_id === materialId);
+                                    if (!material) return null;
+                                    return (
+                                      <TableRow key={materialId}>
+                                        <TableCell className="font-mono">{material.material_code}</TableCell>
+                                        <TableCell>{material.material_name}</TableCell>
+                                        <TableCell>{material.shortage_quantity}</TableCell>
+                                        <TableCell>
+                                          <Input
+                                            type="number"
+                                            min="1"
+                                            value={editableQuantities[materialId] || material.shortage_quantity}
+                                            onChange={(e) => handleQuantityChange(materialId, parseInt(e.target.value) || 0)}
+                                            className="w-24"
+                                          />
+                                        </TableCell>
+                                      </TableRow>
+                                    );
+                                  })}
+                                </TableBody>
+                              </Table>
+                            </div>
+                          )}
+
                           <div>
-                            <Label>Expected Delivery Date</Label>
+                            <Label>Notes</Label>
                             <Input
-                              type="date"
-                              value={deliveryDate}
-                              onChange={(e) => setDeliveryDate(e.target.value)}
+                              value={notes}
+                              onChange={(e) => setNotes(e.target.value)}
+                              placeholder="Additional notes"
                             />
                           </div>
-                        </div>
-
-                        {selectedMaterials.length > 0 && (
-                          <div>
-                            <Label>Selected Materials & Quantities</Label>
-                            <Table>
-                              <TableHeader>
-                                <TableRow>
-                                  <TableHead>Material Code</TableHead>
-                                  <TableHead>Material Name</TableHead>
-                                  <TableHead>Shortage Qty</TableHead>
-                                  <TableHead>Order Qty</TableHead>
-                                </TableRow>
-                              </TableHeader>
-                              <TableBody>
-                                {selectedMaterials.map((materialId) => {
-                                  const material = materialsForPO.find(m => m.raw_material_id === materialId);
-                                  if (!material) return null;
-                                  return (
-                                    <TableRow key={materialId}>
-                                      <TableCell className="font-mono">{material.material_code}</TableCell>
-                                      <TableCell>{material.material_name}</TableCell>
-                                      <TableCell>{material.shortage_quantity}</TableCell>
-                                      <TableCell>
-                                        <Input
-                                          type="number"
-                                          min="1"
-                                          value={editableQuantities[materialId] || material.shortage_quantity}
-                                          onChange={(e) => handleQuantityChange(materialId, parseInt(e.target.value) || 0)}
-                                          className="w-24"
-                                        />
-                                      </TableCell>
-                                    </TableRow>
-                                  );
-                                })}
-                              </TableBody>
-                            </Table>
+                          <div className="flex justify-end gap-2">
+                            <Button variant="outline" onClick={() => setPODialogOpen(false)}>
+                              Cancel
+                            </Button>
+                            <Button onClick={handleCreatePO} disabled={createPO.isPending}>
+                              {createPO.isPending ? "Creating..." : "Create PO"}
+                            </Button>
                           </div>
-                        )}
-
-                        <div>
-                          <Label>Notes</Label>
-                          <Input
-                            value={notes}
-                            onChange={(e) => setNotes(e.target.value)}
-                            placeholder="Additional notes"
-                          />
                         </div>
-                        <div className="flex justify-end gap-2">
-                          <Button variant="outline" onClick={() => setPODialogOpen(false)}>
-                            Cancel
-                          </Button>
-                          <Button onClick={handleCreatePO} disabled={createPO.isPending}>
-                            {createPO.isPending ? "Creating..." : "Create PO"}
-                          </Button>
-                        </div>
-                      </div>
-                    </DialogContent>
-                  </Dialog>
-                </div>
-              )}
+                      </DialogContent>
+                    </Dialog>
+                  </div>
+                )}
 
-              {Object.entries(materialsByVendor).map(([vendor, vendorMaterials]) => (
-                <Card key={vendor}>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Package className="h-5 w-5" />
-                      {vendor}
-                      <Badge variant="destructive">
-                        {vendorMaterials.length} shortages
-                      </Badge>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead className="w-12">Select</TableHead>
-                          <TableHead>Material Code</TableHead>
-                          <TableHead>Material Name</TableHead>
-                          <TableHead>Total Required</TableHead>
-                          <TableHead>Available</TableHead>
-                          <TableHead>Net Shortage</TableHead>
-                          <TableHead>Status</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {vendorMaterials.map((material) => (
-                          <TableRow key={material.raw_material_id}>
-                            <TableCell>
-                              <input
-                                type="checkbox"
-                                checked={selectedMaterials.includes(material.raw_material_id)}
-                                onChange={(e) => handleMaterialSelect(material.raw_material_id, e.target.checked)}
-                                className="h-4 w-4"
-                              />
-                            </TableCell>
-                            <TableCell className="font-medium font-mono">
-                              {material.material_code}
-                            </TableCell>
-                            <TableCell>{material.material_name}</TableCell>
-                            <TableCell>{material.total_required}</TableCell>
-                            <TableCell>{material.available_quantity}</TableCell>
-                            <TableCell>
-                              <Badge variant="destructive">
-                                {material.shortage_quantity}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>
-                              {material.is_critical && (
-                                <Badge variant="warning">Critical</Badge>
-                              )}
-                            </TableCell>
+                {Object.entries(materialsByVendor).map(([vendor, vendorMaterials]) => (
+                  <Card key={vendor}>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Package className="h-5 w-5" />
+                        {vendor}
+                        <Badge variant="destructive">
+                          {vendorMaterials.length} shortages
+                        </Badge>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="w-12">Select</TableHead>
+                            <TableHead>Material Code</TableHead>
+                            <TableHead>Material Name</TableHead>
+                            <TableHead>Total Required</TableHead>
+                            <TableHead>Available</TableHead>
+                            <TableHead>Net Shortage</TableHead>
+                            <TableHead>Status</TableHead>
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </CardContent>
-                </Card>
-              ))}
+                        </TableHeader>
+                        <TableBody>
+                          {vendorMaterials.map((material) => (
+                            <TableRow key={material.raw_material_id}>
+                              <TableCell>
+                                <input
+                                  type="checkbox"
+                                  checked={selectedMaterials.includes(material.raw_material_id)}
+                                  onChange={(e) => handleMaterialSelect(material.raw_material_id, e.target.checked)}
+                                  className="h-4 w-4"
+                                />
+                              </TableCell>
+                              <TableCell className="font-medium font-mono">
+                                {material.material_code}
+                              </TableCell>
+                              <TableCell>{material.material_name}</TableCell>
+                              <TableCell>{material.total_required}</TableCell>
+                              <TableCell>{material.available_quantity}</TableCell>
+                              <TableCell>
+                                <Badge variant="destructive">
+                                  {material.shortage_quantity}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                {material.is_critical && (
+                                  <Badge variant="warning">Critical</Badge>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </CardContent>
+                  </Card>
+                ))}
 
-              {materialsForPO.length === 0 && (
-                <Card>
-                  <CardContent className="text-center py-8">
-                    <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                    <h3 className="text-lg font-medium mb-2">No Materials Need PO</h3>
-                    <p className="text-muted-foreground">
-                      All materials with shortages already have purchase orders created
-                    </p>
-                  </CardContent>
-                </Card>
-              )}
-            </div>
-          </TabsContent>
+                {materialsForPO.length === 0 && (
+                  <Card>
+                    <CardContent className="text-center py-8">
+                      <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                      <h3 className="text-lg font-medium mb-2">No Materials Need PO</h3>
+                      <p className="text-muted-foreground">
+                        All materials with shortages already have purchase orders created
+                      </p>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            </TabsContent>
 
-          <TabsContent value="purchase-orders">
-            <EditablePurchaseOrders />
-          </TabsContent>
-        </Tabs>
+            <TabsContent value="purchase-orders" className="space-y-4">
+              <EditablePurchaseOrders />
+            </TabsContent>
+          </Tabs>
+        </div>
 
         {!projections?.length && (
           <Card>
