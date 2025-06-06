@@ -46,25 +46,41 @@ const Purchase = () => {
     },
   });
 
-  // Fetch materials without pending POs for Create PO tab
+  // Fetch materials without pending POs for Create PO tab with vendor information
   const { data: materialsForPO = [] } = useQuery({
     queryKey: ["materials-for-po"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // First get materials without pending POs
+      const { data: shortages, error: shortagesError } = await supabase
         .from("material_shortages_calculated")
-        .select(`
-          *,
-          raw_material_vendors!inner(
-            vendor_id,
-            is_primary,
-            vendors!inner(id, name, vendor_code)
-          )
-        `)
+        .select("*")
         .eq("has_pending_po", false)
         .order("shortage_quantity", { ascending: false });
       
-      if (error) throw error;
-      return data;
+      if (shortagesError) throw shortagesError;
+
+      // Then get vendor information for these materials
+      const materialIds = shortages?.map(s => s.raw_material_id) || [];
+      
+      if (materialIds.length === 0) return [];
+
+      const { data: vendorData, error: vendorError } = await supabase
+        .from("raw_material_vendors")
+        .select(`
+          raw_material_id,
+          vendor_id,
+          is_primary,
+          vendors!inner(id, name, vendor_code)
+        `)
+        .in("raw_material_id", materialIds);
+      
+      if (vendorError) throw vendorError;
+
+      // Combine shortage data with vendor information
+      return shortages?.map(shortage => ({
+        ...shortage,
+        raw_material_vendors: vendorData?.filter(v => v.raw_material_id === shortage.raw_material_id) || []
+      })) || [];
     },
   });
 
@@ -136,11 +152,13 @@ const Purchase = () => {
     const vendorIds = new Set();
     
     selectedMaterialData.forEach(material => {
-      material.raw_material_vendors?.forEach((rmv: any) => {
-        if (rmv.is_primary) {
-          vendorIds.add(rmv.vendor_id);
-        }
-      });
+      if (material.raw_material_vendors) {
+        material.raw_material_vendors.forEach((rmv: any) => {
+          if (rmv.is_primary) {
+            vendorIds.add(rmv.vendor_id);
+          }
+        });
+      }
     });
     
     return vendors?.filter(v => vendorIds.has(v.id)) || [];
