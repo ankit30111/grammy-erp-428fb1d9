@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ShoppingCart, FileText, Eye } from "lucide-react";
+import { ShoppingCart, FileText, Eye, Calendar } from "lucide-react";
 import { usePurchaseOrders } from "@/hooks/usePurchaseOrders";
 import { format } from "date-fns";
 import { Progress } from "@/components/ui/progress";
@@ -108,7 +108,7 @@ const PurchaseOrdersList = ({ onViewDetails }: PurchaseOrdersListProps) => {
               <TableHead>PO Number</TableHead>
               <TableHead>Vendor</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead>Date</TableHead>
+              <TableHead>Creation Date</TableHead>
               <TableHead>Items</TableHead>
               <TableHead>Progress</TableHead>
               <TableHead>Total Amount</TableHead>
@@ -131,7 +131,12 @@ const PurchaseOrdersList = ({ onViewDetails }: PurchaseOrdersListProps) => {
                       {getPOStatus(po)}
                     </Badge>
                   </TableCell>
-                  <TableCell>{format(new Date(po.po_date), 'MMM dd, yyyy')}</TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4 text-muted-foreground" />
+                      {format(new Date(po.created_at), 'MMM dd, yyyy')}
+                    </div>
+                  </TableCell>
                   <TableCell>
                     <span className="text-sm">
                       {receivedItems}/{po.purchase_order_items?.length || 0} received

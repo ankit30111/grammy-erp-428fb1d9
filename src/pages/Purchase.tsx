@@ -1,3 +1,4 @@
+
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -5,7 +6,6 @@ import { ShoppingCart, Clock, Calculator, RefreshCw, Package } from "lucide-reac
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useState, useEffect } from "react";
 import { useProjections } from "@/hooks/useProjections";
-import { calculateMaterialShortages, MaterialShortage } from "@/utils/materialShortageCalculator";
 import { usePurchaseOrders, useCreatePurchaseOrder } from "@/hooks/usePurchaseOrders";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
@@ -20,8 +20,6 @@ import { MaterialShortagesPage } from "@/components/Purchase/MaterialShortagesPa
 import { EditablePurchaseOrders } from "@/components/Purchase/EditablePurchaseOrders";
 
 const Purchase = () => {
-  const [shortages, setShortages] = useState<MaterialShortage[]>([]);
-  const [isCalculating, setIsCalculating] = useState(false);
   const [selectedMaterials, setSelectedMaterials] = useState<string[]>([]);
   const [poDialogOpen, setPODialogOpen] = useState(false);
   const [selectedVendor, setSelectedVendor] = useState("");
@@ -48,70 +46,36 @@ const Purchase = () => {
     },
   });
 
-  const calculateShortages = async () => {
-    if (!projections?.length) {
-      toast({
-        title: "No Projections",
-        description: "Please add customer projections first to calculate material shortages",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsCalculating(true);
-    try {
-      console.log('Starting shortage calculation for projections:', projections.map(p => p.id));
-      const calculatedShortages = await calculateMaterialShortages(projections.map(p => p.id));
-      setShortages(calculatedShortages);
+  // Fetch materials without pending POs for Create PO tab
+  const { data: materialsForPO = [] } = useQuery({
+    queryKey: ["materials-for-po"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("material_shortages_calculated")
+        .select(`
+          *,
+          raw_material_vendors!inner(
+            vendor_id,
+            is_primary,
+            vendors!inner(id, name, vendor_code)
+          )
+        `)
+        .eq("has_pending_po", false)
+        .order("shortage_quantity", { ascending: false });
       
-      if (calculatedShortages.length > 0) {
-        toast({
-          title: "Material Shortages Calculated",
-          description: `Found ${calculatedShortages.length} materials with shortages`,
-        });
-      } else {
-        toast({
-          title: "No Shortages Found",
-          description: "All required materials are available in stock",
-        });
-      }
-    } catch (error) {
-      console.error('Error calculating shortages:', error);
-      toast({
-        title: "Calculation Error",
-        description: "Failed to calculate material shortages",
-        variant: "destructive",
-      });
-    } finally {
-      setIsCalculating(false);
-    }
-  };
-
-  // Auto-calculate shortages when projections are available
-  useEffect(() => {
-    if (projections?.length) {
-      calculateShortages();
-    }
-  }, [projections]);
-
-  // Group shortages by vendor
-  const shortagesByVendor = shortages.reduce((acc, shortage) => {
-    const vendor = shortage.vendor_info?.vendor_name || 'Unknown Vendor';
-    if (!acc[vendor]) {
-      acc[vendor] = [];
-    }
-    acc[vendor].push(shortage);
-    return acc;
-  }, {} as Record<string, MaterialShortage[]>);
+      if (error) throw error;
+      return data;
+    },
+  });
 
   const handleMaterialSelect = (materialId: string, checked: boolean) => {
     if (checked) {
       setSelectedMaterials([...selectedMaterials, materialId]);
-      const shortage = shortages.find(s => s.raw_material_id === materialId);
-      if (shortage) {
+      const material = materialsForPO.find(m => m.raw_material_id === materialId);
+      if (material) {
         setEditableQuantities(prev => ({
           ...prev,
-          [materialId]: shortage.shortage_quantity
+          [materialId]: material.shortage_quantity
         }));
       }
     } else {
@@ -141,10 +105,10 @@ const Purchase = () => {
       return;
     }
 
-    const selectedShortages = shortages.filter(s => selectedMaterials.includes(s.raw_material_id));
-    const items = selectedShortages.map(shortage => ({
-      raw_material_id: shortage.raw_material_id,
-      quantity: editableQuantities[shortage.raw_material_id] || shortage.shortage_quantity,
+    const selectedMaterialData = materialsForPO.filter(m => selectedMaterials.includes(m.raw_material_id));
+    const items = selectedMaterialData.map(material => ({
+      raw_material_id: material.raw_material_id,
+      quantity: editableQuantities[material.raw_material_id] || material.shortage_quantity,
       unit_price: 0,
     }));
 
@@ -162,18 +126,38 @@ const Purchase = () => {
       setDeliveryDate("");
       setNotes("");
       setEditableQuantities({});
-      
-      calculateShortages();
     } catch (error) {
       console.error('Error creating PO:', error);
     }
   };
 
   const getAvailableVendors = () => {
-    const selectedShortages = shortages.filter(s => selectedMaterials.includes(s.raw_material_id));
-    const vendorIds = new Set(selectedShortages.map(s => s.vendor_info?.vendor_id).filter(Boolean));
+    const selectedMaterialData = materialsForPO.filter(m => selectedMaterials.includes(m.raw_material_id));
+    const vendorIds = new Set();
+    
+    selectedMaterialData.forEach(material => {
+      material.raw_material_vendors?.forEach((rmv: any) => {
+        if (rmv.is_primary) {
+          vendorIds.add(rmv.vendor_id);
+        }
+      });
+    });
+    
     return vendors?.filter(v => vendorIds.has(v.id)) || [];
   };
+
+  // Group materials by vendor for display
+  const materialsByVendor = materialsForPO.reduce((acc, material) => {
+    const primaryVendor = material.raw_material_vendors?.find((rmv: any) => rmv.is_primary);
+    if (primaryVendor) {
+      const vendorName = primaryVendor.vendors.name;
+      if (!acc[vendorName]) {
+        acc[vendorName] = [];
+      }
+      acc[vendorName].push(material);
+    }
+    return acc;
+  }, {} as Record<string, any[]>);
 
   return (
     <DashboardLayout>
@@ -181,18 +165,6 @@ const Purchase = () => {
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold">Purchase Management</h1>
           <div className="flex items-center gap-4">
-            <Button 
-              onClick={calculateShortages}
-              disabled={isCalculating}
-              className="gap-2"
-            >
-              {isCalculating ? (
-                <RefreshCw className="h-4 w-4 animate-spin" />
-              ) : (
-                <Calculator className="h-4 w-4" />
-              )}
-              Calculate Shortages
-            </Button>
             <div className="flex items-center gap-2">
               <span className="text-sm text-muted-foreground">Last updated:</span>
               <span className="text-sm font-medium">Today, 14:35</span>
@@ -214,13 +186,13 @@ const Purchase = () => {
 
           <TabsContent value="create-po">
             <div className="space-y-6">
-              {shortages.length > 0 && (
+              {materialsForPO.length > 0 && (
                 <div className="flex items-center gap-4">
                   <Dialog open={poDialogOpen} onOpenChange={setPODialogOpen}>
                     <DialogTrigger asChild>
                       <Button className="gap-2" disabled={selectedMaterials.length === 0}>
                         <ShoppingCart className="h-4 w-4" />
-                        Create PO for Selected
+                        Create PO for Selected ({selectedMaterials.length})
                       </Button>
                     </DialogTrigger>
                     <DialogContent className="max-w-4xl">
@@ -268,18 +240,18 @@ const Purchase = () => {
                               </TableHeader>
                               <TableBody>
                                 {selectedMaterials.map((materialId) => {
-                                  const shortage = shortages.find(s => s.raw_material_id === materialId);
-                                  if (!shortage) return null;
+                                  const material = materialsForPO.find(m => m.raw_material_id === materialId);
+                                  if (!material) return null;
                                   return (
                                     <TableRow key={materialId}>
-                                      <TableCell className="font-mono">{shortage.material_code}</TableCell>
-                                      <TableCell>{shortage.material_name}</TableCell>
-                                      <TableCell>{shortage.shortage_quantity}</TableCell>
+                                      <TableCell className="font-mono">{material.material_code}</TableCell>
+                                      <TableCell>{material.material_name}</TableCell>
+                                      <TableCell>{material.shortage_quantity}</TableCell>
                                       <TableCell>
                                         <Input
                                           type="number"
                                           min="1"
-                                          value={editableQuantities[materialId] || shortage.shortage_quantity}
+                                          value={editableQuantities[materialId] || material.shortage_quantity}
                                           onChange={(e) => handleQuantityChange(materialId, parseInt(e.target.value) || 0)}
                                           className="w-24"
                                         />
@@ -311,20 +283,17 @@ const Purchase = () => {
                       </div>
                     </DialogContent>
                   </Dialog>
-                  <span className="text-sm text-muted-foreground">
-                    {selectedMaterials.length} materials selected
-                  </span>
                 </div>
               )}
 
-              {Object.entries(shortagesByVendor).map(([vendor, vendorShortages]) => (
+              {Object.entries(materialsByVendor).map(([vendor, vendorMaterials]) => (
                 <Card key={vendor}>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <Package className="h-5 w-5" />
                       {vendor}
                       <Badge variant="destructive">
-                        {vendorShortages.length} shortages
+                        {vendorMaterials.length} shortages
                       </Badge>
                     </CardTitle>
                   </CardHeader>
@@ -335,36 +304,36 @@ const Purchase = () => {
                           <TableHead className="w-12">Select</TableHead>
                           <TableHead>Material Code</TableHead>
                           <TableHead>Material Name</TableHead>
-                          <TableHead>Required</TableHead>
+                          <TableHead>Total Required</TableHead>
                           <TableHead>Available</TableHead>
-                          <TableHead>Shortage</TableHead>
+                          <TableHead>Net Shortage</TableHead>
                           <TableHead>Status</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {vendorShortages.map((shortage) => (
-                          <TableRow key={shortage.raw_material_id}>
+                        {vendorMaterials.map((material) => (
+                          <TableRow key={material.raw_material_id}>
                             <TableCell>
                               <input
                                 type="checkbox"
-                                checked={selectedMaterials.includes(shortage.raw_material_id)}
-                                onChange={(e) => handleMaterialSelect(shortage.raw_material_id, e.target.checked)}
+                                checked={selectedMaterials.includes(material.raw_material_id)}
+                                onChange={(e) => handleMaterialSelect(material.raw_material_id, e.target.checked)}
                                 className="h-4 w-4"
                               />
                             </TableCell>
-                            <TableCell className="font-medium">
-                              {shortage.material_code}
+                            <TableCell className="font-medium font-mono">
+                              {material.material_code}
                             </TableCell>
-                            <TableCell>{shortage.material_name}</TableCell>
-                            <TableCell>{shortage.required_quantity}</TableCell>
-                            <TableCell>{shortage.available_quantity}</TableCell>
+                            <TableCell>{material.material_name}</TableCell>
+                            <TableCell>{material.total_required}</TableCell>
+                            <TableCell>{material.available_quantity}</TableCell>
                             <TableCell>
                               <Badge variant="destructive">
-                                {shortage.shortage_quantity}
+                                {material.shortage_quantity}
                               </Badge>
                             </TableCell>
                             <TableCell>
-                              {shortage.is_critical && (
+                              {material.is_critical && (
                                 <Badge variant="warning">Critical</Badge>
                               )}
                             </TableCell>
@@ -376,13 +345,13 @@ const Purchase = () => {
                 </Card>
               ))}
 
-              {shortages.length === 0 && !isCalculating && (
+              {materialsForPO.length === 0 && (
                 <Card>
                   <CardContent className="text-center py-8">
                     <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                    <h3 className="text-lg font-medium mb-2">No Material Shortages</h3>
+                    <h3 className="text-lg font-medium mb-2">No Materials Need PO</h3>
                     <p className="text-muted-foreground">
-                      All required materials are available in stock
+                      All materials with shortages already have purchase orders created
                     </p>
                   </CardContent>
                 </Card>

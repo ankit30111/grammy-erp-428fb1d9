@@ -2330,6 +2330,29 @@ export type Database = {
           },
         ]
       }
+      material_shortages_calculated: {
+        Row: {
+          available_quantity: number | null
+          has_pending_po: boolean | null
+          is_critical: boolean | null
+          material_code: string | null
+          material_name: string | null
+          pending_po_quantity: number | null
+          projection_details: Json[] | null
+          raw_material_id: string | null
+          shortage_quantity: number | null
+          total_required: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bom_raw_material_id_fkey"
+            columns: ["raw_material_id"]
+            isOneToOne: false
+            referencedRelation: "raw_materials"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       purchase_order_received_quantities: {
         Row: {
           ordered_quantity: number | null

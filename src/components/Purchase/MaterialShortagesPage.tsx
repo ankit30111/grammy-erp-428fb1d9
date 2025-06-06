@@ -2,48 +2,57 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { AlertTriangle, Package, Calculator, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { AlertTriangle, Package, Calculator, RefreshCw, Eye, ShoppingCart } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
+import MaterialShortageDetails from "./MaterialShortageDetails";
 
 interface MaterialShortage {
   raw_material_id: string;
   material_code: string;
   material_name: string;
-  required_quantity: number;
+  total_required: number;
   available_quantity: number;
-  shortfall_quantity: number;
+  pending_po_quantity: number;
+  shortage_quantity: number;
   is_critical: boolean;
+  projection_details: Array<{
+    projection_id: string;
+    product_name: string;
+    customer_name: string;
+    projection_quantity: number;
+    required_quantity: number;
+    delivery_month: string;
+  }>;
+  has_pending_po: boolean;
 }
 
 export const MaterialShortagesPage = () => {
   const [isCalculating, setIsCalculating] = useState(false);
+  const [selectedMaterial, setSelectedMaterial] = useState<MaterialShortage | null>(null);
+  const [showDetails, setShowDetails] = useState(false);
   const { toast } = useToast();
 
-  // Fetch live material shortages based on projections
-  const { data: materialShortages = [], refetch } = useQuery({
-    queryKey: ["material-shortages-live"],
+  // Fetch material shortages from the new view
+  const { data: materialShortages = [], refetch, isLoading } = useQuery({
+    queryKey: ["material-shortages-calculated"],
     queryFn: async () => {
+      console.log("Fetching material shortages from calculated view");
       const { data, error } = await supabase
-        .from("material_requirements_view")
+        .from("material_shortages_calculated")
         .select("*")
-        .gt("shortage_quantity", 0)
         .order("shortage_quantity", { ascending: false });
       
-      if (error) throw error;
+      if (error) {
+        console.error("Error fetching material shortages:", error);
+        throw error;
+      }
       
-      return data.map(item => ({
-        raw_material_id: item.raw_material_id,
-        material_code: item.material_code,
-        material_name: item.material_name,
-        required_quantity: item.total_required || 0,
-        available_quantity: item.available_quantity || 0,
-        shortfall_quantity: item.shortage_quantity || 0,
-        is_critical: item.is_critical || false
-      })) as MaterialShortage[];
+      console.log("Fetched material shortages:", data);
+      return data as MaterialShortage[];
     },
   });
 
@@ -67,14 +76,31 @@ export const MaterialShortagesPage = () => {
     }
   };
 
+  const handleViewDetails = (material: MaterialShortage) => {
+    setSelectedMaterial(material);
+    setShowDetails(true);
+  };
+
   const totalShortages = materialShortages.length;
   const criticalShortages = materialShortages.filter(m => m.is_critical).length;
-  const totalShortfallValue = materialShortages.reduce((sum, item) => sum + item.shortfall_quantity, 0);
+  const materialsWithPendingPO = materialShortages.filter(m => m.has_pending_po).length;
+  const totalShortfallValue = materialShortages.reduce((sum, item) => sum + item.shortage_quantity, 0);
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="text-center py-8">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Loading material shortages...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold">Live Material Shortages</h2>
+        <h2 className="text-xl font-semibold">Material Shortages</h2>
         <Button 
           onClick={handleRefreshShortages}
           disabled={isCalculating}
@@ -90,7 +116,7 @@ export const MaterialShortagesPage = () => {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-2">
@@ -118,7 +144,19 @@ export const MaterialShortagesPage = () => {
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-2">
-              <Calculator className="h-8 w-8 text-blue-600" />
+              <ShoppingCart className="h-8 w-8 text-blue-600" />
+              <div>
+                <div className="text-2xl font-bold">{materialsWithPendingPO}</div>
+                <div className="text-sm text-muted-foreground">POs Created</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center gap-2">
+              <Calculator className="h-8 w-8 text-green-600" />
               <div>
                 <div className="text-2xl font-bold">{totalShortfallValue.toLocaleString()}</div>
                 <div className="text-sm text-muted-foreground">Total Shortfall Units</div>
@@ -142,31 +180,57 @@ export const MaterialShortagesPage = () => {
               <TableHeader>
                 <TableRow>
                   <TableHead>Part Code</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Required Quantity</TableHead>
-                  <TableHead>Available Stock</TableHead>
-                  <TableHead>Shortfall Quantity</TableHead>
+                  <TableHead>Part Name</TableHead>
+                  <TableHead>Total Required</TableHead>
+                  <TableHead>Current Stock</TableHead>
+                  <TableHead>Pending PO</TableHead>
+                  <TableHead>Net Shortage</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {materialShortages.map((shortage) => (
                   <TableRow key={shortage.raw_material_id}>
-                    <TableCell className="font-medium font-mono">
+                    <TableCell 
+                      className="font-medium font-mono cursor-pointer text-blue-600 hover:text-blue-800"
+                      onClick={() => handleViewDetails(shortage)}
+                    >
                       {shortage.material_code}
                     </TableCell>
                     <TableCell>{shortage.material_name}</TableCell>
-                    <TableCell>{shortage.required_quantity.toLocaleString()}</TableCell>
+                    <TableCell>{shortage.total_required.toLocaleString()}</TableCell>
                     <TableCell>{shortage.available_quantity.toLocaleString()}</TableCell>
+                    <TableCell>
+                      {shortage.pending_po_quantity > 0 ? (
+                        <Badge variant="outline">{shortage.pending_po_quantity.toLocaleString()}</Badge>
+                      ) : (
+                        "-"
+                      )}
+                    </TableCell>
                     <TableCell className="text-red-600 font-bold">
-                      {shortage.shortfall_quantity.toLocaleString()}
+                      {shortage.shortage_quantity.toLocaleString()}
                     </TableCell>
                     <TableCell>
-                      {shortage.is_critical ? (
-                        <Badge variant="destructive">Critical</Badge>
-                      ) : (
-                        <Badge variant="secondary">Standard</Badge>
-                      )}
+                      <div className="flex gap-2">
+                        {shortage.is_critical && (
+                          <Badge variant="destructive">Critical</Badge>
+                        )}
+                        {shortage.has_pending_po && (
+                          <Badge variant="secondary">PO Created</Badge>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleViewDetails(shortage)}
+                        className="gap-2"
+                      >
+                        <Eye className="h-4 w-4" />
+                        Details
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -183,6 +247,13 @@ export const MaterialShortagesPage = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Material Details Modal */}
+      <MaterialShortageDetails
+        isOpen={showDetails}
+        onClose={() => setShowDetails(false)}
+        materialData={selectedMaterial}
+      />
     </div>
   );
 };
