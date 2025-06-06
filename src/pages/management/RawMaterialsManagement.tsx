@@ -1,3 +1,4 @@
+
 import { useState, useRef } from "react";
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 import { 
@@ -26,10 +27,10 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { Search, Plus, Layers, FileText, Package, Upload, Edit, Trash2, History, Download, Eye } from "lucide-react";
+import { Search, Plus, Layers, FileText, Package, Upload, Edit, Trash2, History, Download, Eye, ExternalLink, Loader2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useRawMaterials, useSpecificationHistory } from "@/hooks/useRawMaterials";
+import { useRawMaterials, useSpecificationHistory, getDocumentUrl } from "@/hooks/useRawMaterials";
 import { toast } from "sonner";
 
 // Raw Material categories with their prefixes
@@ -64,6 +65,7 @@ const RawMaterialsManagement = () => {
   const [specificationFile, setSpecificationFile] = useState<File | null>(null);
   const [iqcChecklistFile, setIqcChecklistFile] = useState<File | null>(null);
   const [changesDescription, setChangesDescription] = useState("");
+  const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [newMaterial, setNewMaterial] = useState({
@@ -102,21 +104,28 @@ const RawMaterialsManagement = () => {
       return;
     }
 
-    addRawMaterial.mutate({
-      ...newMaterial,
-      vendorIds: selectedVendors,
-      primaryVendorId: primaryVendor,
-      specificationFile: specificationFile || undefined,
-      iqcChecklistFile: iqcChecklistFile || undefined,
-    });
+    setIsUploading(true);
+    try {
+      await addRawMaterial.mutateAsync({
+        ...newMaterial,
+        vendorIds: selectedVendors,
+        primaryVendorId: primaryVendor,
+        specificationFile: specificationFile || undefined,
+        iqcChecklistFile: iqcChecklistFile || undefined,
+      });
 
-    // Reset form
-    setNewMaterial({ name: "", category: "", specification: "" });
-    setSelectedVendors([]);
-    setPrimaryVendor("");
-    setSpecificationFile(null);
-    setIqcChecklistFile(null);
-    setIsAddDialogOpen(false);
+      // Reset form
+      setNewMaterial({ name: "", category: "", specification: "" });
+      setSelectedVendors([]);
+      setPrimaryVendor("");
+      setSpecificationFile(null);
+      setIqcChecklistFile(null);
+      setIsAddDialogOpen(false);
+    } catch (error) {
+      console.error("Add material error:", error);
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const handleEditMaterial = (material: any) => {
@@ -141,28 +150,25 @@ const RawMaterialsManagement = () => {
       return;
     }
 
-    console.log("Debug: Updating material with:", {
-      id: selectedMaterial.id,
-      ...newMaterial,
-      vendorIds: selectedVendors,
-      primaryVendorId: primaryVendor,
-      specificationFile: specificationFile?.name,
-      iqcChecklistFile: iqcChecklistFile?.name,
-      changesDescription,
-    });
+    setIsUploading(true);
+    try {
+      await updateRawMaterial.mutateAsync({
+        id: selectedMaterial.id,
+        ...newMaterial,
+        vendorIds: selectedVendors,
+        primaryVendorId: primaryVendor,
+        specificationFile: specificationFile || undefined,
+        iqcChecklistFile: iqcChecklistFile || undefined,
+        changesDescription,
+      });
 
-    updateRawMaterial.mutate({
-      id: selectedMaterial.id,
-      ...newMaterial,
-      vendorIds: selectedVendors,
-      primaryVendorId: primaryVendor,
-      specificationFile: specificationFile || undefined,
-      iqcChecklistFile: iqcChecklistFile || undefined,
-      changesDescription,
-    });
-
-    setIsEditDialogOpen(false);
-    setSelectedMaterial(null);
+      setIsEditDialogOpen(false);
+      setSelectedMaterial(null);
+    } catch (error) {
+      console.error("Update material error:", error);
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const handleViewMaterial = (material: any) => {
@@ -187,7 +193,6 @@ const RawMaterialsManagement = () => {
   const handleExcelImport = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      // For now, just show a message. Excel import functionality would need additional implementation
       toast.info("Excel import functionality will be implemented soon");
     }
   };
@@ -214,16 +219,17 @@ const RawMaterialsManagement = () => {
     }
   };
 
-  const getDocumentUrl = async (fileName: string) => {
+  const openDocument = async (fileName: string) => {
     try {
-      const { data } = await supabase.storage
-        .from("raw-material-documents")
-        .createSignedUrl(fileName, 60 * 60); // 1 hour expiry
-      
-      return data?.signedUrl;
+      const url = await getDocumentUrl(fileName);
+      if (url) {
+        window.open(url, '_blank');
+      } else {
+        toast.error("Failed to open document");
+      }
     } catch (error) {
-      console.error("Error getting document URL:", error);
-      return null;
+      console.error("Error opening document:", error);
+      toast.error("Failed to open document");
     }
   };
 
@@ -359,8 +365,21 @@ const RawMaterialsManagement = () => {
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button type="submit" onClick={handleAddMaterial} disabled={addRawMaterial.isPending}>
-                    {addRawMaterial.isPending ? "Adding..." : "Add Material"}
+                  <Button 
+                    type="submit" 
+                    onClick={handleAddMaterial} 
+                    disabled={isUploading || addRawMaterial.isPending}
+                  >
+                    {isUploading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Uploading...
+                      </>
+                    ) : addRawMaterial.isPending ? (
+                      "Adding..."
+                    ) : (
+                      "Add Material"
+                    )}
                   </Button>
                 </DialogFooter>
               </DialogContent>
@@ -466,18 +485,18 @@ const RawMaterialsManagement = () => {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => downloadDocument(material.specification_sheet_url, "specification.pdf")}
-                              title="Download Specification Sheet"
+                              onClick={() => openDocument(material.specification_sheet_url)}
+                              title="View Specification Sheet"
                             >
-                              <FileText className="h-4 w-4" />
+                              <ExternalLink className="h-4 w-4" />
                             </Button>
                           )}
                           {material.iqc_checklist_url && (
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => downloadDocument(material.iqc_checklist_url, "iqc_checklist.pdf")}
-                              title="Download IQC Checklist"
+                              onClick={() => openDocument(material.iqc_checklist_url)}
+                              title="View IQC Checklist"
                             >
                               <Package className="h-4 w-4" />
                             </Button>
@@ -561,14 +580,24 @@ const RawMaterialsManagement = () => {
                       <div className="border rounded-lg p-4">
                         <div className="flex items-center justify-between mb-2">
                           <h4 className="font-medium">Specification Sheet</h4>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => downloadDocument(viewMaterial.specification_sheet_url, "specification.pdf")}
-                          >
-                            <Download className="h-4 w-4 mr-2" />
-                            Download
-                          </Button>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => openDocument(viewMaterial.specification_sheet_url)}
+                            >
+                              <ExternalLink className="h-4 w-4 mr-2" />
+                              View
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => downloadDocument(viewMaterial.specification_sheet_url, "specification.pdf")}
+                            >
+                              <Download className="h-4 w-4 mr-2" />
+                              Download
+                            </Button>
+                          </div>
                         </div>
                         <div className="bg-muted rounded h-40 flex items-center justify-center">
                           <FileText className="h-12 w-12 text-muted-foreground" />
@@ -580,14 +609,24 @@ const RawMaterialsManagement = () => {
                       <div className="border rounded-lg p-4">
                         <div className="flex items-center justify-between mb-2">
                           <h4 className="font-medium">IQC Checklist</h4>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => downloadDocument(viewMaterial.iqc_checklist_url, "iqc_checklist.pdf")}
-                          >
-                            <Download className="h-4 w-4 mr-2" />
-                            Download
-                          </Button>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => openDocument(viewMaterial.iqc_checklist_url)}
+                            >
+                              <ExternalLink className="h-4 w-4 mr-2" />
+                              View
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => downloadDocument(viewMaterial.iqc_checklist_url, "iqc_checklist.pdf")}
+                            >
+                              <Download className="h-4 w-4 mr-2" />
+                              Download
+                            </Button>
+                          </div>
                         </div>
                         <div className="bg-muted rounded h-40 flex items-center justify-center">
                           <Package className="h-12 w-12 text-muted-foreground" />
@@ -750,15 +789,25 @@ const RawMaterialsManagement = () => {
               <Button 
                 variant="outline" 
                 onClick={() => setIsEditDialogOpen(false)}
+                disabled={isUploading}
               >
                 Cancel
               </Button>
               <Button 
                 type="submit" 
                 onClick={handleUpdateMaterial} 
-                disabled={updateRawMaterial.isPending}
+                disabled={isUploading || updateRawMaterial.isPending}
               >
-                {updateRawMaterial.isPending ? "Updating..." : "Update Material"}
+                {isUploading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Uploading...
+                  </>
+                ) : updateRawMaterial.isPending ? (
+                  "Updating..."
+                ) : (
+                  "Update Material"
+                )}
               </Button>
             </DialogFooter>
           </DialogContent>

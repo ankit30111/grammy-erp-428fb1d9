@@ -11,13 +11,6 @@ export const useRawMaterials = () => {
     queryFn: async () => {
       console.log("Debug: Fetching raw materials...");
       
-      // Test connection first
-      const { data: testData, error: testError } = await supabase
-        .from("raw_materials")
-        .select("count", { count: 'exact' });
-      
-      console.log("Debug: Raw materials count test:", testData, testError);
-      
       const { data, error } = await supabase
         .from("raw_materials")
         .select(`
@@ -63,7 +56,7 @@ export const useRawMaterials = () => {
 
       // Upload specification sheet if provided
       if (materialData.specificationFile) {
-        const fileName = `spec_${Date.now()}_${materialData.specificationFile.name}`;
+        const fileName = `specifications/${Date.now()}_${materialData.specificationFile.name}`;
         const { error: uploadError } = await supabase.storage
           .from("raw-material-documents")
           .upload(fileName, materialData.specificationFile);
@@ -74,7 +67,7 @@ export const useRawMaterials = () => {
 
       // Upload IQC checklist if provided
       if (materialData.iqcChecklistFile) {
-        const fileName = `iqc_${Date.now()}_${materialData.iqcChecklistFile.name}`;
+        const fileName = `iqc_checklists/${Date.now()}_${materialData.iqcChecklistFile.name}`;
         const { error: uploadError } = await supabase.storage
           .from("raw-material-documents")
           .upload(fileName, materialData.iqcChecklistFile);
@@ -152,140 +145,163 @@ export const useRawMaterials = () => {
       changesDescription?: string;
     }) => {
       console.log("Debug: Starting material update for ID:", data.id);
-      let specificationUrl = null;
-      let iqcChecklistUrl = null;
+      
+      try {
+        let specificationUrl = null;
+        let iqcChecklistUrl = null;
 
-      // Upload new specification sheet if provided
-      if (data.specificationFile) {
-        console.log("Debug: Uploading specification file:", data.specificationFile.name);
-        const fileName = `spec_${Date.now()}_${data.specificationFile.name}`;
-        const { error: uploadError } = await supabase.storage
-          .from("raw-material-documents")
-          .upload(fileName, data.specificationFile);
-        
-        if (uploadError) {
-          console.error("Debug: Specification upload error:", uploadError);
-          throw uploadError;
+        // Upload new specification sheet if provided
+        if (data.specificationFile) {
+          console.log("Debug: Uploading specification file:", data.specificationFile.name);
+          
+          // Generate filename with material ID for better organization
+          const fileName = `specifications/${data.id}_${Date.now()}_${data.specificationFile.name}`;
+          
+          const { error: uploadError } = await supabase.storage
+            .from("raw-material-documents")
+            .upload(fileName, data.specificationFile, {
+              cacheControl: '3600',
+              upsert: false
+            });
+          
+          if (uploadError) {
+            console.error("Debug: Specification upload error:", uploadError);
+            throw new Error(`Failed to upload specification: ${uploadError.message}`);
+          }
+          
+          specificationUrl = fileName;
+          console.log("Debug: Specification uploaded successfully:", fileName);
         }
-        specificationUrl = fileName;
-        console.log("Debug: Specification uploaded successfully:", fileName);
-      }
 
-      // Upload new IQC checklist if provided
-      if (data.iqcChecklistFile) {
-        console.log("Debug: Uploading IQC checklist file:", data.iqcChecklistFile.name);
-        const fileName = `iqc_${Date.now()}_${data.iqcChecklistFile.name}`;
-        const { error: uploadError } = await supabase.storage
-          .from("raw-material-documents")
-          .upload(fileName, data.iqcChecklistFile);
-        
-        if (uploadError) {
-          console.error("Debug: IQC checklist upload error:", uploadError);
-          throw uploadError;
+        // Upload new IQC checklist if provided
+        if (data.iqcChecklistFile) {
+          console.log("Debug: Uploading IQC checklist file:", data.iqcChecklistFile.name);
+          
+          // Generate filename with material ID for better organization
+          const fileName = `iqc_checklists/${data.id}_${Date.now()}_${data.iqcChecklistFile.name}`;
+          
+          const { error: uploadError } = await supabase.storage
+            .from("raw-material-documents")
+            .upload(fileName, data.iqcChecklistFile, {
+              cacheControl: '3600',
+              upsert: false
+            });
+          
+          if (uploadError) {
+            console.error("Debug: IQC checklist upload error:", uploadError);
+            throw new Error(`Failed to upload IQC checklist: ${uploadError.message}`);
+          }
+          
+          iqcChecklistUrl = fileName;
+          console.log("Debug: IQC checklist uploaded successfully:", fileName);
         }
-        iqcChecklistUrl = fileName;
-        console.log("Debug: IQC checklist uploaded successfully:", fileName);
-      }
 
-      // Update raw material
-      const updateData: any = {
-        name: data.name,
-        category: data.category,
-        specification: data.specification || "",
-      };
+        // Update raw material
+        const updateData: any = {
+          name: data.name,
+          category: data.category,
+          specification: data.specification || "",
+          updated_at: new Date().toISOString(),
+        };
 
-      if (specificationUrl) updateData.specification_sheet_url = specificationUrl;
-      if (iqcChecklistUrl) updateData.iqc_checklist_url = iqcChecklistUrl;
+        if (specificationUrl) updateData.specification_sheet_url = specificationUrl;
+        if (iqcChecklistUrl) updateData.iqc_checklist_url = iqcChecklistUrl;
 
-      console.log("Debug: Updating raw material with data:", updateData);
+        console.log("Debug: Updating raw material with data:", updateData);
 
-      const { error: materialError } = await supabase
-        .from("raw_materials")
-        .update(updateData)
-        .eq("id", data.id);
+        const { error: materialError } = await supabase
+          .from("raw_materials")
+          .update(updateData)
+          .eq("id", data.id);
 
-      if (materialError) {
-        console.error("Debug: Material update error:", materialError);
-        throw materialError;
-      }
+        if (materialError) {
+          console.error("Debug: Material update error:", materialError);
+          throw new Error(`Failed to update material: ${materialError.message}`);
+        }
 
-      console.log("Debug: Material updated successfully");
+        console.log("Debug: Material updated successfully");
 
-      // Update vendor relationships
-      // First delete existing relationships
-      console.log("Debug: Deleting existing vendor relationships");
-      const { error: deleteError } = await supabase
-        .from("raw_material_vendors")
-        .delete()
-        .eq("raw_material_id", data.id);
+        // Update vendor relationships
+        // First delete existing relationships
+        console.log("Debug: Deleting existing vendor relationships");
+        const { error: deleteError } = await supabase
+          .from("raw_material_vendors")
+          .delete()
+          .eq("raw_material_id", data.id);
 
-      if (deleteError) {
-        console.error("Debug: Vendor delete error:", deleteError);
-        throw deleteError;
-      }
+        if (deleteError) {
+          console.error("Debug: Vendor delete error:", deleteError);
+          throw new Error(`Failed to delete vendor relationships: ${deleteError.message}`);
+        }
 
-      // Add new vendor relationships
-      console.log("Debug: Adding new vendor relationships:", data.vendorIds);
-      const vendorRelations = data.vendorIds.map(vendorId => ({
-        raw_material_id: data.id,
-        vendor_id: vendorId,
-        is_primary: vendorId === data.primaryVendorId,
-      }));
-
-      const { error: vendorError } = await supabase
-        .from("raw_material_vendors")
-        .insert(vendorRelations);
-
-      if (vendorError) {
-        console.error("Debug: Vendor insert error:", vendorError);
-        throw vendorError;
-      }
-
-      console.log("Debug: Vendor relationships updated successfully");
-
-      // Create new specification record if files were uploaded
-      if (specificationUrl || iqcChecklistUrl) {
-        console.log("Debug: Creating new specification record");
-        
-        // Get the next version number
-        const { data: lastVersion } = await supabase
-          .from("raw_material_specifications")
-          .select("version_number")
-          .eq("raw_material_id", data.id)
-          .order("version_number", { ascending: false })
-          .limit(1)
-          .single();
-
-        const nextVersion = (lastVersion?.version_number || 0) + 1;
-
-        const { error: specError } = await supabase
-          .from("raw_material_specifications")
-          .insert({
+        // Add new vendor relationships
+        console.log("Debug: Adding new vendor relationships:", data.vendorIds);
+        if (data.vendorIds.length > 0) {
+          const vendorRelations = data.vendorIds.map(vendorId => ({
             raw_material_id: data.id,
-            version_number: nextVersion,
-            specification_sheet_url: specificationUrl,
-            iqc_checklist_url: iqcChecklistUrl,
-            changes_description: data.changesDescription || "Specification update",
-          });
+            vendor_id: vendorId,
+            is_primary: vendorId === data.primaryVendorId,
+          }));
 
-        if (specError) {
-          console.error("Debug: Specification record error:", specError);
-          throw specError;
+          const { error: vendorError } = await supabase
+            .from("raw_material_vendors")
+            .insert(vendorRelations);
+
+          if (vendorError) {
+            console.error("Debug: Vendor insert error:", vendorError);
+            throw new Error(`Failed to add vendor relationships: ${vendorError.message}`);
+          }
         }
 
-        console.log("Debug: Specification record created successfully");
-      }
+        console.log("Debug: Vendor relationships updated successfully");
 
-      console.log("Debug: Material update completed successfully");
-      return data;
+        // Create new specification record if files were uploaded
+        if (specificationUrl || iqcChecklistUrl) {
+          console.log("Debug: Creating new specification record");
+          
+          // Get the next version number
+          const { data: lastVersion } = await supabase
+            .from("raw_material_specifications")
+            .select("version_number")
+            .eq("raw_material_id", data.id)
+            .order("version_number", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          const nextVersion = (lastVersion?.version_number || 0) + 1;
+
+          const { error: specError } = await supabase
+            .from("raw_material_specifications")
+            .insert({
+              raw_material_id: data.id,
+              version_number: nextVersion,
+              specification_sheet_url: specificationUrl,
+              iqc_checklist_url: iqcChecklistUrl,
+              changes_description: data.changesDescription || "Specification update",
+            });
+
+          if (specError) {
+            console.error("Debug: Specification record error:", specError);
+            throw new Error(`Failed to create specification record: ${specError.message}`);
+          }
+
+          console.log("Debug: Specification record created successfully");
+        }
+
+        console.log("Debug: Material update completed successfully");
+        return data;
+      } catch (error) {
+        console.error("Debug: Material update failed:", error);
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["raw-materials"] });
       toast.success("Raw material updated successfully");
     },
-    onError: (error) => {
+    onError: (error: any) => {
       console.error("Error updating raw material:", error);
-      toast.error("Failed to update raw material");
+      toast.error(error.message || "Failed to update raw material");
     },
   });
 
@@ -332,4 +348,18 @@ export const useSpecificationHistory = (materialId: string) => {
     },
     enabled: !!materialId,
   });
+};
+
+// Helper function to get document URLs
+export const getDocumentUrl = async (fileName: string) => {
+  try {
+    const { data } = await supabase.storage
+      .from("raw-material-documents")
+      .createSignedUrl(fileName, 60 * 60); // 1 hour expiry
+    
+    return data?.signedUrl;
+  } catch (error) {
+    console.error("Error getting document URL:", error);
+    return null;
+  }
 };
