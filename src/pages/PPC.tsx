@@ -78,7 +78,7 @@ const PPC = () => {
   const unscheduledProjections = projections?.length ? projections.length - (schedules?.length || 0) : 0;
   return <DashboardLayout>
       <div className="grid gap-4 md:gap-6">
-        <h1 className="text-2xl font-bold">Production Planning & Control</h1>
+        
         
         <Tabs value={selectedTab} onValueChange={setSelectedTab}>
           
