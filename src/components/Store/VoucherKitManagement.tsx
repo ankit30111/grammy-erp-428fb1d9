@@ -1,5 +1,4 @@
-
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -11,20 +10,12 @@ import { useToast } from "@/hooks/use-toast";
 import ProductionVoucherDetails from "./ProductionVoucherDetails";
 
 interface VoucherKitManagementProps {
-  sentComponents: Record<string, string[]>;
-  setSentComponents: React.Dispatch<React.SetStateAction<Record<string, string[]>>>;
-  kitStatuses: Record<string, string>;
-  setKitStatuses: React.Dispatch<React.SetStateAction<Record<string, string>>>;
-  voucherStatuses: Record<string, string>;
+  voucherStatuses: any[];
 }
 
-export default function VoucherKitManagement({ 
-  sentComponents, 
-  setSentComponents, 
-  kitStatuses, 
-  setKitStatuses,
+const VoucherKitManagement = ({ 
   voucherStatuses 
-}: VoucherKitManagementProps) {
+}: VoucherKitManagementProps) => {
   const { toast } = useToast();
   const { data: productionOrders } = useProductionOrders();
   const [selectedVoucherId, setSelectedVoucherId] = useState<string | null>(null);
@@ -120,4 +111,6 @@ export default function VoucherKitManagement({
       </CardContent>
     </Card>
   );
-}
+};
+
+export default VoucherKitManagement;

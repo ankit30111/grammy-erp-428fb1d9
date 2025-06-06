@@ -6,7 +6,7 @@ import { toast } from "sonner";
 
 export const useKitManagement = () => {
   const [kitStatuses, setKitStatuses] = useState<Record<string, string>>({});
-  const [sentComponents, setSentComponents] = useState<Record<string, boolean>>({});
+  const [sentComponents, setSentComponents] = useState<Record<string, string[]>>({});
   const queryClient = useQueryClient();
 
   // Get all production vouchers in KIT state

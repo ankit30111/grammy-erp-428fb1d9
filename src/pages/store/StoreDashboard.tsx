@@ -114,11 +114,7 @@ export default function StoreDashboard() {
 
         <TabsContent value="production-vouchers">
           <VoucherKitManagement
-            sentComponents={sentComponents}
-            setSentComponents={setSentComponents}
-            kitStatuses={kitStatuses}
-            setKitStatuses={setKitStatuses}
-            voucherStatuses={voucherStatuses}
+            voucherStatuses={voucherStatuses || []}
           />
         </TabsContent>
 
