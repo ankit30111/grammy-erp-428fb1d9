@@ -1,8 +1,6 @@
-
 import { useState } from "react";
 import { toast } from "sonner";
 import { useVendors } from "@/hooks/useVendors";
-import { useVendorCodeGeneration } from "@/hooks/useVendorCodeGeneration";
 
 interface VendorFormData {
   name: string;
@@ -32,7 +30,6 @@ const initialFormData: VendorFormData = {
 
 export const useVendorForm = () => {
   const { addVendor, updateVendor } = useVendors();
-  const { generateVendorCode } = useVendorCodeGeneration();
   const [formData, setFormData] = useState<VendorFormData>(initialFormData);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
@@ -93,12 +90,11 @@ export const useVendorForm = () => {
         msme_certificate: formData.msme_certificate || undefined
       };
 
-      console.log("Debug: Submitting vendor data:", { ...vendorData, gst_certificate: vendorData.gst_certificate?.name, msme_certificate: vendorData.msme_certificate?.name });
+      console.log("Debug: Submitting vendor data (vendor_code will be auto-generated):", { ...vendorData, gst_certificate: vendorData.gst_certificate?.name, msme_certificate: vendorData.msme_certificate?.name });
 
       await addVendor.mutateAsync(vendorData);
 
-      console.log("Debug: Vendor added successfully");
-      toast.success("Vendor added successfully");
+      console.log("Debug: Vendor added successfully with auto-generated code");
       
       // Reset form on success
       setFormData(initialFormData);
@@ -110,7 +106,7 @@ export const useVendorForm = () => {
       
       let errorMessage = "Failed to add vendor";
       if (error?.message) {
-        errorMessage += `: ${error.message}`;
+        errorMessage = error.message;
       }
       
       toast.error(errorMessage);
