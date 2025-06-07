@@ -23,8 +23,9 @@ import CustomerComplaints from "./pages/CustomerComplaints";
 import SpareOrders from "./pages/SpareOrders";
 import HRManagement from "./pages/management/HRManagement";
 import CustomersManagement from "./pages/management/CustomersManagement";
-import VendorManagement from "./pages/management/VendorManagement";
+import Vendors from "./pages/Vendors";
 import ProductsManagement from "./pages/management/ProductsManagement";
+import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import PPCDashboard from "@/pages/dashboards/PPCDashboard";
 import StoreDashboard from "@/pages/dashboards/StoreDashboard";
@@ -62,8 +63,9 @@ function App() {
             <Route path="/spare-orders" element={<SpareOrders />} />
             <Route path="/management/hr" element={<HRManagement />} />
             <Route path="/management/customers" element={<CustomersManagement />} />
-            <Route path="/management/vendors" element={<VendorManagement />} />
+            <Route path="/vendors" element={<Vendors />} />
             <Route path="/management/products" element={<ProductsManagement />} />
+            <Route path="/settings" element={<Settings />} />
             
             {/* Dashboard Routes */}
             <Route path="/dashboards/ppc" element={<PPCDashboard />} />
