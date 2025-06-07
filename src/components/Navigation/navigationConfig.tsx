@@ -52,7 +52,7 @@ export const navigationItems: NavigationItem[] = [
     ]
   },
   { to: "/customer-complaints", icon: <MessageSquare size={20} />, label: "Customer Complaints" },
-  { to: "/hr-management", icon: <Users size={20} />, label: "Human Resources" }
+  { to: "/management/hr", icon: <Users size={20} />, label: "Human Resources" }
 ];
 
 export const managementItems: NavigationItem[] = [
