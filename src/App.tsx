@@ -1,80 +1,84 @@
+import { useState } from "react";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Toaster } from "@/components/ui/toaster";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { Sonner } from 'sonner';
 
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import { AuthGuard } from "@/components/Auth/AuthGuard";
-import Index from "@/pages/Index";
-import Auth from "@/pages/Auth";
-import PPC from "@/pages/PPC";
-import Planning from "@/pages/Planning";
-import PlanningDashboard from "@/pages/PlanningDashboard";
-import Projection from "@/pages/Projection";
-import Purchase from "@/pages/Purchase";
-import GRN from "@/pages/GRN";
-import Production from "@/pages/Production";
-import Inventory from "@/pages/Inventory";
-import Quality from "@/pages/Quality";
-import IQC from "@/pages/quality/IQC";
-import PQC from "@/pages/quality/PQC";
-import OQC from "@/pages/quality/OQC";
-import Sales from "@/pages/Sales";
-import RegularDispatch from "@/pages/sales/RegularDispatch";
-import SpareDispatch from "@/pages/sales/SpareDispatch";
-import FinishedGoods from "@/pages/FinishedGoods";
-import Dispatch from "@/pages/Dispatch";
-import SpareOrders from "@/pages/SpareOrders";
-import Vendors from "@/pages/Vendors";
-import Management from "@/pages/Management";
-import ProductsManagement from "@/pages/management/ProductsManagement";
-import CustomersManagement from "@/pages/management/CustomersManagement";
-import RawMaterialsManagement from "@/pages/management/RawMaterialsManagement";
-import HRManagement from "@/pages/management/HRManagement";
-import Resources from "@/pages/Resources";
-import UserManagement from "@/pages/UserManagement";
-import StoreDashboard from "@/pages/store/StoreDashboard";
-import NotFound from "@/pages/NotFound";
-import CustomerComplaints from "@/pages/CustomerComplaints";
+import Authentication from "./Authentication";
+import Dashboard from "./Dashboard";
+import Quality from "./Quality";
+import IQC from "./pages/quality/IQC";
+import PQC from "./pages/quality/PQC";
+import OQC from "./pages/quality/OQC";
+import Production from "./Production";
+import Planning from "./Planning";
+import Store from "./Store";
+import Sales from "./Sales";
+import Purchase from "./Purchase";
+import Projection from "./Projection";
+import FinishedGoods from "./FinishedGoods";
+import CustomerComplaints from "./CustomerComplaints";
+import SpareOrders from "./SpareOrders";
+import HRManagement from "./pages/management/HRManagement";
+import CustomersManagement from "./pages/management/CustomersManagement";
+import VendorManagement from "./pages/management/VendorManagement";
+import ProductsManagement from "./pages/management/ProductsManagement";
+import Settings from "./Settings";
+import PageNotFound from "./PageNotFound";
+import PPCDashboard from "@/pages/dashboards/PPCDashboard";
+import StoreDashboard from "@/pages/dashboards/StoreDashboard";
+import ProductionMainDashboard from "@/pages/dashboards/ProductionMainDashboard";
+import SalesDashboard from "@/pages/dashboards/SalesDashboard";
+import HRDashboard from "@/pages/dashboards/HRDashboard";
+
+const queryClient = new QueryClient();
 
 function App() {
   return (
-    <Router>
-      <div className="min-h-screen bg-background">
-        <Routes>
-          {/* Public routes */}
-          <Route path="/auth" element={<Auth />} />
-          
-          {/* Protected routes - all users have universal access */}
-          <Route path="/" element={<AuthGuard><Index /></AuthGuard>} />
-          <Route path="/ppc" element={<AuthGuard><PPC /></AuthGuard>} />
-          <Route path="/planning" element={<AuthGuard><Planning /></AuthGuard>} />
-          <Route path="/planning-dashboard" element={<AuthGuard><PlanningDashboard /></AuthGuard>} />
-          <Route path="/projection" element={<AuthGuard><Projection /></AuthGuard>} />
-          <Route path="/purchase" element={<AuthGuard><Purchase /></AuthGuard>} />
-          <Route path="/grn" element={<AuthGuard><GRN /></AuthGuard>} />
-          <Route path="/production" element={<AuthGuard><Production /></AuthGuard>} />
-          <Route path="/inventory" element={<AuthGuard><Inventory /></AuthGuard>} />
-          <Route path="/quality" element={<AuthGuard><Quality /></AuthGuard>} />
-          <Route path="/quality/iqc" element={<AuthGuard><IQC /></AuthGuard>} />
-          <Route path="/quality/pqc" element={<AuthGuard><PQC /></AuthGuard>} />
-          <Route path="/quality/oqc" element={<AuthGuard><OQC /></AuthGuard>} />
-          <Route path="/sales" element={<AuthGuard><Sales /></AuthGuard>} />
-          <Route path="/sales/regular-dispatch" element={<AuthGuard><RegularDispatch /></AuthGuard>} />
-          <Route path="/sales/spare-dispatch" element={<AuthGuard><SpareDispatch /></AuthGuard>} />
-          <Route path="/finished-goods" element={<AuthGuard><FinishedGoods /></AuthGuard>} />
-          <Route path="/dispatch" element={<AuthGuard><Dispatch /></AuthGuard>} />
-          <Route path="/spare-orders" element={<AuthGuard><SpareOrders /></AuthGuard>} />
-          <Route path="/customer-complaints" element={<AuthGuard><CustomerComplaints /></AuthGuard>} />
-          <Route path="/vendors" element={<AuthGuard><Vendors /></AuthGuard>} />
-          <Route path="/management" element={<AuthGuard><Management /></AuthGuard>} />
-          <Route path="/management/products" element={<AuthGuard><ProductsManagement /></AuthGuard>} />
-          <Route path="/management/customers" element={<AuthGuard><CustomersManagement /></AuthGuard>} />
-          <Route path="/management/raw-materials" element={<AuthGuard><RawMaterialsManagement /></AuthGuard>} />
-          <Route path="/management/hr" element={<AuthGuard><HRManagement /></AuthGuard>} />
-          <Route path="/resources" element={<AuthGuard><Resources /></AuthGuard>} />
-          <Route path="/user-management" element={<AuthGuard><UserManagement /></AuthGuard>} />
-          <Route path="/store/*" element={<AuthGuard><StoreDashboard /></AuthGuard>} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </div>
-    </Router>
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            {/* Authentication Routes */}
+            <Route path="/" element={<Authentication />} />
+
+            {/* Main Routes */}
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/quality" element={<Quality />} />
+            <Route path="/quality/iqc" element={<IQC />} />
+            <Route path="/quality/pqc" element={<PQC />} />
+            <Route path="/quality/oqc" element={<OQC />} />
+            <Route path="/production" element={<Production />} />
+            <Route path="/planning" element={<Planning />} />
+            <Route path="/store" element={<Store />} />
+            <Route path="/sales" element={<Sales />} />
+            <Route path="/purchase" element={<Purchase />} />
+            <Route path="/projection" element={<Projection />} />
+            <Route path="/finished-goods" element={<FinishedGoods />} />
+            <Route path="/customer-complaints" element={<CustomerComplaints />} />
+            <Route path="/spare-orders" element={<SpareOrders />} />
+            <Route path="/management/hr" element={<HRManagement />} />
+            <Route path="/management/customers" element={<CustomersManagement />} />
+            <Route path="/management/vendors" element={<VendorManagement />} />
+            <Route path="/management/products" element={<ProductsManagement />} />
+            <Route path="/settings" element={<Settings />} />
+            
+            {/* Dashboard Routes */}
+            <Route path="/dashboards/ppc" element={<PPCDashboard />} />
+            <Route path="/dashboards/store" element={<StoreDashboard />} />
+            <Route path="/dashboards/production" element={<ProductionMainDashboard />} />
+            <Route path="/dashboards/sales" element={<SalesDashboard />} />
+            <Route path="/dashboards/hr" element={<HRDashboard />} />
+            
+            {/* 404 Route */}
+            <Route path="*" element={<PageNotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
   );
 }
 
