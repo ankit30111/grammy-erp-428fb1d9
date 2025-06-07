@@ -1,12 +1,12 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ResponsiveContainer } from "recharts";
-import { ReactNode } from "react";
+import { ReactElement } from "react";
 
 interface ChartWidgetProps {
   title: string;
   description?: string;
-  children: ReactNode;
+  children: ReactElement;
   className?: string;
 }
 

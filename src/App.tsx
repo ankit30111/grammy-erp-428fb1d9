@@ -1,31 +1,31 @@
+
 import { useState } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { Sonner } from 'sonner';
+import { Toaster as Sonner } from "@/components/ui/sonner";
 
-import Authentication from "./Authentication";
-import Dashboard from "./Dashboard";
-import Quality from "./Quality";
+import Auth from "./pages/Auth";
+import Index from "./pages/Index";
+import Quality from "./pages/Quality";
 import IQC from "./pages/quality/IQC";
 import PQC from "./pages/quality/PQC";
 import OQC from "./pages/quality/OQC";
-import Production from "./Production";
-import Planning from "./Planning";
-import Store from "./Store";
-import Sales from "./Sales";
-import Purchase from "./Purchase";
-import Projection from "./Projection";
-import FinishedGoods from "./FinishedGoods";
-import CustomerComplaints from "./CustomerComplaints";
-import SpareOrders from "./SpareOrders";
+import Production from "./pages/Production";
+import Planning from "./pages/Planning";
+import Store from "./pages/store/StoreDashboard";
+import Sales from "./pages/Sales";
+import Purchase from "./pages/Purchase";
+import Projection from "./pages/Projection";
+import FinishedGoods from "./pages/FinishedGoods";
+import CustomerComplaints from "./pages/CustomerComplaints";
+import SpareOrders from "./pages/SpareOrders";
 import HRManagement from "./pages/management/HRManagement";
 import CustomersManagement from "./pages/management/CustomersManagement";
 import VendorManagement from "./pages/management/VendorManagement";
 import ProductsManagement from "./pages/management/ProductsManagement";
-import Settings from "./Settings";
-import PageNotFound from "./PageNotFound";
+import NotFound from "./pages/NotFound";
 import PPCDashboard from "@/pages/dashboards/PPCDashboard";
 import StoreDashboard from "@/pages/dashboards/StoreDashboard";
 import ProductionMainDashboard from "@/pages/dashboards/ProductionMainDashboard";
@@ -43,10 +43,10 @@ function App() {
         <BrowserRouter>
           <Routes>
             {/* Authentication Routes */}
-            <Route path="/" element={<Authentication />} />
+            <Route path="/" element={<Auth />} />
 
             {/* Main Routes */}
-            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/dashboard" element={<Index />} />
             <Route path="/quality" element={<Quality />} />
             <Route path="/quality/iqc" element={<IQC />} />
             <Route path="/quality/pqc" element={<PQC />} />
@@ -64,7 +64,6 @@ function App() {
             <Route path="/management/customers" element={<CustomersManagement />} />
             <Route path="/management/vendors" element={<VendorManagement />} />
             <Route path="/management/products" element={<ProductsManagement />} />
-            <Route path="/settings" element={<Settings />} />
             
             {/* Dashboard Routes */}
             <Route path="/dashboards/ppc" element={<PPCDashboard />} />
@@ -74,7 +73,7 @@ function App() {
             <Route path="/dashboards/hr" element={<HRDashboard />} />
             
             {/* 404 Route */}
-            <Route path="*" element={<PageNotFound />} />
+            <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
       </TooltipProvider>
