@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 import { 
@@ -48,7 +47,7 @@ const Vendors = () => {
   const filteredVendors = vendors.filter(vendor => 
     vendor.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
     vendor.vendor_code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    vendor.email.toLowerCase().includes(searchQuery.toLowerCase())
+    (vendor.email && vendor.email.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   const handleAddVendor = async () => {
@@ -61,32 +60,24 @@ const Vendors = () => {
     console.log("Adding vendor with data:", newVendor);
 
     try {
-      await addVendor.mutateAsync({
-        name: newVendor.name,
-        contact_person_name: newVendor.contact_person_name || undefined,
-        email: newVendor.email,
-        contact_number: newVendor.contact_number,
-        address: newVendor.address,
-        gst_number: newVendor.gst_number,
-        bank_account_number: newVendor.bank_account_number,
-        ifsc_code: newVendor.ifsc_code,
+      // Prepare data with proper null handling
+      const vendorData = {
+        name: newVendor.name.trim(),
+        contact_person_name: newVendor.contact_person_name.trim() || undefined,
+        email: newVendor.email.trim() || undefined,
+        contact_number: newVendor.contact_number.trim() || undefined,
+        address: newVendor.address.trim() || undefined,
+        gst_number: newVendor.gst_number.trim(),
+        bank_account_number: newVendor.bank_account_number.trim() || undefined,
+        ifsc_code: newVendor.ifsc_code.trim() || undefined,
         gst_certificate: newVendor.gst_certificate || undefined,
         msme_certificate: newVendor.msme_certificate || undefined
-      });
+      };
+
+      await addVendor.mutateAsync(vendorData);
 
       console.log("Vendor added successfully");
-      setNewVendor({
-        name: "",
-        contact_person_name: "",
-        email: "",
-        contact_number: "",
-        address: "",
-        gst_number: "",
-        bank_account_number: "",
-        ifsc_code: "",
-        gst_certificate: null,
-        msme_certificate: null
-      });
+      resetForm();
       setIsAddDialogOpen(false);
     } catch (error) {
       console.error("Error adding vendor:", error);
@@ -105,23 +96,27 @@ const Vendors = () => {
     console.log("Updating vendor with data:", newVendor);
 
     try {
-      await updateVendor.mutateAsync({
+      // Prepare data with proper null handling
+      const vendorData = {
         id: editingVendor.id,
-        name: newVendor.name,
-        contact_person_name: newVendor.contact_person_name || undefined,
-        email: newVendor.email,
-        contact_number: newVendor.contact_number,
-        address: newVendor.address,
-        gst_number: newVendor.gst_number,
-        bank_account_number: newVendor.bank_account_number,
-        ifsc_code: newVendor.ifsc_code,
+        name: newVendor.name.trim(),
+        contact_person_name: newVendor.contact_person_name.trim() || undefined,
+        email: newVendor.email.trim() || undefined,
+        contact_number: newVendor.contact_number.trim() || undefined,
+        address: newVendor.address.trim() || undefined,
+        gst_number: newVendor.gst_number.trim(),
+        bank_account_number: newVendor.bank_account_number.trim() || undefined,
+        ifsc_code: newVendor.ifsc_code.trim() || undefined,
         gst_certificate: newVendor.gst_certificate || undefined,
         msme_certificate: newVendor.msme_certificate || undefined
-      });
+      };
+
+      await updateVendor.mutateAsync(vendorData);
 
       console.log("Vendor updated successfully");
       setIsEditDialogOpen(false);
       setEditingVendor(null);
+      resetForm();
     } catch (error) {
       console.error("Error updating vendor:", error);
     }
@@ -140,14 +135,14 @@ const Vendors = () => {
   const openEditDialog = (vendor: any) => {
     setEditingVendor(vendor);
     setNewVendor({
-      name: vendor.name,
+      name: vendor.name || "",
       contact_person_name: vendor.contact_person_name || "",
-      email: vendor.email,
-      contact_number: vendor.contact_number,
-      address: vendor.address,
+      email: vendor.email || "",
+      contact_number: vendor.contact_number || "",
+      address: vendor.address || "",
       gst_number: vendor.gst_number || "",
-      bank_account_number: vendor.bank_account_number,
-      ifsc_code: vendor.ifsc_code,
+      bank_account_number: vendor.bank_account_number || "",
+      ifsc_code: vendor.ifsc_code || "",
       gst_certificate: null,
       msme_certificate: null
     });
@@ -532,8 +527,8 @@ const Vendors = () => {
                       <TableCell className="font-medium">{vendor.vendor_code}</TableCell>
                       <TableCell>{vendor.name}</TableCell>
                       <TableCell>{vendor.contact_person_name || '-'}</TableCell>
-                      <TableCell>{vendor.email}</TableCell>
-                      <TableCell>{vendor.contact_number}</TableCell>
+                      <TableCell>{vendor.email || '-'}</TableCell>
+                      <TableCell>{vendor.contact_number || '-'}</TableCell>
                       <TableCell>{vendor.gst_number || '-'}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end space-x-2">
@@ -593,11 +588,11 @@ const Vendors = () => {
                                   </div>
                                   <div>
                                     <span className="text-muted-foreground text-sm">Email:</span>
-                                    <p>{vendor.email}</p>
+                                    <p>{vendor.email || '-'}</p>
                                   </div>
                                   <div>
                                     <span className="text-muted-foreground text-sm">Contact:</span>
-                                    <p>{vendor.contact_number}</p>
+                                    <p>{vendor.contact_number || '-'}</p>
                                   </div>
                                   <div>
                                     <span className="text-muted-foreground text-sm">GST Number:</span>
@@ -607,17 +602,17 @@ const Vendors = () => {
                                 
                                 <div>
                                   <span className="text-muted-foreground text-sm">Address:</span>
-                                  <p className="mt-1">{vendor.address}</p>
+                                  <p className="mt-1">{vendor.address || '-'}</p>
                                 </div>
                                 
                                 <div className="grid grid-cols-2 gap-4">
                                   <div>
                                     <span className="text-muted-foreground text-sm">Bank Account:</span>
-                                    <p>{vendor.bank_account_number}</p>
+                                    <p>{vendor.bank_account_number || '-'}</p>
                                   </div>
                                   <div>
                                     <span className="text-muted-foreground text-sm">IFSC Code:</span>
-                                    <p>{vendor.ifsc_code}</p>
+                                    <p>{vendor.ifsc_code || '-'}</p>
                                   </div>
                                 </div>
 

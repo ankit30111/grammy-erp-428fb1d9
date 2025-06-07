@@ -46,7 +46,7 @@ export const useRawMaterials = () => {
       name: string;
       category: string;
       specification?: string;
-      vendorIds: string[];
+      vendorIds?: string[]; // Made optional
       primaryVendorId?: string;
       specificationFile?: File;
       iqcChecklistFile?: File;
@@ -92,18 +92,20 @@ export const useRawMaterials = () => {
 
       if (materialError) throw materialError;
 
-      // Add vendor relationships
-      const vendorRelations = materialData.vendorIds.map(vendorId => ({
-        raw_material_id: material.id,
-        vendor_id: vendorId,
-        is_primary: vendorId === materialData.primaryVendorId,
-      }));
+      // Add vendor relationships only if vendors are provided
+      if (materialData.vendorIds && materialData.vendorIds.length > 0) {
+        const vendorRelations = materialData.vendorIds.map(vendorId => ({
+          raw_material_id: material.id,
+          vendor_id: vendorId,
+          is_primary: vendorId === materialData.primaryVendorId,
+        }));
 
-      const { error: vendorError } = await supabase
-        .from("raw_material_vendors")
-        .insert(vendorRelations);
+        const { error: vendorError } = await supabase
+          .from("raw_material_vendors")
+          .insert(vendorRelations);
 
-      if (vendorError) throw vendorError;
+        if (vendorError) throw vendorError;
+      }
 
       // Create initial specification record if files were uploaded
       if (specificationUrl || iqcChecklistUrl) {
@@ -138,7 +140,7 @@ export const useRawMaterials = () => {
       name: string;
       category: string;
       specification?: string;
-      vendorIds: string[];
+      vendorIds?: string[]; // Made optional
       primaryVendorId?: string;
       specificationFile?: File;
       iqcChecklistFile?: File;
@@ -154,7 +156,6 @@ export const useRawMaterials = () => {
         if (data.specificationFile) {
           console.log("Debug: Uploading specification file:", data.specificationFile.name);
           
-          // Generate filename with material ID for better organization
           const fileName = `specifications/${data.id}_${Date.now()}_${data.specificationFile.name}`;
           
           const { error: uploadError } = await supabase.storage
@@ -177,7 +178,6 @@ export const useRawMaterials = () => {
         if (data.iqcChecklistFile) {
           console.log("Debug: Uploading IQC checklist file:", data.iqcChecklistFile.name);
           
-          // Generate filename with material ID for better organization
           const fileName = `iqc_checklists/${data.id}_${Date.now()}_${data.iqcChecklistFile.name}`;
           
           const { error: uploadError } = await supabase.storage
@@ -234,9 +234,9 @@ export const useRawMaterials = () => {
           throw new Error(`Failed to delete vendor relationships: ${deleteError.message}`);
         }
 
-        // Add new vendor relationships
-        console.log("Debug: Adding new vendor relationships:", data.vendorIds);
-        if (data.vendorIds.length > 0) {
+        // Add new vendor relationships only if vendors are provided
+        if (data.vendorIds && data.vendorIds.length > 0) {
+          console.log("Debug: Adding new vendor relationships:", data.vendorIds);
           const vendorRelations = data.vendorIds.map(vendorId => ({
             raw_material_id: data.id,
             vendor_id: vendorId,
