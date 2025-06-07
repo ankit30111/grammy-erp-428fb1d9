@@ -1,4 +1,3 @@
-
 import { useState, useRef } from "react";
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 import { 
@@ -25,13 +24,20 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, 
   AlertDialogTitle, AlertDialogTrigger 
 } from "@/components/ui/alert-dialog";
+import { 
+  Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList
+} from "@/components/ui/command";
+import { 
+  Popover, PopoverContent, PopoverTrigger 
+} from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { Search, Plus, Layers, FileText, Package, Upload, Edit, Trash2, History, Download, Eye, ExternalLink, Loader2 } from "lucide-react";
+import { Search, Plus, Layers, FileText, Package, Upload, Edit, Trash2, History, Download, Eye, ExternalLink, Loader2, Check, ChevronsUpDown } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useRawMaterials, useSpecificationHistory, getDocumentUrl } from "@/hooks/useRawMaterials";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 // Raw Material categories with their prefixes
 const MATERIAL_CATEGORIES = [
@@ -66,6 +72,8 @@ const RawMaterialsManagement = () => {
   const [iqcChecklistFile, setIqcChecklistFile] = useState<File | null>(null);
   const [changesDescription, setChangesDescription] = useState("");
   const [isUploading, setIsUploading] = useState(false);
+  const [vendorSearchOpen, setVendorSearchOpen] = useState(false);
+  const [vendorSearchValue, setVendorSearchValue] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [newMaterial, setNewMaterial] = useState({
@@ -99,8 +107,13 @@ const RawMaterialsManagement = () => {
   });
 
   const handleAddMaterial = async () => {
-    if (selectedVendors.length === 0) {
-      toast.error("Please select at least one vendor");
+    if (!newMaterial.name.trim()) {
+      toast.error("Part Name is required");
+      return;
+    }
+
+    if (!newMaterial.category.trim()) {
+      toast.error("Part Category is required");
       return;
     }
 
@@ -120,6 +133,7 @@ const RawMaterialsManagement = () => {
       setPrimaryVendor("");
       setSpecificationFile(null);
       setIqcChecklistFile(null);
+      setVendorSearchValue("");
       setIsAddDialogOpen(false);
     } catch (error) {
       console.error("Add material error:", error);
@@ -269,17 +283,18 @@ const RawMaterialsManagement = () => {
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
                   <div className="space-y-2">
-                    <Label htmlFor="name">Part Name</Label>
+                    <Label htmlFor="name">Part Name *</Label>
                     <Input 
                       id="name" 
                       value={newMaterial.name} 
                       onChange={(e) => setNewMaterial({...newMaterial, name: e.target.value})}
                       placeholder="Enter part name"
+                      required
                     />
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="category">Part Category</Label>
+                    <Label htmlFor="category">Part Category *</Label>
                     <Select 
                       value={newMaterial.category} 
                       onValueChange={(value) => setNewMaterial({...newMaterial, category: value})}
@@ -298,21 +313,83 @@ const RawMaterialsManagement = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label>Vendors (Select at least one)</Label>
-                    <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto border rounded p-2">
-                      {vendors.map((vendor) => (
-                        <div key={vendor.id} className="flex items-center space-x-2">
-                          <Checkbox
-                            id={vendor.id}
-                            checked={selectedVendors.includes(vendor.id)}
-                            onCheckedChange={(checked) => handleVendorChange(vendor.id, checked as boolean)}
+                    <Label>Vendors (Optional)</Label>
+                    <Popover open={vendorSearchOpen} onOpenChange={setVendorSearchOpen}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          aria-expanded={vendorSearchOpen}
+                          className="w-full justify-between"
+                        >
+                          {selectedVendors.length > 0
+                            ? `${selectedVendors.length} vendor(s) selected`
+                            : "Search and select vendors..."}
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-full p-0">
+                        <Command>
+                          <CommandInput 
+                            placeholder="Search vendors by name or GST..." 
+                            value={vendorSearchValue}
+                            onValueChange={setVendorSearchValue}
                           />
-                          <Label htmlFor={vendor.id} className="text-sm">
-                            {vendor.vendor_code} - {vendor.name}
-                          </Label>
-                        </div>
-                      ))}
-                    </div>
+                          <CommandList>
+                            <CommandEmpty>No vendors found.</CommandEmpty>
+                            <CommandGroup>
+                              {vendors
+                                .filter(vendor => 
+                                  vendor.name.toLowerCase().includes(vendorSearchValue.toLowerCase()) ||
+                                  vendor.vendor_code.toLowerCase().includes(vendorSearchValue.toLowerCase()) ||
+                                  (vendor.gst_number && vendor.gst_number.toLowerCase().includes(vendorSearchValue.toLowerCase()))
+                                )
+                                .map((vendor) => (
+                                <CommandItem
+                                  key={vendor.id}
+                                  onSelect={() => {
+                                    const isSelected = selectedVendors.includes(vendor.id);
+                                    handleVendorChange(vendor.id, !isSelected);
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      "mr-2 h-4 w-4",
+                                      selectedVendors.includes(vendor.id) ? "opacity-100" : "opacity-0"
+                                    )}
+                                  />
+                                  <div className="flex flex-col">
+                                    <span>{vendor.vendor_code} - {vendor.name}</span>
+                                    {vendor.gst_number && (
+                                      <span className="text-xs text-muted-foreground">GST: {vendor.gst_number}</span>
+                                    )}
+                                  </div>
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                    
+                    {selectedVendors.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {selectedVendors.map(vendorId => {
+                          const vendor = vendors.find(v => v.id === vendorId);
+                          if (!vendor) return null;
+                          return (
+                            <Badge 
+                              key={vendorId} 
+                              variant={vendorId === primaryVendor ? "default" : "secondary"}
+                              className="text-xs"
+                            >
+                              {vendor.vendor_code}
+                              {vendorId === primaryVendor && " (Primary)"}
+                            </Badge>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
 
                   {selectedVendors.length > 1 && (
@@ -368,7 +445,7 @@ const RawMaterialsManagement = () => {
                   <Button 
                     type="submit" 
                     onClick={handleAddMaterial} 
-                    disabled={isUploading || addRawMaterial.isPending}
+                    disabled={isUploading || addRawMaterial.isPending || !newMaterial.name.trim() || !newMaterial.category.trim()}
                   >
                     {isUploading ? (
                       <>
