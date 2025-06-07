@@ -8,10 +8,8 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { 
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter 
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger
 } from "@/components/ui/dialog";
 import { 
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter, SheetClose, SheetTrigger
@@ -21,106 +19,22 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, 
   AlertDialogTitle, AlertDialogTrigger 
 } from "@/components/ui/alert-dialog";
-import { Search, Plus, Building2, Upload, FileText, Edit, Trash2 } from "lucide-react";
+import { Search, Plus, Building2, Edit, Trash2, FileText } from "lucide-react";
 import { useVendors } from "@/hooks/useVendors";
+import { VendorForm } from "@/components/forms/VendorForm";
 
 const Vendors = () => {
-  const { vendors, isLoading, addVendor, updateVendor, deleteVendor } = useVendors();
+  const { vendors, isLoading, deleteVendor } = useVendors();
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingVendor, setEditingVendor] = useState<any>(null);
-  const [uploading, setUploading] = useState({ gst: false, msme: false });
-  const [newVendor, setNewVendor] = useState({
-    name: "",
-    contact_person_name: "",
-    email: "",
-    contact_number: "",
-    address: "",
-    gst_number: "",
-    bank_account_number: "",
-    ifsc_code: "",
-    gst_certificate: null as File | null,
-    msme_certificate: null as File | null
-  });
 
   const filteredVendors = vendors.filter(vendor => 
     vendor.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
     vendor.vendor_code.toLowerCase().includes(searchQuery.toLowerCase()) ||
     (vendor.email && vendor.email.toLowerCase().includes(searchQuery.toLowerCase()))
   );
-
-  const handleAddVendor = async () => {
-    // Only validate required fields: name and gst_number
-    if (!newVendor.name.trim() || !newVendor.gst_number.trim()) {
-      console.error("Validation failed: Name and GST Number are required");
-      return;
-    }
-
-    console.log("Adding vendor with data:", newVendor);
-
-    try {
-      // Prepare data with proper null handling
-      const vendorData = {
-        name: newVendor.name.trim(),
-        contact_person_name: newVendor.contact_person_name.trim() || undefined,
-        email: newVendor.email.trim() || undefined,
-        contact_number: newVendor.contact_number.trim() || undefined,
-        address: newVendor.address.trim() || undefined,
-        gst_number: newVendor.gst_number.trim(),
-        bank_account_number: newVendor.bank_account_number.trim() || undefined,
-        ifsc_code: newVendor.ifsc_code.trim() || undefined,
-        gst_certificate: newVendor.gst_certificate || undefined,
-        msme_certificate: newVendor.msme_certificate || undefined
-      };
-
-      await addVendor.mutateAsync(vendorData);
-
-      console.log("Vendor added successfully");
-      resetForm();
-      setIsAddDialogOpen(false);
-    } catch (error) {
-      console.error("Error adding vendor:", error);
-    }
-  };
-
-  const handleEditVendor = async () => {
-    if (!editingVendor) return;
-
-    // Only validate required fields: name and gst_number
-    if (!newVendor.name.trim() || !newVendor.gst_number.trim()) {
-      console.error("Validation failed: Name and GST Number are required");
-      return;
-    }
-
-    console.log("Updating vendor with data:", newVendor);
-
-    try {
-      // Prepare data with proper null handling
-      const vendorData = {
-        id: editingVendor.id,
-        name: newVendor.name.trim(),
-        contact_person_name: newVendor.contact_person_name.trim() || undefined,
-        email: newVendor.email.trim() || undefined,
-        contact_number: newVendor.contact_number.trim() || undefined,
-        address: newVendor.address.trim() || undefined,
-        gst_number: newVendor.gst_number.trim(),
-        bank_account_number: newVendor.bank_account_number.trim() || undefined,
-        ifsc_code: newVendor.ifsc_code.trim() || undefined,
-        gst_certificate: newVendor.gst_certificate || undefined,
-        msme_certificate: newVendor.msme_certificate || undefined
-      };
-
-      await updateVendor.mutateAsync(vendorData);
-
-      console.log("Vendor updated successfully");
-      setIsEditDialogOpen(false);
-      setEditingVendor(null);
-      resetForm();
-    } catch (error) {
-      console.error("Error updating vendor:", error);
-    }
-  };
 
   const handleDeleteVendor = async (vendorId: string) => {
     console.log("Deleting vendor with ID:", vendorId);
@@ -134,34 +48,16 @@ const Vendors = () => {
 
   const openEditDialog = (vendor: any) => {
     setEditingVendor(vendor);
-    setNewVendor({
-      name: vendor.name || "",
-      contact_person_name: vendor.contact_person_name || "",
-      email: vendor.email || "",
-      contact_number: vendor.contact_number || "",
-      address: vendor.address || "",
-      gst_number: vendor.gst_number || "",
-      bank_account_number: vendor.bank_account_number || "",
-      ifsc_code: vendor.ifsc_code || "",
-      gst_certificate: null,
-      msme_certificate: null
-    });
     setIsEditDialogOpen(true);
   };
 
-  const resetForm = () => {
-    setNewVendor({
-      name: "",
-      contact_person_name: "",
-      email: "",
-      contact_number: "",
-      address: "",
-      gst_number: "",
-      bank_account_number: "",
-      ifsc_code: "",
-      gst_certificate: null,
-      msme_certificate: null
-    });
+  const handleAddSuccess = () => {
+    setIsAddDialogOpen(false);
+  };
+
+  const handleEditSuccess = () => {
+    setIsEditDialogOpen(false);
+    setEditingVendor(null);
   };
 
   if (isLoading) {
@@ -184,10 +80,7 @@ const Vendors = () => {
             <Building2 className="h-6 w-6" />
             <h1 className="text-3xl font-bold">Vendor Management</h1>
           </div>
-          <Dialog open={isAddDialogOpen} onOpenChange={(open) => {
-            setIsAddDialogOpen(open);
-            if (!open) resetForm();
-          }}>
+          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
               <Button>
                 <Plus className="mr-2 h-4 w-4" />
@@ -198,138 +91,7 @@ const Vendors = () => {
               <DialogHeader>
                 <DialogTitle>Add New Vendor</DialogTitle>
               </DialogHeader>
-              <div className="grid gap-6 py-4">
-                {/* Basic Information */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Vendor Name *</Label>
-                    <Input 
-                      id="name" 
-                      value={newVendor.name} 
-                      onChange={(e) => setNewVendor({...newVendor, name: e.target.value})}
-                      placeholder="Enter vendor name"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="contact_person">Contact Person Name</Label>
-                    <Input 
-                      id="contact_person" 
-                      value={newVendor.contact_person_name} 
-                      onChange={(e) => setNewVendor({...newVendor, contact_person_name: e.target.value})}
-                      placeholder="Enter contact person name"
-                    />
-                  </div>
-                </div>
-
-                {/* Contact Information */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="contact">Contact Number</Label>
-                    <Input 
-                      id="contact" 
-                      value={newVendor.contact_number} 
-                      onChange={(e) => setNewVendor({...newVendor, contact_number: e.target.value})}
-                      placeholder="+91-9876543210"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Contact Email ID</Label>
-                    <Input 
-                      id="email" 
-                      type="email"
-                      value={newVendor.email} 
-                      onChange={(e) => setNewVendor({...newVendor, email: e.target.value})}
-                      placeholder="vendor@example.com"
-                    />
-                  </div>
-                </div>
-
-                {/* GST and Address */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="gst">GST Number *</Label>
-                    <Input 
-                      id="gst" 
-                      value={newVendor.gst_number} 
-                      onChange={(e) => setNewVendor({...newVendor, gst_number: e.target.value})}
-                      placeholder="27ABCDE1234F1Z5"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="address">Address</Label>
-                    <Textarea 
-                      id="address" 
-                      value={newVendor.address} 
-                      onChange={(e) => setNewVendor({...newVendor, address: e.target.value})}
-                      placeholder="Enter complete address"
-                      rows={2}
-                    />
-                  </div>
-                </div>
-
-                {/* Banking Information */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="account">Bank Account Number</Label>
-                    <Input 
-                      id="account" 
-                      value={newVendor.bank_account_number} 
-                      onChange={(e) => setNewVendor({...newVendor, bank_account_number: e.target.value})}
-                      placeholder="1234567890"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="ifsc">IFSC Code</Label>
-                    <Input 
-                      id="ifsc" 
-                      value={newVendor.ifsc_code} 
-                      onChange={(e) => setNewVendor({...newVendor, ifsc_code: e.target.value})}
-                      placeholder="HDFC0001234"
-                    />
-                  </div>
-                </div>
-
-                {/* Document Uploads */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="gst_cert">GST Certificate (PDF)</Label>
-                    <div className="flex items-center space-x-2">
-                      <Input 
-                        id="gst_cert" 
-                        type="file"
-                        accept=".pdf"
-                        onChange={(e) => setNewVendor({...newVendor, gst_certificate: e.target.files?.[0] || null})}
-                        className="flex-1"
-                      />
-                      {uploading.gst && <Upload className="h-4 w-4 animate-spin" />}
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="msme_cert">MSME/UDYAM Certificate (PDF)</Label>
-                    <div className="flex items-center space-x-2">
-                      <Input 
-                        id="msme_cert" 
-                        type="file"
-                        accept=".pdf"
-                        onChange={(e) => setNewVendor({...newVendor, msme_certificate: e.target.files?.[0] || null})}
-                        className="flex-1"
-                      />
-                      {uploading.msme && <Upload className="h-4 w-4 animate-spin" />}
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <DialogFooter>
-                <Button 
-                  type="submit" 
-                  onClick={handleAddVendor}
-                  disabled={!newVendor.name.trim() || !newVendor.gst_number.trim() || addVendor.isPending}
-                >
-                  {addVendor.isPending ? "Adding..." : "Add Vendor"}
-                </Button>
-              </DialogFooter>
+              <VendorForm onSuccess={handleAddSuccess} />
             </DialogContent>
           </Dialog>
         </div>
@@ -339,147 +101,16 @@ const Vendors = () => {
           setIsEditDialogOpen(open);
           if (!open) {
             setEditingVendor(null);
-            resetForm();
           }
         }}>
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Edit Vendor</DialogTitle>
             </DialogHeader>
-            <div className="grid gap-6 py-4">
-              {/* Same form fields as Add Dialog */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="edit_name">Vendor Name *</Label>
-                  <Input 
-                    id="edit_name" 
-                    value={newVendor.name} 
-                    onChange={(e) => setNewVendor({...newVendor, name: e.target.value})}
-                    placeholder="Enter vendor name"
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit_contact_person">Contact Person Name</Label>
-                  <Input 
-                    id="edit_contact_person" 
-                    value={newVendor.contact_person_name} 
-                    onChange={(e) => setNewVendor({...newVendor, contact_person_name: e.target.value})}
-                    placeholder="Enter contact person name"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="edit_contact">Contact Number</Label>
-                  <Input 
-                    id="edit_contact" 
-                    value={newVendor.contact_number} 
-                    onChange={(e) => setNewVendor({...newVendor, contact_number: e.target.value})}
-                    placeholder="+91-9876543210"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit_email">Contact Email ID</Label>
-                  <Input 
-                    id="edit_email" 
-                    type="email"
-                    value={newVendor.email} 
-                    onChange={(e) => setNewVendor({...newVendor, email: e.target.value})}
-                    placeholder="vendor@example.com"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="edit_gst">GST Number *</Label>
-                  <Input 
-                    id="edit_gst" 
-                    value={newVendor.gst_number} 
-                    onChange={(e) => setNewVendor({...newVendor, gst_number: e.target.value})}
-                    placeholder="27ABCDE1234F1Z5"
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit_address">Address</Label>
-                  <Textarea 
-                    id="edit_address" 
-                    value={newVendor.address} 
-                    onChange={(e) => setNewVendor({...newVendor, address: e.target.value})}
-                    placeholder="Enter complete address"
-                    rows={2}
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="edit_account">Bank Account Number</Label>
-                  <Input 
-                    id="edit_account" 
-                    value={newVendor.bank_account_number} 
-                    onChange={(e) => setNewVendor({...newVendor, bank_account_number: e.target.value})}
-                    placeholder="1234567890"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit_ifsc">IFSC Code</Label>
-                  <Input 
-                    id="edit_ifsc" 
-                    value={newVendor.ifsc_code} 
-                    onChange={(e) => setNewVendor({...newVendor, ifsc_code: e.target.value})}
-                    placeholder="HDFC0001234"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="edit_gst_cert">GST Certificate (PDF) - Upload new to replace</Label>
-                  <div className="flex items-center space-x-2">
-                    <Input 
-                      id="edit_gst_cert" 
-                      type="file"
-                      accept=".pdf"
-                      onChange={(e) => setNewVendor({...newVendor, gst_certificate: e.target.files?.[0] || null})}
-                      className="flex-1"
-                    />
-                    {uploading.gst && <Upload className="h-4 w-4 animate-spin" />}
-                  </div>
-                  {editingVendor?.gst_certificate_url && (
-                    <p className="text-sm text-gray-500">Current: GST Certificate uploaded</p>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit_msme_cert">MSME/UDYAM Certificate (PDF) - Upload new to replace</Label>
-                  <div className="flex items-center space-x-2">
-                    <Input 
-                      id="edit_msme_cert" 
-                      type="file"
-                      accept=".pdf"
-                      onChange={(e) => setNewVendor({...newVendor, msme_certificate: e.target.files?.[0] || null})}
-                      className="flex-1"
-                    />
-                    {uploading.msme && <Upload className="h-4 w-4 animate-spin" />}
-                  </div>
-                  {editingVendor?.msme_certificate_url && (
-                    <p className="text-sm text-gray-500">Current: MSME Certificate uploaded</p>
-                  )}
-                </div>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button 
-                type="submit" 
-                onClick={handleEditVendor}
-                disabled={!newVendor.name.trim() || !newVendor.gst_number.trim() || updateVendor.isPending}
-              >
-                {updateVendor.isPending ? "Updating..." : "Update Vendor"}
-              </Button>
-            </DialogFooter>
+            <VendorForm 
+              editingVendor={editingVendor}
+              onSuccess={handleEditSuccess}
+            />
           </DialogContent>
         </Dialog>
 
@@ -499,7 +130,7 @@ const Vendors = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle>Vendors List</CardTitle>
+            <CardTitle>Vendors List ({filteredVendors.length})</CardTitle>
           </CardHeader>
           <CardContent>
             <Table>

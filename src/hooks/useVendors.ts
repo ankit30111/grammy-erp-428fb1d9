@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -58,7 +57,7 @@ export const useVendors = () => {
         
         if (uploadError) {
           console.error("Debug: GST certificate upload error:", uploadError);
-          throw uploadError;
+          throw new Error(`Failed to upload GST certificate: ${uploadError.message}`);
         }
         gstCertificateUrl = fileName;
       }
@@ -73,32 +72,13 @@ export const useVendors = () => {
         
         if (uploadError) {
           console.error("Debug: MSME certificate upload error:", uploadError);
-          throw uploadError;
+          throw new Error(`Failed to upload MSME certificate: ${uploadError.message}`);
         }
         msmeCertificateUrl = fileName;
       }
 
-      // Generate vendor code using VDR format
-      console.log("Debug: Generating vendor code");
-      const { data: lastVendor } = await supabase
-        .from("vendors")
-        .select("vendor_code")
-        .like("vendor_code", "VDR%")
-        .order("vendor_code", { ascending: false })
-        .limit(1);
-
-      let vendorCode = "VDR001";
-      if (lastVendor && lastVendor.length > 0) {
-        const lastCode = lastVendor[0].vendor_code;
-        const numericPart = parseInt(lastCode.replace("VDR", "")) + 1;
-        vendorCode = `VDR${numericPart.toString().padStart(3, "0")}`;
-      }
-
-      console.log("Debug: Generated vendor code:", vendorCode);
-
-      // Prepare vendor data for insertion
+      // Prepare vendor data for insertion - let trigger handle vendor_code
       const insertData = {
-        vendor_code: vendorCode,
         name: vendorData.name,
         contact_person_name: vendorData.contact_person_name || null,
         email: vendorData.email || null,
@@ -109,6 +89,7 @@ export const useVendors = () => {
         ifsc_code: vendorData.ifsc_code || null,
         gst_certificate_url: gstCertificateUrl,
         msme_certificate_url: msmeCertificateUrl,
+        // Don't set vendor_code - let the trigger handle it
       };
 
       console.log("Debug: Inserting vendor with data:", insertData);
@@ -122,7 +103,7 @@ export const useVendors = () => {
 
       if (error) {
         console.error("Debug: Vendor insertion error:", error);
-        throw error;
+        throw new Error(`Failed to create vendor: ${error.message}`);
       }
 
       console.log("Debug: Vendor created successfully:", data);
@@ -134,7 +115,7 @@ export const useVendors = () => {
     },
     onError: (error: any) => {
       console.error("Error adding vendor:", error);
-      toast.error(`Failed to add vendor: ${error.message || error}`);
+      toast.error(error.message || "Failed to add vendor");
     },
   });
 
