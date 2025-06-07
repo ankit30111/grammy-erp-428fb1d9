@@ -1,43 +1,46 @@
 
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { Suspense, lazy } from "react";
 import { AuthGuard } from "@/components/Auth/AuthGuard";
-import Index from "@/pages/Index";
-import Auth from "@/pages/Auth";
-import PPC from "@/pages/PPC";
-import Planning from "@/pages/Planning";
-import PlanningDashboard from "@/pages/PlanningDashboard";
-import Projection from "@/pages/Projection";
-import Purchase from "@/pages/Purchase";
-import GRN from "@/pages/GRN";
-import Production from "@/pages/Production";
-import Inventory from "@/pages/Inventory";
-import Quality from "@/pages/Quality";
-import IQC from "@/pages/quality/IQC";
-import PQC from "@/pages/quality/PQC";
-import OQC from "@/pages/quality/OQC";
-import Sales from "@/pages/Sales";
-import RegularDispatch from "@/pages/sales/RegularDispatch";
-import SpareDispatch from "@/pages/sales/SpareDispatch";
-import FinishedGoods from "@/pages/FinishedGoods";
-import Dispatch from "@/pages/Dispatch";
-import SpareOrders from "@/pages/SpareOrders";
-import Vendors from "@/pages/Vendors";
-import Management from "@/pages/Management";
-import ProductsManagement from "@/pages/management/ProductsManagement";
-import CustomersManagement from "@/pages/management/CustomersManagement";
-import RawMaterialsManagement from "@/pages/management/RawMaterialsManagement";
-import HRManagement from "@/pages/management/HRManagement";
-import Resources from "@/pages/Resources";
-import UserManagement from "@/pages/UserManagement";
-import StoreDashboard from "@/pages/store/StoreDashboard";
-import NotFound from "@/pages/NotFound";
-import CustomerComplaints from "@/pages/CustomerComplaints";
+
+const Index = lazy(() => import("@/pages/Index"));
+const Auth = lazy(() => import("@/pages/Auth"));
+const PPC = lazy(() => import("@/pages/PPC"));
+const Planning = lazy(() => import("@/pages/Planning"));
+const PlanningDashboard = lazy(() => import("@/pages/PlanningDashboard"));
+const Projection = lazy(() => import("@/pages/Projection"));
+const Purchase = lazy(() => import("@/pages/Purchase"));
+const GRN = lazy(() => import("@/pages/GRN"));
+const Production = lazy(() => import("@/pages/Production"));
+const Inventory = lazy(() => import("@/pages/Inventory"));
+const Quality = lazy(() => import("@/pages/Quality"));
+const IQC = lazy(() => import("@/pages/quality/IQC"));
+const PQC = lazy(() => import("@/pages/quality/PQC"));
+const OQC = lazy(() => import("@/pages/quality/OQC"));
+const Sales = lazy(() => import("@/pages/Sales"));
+const RegularDispatch = lazy(() => import("@/pages/sales/RegularDispatch"));
+const SpareDispatch = lazy(() => import("@/pages/sales/SpareDispatch"));
+const FinishedGoods = lazy(() => import("@/pages/FinishedGoods"));
+const Dispatch = lazy(() => import("@/pages/Dispatch"));
+const SpareOrders = lazy(() => import("@/pages/SpareOrders"));
+const Vendors = lazy(() => import("@/pages/Vendors"));
+const Management = lazy(() => import("@/pages/Management"));
+const ProductsManagement = lazy(() => import("@/pages/management/ProductsManagement"));
+const CustomersManagement = lazy(() => import("@/pages/management/CustomersManagement"));
+const RawMaterialsManagement = lazy(() => import("@/pages/management/RawMaterialsManagement"));
+const HRManagement = lazy(() => import("@/pages/management/HRManagement"));
+const Resources = lazy(() => import("@/pages/Resources"));
+const UserManagement = lazy(() => import("@/pages/UserManagement"));
+const StoreDashboard = lazy(() => import("@/pages/store/StoreDashboard"));
+const NotFound = lazy(() => import("@/pages/NotFound"));
+const CustomerComplaints = lazy(() => import("@/pages/CustomerComplaints"));
 
 function App() {
   return (
     <Router>
-      <div className="min-h-screen bg-background">
-        <Routes>
+      <Suspense fallback={<div className="p-4">Loading...</div>}>
+        <div className="min-h-screen bg-background">
+          <Routes>
           {/* Public routes */}
           <Route path="/auth" element={<Auth />} />
           
@@ -73,7 +76,8 @@ function App() {
           <Route path="/store/*" element={<AuthGuard><StoreDashboard /></AuthGuard>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
-      </div>
+        </div>
+      </Suspense>
     </Router>
   );
 }

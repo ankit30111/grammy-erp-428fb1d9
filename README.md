@@ -60,6 +60,12 @@ This project is built with:
 - shadcn-ui
 - Tailwind CSS
 
+## Performance improvements
+
+The application now lazy loads its pages and caches API queries for longer periods.
+This reduces the initial bundle size and prevents unnecessary refetching on every
+window focus, improving load times when navigating between pages.
+
 ## How can I deploy this project?
 
 Simply open [Lovable](https://lovable.dev/projects/b2a326fa-aa45-4030-a67a-be1a110dc3c1) and click on Share -> Publish.
