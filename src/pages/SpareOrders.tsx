@@ -341,7 +341,9 @@ const SpareOrders = () => {
                             const material = rawMaterials.find(m => m.id === item.raw_material_id);
                             return (
                               <TableRow key={index}>
-                                <TableCell>{material?.name} ({material?.material_code})</TableCell>
+                                <TableCell>
+                                  {material ? `${material.name} (${material.material_code})` : 'Material not found'}
+                                </TableCell>
                                 <TableCell>{item.quantity}</TableCell>
                                 <TableCell>
                                   <Button
@@ -391,12 +393,12 @@ const SpareOrders = () => {
                 {spareOrders.map((order) => (
                   <TableRow key={order.id}>
                     <TableCell className="font-mono">{order.spare_order_number}</TableCell>
-                    <TableCell>{order.customers.name}</TableCell>
+                    <TableCell>{order.customers?.name || 'Unknown Customer'}</TableCell>
                     <TableCell>{new Date(order.order_date).toLocaleDateString()}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
                         <Package className="h-4 w-4" />
-                        {order.spare_order_items.length} items
+                        {order.spare_order_items?.length || 0} items
                       </div>
                     </TableCell>
                     <TableCell>
