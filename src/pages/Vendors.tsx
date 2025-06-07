@@ -142,6 +142,16 @@ const Vendors = () => {
   };
 
   const handleAddVendor = async () => {
+    // Only validate required fields: name and gst_number
+    if (!newVendor.name.trim() || !newVendor.gst_number.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Vendor Name and GST Number are required",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       let gstCertificateUrl = null;
       let msmeCertificateUrl = null;
@@ -157,13 +167,13 @@ const Vendors = () => {
       const vendorData = {
         vendor_code: generateVendorCode(),
         name: newVendor.name,
-        contact_person_name: newVendor.contact_person_name,
-        email: newVendor.email,
-        contact_number: newVendor.contact_number,
-        address: newVendor.address,
+        contact_person_name: newVendor.contact_person_name || null,
+        email: newVendor.email || '',
+        contact_number: newVendor.contact_number || '',
+        address: newVendor.address || '',
         gst_number: newVendor.gst_number,
-        bank_account_number: newVendor.bank_account_number,
-        ifsc_code: newVendor.ifsc_code,
+        bank_account_number: newVendor.bank_account_number || '',
+        ifsc_code: newVendor.ifsc_code || '',
         gst_certificate_url: gstCertificateUrl,
         msme_certificate_url: msmeCertificateUrl,
         is_active: true
@@ -209,6 +219,16 @@ const Vendors = () => {
   const handleEditVendor = async () => {
     if (!editingVendor) return;
 
+    // Only validate required fields: name and gst_number
+    if (!newVendor.name.trim() || !newVendor.gst_number.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Vendor Name and GST Number are required",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       let gstCertificateUrl = editingVendor.gst_certificate_url;
       let msmeCertificateUrl = editingVendor.msme_certificate_url;
@@ -223,13 +243,13 @@ const Vendors = () => {
 
       const vendorData = {
         name: newVendor.name,
-        contact_person_name: newVendor.contact_person_name,
-        email: newVendor.email,
-        contact_number: newVendor.contact_number,
-        address: newVendor.address,
+        contact_person_name: newVendor.contact_person_name || null,
+        email: newVendor.email || '',
+        contact_number: newVendor.contact_number || '',
+        address: newVendor.address || '',
         gst_number: newVendor.gst_number,
-        bank_account_number: newVendor.bank_account_number,
-        ifsc_code: newVendor.ifsc_code,
+        bank_account_number: newVendor.bank_account_number || '',
+        ifsc_code: newVendor.ifsc_code || '',
         gst_certificate_url: gstCertificateUrl,
         msme_certificate_url: msmeCertificateUrl,
       };
@@ -379,24 +399,22 @@ const Vendors = () => {
                 {/* Contact Information */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="contact">Contact Number *</Label>
+                    <Label htmlFor="contact">Contact Number</Label>
                     <Input 
                       id="contact" 
                       value={newVendor.contact_number} 
                       onChange={(e) => setNewVendor({...newVendor, contact_number: e.target.value})}
                       placeholder="+91-9876543210"
-                      required
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="email">Contact Email ID *</Label>
+                    <Label htmlFor="email">Contact Email ID</Label>
                     <Input 
                       id="email" 
                       type="email"
                       value={newVendor.email} 
                       onChange={(e) => setNewVendor({...newVendor, email: e.target.value})}
                       placeholder="vendor@example.com"
-                      required
                     />
                   </div>
                 </div>
@@ -404,23 +422,23 @@ const Vendors = () => {
                 {/* GST and Address */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="gst">GST Number</Label>
+                    <Label htmlFor="gst">GST Number *</Label>
                     <Input 
                       id="gst" 
                       value={newVendor.gst_number} 
                       onChange={(e) => setNewVendor({...newVendor, gst_number: e.target.value})}
                       placeholder="27ABCDE1234F1Z5"
+                      required
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="address">Address *</Label>
+                    <Label htmlFor="address">Address</Label>
                     <Textarea 
                       id="address" 
                       value={newVendor.address} 
                       onChange={(e) => setNewVendor({...newVendor, address: e.target.value})}
                       placeholder="Enter complete address"
                       rows={2}
-                      required
                     />
                   </div>
                 </div>
@@ -428,23 +446,21 @@ const Vendors = () => {
                 {/* Banking Information */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="account">Bank Account Number *</Label>
+                    <Label htmlFor="account">Bank Account Number</Label>
                     <Input 
                       id="account" 
                       value={newVendor.bank_account_number} 
                       onChange={(e) => setNewVendor({...newVendor, bank_account_number: e.target.value})}
                       placeholder="1234567890"
-                      required
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="ifsc">IFSC Code *</Label>
+                    <Label htmlFor="ifsc">IFSC Code</Label>
                     <Input 
                       id="ifsc" 
                       value={newVendor.ifsc_code} 
                       onChange={(e) => setNewVendor({...newVendor, ifsc_code: e.target.value})}
                       placeholder="HDFC0001234"
-                      required
                     />
                   </div>
                 </div>
@@ -483,7 +499,7 @@ const Vendors = () => {
                 <Button 
                   type="submit" 
                   onClick={handleAddVendor}
-                  disabled={!newVendor.name || !newVendor.email || !newVendor.contact_number || !newVendor.address || !newVendor.bank_account_number || !newVendor.ifsc_code}
+                  disabled={!newVendor.name.trim() || !newVendor.gst_number.trim()}
                 >
                   Add Vendor
                 </Button>
@@ -530,70 +546,66 @@ const Vendors = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="edit_contact">Contact Number *</Label>
+                  <Label htmlFor="edit_contact">Contact Number</Label>
                   <Input 
                     id="edit_contact" 
                     value={newVendor.contact_number} 
                     onChange={(e) => setNewVendor({...newVendor, contact_number: e.target.value})}
                     placeholder="+91-9876543210"
-                    required
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="edit_email">Contact Email ID *</Label>
+                  <Label htmlFor="edit_email">Contact Email ID</Label>
                   <Input 
                     id="edit_email" 
                     type="email"
                     value={newVendor.email} 
                     onChange={(e) => setNewVendor({...newVendor, email: e.target.value})}
                     placeholder="vendor@example.com"
-                    required
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="edit_gst">GST Number</Label>
+                  <Label htmlFor="edit_gst">GST Number *</Label>
                   <Input 
                     id="edit_gst" 
                     value={newVendor.gst_number} 
                     onChange={(e) => setNewVendor({...newVendor, gst_number: e.target.value})}
                     placeholder="27ABCDE1234F1Z5"
+                    required
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="edit_address">Address *</Label>
+                  <Label htmlFor="edit_address">Address</Label>
                   <Textarea 
                     id="edit_address" 
                     value={newVendor.address} 
                     onChange={(e) => setNewVendor({...newVendor, address: e.target.value})}
                     placeholder="Enter complete address"
                     rows={2}
-                    required
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="edit_account">Bank Account Number *</Label>
+                  <Label htmlFor="edit_account">Bank Account Number</Label>
                   <Input 
                     id="edit_account" 
                     value={newVendor.bank_account_number} 
                     onChange={(e) => setNewVendor({...newVendor, bank_account_number: e.target.value})}
                     placeholder="1234567890"
-                    required
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="edit_ifsc">IFSC Code *</Label>
+                  <Label htmlFor="edit_ifsc">IFSC Code</Label>
                   <Input 
                     id="edit_ifsc" 
                     value={newVendor.ifsc_code} 
                     onChange={(e) => setNewVendor({...newVendor, ifsc_code: e.target.value})}
                     placeholder="HDFC0001234"
-                    required
                   />
                 </div>
               </div>
@@ -637,7 +649,7 @@ const Vendors = () => {
               <Button 
                 type="submit" 
                 onClick={handleEditVendor}
-                disabled={!newVendor.name || !newVendor.email || !newVendor.contact_number || !newVendor.address || !newVendor.bank_account_number || !newVendor.ifsc_code}
+                disabled={!newVendor.name.trim() || !newVendor.gst_number.trim()}
               >
                 Update Vendor
               </Button>
