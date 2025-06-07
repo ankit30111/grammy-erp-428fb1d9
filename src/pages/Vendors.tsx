@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 import { 
   Card, CardContent, CardHeader, CardTitle 
@@ -23,35 +23,15 @@ import {
   AlertDialogTitle, AlertDialogTrigger 
 } from "@/components/ui/alert-dialog";
 import { Search, Plus, Building2, Upload, FileText, Edit, Trash2 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
-
-interface Vendor {
-  id: string;
-  vendor_code: string;
-  name: string;
-  contact_person_name?: string;
-  email: string;
-  contact_number: string;
-  address: string;
-  gst_number?: string;
-  bank_account_number: string;
-  ifsc_code: string;
-  gst_certificate_url?: string;
-  msme_certificate_url?: string;
-  is_active: boolean;
-  created_at: string;
-}
+import { useVendors } from "@/hooks/useVendors";
 
 const Vendors = () => {
-  const [vendors, setVendors] = useState<Vendor[]>([]);
+  const { vendors, isLoading, addVendor, updateVendor, deleteVendor } = useVendors();
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [editingVendor, setEditingVendor] = useState<any>(null);
   const [uploading, setUploading] = useState({ gst: false, msme: false });
-  const { toast } = useToast();
   const [newVendor, setNewVendor] = useState({
     name: "",
     contact_person_name: "",
@@ -65,129 +45,36 @@ const Vendors = () => {
     msme_certificate: null as File | null
   });
 
-  useEffect(() => {
-    fetchVendors();
-  }, []);
-
-  const fetchVendors = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('vendors')
-        .select('*')
-        .eq('is_active', true)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setVendors(data || []);
-    } catch (error) {
-      console.error('Error fetching vendors:', error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch vendors",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const filteredVendors = vendors.filter(vendor => 
     vendor.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
     vendor.vendor_code.toLowerCase().includes(searchQuery.toLowerCase()) ||
     vendor.email.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const generateVendorCode = () => {
-    const nextNumber = vendors.length + 1;
-    return `VND${String(nextNumber).padStart(3, '0')}`;
-  };
-
-  const uploadFile = async (file: File, bucket: string, path: string) => {
-    const { data, error } = await supabase.storage
-      .from(bucket)
-      .upload(path, file);
-
-    if (error) throw error;
-    return data;
-  };
-
-  const handleFileUpload = async (file: File, type: 'gst' | 'msme') => {
-    if (!file) return null;
-
-    setUploading(prev => ({ ...prev, [type]: true }));
-    
-    try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Date.now()}.${fileExt}`;
-      const filePath = `${type}-certificates/${fileName}`;
-
-      await uploadFile(file, 'vendor-documents', filePath);
-      
-      const { data } = supabase.storage
-        .from('vendor-documents')
-        .getPublicUrl(filePath);
-
-      return data.publicUrl;
-    } catch (error) {
-      console.error(`Error uploading ${type} certificate:`, error);
-      toast({
-        title: "Upload Error",
-        description: `Failed to upload ${type.toUpperCase()} certificate`,
-        variant: "destructive",
-      });
-      return null;
-    } finally {
-      setUploading(prev => ({ ...prev, [type]: false }));
-    }
-  };
-
   const handleAddVendor = async () => {
     // Only validate required fields: name and gst_number
     if (!newVendor.name.trim() || !newVendor.gst_number.trim()) {
-      toast({
-        title: "Validation Error",
-        description: "Vendor Name and GST Number are required",
-        variant: "destructive",
-      });
+      console.error("Validation failed: Name and GST Number are required");
       return;
     }
 
+    console.log("Adding vendor with data:", newVendor);
+
     try {
-      let gstCertificateUrl = null;
-      let msmeCertificateUrl = null;
-
-      if (newVendor.gst_certificate) {
-        gstCertificateUrl = await handleFileUpload(newVendor.gst_certificate, 'gst');
-      }
-
-      if (newVendor.msme_certificate) {
-        msmeCertificateUrl = await handleFileUpload(newVendor.msme_certificate, 'msme');
-      }
-
-      const vendorData = {
-        vendor_code: generateVendorCode(),
+      await addVendor.mutateAsync({
         name: newVendor.name,
-        contact_person_name: newVendor.contact_person_name || null,
-        email: newVendor.email || '',
-        contact_number: newVendor.contact_number || '',
-        address: newVendor.address || '',
+        contact_person_name: newVendor.contact_person_name || undefined,
+        email: newVendor.email,
+        contact_number: newVendor.contact_number,
+        address: newVendor.address,
         gst_number: newVendor.gst_number,
-        bank_account_number: newVendor.bank_account_number || '',
-        ifsc_code: newVendor.ifsc_code || '',
-        gst_certificate_url: gstCertificateUrl,
-        msme_certificate_url: msmeCertificateUrl,
-        is_active: true
-      };
+        bank_account_number: newVendor.bank_account_number,
+        ifsc_code: newVendor.ifsc_code,
+        gst_certificate: newVendor.gst_certificate || undefined,
+        msme_certificate: newVendor.msme_certificate || undefined
+      });
 
-      const { data, error } = await supabase
-        .from('vendors')
-        .insert([vendorData])
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      setVendors([data, ...vendors]);
+      console.log("Vendor added successfully");
       setNewVendor({
         name: "",
         contact_person_name: "",
@@ -201,18 +88,8 @@ const Vendors = () => {
         msme_certificate: null
       });
       setIsAddDialogOpen(false);
-
-      toast({
-        title: "Success",
-        description: "Vendor added successfully",
-      });
     } catch (error) {
-      console.error('Error adding vendor:', error);
-      toast({
-        title: "Error",
-        description: "Failed to add vendor",
-        variant: "destructive",
-      });
+      console.error("Error adding vendor:", error);
     }
   };
 
@@ -221,92 +98,46 @@ const Vendors = () => {
 
     // Only validate required fields: name and gst_number
     if (!newVendor.name.trim() || !newVendor.gst_number.trim()) {
-      toast({
-        title: "Validation Error",
-        description: "Vendor Name and GST Number are required",
-        variant: "destructive",
-      });
+      console.error("Validation failed: Name and GST Number are required");
       return;
     }
 
+    console.log("Updating vendor with data:", newVendor);
+
     try {
-      let gstCertificateUrl = editingVendor.gst_certificate_url;
-      let msmeCertificateUrl = editingVendor.msme_certificate_url;
-
-      if (newVendor.gst_certificate) {
-        gstCertificateUrl = await handleFileUpload(newVendor.gst_certificate, 'gst');
-      }
-
-      if (newVendor.msme_certificate) {
-        msmeCertificateUrl = await handleFileUpload(newVendor.msme_certificate, 'msme');
-      }
-
-      const vendorData = {
+      await updateVendor.mutateAsync({
+        id: editingVendor.id,
         name: newVendor.name,
-        contact_person_name: newVendor.contact_person_name || null,
-        email: newVendor.email || '',
-        contact_number: newVendor.contact_number || '',
-        address: newVendor.address || '',
+        contact_person_name: newVendor.contact_person_name || undefined,
+        email: newVendor.email,
+        contact_number: newVendor.contact_number,
+        address: newVendor.address,
         gst_number: newVendor.gst_number,
-        bank_account_number: newVendor.bank_account_number || '',
-        ifsc_code: newVendor.ifsc_code || '',
-        gst_certificate_url: gstCertificateUrl,
-        msme_certificate_url: msmeCertificateUrl,
-      };
+        bank_account_number: newVendor.bank_account_number,
+        ifsc_code: newVendor.ifsc_code,
+        gst_certificate: newVendor.gst_certificate || undefined,
+        msme_certificate: newVendor.msme_certificate || undefined
+      });
 
-      const { data, error } = await supabase
-        .from('vendors')
-        .update(vendorData)
-        .eq('id', editingVendor.id)
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      setVendors(vendors.map(v => v.id === editingVendor.id ? data : v));
+      console.log("Vendor updated successfully");
       setIsEditDialogOpen(false);
       setEditingVendor(null);
-
-      toast({
-        title: "Success",
-        description: "Vendor updated successfully",
-      });
     } catch (error) {
-      console.error('Error updating vendor:', error);
-      toast({
-        title: "Error",
-        description: "Failed to update vendor",
-        variant: "destructive",
-      });
+      console.error("Error updating vendor:", error);
     }
   };
 
   const handleDeleteVendor = async (vendorId: string) => {
+    console.log("Deleting vendor with ID:", vendorId);
     try {
-      const { error } = await supabase
-        .from('vendors')
-        .update({ is_active: false })
-        .eq('id', vendorId);
-
-      if (error) throw error;
-
-      setVendors(vendors.filter(v => v.id !== vendorId));
-
-      toast({
-        title: "Success",
-        description: "Vendor deleted successfully",
-      });
+      await deleteVendor.mutateAsync(vendorId);
+      console.log("Vendor deleted successfully");
     } catch (error) {
-      console.error('Error deleting vendor:', error);
-      toast({
-        title: "Error",
-        description: "Failed to delete vendor",
-        variant: "destructive",
-      });
+      console.error("Error deleting vendor:", error);
     }
   };
 
-  const openEditDialog = (vendor: Vendor) => {
+  const openEditDialog = (vendor: any) => {
     setEditingVendor(vendor);
     setNewVendor({
       name: vendor.name,
@@ -338,7 +169,7 @@ const Vendors = () => {
     });
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <DashboardLayout>
         <div className="container mx-auto p-6">
@@ -499,9 +330,9 @@ const Vendors = () => {
                 <Button 
                   type="submit" 
                   onClick={handleAddVendor}
-                  disabled={!newVendor.name.trim() || !newVendor.gst_number.trim()}
+                  disabled={!newVendor.name.trim() || !newVendor.gst_number.trim() || addVendor.isPending}
                 >
-                  Add Vendor
+                  {addVendor.isPending ? "Adding..." : "Add Vendor"}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -649,9 +480,9 @@ const Vendors = () => {
               <Button 
                 type="submit" 
                 onClick={handleEditVendor}
-                disabled={!newVendor.name.trim() || !newVendor.gst_number.trim()}
+                disabled={!newVendor.name.trim() || !newVendor.gst_number.trim() || updateVendor.isPending}
               >
-                Update Vendor
+                {updateVendor.isPending ? "Updating..." : "Update Vendor"}
               </Button>
             </DialogFooter>
           </DialogContent>

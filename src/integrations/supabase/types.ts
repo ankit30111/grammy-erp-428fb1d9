@@ -2247,17 +2247,17 @@ export type Database = {
       }
       vendors: {
         Row: {
-          address: string
-          bank_account_number: string
-          contact_number: string
+          address: string | null
+          bank_account_number: string | null
+          contact_number: string | null
           contact_person_name: string | null
           created_at: string
           created_by: string | null
-          email: string
+          email: string | null
           gst_certificate_url: string | null
           gst_number: string
           id: string
-          ifsc_code: string
+          ifsc_code: string | null
           is_active: boolean
           msme_certificate_url: string | null
           name: string
@@ -2265,17 +2265,17 @@ export type Database = {
           vendor_code: string
         }
         Insert: {
-          address: string
-          bank_account_number: string
-          contact_number: string
+          address?: string | null
+          bank_account_number?: string | null
+          contact_number?: string | null
           contact_person_name?: string | null
           created_at?: string
           created_by?: string | null
-          email: string
+          email?: string | null
           gst_certificate_url?: string | null
           gst_number: string
           id?: string
-          ifsc_code: string
+          ifsc_code?: string | null
           is_active?: boolean
           msme_certificate_url?: string | null
           name: string
@@ -2283,17 +2283,17 @@ export type Database = {
           vendor_code: string
         }
         Update: {
-          address?: string
-          bank_account_number?: string
-          contact_number?: string
+          address?: string | null
+          bank_account_number?: string | null
+          contact_number?: string | null
           contact_person_name?: string | null
           created_at?: string
           created_by?: string | null
-          email?: string
+          email?: string | null
           gst_certificate_url?: string | null
           gst_number?: string
           id?: string
-          ifsc_code?: string
+          ifsc_code?: string | null
           is_active?: boolean
           msme_certificate_url?: string | null
           name?: string
@@ -2403,6 +2403,10 @@ export type Database = {
         Returns: string
       }
       generate_spare_order_number: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      generate_vendor_code: {
         Args: Record<PropertyKey, never>
         Returns: string
       }
