@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,9 +9,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Edit, Trash2, MapPin, Upload, FileText } from "lucide-react";
+import { Plus, Edit, Trash2, MapPin, Upload } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useCustomerForm } from "@/hooks/useCustomerForm";
 
 interface Customer {
   id: string;
@@ -52,20 +52,17 @@ const CustomersManagement = () => {
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const { toast } = useToast();
 
-  const [customerForm, setCustomerForm] = useState({
-    name: "",
-    brand_name: "",
-    contact_person_name: "",
-    email: "",
-    contact_number: "",
-    address: "",
-    gst_number: "",
-    bank_account_number: "",
-    ifsc_code: "",
-    gst_certificate: null as File | null,
-    msme_certificate: null as File | null,
-    brand_authorization: null as File | null
-  });
+  // Use the new customer form hook
+  const {
+    formData,
+    validationErrors,
+    isSubmitting,
+    handleSubmit,
+    handleUpdate,
+    updateFormField,
+    setFormData,
+    resetForm
+  } = useCustomerForm();
 
   const [warehouseForm, setWarehouseForm] = useState({
     warehouse_name: "",
@@ -118,170 +115,22 @@ const CustomersManagement = () => {
     }
   };
 
-  const generateCustomerCode = async () => {
-    const { data, error } = await supabase
-      .from('customers')
-      .select('customer_code')
-      .order('customer_code', { ascending: false })
-      .limit(1);
-
-    if (error) {
-      console.error('Error generating customer code:', error);
-      return 'CUST001';
-    }
-
-    if (!data || data.length === 0) {
-      return 'CUST001';
-    }
-
-    const lastCode = data[0].customer_code;
-    const numericPart = parseInt(lastCode.replace('CUST', '')) + 1;
-    return `CUST${numericPart.toString().padStart(3, '0')}`;
-  };
-
-  const uploadFile = async (file: File, bucket: string, path: string) => {
-    const { data, error } = await supabase.storage
-      .from(bucket)
-      .upload(path, file);
-
-    if (error) {
-      throw error;
-    }
-
-    const { data: { publicUrl } } = supabase.storage
-      .from(bucket)
-      .getPublicUrl(path);
-
-    return publicUrl;
-  };
-
   const handleCreateCustomer = async () => {
-    if (!customerForm.name || !customerForm.email || !customerForm.contact_number) {
-      toast({
-        title: "Error",
-        description: "Please fill in all required fields",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    try {
-      const customerCode = await generateCustomerCode();
-      const customerData: any = {
-        customer_code: customerCode,
-        name: customerForm.name,
-        brand_name: customerForm.brand_name,
-        contact_person_name: customerForm.contact_person_name,
-        email: customerForm.email,
-        contact_number: customerForm.contact_number,
-        address: customerForm.address,
-        gst_number: customerForm.gst_number,
-        bank_account_number: customerForm.bank_account_number,
-        ifsc_code: customerForm.ifsc_code
-      };
-
-      // Upload files if provided
-      if (customerForm.gst_certificate) {
-        const gstPath = `${customerCode}/gst_certificate.pdf`;
-        customerData.gst_certificate_url = await uploadFile(customerForm.gst_certificate, 'customer-documents', gstPath);
-      }
-
-      if (customerForm.msme_certificate) {
-        const msmePath = `${customerCode}/msme_certificate.pdf`;
-        customerData.msme_certificate_url = await uploadFile(customerForm.msme_certificate, 'customer-documents', msmePath);
-      }
-
-      if (customerForm.brand_authorization) {
-        const brandPath = `${customerCode}/brand_authorization.pdf`;
-        customerData.brand_authorization_url = await uploadFile(customerForm.brand_authorization, 'customer-documents', brandPath);
-      }
-
-      const { error } = await supabase
-        .from('customers')
-        .insert([customerData]);
-
-      if (error) throw error;
-
-      toast({
-        title: "Success",
-        description: "Customer created successfully"
-      });
-      
+    const result = await handleSubmit();
+    if (result.success) {
       setIsAddingCustomer(false);
-      resetCustomerForm();
       fetchCustomers();
-    } catch (error) {
-      console.error('Error creating customer:', error);
-      toast({
-        title: "Error",
-        description: "Failed to create customer",
-        variant: "destructive"
-      });
     }
   };
 
   const handleUpdateCustomer = async () => {
-    if (!editingCustomer || !customerForm.name || !customerForm.email || !customerForm.contact_number) {
-      toast({
-        title: "Error",
-        description: "Please fill in all required fields",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    try {
-      const customerData: any = {
-        name: customerForm.name,
-        brand_name: customerForm.brand_name,
-        contact_person_name: customerForm.contact_person_name,
-        email: customerForm.email,
-        contact_number: customerForm.contact_number,
-        address: customerForm.address,
-        gst_number: customerForm.gst_number,
-        bank_account_number: customerForm.bank_account_number,
-        ifsc_code: customerForm.ifsc_code
-      };
-
-      // Upload new files if provided
-      if (customerForm.gst_certificate) {
-        const gstPath = `${editingCustomer.customer_code}/gst_certificate.pdf`;
-        customerData.gst_certificate_url = await uploadFile(customerForm.gst_certificate, 'customer-documents', gstPath);
-      }
-
-      if (customerForm.msme_certificate) {
-        const msmePath = `${editingCustomer.customer_code}/msme_certificate.pdf`;
-        customerData.msme_certificate_url = await uploadFile(customerForm.msme_certificate, 'customer-documents', msmePath);
-      }
-
-      if (customerForm.brand_authorization) {
-        const brandPath = `${editingCustomer.customer_code}/brand_authorization.pdf`;
-        customerData.brand_authorization_url = await uploadFile(customerForm.brand_authorization, 'customer-documents', brandPath);
-      }
-
-      const { error } = await supabase
-        .from('customers')
-        .update(customerData)
-        .eq('id', editingCustomer.id);
-
-      if (error) throw error;
-
-      toast({
-        title: "Success",
-        description: "Customer updated successfully"
-      });
-      
+    if (!editingCustomer) return;
+    
+    const result = await handleUpdate(editingCustomer.id);
+    if (result.success) {
       setIsEditingCustomer(false);
       setEditingCustomer(null);
-      resetCustomerForm();
       fetchCustomers();
-    } catch (error) {
-      console.error('Error updating customer:', error);
-      toast({
-        title: "Error",
-        description: "Failed to update customer",
-        variant: "destructive"
-      });
     }
   };
 
@@ -355,26 +204,9 @@ const CustomersManagement = () => {
     }
   };
 
-  const resetCustomerForm = () => {
-    setCustomerForm({
-      name: "",
-      brand_name: "",
-      contact_person_name: "",
-      email: "",
-      contact_number: "",
-      address: "",
-      gst_number: "",
-      bank_account_number: "",
-      ifsc_code: "",
-      gst_certificate: null,
-      msme_certificate: null,
-      brand_authorization: null
-    });
-  };
-
   const openEditDialog = (customer: Customer) => {
     setEditingCustomer(customer);
-    setCustomerForm({
+    setFormData({
       name: customer.name,
       brand_name: customer.brand_name || "",
       contact_person_name: customer.contact_person_name || "",
@@ -398,16 +230,22 @@ const CustomersManagement = () => {
           <Label htmlFor="name">Customer Name *</Label>
           <Input
             id="name"
-            value={customerForm.name}
-            onChange={(e) => setCustomerForm({...customerForm, name: e.target.value})}
+            value={formData.name}
+            onChange={(e) => updateFormField('name', e.target.value)}
+            placeholder="Enter customer name"
+            className={validationErrors.name ? "border-destructive" : ""}
           />
+          {validationErrors.name && (
+            <p className="text-sm text-destructive">{validationErrors.name}</p>
+          )}
         </div>
         <div className="space-y-2">
           <Label htmlFor="brand_name">Brand Name</Label>
           <Input
             id="brand_name"
-            value={customerForm.brand_name}
-            onChange={(e) => setCustomerForm({...customerForm, brand_name: e.target.value})}
+            value={formData.brand_name}
+            onChange={(e) => updateFormField('brand_name', e.target.value)}
+            placeholder="Enter brand name"
           />
         </div>
       </div>
@@ -417,54 +255,68 @@ const CustomersManagement = () => {
           <Label htmlFor="contact_person_name">Contact Person Name</Label>
           <Input
             id="contact_person_name"
-            value={customerForm.contact_person_name}
-            onChange={(e) => setCustomerForm({...customerForm, contact_person_name: e.target.value})}
+            value={formData.contact_person_name}
+            onChange={(e) => updateFormField('contact_person_name', e.target.value)}
+            placeholder="Enter contact person name"
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="contact_number">Contact Number *</Label>
+          <Label htmlFor="contact_number">Contact Number</Label>
           <Input
             id="contact_number"
-            value={customerForm.contact_number}
-            onChange={(e) => setCustomerForm({...customerForm, contact_number: e.target.value})}
+            value={formData.contact_number}
+            onChange={(e) => updateFormField('contact_number', e.target.value)}
+            placeholder="+91-9876543210"
           />
         </div>
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="email">Contact Email ID *</Label>
+        <Label htmlFor="email">Contact Email ID</Label>
         <Input
           id="email"
           type="email"
-          value={customerForm.email}
-          onChange={(e) => setCustomerForm({...customerForm, email: e.target.value})}
+          value={formData.email}
+          onChange={(e) => updateFormField('email', e.target.value)}
+          placeholder="customer@example.com"
+          className={validationErrors.email ? "border-destructive" : ""}
         />
+        {validationErrors.email && (
+          <p className="text-sm text-destructive">{validationErrors.email}</p>
+        )}
       </div>
 
       <div className="space-y-2">
         <Label htmlFor="address">Address</Label>
         <Textarea
           id="address"
-          value={customerForm.address}
-          onChange={(e) => setCustomerForm({...customerForm, address: e.target.value})}
+          value={formData.address}
+          onChange={(e) => updateFormField('address', e.target.value)}
+          placeholder="Enter complete address"
         />
       </div>
 
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="gst_number">GST Number</Label>
+          <Label htmlFor="gst_number">GST Number *</Label>
           <Input
             id="gst_number"
-            value={customerForm.gst_number}
-            onChange={(e) => setCustomerForm({...customerForm, gst_number: e.target.value})}
+            value={formData.gst_number}
+            onChange={(e) => updateFormField('gst_number', e.target.value)}
+            placeholder="27ABCDE1234F1Z5"
+            className={validationErrors.gst_number ? "border-destructive" : ""}
           />
+          {validationErrors.gst_number && (
+            <p className="text-sm text-destructive">{validationErrors.gst_number}</p>
+          )}
         </div>
         <div className="space-y-2">
           <Label htmlFor="bank_account_number">Bank Account Number</Label>
           <Input
             id="bank_account_number"
-            value={customerForm.bank_account_number}
-            onChange={(e) => setCustomerForm({...customerForm, bank_account_number: e.target.value})}
+            value={formData.bank_account_number}
+            onChange={(e) => updateFormField('bank_account_number', e.target.value)}
+            placeholder="1234567890"
           />
         </div>
       </div>
@@ -473,8 +325,9 @@ const CustomersManagement = () => {
         <Label htmlFor="ifsc_code">IFSC Code</Label>
         <Input
           id="ifsc_code"
-          value={customerForm.ifsc_code}
-          onChange={(e) => setCustomerForm({...customerForm, ifsc_code: e.target.value})}
+          value={formData.ifsc_code}
+          onChange={(e) => updateFormField('ifsc_code', e.target.value)}
+          placeholder="HDFC0001234"
         />
       </div>
 
@@ -486,7 +339,7 @@ const CustomersManagement = () => {
               id="gst_certificate"
               type="file"
               accept=".pdf"
-              onChange={(e) => setCustomerForm({...customerForm, gst_certificate: e.target.files?.[0] || null})}
+              onChange={(e) => updateFormField('gst_certificate', e.target.files?.[0] || null)}
             />
             <Upload className="h-4 w-4" />
           </div>
@@ -499,7 +352,7 @@ const CustomersManagement = () => {
               id="msme_certificate"
               type="file"
               accept=".pdf"
-              onChange={(e) => setCustomerForm({...customerForm, msme_certificate: e.target.files?.[0] || null})}
+              onChange={(e) => updateFormField('msme_certificate', e.target.files?.[0] || null)}
             />
             <Upload className="h-4 w-4" />
           </div>
@@ -512,7 +365,7 @@ const CustomersManagement = () => {
               id="brand_authorization"
               type="file"
               accept=".pdf"
-              onChange={(e) => setCustomerForm({...customerForm, brand_authorization: e.target.files?.[0] || null})}
+              onChange={(e) => updateFormField('brand_authorization', e.target.files?.[0] || null)}
             />
             <Upload className="h-4 w-4" />
           </div>
@@ -526,7 +379,12 @@ const CustomersManagement = () => {
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold">Customer Management</h1>
-          <Dialog open={isAddingCustomer} onOpenChange={setIsAddingCustomer}>
+          <Dialog open={isAddingCustomer} onOpenChange={(open) => {
+            setIsAddingCustomer(open);
+            if (!open) {
+              resetForm();
+            }
+          }}>
             <DialogTrigger asChild>
               <Button>
                 <Plus className="h-4 w-4 mr-2" />
@@ -538,22 +396,36 @@ const CustomersManagement = () => {
                 <DialogTitle>Add New Customer</DialogTitle>
               </DialogHeader>
               <CustomerFormFields />
-              <Button onClick={handleCreateCustomer} className="w-full">
-                Create Customer
+              <Button 
+                onClick={handleCreateCustomer} 
+                className="w-full"
+                disabled={isSubmitting || !formData.name.trim() || !formData.gst_number.trim()}
+              >
+                {isSubmitting ? "Creating..." : "Create Customer"}
               </Button>
             </DialogContent>
           </Dialog>
         </div>
 
         {/* Edit Customer Dialog */}
-        <Dialog open={isEditingCustomer} onOpenChange={setIsEditingCustomer}>
+        <Dialog open={isEditingCustomer} onOpenChange={(open) => {
+          setIsEditingCustomer(open);
+          if (!open) {
+            setEditingCustomer(null);
+            resetForm();
+          }
+        }}>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>Edit Customer</DialogTitle>
             </DialogHeader>
             <CustomerFormFields />
-            <Button onClick={handleUpdateCustomer} className="w-full">
-              Update Customer
+            <Button 
+              onClick={handleUpdateCustomer} 
+              className="w-full"
+              disabled={isSubmitting || !formData.name.trim() || !formData.gst_number.trim()}
+            >
+              {isSubmitting ? "Updating..." : "Update Customer"}
             </Button>
           </DialogContent>
         </Dialog>
