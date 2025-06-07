@@ -1,4 +1,5 @@
 
+
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -78,7 +79,7 @@ export const useVendors = () => {
         msmeCertificateUrl = fileName;
       }
 
-      // Prepare vendor data for insertion - let trigger handle vendor_code
+      // Prepare vendor data for insertion with vendor_code that will be overwritten by trigger
       const insertData = {
         name: vendorData.name,
         contact_person_name: vendorData.contact_person_name || null,
@@ -90,7 +91,7 @@ export const useVendors = () => {
         ifsc_code: vendorData.ifsc_code || null,
         gst_certificate_url: gstCertificateUrl,
         msme_certificate_url: msmeCertificateUrl,
-        // Don't set vendor_code - let the trigger handle it
+        vendor_code: '', // This will be overwritten by the database trigger
       };
 
       console.log("Debug: Inserting vendor with data:", insertData);
@@ -239,3 +240,4 @@ export const useVendors = () => {
     deleteVendor,
   };
 };
+
