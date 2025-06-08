@@ -1,3 +1,4 @@
+
 import { useState, useRef } from "react";
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 import { 
@@ -17,9 +18,6 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter 
 } from "@/components/ui/dialog";
 import { 
-  Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter, SheetClose, SheetTrigger
-} from "@/components/ui/sheet";
-import { 
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, 
   AlertDialogTitle, AlertDialogTrigger 
@@ -30,14 +28,17 @@ import {
 import { 
   Popover, PopoverContent, PopoverTrigger 
 } from "@/components/ui/popover";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { Search, Plus, Layers, FileText, Package, Upload, Edit, Trash2, History, Download, Eye, ExternalLink, Loader2, Check, ChevronsUpDown } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { Search, Plus, Layers, FileText, Package, Upload, Edit, Trash2, Download, Eye, ExternalLink, Loader2, Check, ChevronsUpDown } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useRawMaterials, useSpecificationHistory, getDocumentUrl } from "@/hooks/useRawMaterials";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+
+// Unit of Measure options
+const UNIT_OPTIONS = [
+  "PCS", "KG", "METER", "LITER", "SET", "PACK", "ROLL", "SHEET", "BOX"
+];
 
 // Raw Material categories with their prefixes
 const MATERIAL_CATEGORIES = [
@@ -70,31 +71,247 @@ const RawMaterialsManagement = () => {
   const [primaryVendor, setPrimaryVendor] = useState<string>("");
   const [specificationFile, setSpecificationFile] = useState<File | null>(null);
   const [iqcChecklistFile, setIqcChecklistFile] = useState<File | null>(null);
-  const [changesDescription, setChangesDescription] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const [vendorSearchOpen, setVendorSearchOpen] = useState(false);
   const [vendorSearchValue, setVendorSearchValue] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const queryClient = useQueryClient();
 
   const [newMaterial, setNewMaterial] = useState({
     name: "",
+    material_code: "",
     category: "",
+    unit_of_measure: "",
     specification: ""
   });
 
-  const { rawMaterials, isLoading, addRawMaterial, updateRawMaterial, deleteRawMaterial } = useRawMaterials();
+  // Fetch raw materials
+  const { data: rawMaterials = [], isLoading } = useQuery({
+    queryKey: ["raw-materials"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("raw_materials")
+        .select(`
+          *,
+          raw_material_vendors(
+            id,
+            is_primary,
+            vendor_id,
+            vendors(
+              id,
+              name,
+              vendor_code
+            )
+          )
+        `)
+        .eq("is_active", true)
+        .order("created_at", { ascending: false });
+      
+      if (error) throw error;
+      return data || [];
+    },
+  });
 
   // Fetch vendors
   const { data: vendors = [] } = useQuery({
     queryKey: ["vendors"],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("vendors")
         .select("*")
         .eq("is_active", true)
         .order("name");
       
+      if (error) throw error;
       return data || [];
+    },
+  });
+
+  // Add raw material mutation
+  const addRawMaterial = useMutation({
+    mutationFn: async (materialData: typeof newMaterial & {
+      vendorIds?: string[];
+      primaryVendorId?: string;
+      specificationFile?: File;
+      iqcChecklistFile?: File;
+    }) => {
+      let specificationUrl = null;
+      let iqcChecklistUrl = null;
+
+      // Upload specification sheet if provided
+      if (materialData.specificationFile) {
+        const fileName = `specifications/${Date.now()}_${materialData.specificationFile.name}`;
+        const { error: uploadError } = await supabase.storage
+          .from("raw-material-documents")
+          .upload(fileName, materialData.specificationFile);
+        
+        if (uploadError) throw uploadError;
+        specificationUrl = fileName;
+      }
+
+      // Upload IQC checklist if provided
+      if (materialData.iqcChecklistFile) {
+        const fileName = `iqc_checklists/${Date.now()}_${materialData.iqcChecklistFile.name}`;
+        const { error: uploadError } = await supabase.storage
+          .from("raw-material-documents")
+          .upload(fileName, materialData.iqcChecklistFile);
+        
+        if (uploadError) throw uploadError;
+        iqcChecklistUrl = fileName;
+      }
+
+      // Insert raw material
+      const { data: material, error: materialError } = await supabase
+        .from("raw_materials")
+        .insert({
+          name: materialData.name,
+          material_code: materialData.material_code,
+          category: materialData.category,
+          unit_of_measure: materialData.unit_of_measure,
+          specification: materialData.specification || "",
+          specification_sheet_url: specificationUrl,
+          iqc_checklist_url: iqcChecklistUrl,
+        })
+        .select()
+        .single();
+
+      if (materialError) throw materialError;
+
+      // Add vendor relationships if vendors are provided
+      if (materialData.vendorIds && materialData.vendorIds.length > 0) {
+        const vendorRelations = materialData.vendorIds.map(vendorId => ({
+          raw_material_id: material.id,
+          vendor_id: vendorId,
+          is_primary: vendorId === materialData.primaryVendorId,
+        }));
+
+        const { error: vendorError } = await supabase
+          .from("raw_material_vendors")
+          .insert(vendorRelations);
+
+        if (vendorError) throw vendorError;
+      }
+
+      return material;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["raw-materials"] });
+      toast.success("Raw material added successfully");
+    },
+    onError: (error) => {
+      console.error("Error adding raw material:", error);
+      toast.error("Failed to add raw material");
+    },
+  });
+
+  // Update raw material mutation
+  const updateRawMaterial = useMutation({
+    mutationFn: async (data: {
+      id: string;
+    } & typeof newMaterial & {
+      vendorIds?: string[];
+      primaryVendorId?: string;
+      specificationFile?: File;
+      iqcChecklistFile?: File;
+    }) => {
+      let specificationUrl = null;
+      let iqcChecklistUrl = null;
+
+      // Upload new specification sheet if provided
+      if (data.specificationFile) {
+        const fileName = `specifications/${data.id}_${Date.now()}_${data.specificationFile.name}`;
+        const { error: uploadError } = await supabase.storage
+          .from("raw-material-documents")
+          .upload(fileName, data.specificationFile);
+        
+        if (uploadError) throw uploadError;
+        specificationUrl = fileName;
+      }
+
+      // Upload new IQC checklist if provided
+      if (data.iqcChecklistFile) {
+        const fileName = `iqc_checklists/${data.id}_${Date.now()}_${data.iqcChecklistFile.name}`;
+        const { error: uploadError } = await supabase.storage
+          .from("raw-material-documents")
+          .upload(fileName, data.iqcChecklistFile);
+        
+        if (uploadError) throw uploadError;
+        iqcChecklistUrl = fileName;
+      }
+
+      // Update raw material
+      const updateData: any = {
+        name: data.name,
+        material_code: data.material_code,
+        category: data.category,
+        unit_of_measure: data.unit_of_measure,
+        specification: data.specification || "",
+        updated_at: new Date().toISOString(),
+      };
+
+      if (specificationUrl) updateData.specification_sheet_url = specificationUrl;
+      if (iqcChecklistUrl) updateData.iqc_checklist_url = iqcChecklistUrl;
+
+      const { error: materialError } = await supabase
+        .from("raw_materials")
+        .update(updateData)
+        .eq("id", data.id);
+
+      if (materialError) throw materialError;
+
+      // Update vendor relationships
+      // First delete existing relationships
+      const { error: deleteError } = await supabase
+        .from("raw_material_vendors")
+        .delete()
+        .eq("raw_material_id", data.id);
+
+      if (deleteError) throw deleteError;
+
+      // Add new vendor relationships if vendors are provided
+      if (data.vendorIds && data.vendorIds.length > 0) {
+        const vendorRelations = data.vendorIds.map(vendorId => ({
+          raw_material_id: data.id,
+          vendor_id: vendorId,
+          is_primary: vendorId === data.primaryVendorId,
+        }));
+
+        const { error: vendorError } = await supabase
+          .from("raw_material_vendors")
+          .insert(vendorRelations);
+
+        if (vendorError) throw vendorError;
+      }
+
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["raw-materials"] });
+      toast.success("Raw material updated successfully");
+    },
+    onError: (error: any) => {
+      console.error("Error updating raw material:", error);
+      toast.error("Failed to update raw material");
+    },
+  });
+
+  // Delete raw material mutation
+  const deleteRawMaterial = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("raw_materials")
+        .update({ is_active: false })
+        .eq("id", id);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["raw-materials"] });
+      toast.success("Raw material deleted successfully");
+    },
+    onError: (error) => {
+      console.error("Error deleting raw material:", error);
+      toast.error("Failed to delete raw material");
     },
   });
 
@@ -128,7 +345,7 @@ const RawMaterialsManagement = () => {
       });
 
       // Reset form
-      setNewMaterial({ name: "", category: "", specification: "" });
+      setNewMaterial({ name: "", material_code: "", category: "", unit_of_measure: "", specification: "" });
       setSelectedVendors([]);
       setPrimaryVendor("");
       setSpecificationFile(null);
@@ -146,23 +363,20 @@ const RawMaterialsManagement = () => {
     setSelectedMaterial(material);
     setNewMaterial({
       name: material.name,
+      material_code: material.material_code,
       category: material.category,
+      unit_of_measure: material.unit_of_measure || "",
       specification: material.specification || ""
     });
     setSelectedVendors(material.raw_material_vendors?.map((rv: any) => rv.vendors.id) || []);
     setPrimaryVendor(material.raw_material_vendors?.find((rv: any) => rv.is_primary)?.vendors.id || "");
     setSpecificationFile(null);
     setIqcChecklistFile(null);
-    setChangesDescription("");
     setIsEditDialogOpen(true);
   };
 
   const handleUpdateMaterial = async () => {
     if (!selectedMaterial) return;
-    if (selectedVendors.length === 0) {
-      toast.error("Please select at least one vendor");
-      return;
-    }
 
     setIsUploading(true);
     try {
@@ -173,7 +387,6 @@ const RawMaterialsManagement = () => {
         primaryVendorId: primaryVendor,
         specificationFile: specificationFile || undefined,
         iqcChecklistFile: iqcChecklistFile || undefined,
-        changesDescription,
       });
 
       setIsEditDialogOpen(false);
@@ -204,13 +417,6 @@ const RawMaterialsManagement = () => {
     }
   };
 
-  const handleExcelImport = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      toast.info("Excel import functionality will be implemented soon");
-    }
-  };
-
   const downloadDocument = async (fileName: string, originalName: string) => {
     try {
       const { data, error } = await supabase.storage
@@ -235,9 +441,12 @@ const RawMaterialsManagement = () => {
 
   const openDocument = async (fileName: string) => {
     try {
-      const url = await getDocumentUrl(fileName);
-      if (url) {
-        window.open(url, '_blank');
+      const { data } = await supabase.storage
+        .from("raw-material-documents")
+        .createSignedUrl(fileName, 60 * 60); // 1 hour expiry
+      
+      if (data?.signedUrl) {
+        window.open(data.signedUrl, '_blank');
       } else {
         toast.error("Failed to open document");
       }
@@ -256,20 +465,6 @@ const RawMaterialsManagement = () => {
             <h1 className="text-3xl font-bold">Raw Materials Management</h1>
           </div>
           <div className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <Upload className="mr-2 h-4 w-4" />
-              Import Excel
-            </Button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".xlsx,.xls"
-              onChange={handleExcelImport}
-              className="hidden"
-            />
             <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
               <DialogTrigger asChild>
                 <Button>
@@ -292,6 +487,16 @@ const RawMaterialsManagement = () => {
                       required
                     />
                   </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="material_code">Part Code</Label>
+                    <Input 
+                      id="material_code" 
+                      value={newMaterial.material_code} 
+                      onChange={(e) => setNewMaterial({...newMaterial, material_code: e.target.value})}
+                      placeholder="Enter part code (leave empty for auto-generation)"
+                    />
+                  </div>
                   
                   <div className="space-y-2">
                     <Label htmlFor="category">Part Category *</Label>
@@ -306,6 +511,25 @@ const RawMaterialsManagement = () => {
                         {MATERIAL_CATEGORIES.map((category) => (
                           <SelectItem key={category.name} value={category.name}>
                             {category.name} ({category.prefix}-xxx)
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="unit_of_measure">Unit of Measure</Label>
+                    <Select 
+                      value={newMaterial.unit_of_measure} 
+                      onValueChange={(value) => setNewMaterial({...newMaterial, unit_of_measure: value})}
+                    >
+                      <SelectTrigger id="unit_of_measure">
+                        <SelectValue placeholder="Select unit" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {UNIT_OPTIONS.map((unit) => (
+                          <SelectItem key={unit} value={unit}>
+                            {unit}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -331,7 +555,7 @@ const RawMaterialsManagement = () => {
                       <PopoverContent className="w-full p-0">
                         <Command>
                           <CommandInput 
-                            placeholder="Search vendors by name or GST..." 
+                            placeholder="Search vendors..." 
                             value={vendorSearchValue}
                             onValueChange={setVendorSearchValue}
                           />
@@ -341,8 +565,7 @@ const RawMaterialsManagement = () => {
                               {vendors
                                 .filter(vendor => 
                                   vendor.name.toLowerCase().includes(vendorSearchValue.toLowerCase()) ||
-                                  vendor.vendor_code.toLowerCase().includes(vendorSearchValue.toLowerCase()) ||
-                                  (vendor.gst_number && vendor.gst_number.toLowerCase().includes(vendorSearchValue.toLowerCase()))
+                                  vendor.vendor_code.toLowerCase().includes(vendorSearchValue.toLowerCase())
                                 )
                                 .map((vendor) => (
                                 <CommandItem
@@ -360,9 +583,6 @@ const RawMaterialsManagement = () => {
                                   />
                                   <div className="flex flex-col">
                                     <span>{vendor.vendor_code} - {vendor.name}</span>
-                                    {vendor.gst_number && (
-                                      <span className="text-xs text-muted-foreground">GST: {vendor.gst_number}</span>
-                                    )}
                                   </div>
                                 </CommandItem>
                               ))}
@@ -504,43 +724,31 @@ const RawMaterialsManagement = () => {
                   <TableHead>Part Code</TableHead>
                   <TableHead>Part Name</TableHead>
                   <TableHead>Category</TableHead>
+                  <TableHead>Unit</TableHead>
                   <TableHead>Vendors</TableHead>
-                  <TableHead>Specification</TableHead>
-                  <TableHead>Documents</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {isLoading ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-6">
+                    <TableCell colSpan={6} className="text-center py-6">
                       Loading materials...
                     </TableCell>
                   </TableRow>
                 ) : filteredMaterials.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-6 text-muted-foreground">
+                    <TableCell colSpan={6} className="text-center py-6 text-muted-foreground">
                       No materials found. Try adjusting your search or filter.
                     </TableCell>
                   </TableRow>
                 ) : (
                   filteredMaterials.map((material) => (
                     <TableRow key={material.id}>
-                      <TableCell className="font-medium">
-                        <div className="flex items-center gap-2">
-                          {material.material_code}
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleViewMaterial(material)}
-                            title="View Material Details"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
+                      <TableCell className="font-medium">{material.material_code}</TableCell>
                       <TableCell>{material.name}</TableCell>
                       <TableCell>{material.category}</TableCell>
+                      <TableCell>{material.unit_of_measure || "N/A"}</TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-1">
                           {material.raw_material_vendors?.map((rv: any) => (
@@ -555,33 +763,15 @@ const RawMaterialsManagement = () => {
                           )) || <span className="text-muted-foreground">No vendors</span>}
                         </div>
                       </TableCell>
-                      <TableCell className="max-w-xs truncate">{material.specification || "Not specified"}</TableCell>
-                      <TableCell>
-                        <div className="flex gap-1">
-                          {material.specification_sheet_url && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => openDocument(material.specification_sheet_url)}
-                              title="View Specification Sheet"
-                            >
-                              <ExternalLink className="h-4 w-4" />
-                            </Button>
-                          )}
-                          {material.iqc_checklist_url && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => openDocument(material.iqc_checklist_url)}
-                              title="View IQC Checklist"
-                            >
-                              <Package className="h-4 w-4" />
-                            </Button>
-                          )}
-                        </div>
-                      </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleViewMaterial(material)}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
                           <Button
                             variant="outline"
                             size="sm"
@@ -589,7 +779,6 @@ const RawMaterialsManagement = () => {
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
-                          <SpecificationHistorySheet materialId={material.id} />
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
                               <Button variant="outline" size="sm">
@@ -640,6 +829,10 @@ const RawMaterialsManagement = () => {
                   <div className="space-y-2">
                     <Label className="text-sm font-medium text-muted-foreground">Category</Label>
                     <p>{viewMaterial.category}</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium text-muted-foreground">Unit</Label>
+                    <p>{viewMaterial.unit_of_measure || "N/A"}</p>
                   </div>
                 </div>
 
@@ -757,6 +950,16 @@ const RawMaterialsManagement = () => {
                   placeholder="Enter part name"
                 />
               </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-material_code">Part Code</Label>
+                <Input 
+                  id="edit-material_code" 
+                  value={newMaterial.material_code} 
+                  onChange={(e) => setNewMaterial({...newMaterial, material_code: e.target.value})}
+                  placeholder="Enter part code"
+                />
+              </div>
               
               <div className="space-y-2">
                 <Label htmlFor="edit-category">Part Category</Label>
@@ -778,21 +981,98 @@ const RawMaterialsManagement = () => {
               </div>
 
               <div className="space-y-2">
-                <Label>Vendors (Select at least one)</Label>
-                <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto border rounded p-2">
-                  {vendors.map((vendor) => (
-                    <div key={vendor.id} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={`edit-${vendor.id}`}
-                        checked={selectedVendors.includes(vendor.id)}
-                        onCheckedChange={(checked) => handleVendorChange(vendor.id, checked as boolean)}
+                <Label htmlFor="edit-unit_of_measure">Unit of Measure</Label>
+                <Select 
+                  value={newMaterial.unit_of_measure} 
+                  onValueChange={(value) => setNewMaterial({...newMaterial, unit_of_measure: value})}
+                >
+                  <SelectTrigger id="edit-unit_of_measure">
+                    <SelectValue placeholder="Select unit" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {UNIT_OPTIONS.map((unit) => (
+                      <SelectItem key={unit} value={unit}>
+                        {unit}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Vendors</Label>
+                <Popover open={vendorSearchOpen} onOpenChange={setVendorSearchOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={vendorSearchOpen}
+                      className="w-full justify-between"
+                    >
+                      {selectedVendors.length > 0
+                        ? `${selectedVendors.length} vendor(s) selected`
+                        : "Search and select vendors..."}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-full p-0">
+                    <Command>
+                      <CommandInput 
+                        placeholder="Search vendors..." 
+                        value={vendorSearchValue}
+                        onValueChange={setVendorSearchValue}
                       />
-                      <Label htmlFor={`edit-${vendor.id}`} className="text-sm">
-                        {vendor.vendor_code} - {vendor.name}
-                      </Label>
-                    </div>
-                  ))}
-                </div>
+                      <CommandList>
+                        <CommandEmpty>No vendors found.</CommandEmpty>
+                        <CommandGroup>
+                          {vendors
+                            .filter(vendor => 
+                              vendor.name.toLowerCase().includes(vendorSearchValue.toLowerCase()) ||
+                              vendor.vendor_code.toLowerCase().includes(vendorSearchValue.toLowerCase())
+                            )
+                            .map((vendor) => (
+                            <CommandItem
+                              key={vendor.id}
+                              onSelect={() => {
+                                const isSelected = selectedVendors.includes(vendor.id);
+                                handleVendorChange(vendor.id, !isSelected);
+                              }}
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  selectedVendors.includes(vendor.id) ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              <div className="flex flex-col">
+                                <span>{vendor.vendor_code} - {vendor.name}</span>
+                              </div>
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+
+                {selectedVendors.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {selectedVendors.map(vendorId => {
+                      const vendor = vendors.find(v => v.id === vendorId);
+                      if (!vendor) return null;
+                      return (
+                        <Badge 
+                          key={vendorId} 
+                          variant={vendorId === primaryVendor ? "default" : "secondary"}
+                          className="text-xs"
+                        >
+                          {vendor.vendor_code}
+                          {vendorId === primaryVendor && " (Primary)"}
+                        </Badge>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
               {selectedVendors.length > 1 && (
@@ -849,18 +1129,6 @@ const RawMaterialsManagement = () => {
                   )}
                 </div>
               </div>
-
-              {(specificationFile || iqcChecklistFile) && (
-                <div className="space-y-2">
-                  <Label htmlFor="changes-description">Changes Description</Label>
-                  <Textarea 
-                    id="changes-description" 
-                    value={changesDescription} 
-                    onChange={(e) => setChangesDescription(e.target.value)}
-                    placeholder="Describe the changes made to specifications"
-                  />
-                </div>
-              )}
             </div>
             <DialogFooter>
               <Button 
@@ -891,100 +1159,6 @@ const RawMaterialsManagement = () => {
         </Dialog>
       </div>
     </DashboardLayout>
-  );
-};
-
-// Specification History Component
-const SpecificationHistorySheet = ({ materialId }: { materialId: string }) => {
-  const { data: history = [] } = useSpecificationHistory(materialId);
-
-  const downloadDocument = async (fileName: string, originalName: string) => {
-    try {
-      const { data, error } = await supabase.storage
-        .from("raw-material-documents")
-        .download(fileName);
-
-      if (error) throw error;
-
-      const url = URL.createObjectURL(data);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = originalName;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error("Error downloading file:", error);
-      toast.error("Failed to download file");
-    }
-  };
-
-  return (
-    <Sheet>
-      <SheetTrigger asChild>
-        <Button variant="outline" size="sm" title="View Specification History">
-          <History className="h-4 w-4" />
-        </Button>
-      </SheetTrigger>
-      <SheetContent className="w-[600px] sm:w-[600px]">
-        <SheetHeader>
-          <SheetTitle>Specification History</SheetTitle>
-        </SheetHeader>
-        <div className="py-4">
-          {history.length === 0 ? (
-            <p className="text-muted-foreground">No specification history found.</p>
-          ) : (
-            <div className="space-y-4">
-              {history.map((spec) => (
-                <Card key={spec.id}>
-                  <CardHeader className="pb-2">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-lg">Version {spec.version_number}</CardTitle>
-                      <Badge variant="outline">
-                        {new Date(spec.created_at).toLocaleDateString()}
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    {spec.changes_description && (
-                      <p className="text-sm text-muted-foreground">{spec.changes_description}</p>
-                    )}
-                    <div className="flex gap-2">
-                      {spec.specification_sheet_url && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => downloadDocument(spec.specification_sheet_url, `specification_v${spec.version_number}.pdf`)}
-                        >
-                          <Download className="mr-2 h-4 w-4" />
-                          Specification
-                        </Button>
-                      )}
-                      {spec.iqc_checklist_url && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => downloadDocument(spec.iqc_checklist_url, `iqc_checklist_v${spec.version_number}.pdf`)}
-                        >
-                          <Download className="mr-2 h-4 w-4" />
-                          IQC Checklist
-                        </Button>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </div>
-        <SheetFooter>
-          <SheetClose asChild>
-            <Button variant="outline">Close</Button>
-          </SheetClose>
-        </SheetFooter>
-      </SheetContent>
-    </Sheet>
   );
 };
 

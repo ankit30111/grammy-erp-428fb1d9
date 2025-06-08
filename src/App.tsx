@@ -25,6 +25,7 @@ import HRManagement from "./pages/management/HRManagement";
 import CustomersManagement from "./pages/management/CustomersManagement";
 import Vendors from "./pages/Vendors";
 import ProductsManagement from "./pages/management/ProductsManagement";
+import RawMaterialsManagement from "./pages/management/RawMaterialsManagement";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import PPCDashboard from "@/pages/dashboards/PPCDashboard";
@@ -66,6 +67,7 @@ function App() {
             <Route path="/management/customers" element={<AuthGuard><CustomersManagement /></AuthGuard>} />
             <Route path="/vendors" element={<AuthGuard><Vendors /></AuthGuard>} />
             <Route path="/management/products" element={<AuthGuard><ProductsManagement /></AuthGuard>} />
+            <Route path="/management/raw-materials" element={<AuthGuard><RawMaterialsManagement /></AuthGuard>} />
             <Route path="/settings" element={<AuthGuard><Settings /></AuthGuard>} />
             
             {/* Dashboard Routes */}
