@@ -1,4 +1,3 @@
-
 import { useState, useRef } from "react";
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 import { 
@@ -85,7 +84,7 @@ const RawMaterialsManagement = () => {
 
   // Use the existing hooks
   const { rawMaterials, isLoading, addRawMaterial, updateRawMaterial, deleteRawMaterial } = useRawMaterials();
-  const { data: vendors = [] } = useVendors();
+  const { vendors = [] } = useVendors();
 
   // Filter materials based on search and category
   const filteredMaterials = rawMaterials.filter(material => {
