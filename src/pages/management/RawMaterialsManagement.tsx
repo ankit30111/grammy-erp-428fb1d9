@@ -30,8 +30,8 @@ import {
 } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
 import { Search, Plus, Layers, FileText, Package, Upload, Edit, Trash2, Download, Eye, ExternalLink, Loader2, Check, ChevronsUpDown } from "lucide-react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { useRawMaterials } from "@/hooks/useRawMaterials";
+import { useVendors } from "@/hooks/useVendors";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -75,245 +75,17 @@ const RawMaterialsManagement = () => {
   const [vendorSearchOpen, setVendorSearchOpen] = useState(false);
   const [vendorSearchValue, setVendorSearchValue] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const queryClient = useQueryClient();
 
   const [newMaterial, setNewMaterial] = useState({
     name: "",
-    material_code: "",
     category: "",
     unit_of_measure: "",
     specification: ""
   });
 
-  // Fetch raw materials
-  const { data: rawMaterials = [], isLoading } = useQuery({
-    queryKey: ["raw-materials"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("raw_materials")
-        .select(`
-          *,
-          raw_material_vendors(
-            id,
-            is_primary,
-            vendor_id,
-            vendors(
-              id,
-              name,
-              vendor_code
-            )
-          )
-        `)
-        .eq("is_active", true)
-        .order("created_at", { ascending: false });
-      
-      if (error) throw error;
-      return data || [];
-    },
-  });
-
-  // Fetch vendors
-  const { data: vendors = [] } = useQuery({
-    queryKey: ["vendors"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("vendors")
-        .select("*")
-        .eq("is_active", true)
-        .order("name");
-      
-      if (error) throw error;
-      return data || [];
-    },
-  });
-
-  // Add raw material mutation
-  const addRawMaterial = useMutation({
-    mutationFn: async (materialData: typeof newMaterial & {
-      vendorIds?: string[];
-      primaryVendorId?: string;
-      specificationFile?: File;
-      iqcChecklistFile?: File;
-    }) => {
-      let specificationUrl = null;
-      let iqcChecklistUrl = null;
-
-      // Upload specification sheet if provided
-      if (materialData.specificationFile) {
-        const fileName = `specifications/${Date.now()}_${materialData.specificationFile.name}`;
-        const { error: uploadError } = await supabase.storage
-          .from("raw-material-documents")
-          .upload(fileName, materialData.specificationFile);
-        
-        if (uploadError) throw uploadError;
-        specificationUrl = fileName;
-      }
-
-      // Upload IQC checklist if provided
-      if (materialData.iqcChecklistFile) {
-        const fileName = `iqc_checklists/${Date.now()}_${materialData.iqcChecklistFile.name}`;
-        const { error: uploadError } = await supabase.storage
-          .from("raw-material-documents")
-          .upload(fileName, materialData.iqcChecklistFile);
-        
-        if (uploadError) throw uploadError;
-        iqcChecklistUrl = fileName;
-      }
-
-      // Insert raw material
-      const { data: material, error: materialError } = await supabase
-        .from("raw_materials")
-        .insert({
-          name: materialData.name,
-          material_code: materialData.material_code,
-          category: materialData.category,
-          unit_of_measure: materialData.unit_of_measure,
-          specification: materialData.specification || "",
-          specification_sheet_url: specificationUrl,
-          iqc_checklist_url: iqcChecklistUrl,
-        })
-        .select()
-        .single();
-
-      if (materialError) throw materialError;
-
-      // Add vendor relationships if vendors are provided
-      if (materialData.vendorIds && materialData.vendorIds.length > 0) {
-        const vendorRelations = materialData.vendorIds.map(vendorId => ({
-          raw_material_id: material.id,
-          vendor_id: vendorId,
-          is_primary: vendorId === materialData.primaryVendorId,
-        }));
-
-        const { error: vendorError } = await supabase
-          .from("raw_material_vendors")
-          .insert(vendorRelations);
-
-        if (vendorError) throw vendorError;
-      }
-
-      return material;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["raw-materials"] });
-      toast.success("Raw material added successfully");
-    },
-    onError: (error) => {
-      console.error("Error adding raw material:", error);
-      toast.error("Failed to add raw material");
-    },
-  });
-
-  // Update raw material mutation
-  const updateRawMaterial = useMutation({
-    mutationFn: async (data: {
-      id: string;
-    } & typeof newMaterial & {
-      vendorIds?: string[];
-      primaryVendorId?: string;
-      specificationFile?: File;
-      iqcChecklistFile?: File;
-    }) => {
-      let specificationUrl = null;
-      let iqcChecklistUrl = null;
-
-      // Upload new specification sheet if provided
-      if (data.specificationFile) {
-        const fileName = `specifications/${data.id}_${Date.now()}_${data.specificationFile.name}`;
-        const { error: uploadError } = await supabase.storage
-          .from("raw-material-documents")
-          .upload(fileName, data.specificationFile);
-        
-        if (uploadError) throw uploadError;
-        specificationUrl = fileName;
-      }
-
-      // Upload new IQC checklist if provided
-      if (data.iqcChecklistFile) {
-        const fileName = `iqc_checklists/${data.id}_${Date.now()}_${data.iqcChecklistFile.name}`;
-        const { error: uploadError } = await supabase.storage
-          .from("raw-material-documents")
-          .upload(fileName, data.iqcChecklistFile);
-        
-        if (uploadError) throw uploadError;
-        iqcChecklistUrl = fileName;
-      }
-
-      // Update raw material
-      const updateData: any = {
-        name: data.name,
-        material_code: data.material_code,
-        category: data.category,
-        unit_of_measure: data.unit_of_measure,
-        specification: data.specification || "",
-        updated_at: new Date().toISOString(),
-      };
-
-      if (specificationUrl) updateData.specification_sheet_url = specificationUrl;
-      if (iqcChecklistUrl) updateData.iqc_checklist_url = iqcChecklistUrl;
-
-      const { error: materialError } = await supabase
-        .from("raw_materials")
-        .update(updateData)
-        .eq("id", data.id);
-
-      if (materialError) throw materialError;
-
-      // Update vendor relationships
-      // First delete existing relationships
-      const { error: deleteError } = await supabase
-        .from("raw_material_vendors")
-        .delete()
-        .eq("raw_material_id", data.id);
-
-      if (deleteError) throw deleteError;
-
-      // Add new vendor relationships if vendors are provided
-      if (data.vendorIds && data.vendorIds.length > 0) {
-        const vendorRelations = data.vendorIds.map(vendorId => ({
-          raw_material_id: data.id,
-          vendor_id: vendorId,
-          is_primary: vendorId === data.primaryVendorId,
-        }));
-
-        const { error: vendorError } = await supabase
-          .from("raw_material_vendors")
-          .insert(vendorRelations);
-
-        if (vendorError) throw vendorError;
-      }
-
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["raw-materials"] });
-      toast.success("Raw material updated successfully");
-    },
-    onError: (error: any) => {
-      console.error("Error updating raw material:", error);
-      toast.error("Failed to update raw material");
-    },
-  });
-
-  // Delete raw material mutation
-  const deleteRawMaterial = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from("raw_materials")
-        .update({ is_active: false })
-        .eq("id", id);
-      
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["raw-materials"] });
-      toast.success("Raw material deleted successfully");
-    },
-    onError: (error) => {
-      console.error("Error deleting raw material:", error);
-      toast.error("Failed to delete raw material");
-    },
-  });
+  // Use the existing hooks
+  const { rawMaterials, isLoading, addRawMaterial, updateRawMaterial, deleteRawMaterial } = useRawMaterials();
+  const { data: vendors = [] } = useVendors();
 
   // Filter materials based on search and category
   const filteredMaterials = rawMaterials.filter(material => {
@@ -337,7 +109,9 @@ const RawMaterialsManagement = () => {
     setIsUploading(true);
     try {
       await addRawMaterial.mutateAsync({
-        ...newMaterial,
+        name: newMaterial.name,
+        category: newMaterial.category,
+        specification: newMaterial.specification,
         vendorIds: selectedVendors,
         primaryVendorId: primaryVendor,
         specificationFile: specificationFile || undefined,
@@ -345,7 +119,7 @@ const RawMaterialsManagement = () => {
       });
 
       // Reset form
-      setNewMaterial({ name: "", material_code: "", category: "", unit_of_measure: "", specification: "" });
+      setNewMaterial({ name: "", category: "", unit_of_measure: "", specification: "" });
       setSelectedVendors([]);
       setPrimaryVendor("");
       setSpecificationFile(null);
@@ -363,7 +137,6 @@ const RawMaterialsManagement = () => {
     setSelectedMaterial(material);
     setNewMaterial({
       name: material.name,
-      material_code: material.material_code,
       category: material.category,
       unit_of_measure: material.unit_of_measure || "",
       specification: material.specification || ""
@@ -382,7 +155,9 @@ const RawMaterialsManagement = () => {
     try {
       await updateRawMaterial.mutateAsync({
         id: selectedMaterial.id,
-        ...newMaterial,
+        name: newMaterial.name,
+        category: newMaterial.category,
+        specification: newMaterial.specification,
         vendorIds: selectedVendors,
         primaryVendorId: primaryVendor,
         specificationFile: specificationFile || undefined,
@@ -419,6 +194,7 @@ const RawMaterialsManagement = () => {
 
   const downloadDocument = async (fileName: string, originalName: string) => {
     try {
+      const { supabase } = await import("@/integrations/supabase/client");
       const { data, error } = await supabase.storage
         .from("raw-material-documents")
         .download(fileName);
@@ -441,6 +217,7 @@ const RawMaterialsManagement = () => {
 
   const openDocument = async (fileName: string) => {
     try {
+      const { supabase } = await import("@/integrations/supabase/client");
       const { data } = await supabase.storage
         .from("raw-material-documents")
         .createSignedUrl(fileName, 60 * 60); // 1 hour expiry
@@ -485,16 +262,6 @@ const RawMaterialsManagement = () => {
                       onChange={(e) => setNewMaterial({...newMaterial, name: e.target.value})}
                       placeholder="Enter part name"
                       required
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="material_code">Part Code</Label>
-                    <Input 
-                      id="material_code" 
-                      value={newMaterial.material_code} 
-                      onChange={(e) => setNewMaterial({...newMaterial, material_code: e.target.value})}
-                      placeholder="Enter part code (leave empty for auto-generation)"
                     />
                   </div>
                   
@@ -748,7 +515,7 @@ const RawMaterialsManagement = () => {
                       <TableCell className="font-medium">{material.material_code}</TableCell>
                       <TableCell>{material.name}</TableCell>
                       <TableCell>{material.category}</TableCell>
-                      <TableCell>{material.unit_of_measure || "N/A"}</TableCell>
+                      <TableCell>{(material as any).unit_of_measure || "N/A"}</TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-1">
                           {material.raw_material_vendors?.map((rv: any) => (
@@ -832,7 +599,7 @@ const RawMaterialsManagement = () => {
                   </div>
                   <div className="space-y-2">
                     <Label className="text-sm font-medium text-muted-foreground">Unit</Label>
-                    <p>{viewMaterial.unit_of_measure || "N/A"}</p>
+                    <p>{(viewMaterial as any).unit_of_measure || "N/A"}</p>
                   </div>
                 </div>
 
@@ -948,16 +715,6 @@ const RawMaterialsManagement = () => {
                   value={newMaterial.name} 
                   onChange={(e) => setNewMaterial({...newMaterial, name: e.target.value})}
                   placeholder="Enter part name"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="edit-material_code">Part Code</Label>
-                <Input 
-                  id="edit-material_code" 
-                  value={newMaterial.material_code} 
-                  onChange={(e) => setNewMaterial({...newMaterial, material_code: e.target.value})}
-                  placeholder="Enter part code"
                 />
               </div>
               
