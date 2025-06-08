@@ -24,7 +24,7 @@ export const SidebarFooter = ({ collapsed }: SidebarFooterProps) => {
         return;
       }
       toast.success("Signed out successfully");
-      navigate("/auth");
+      navigate("/");
     } catch (error) {
       console.error("Sign out error:", error);
       toast.error("An unexpected error occurred");

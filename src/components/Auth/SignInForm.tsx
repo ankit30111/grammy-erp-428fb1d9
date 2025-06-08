@@ -30,7 +30,7 @@ export function SignInForm() {
       }
 
       toast.success("Signed in successfully!");
-      navigate("/");
+      navigate("/dashboard");
     } catch (error) {
       console.error("Sign in error:", error);
       toast.error("An unexpected error occurred");

@@ -68,7 +68,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         return;
       }
       toast.success("Signed out successfully");
-      navigate("/auth");
+      navigate("/");
     } catch (error) {
       console.error("Sign out error:", error);
       toast.error("An unexpected error occurred");

@@ -32,6 +32,7 @@ import StoreDashboard from "@/pages/dashboards/StoreDashboard";
 import ProductionMainDashboard from "@/pages/dashboards/ProductionMainDashboard";
 import SalesDashboard from "@/pages/dashboards/SalesDashboard";
 import HRDashboard from "@/pages/dashboards/HRDashboard";
+import { AuthGuard } from "@/components/Auth/AuthGuard";
 
 const queryClient = new QueryClient();
 
@@ -46,33 +47,33 @@ function App() {
             {/* Authentication Routes */}
             <Route path="/" element={<Auth />} />
 
-            {/* Main Routes */}
-            <Route path="/dashboard" element={<Index />} />
-            <Route path="/quality" element={<Quality />} />
-            <Route path="/quality/iqc" element={<IQC />} />
-            <Route path="/quality/pqc" element={<PQC />} />
-            <Route path="/quality/oqc" element={<OQC />} />
-            <Route path="/production" element={<Production />} />
-            <Route path="/planning" element={<Planning />} />
-            <Route path="/store" element={<Store />} />
-            <Route path="/sales" element={<Sales />} />
-            <Route path="/purchase" element={<Purchase />} />
-            <Route path="/projection" element={<Projection />} />
-            <Route path="/finished-goods" element={<FinishedGoods />} />
-            <Route path="/customer-complaints" element={<CustomerComplaints />} />
-            <Route path="/spare-orders" element={<SpareOrders />} />
-            <Route path="/management/hr" element={<HRManagement />} />
-            <Route path="/management/customers" element={<CustomersManagement />} />
-            <Route path="/vendors" element={<Vendors />} />
-            <Route path="/management/products" element={<ProductsManagement />} />
-            <Route path="/settings" element={<Settings />} />
+            {/* Protected Routes */}
+            <Route path="/dashboard" element={<AuthGuard><Index /></AuthGuard>} />
+            <Route path="/quality" element={<AuthGuard><Quality /></AuthGuard>} />
+            <Route path="/quality/iqc" element={<AuthGuard><IQC /></AuthGuard>} />
+            <Route path="/quality/pqc" element={<AuthGuard><PQC /></AuthGuard>} />
+            <Route path="/quality/oqc" element={<AuthGuard><OQC /></AuthGuard>} />
+            <Route path="/production" element={<AuthGuard><Production /></AuthGuard>} />
+            <Route path="/planning" element={<AuthGuard><Planning /></AuthGuard>} />
+            <Route path="/store" element={<AuthGuard><Store /></AuthGuard>} />
+            <Route path="/sales" element={<AuthGuard><Sales /></AuthGuard>} />
+            <Route path="/purchase" element={<AuthGuard><Purchase /></AuthGuard>} />
+            <Route path="/projection" element={<AuthGuard><Projection /></AuthGuard>} />
+            <Route path="/finished-goods" element={<AuthGuard><FinishedGoods /></AuthGuard>} />
+            <Route path="/customer-complaints" element={<AuthGuard><CustomerComplaints /></AuthGuard>} />
+            <Route path="/spare-orders" element={<AuthGuard><SpareOrders /></AuthGuard>} />
+            <Route path="/management/hr" element={<AuthGuard><HRManagement /></AuthGuard>} />
+            <Route path="/management/customers" element={<AuthGuard><CustomersManagement /></AuthGuard>} />
+            <Route path="/vendors" element={<AuthGuard><Vendors /></AuthGuard>} />
+            <Route path="/management/products" element={<AuthGuard><ProductsManagement /></AuthGuard>} />
+            <Route path="/settings" element={<AuthGuard><Settings /></AuthGuard>} />
             
             {/* Dashboard Routes */}
-            <Route path="/dashboards/ppc" element={<PPCDashboard />} />
-            <Route path="/dashboards/store" element={<StoreDashboard />} />
-            <Route path="/dashboards/production" element={<ProductionMainDashboard />} />
-            <Route path="/dashboards/sales" element={<SalesDashboard />} />
-            <Route path="/dashboards/hr" element={<HRDashboard />} />
+            <Route path="/dashboards/ppc" element={<AuthGuard><PPCDashboard /></AuthGuard>} />
+            <Route path="/dashboards/store" element={<AuthGuard><StoreDashboard /></AuthGuard>} />
+            <Route path="/dashboards/production" element={<AuthGuard><ProductionMainDashboard /></AuthGuard>} />
+            <Route path="/dashboards/sales" element={<AuthGuard><SalesDashboard /></AuthGuard>} />
+            <Route path="/dashboards/hr" element={<AuthGuard><HRDashboard /></AuthGuard>} />
             
             {/* 404 Route */}
             <Route path="*" element={<NotFound />} />
