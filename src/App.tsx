@@ -14,6 +14,7 @@ import PQC from "./pages/quality/PQC";
 import OQC from "./pages/quality/OQC";
 import Production from "./pages/Production";
 import Planning from "./pages/Planning";
+import PlanningEnhanced from "./pages/PlanningEnhanced";
 import Store from "./pages/store/StoreDashboard";
 import Sales from "./pages/Sales";
 import Purchase from "./pages/Purchase";
@@ -50,12 +51,13 @@ function App() {
 
             {/* Protected Routes */}
             <Route path="/dashboard" element={<AuthGuard><Index /></AuthGuard>} />
+            <Route path="/dashboard/ppc" element={<AuthGuard><PPCDashboard /></AuthGuard>} />
             <Route path="/quality" element={<AuthGuard><Quality /></AuthGuard>} />
             <Route path="/quality/iqc" element={<AuthGuard><IQC /></AuthGuard>} />
             <Route path="/quality/pqc" element={<AuthGuard><PQC /></AuthGuard>} />
             <Route path="/quality/oqc" element={<AuthGuard><OQC /></AuthGuard>} />
             <Route path="/production" element={<AuthGuard><Production /></AuthGuard>} />
-            <Route path="/planning" element={<AuthGuard><Planning /></AuthGuard>} />
+            <Route path="/planning" element={<AuthGuard><PlanningEnhanced /></AuthGuard>} />
             <Route path="/store" element={<AuthGuard><Store /></AuthGuard>} />
             <Route path="/sales" element={<AuthGuard><Sales /></AuthGuard>} />
             <Route path="/purchase" element={<AuthGuard><Purchase /></AuthGuard>} />
@@ -71,7 +73,6 @@ function App() {
             <Route path="/settings" element={<AuthGuard><Settings /></AuthGuard>} />
             
             {/* Dashboard Routes */}
-            <Route path="/dashboards/ppc" element={<AuthGuard><PPCDashboard /></AuthGuard>} />
             <Route path="/dashboards/store" element={<AuthGuard><StoreDashboard /></AuthGuard>} />
             <Route path="/dashboards/production" element={<AuthGuard><ProductionMainDashboard /></AuthGuard>} />
             <Route path="/dashboards/sales" element={<AuthGuard><SalesDashboard /></AuthGuard>} />

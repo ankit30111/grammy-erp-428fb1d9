@@ -20,7 +20,7 @@ export const navigationItems: NavigationItem[] = [
   { to: "/projection", icon: <Plus size={20} />, label: "Add Projection" },
   { to: "/spare-orders", icon: <Wrench size={20} />, label: "Spare Orders" },
   {
-    to: "/ppc",
+    to: "/dashboard/ppc",
     icon: <Calendar size={20} />,
     label: "PPC",
     subItems: [
@@ -29,7 +29,7 @@ export const navigationItems: NavigationItem[] = [
       { to: "/grn", label: "GRN", badge: 3 }
     ]
   },
-  { to: "/inventory", icon: <Package size={20} />, label: "Store" },
+  { to: "/store", icon: <Package size={20} />, label: "Store" },
   { to: "/production", icon: <BarChart2 size={20} />, label: "Production" },
   { to: "/finished-goods", icon: <Layers size={20} />, label: "Finished Goods" },
   {
