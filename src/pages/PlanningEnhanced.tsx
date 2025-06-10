@@ -10,25 +10,28 @@ import { Calendar } from "@/components/ui/calendar";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Calendar as CalendarIcon, Factory, AlertTriangle, Package } from "lucide-react";
 import { useProjections } from "@/hooks/useProjections";
 import { useProductionSchedules, useCreateProductionSchedule } from "@/hooks/useProductionSchedules";
+import { useBOM } from "@/hooks/useBOM";
+import { useInventory } from "@/hooks/useInventory";
 import { useToast } from "@/hooks/use-toast";
-import { format } from "date-fns";
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, getDay } from "date-fns";
 
 const PlanningEnhanced: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [selectedProjection, setSelectedProjection] = useState<string>("");
   const [quantity, setQuantity] = useState<string>("");
-  const [productionLine, setProductionLine] = useState<string>("");
-  const [shortageDetails, setShortageDetails] = useState<any>(null);
+  const [shortageDialogOpen, setShortageDialogOpen] = useState(false);
+  const [selectedScheduleId, setSelectedScheduleId] = useState<string>("");
   
   const { data: projections } = useProjections();
   const { data: schedules } = useProductionSchedules();
+  const { data: bomData } = useBOM();
+  const { data: inventory } = useInventory();
   const createSchedule = useCreateProductionSchedule();
   const { toast } = useToast();
-
-  const productionLines = ["Line 1", "Line 2", "Sub Assembly 1", "Sub Assembly 2"];
 
   // Generate voucher number
   const generateVoucherNumber = (date: Date) => {
@@ -56,7 +59,7 @@ const PlanningEnhanced: React.FC = () => {
     selectedProjectionData.quantity - (selectedProjectionData.scheduled_quantity || 0) : 0;
 
   const handleSchedule = async () => {
-    if (!selectedDate || !selectedProjection || !quantity || !productionLine) {
+    if (!selectedDate || !selectedProjection || !quantity) {
       toast({
         title: "Missing Information",
         description: "Please fill all required fields",
@@ -79,14 +82,13 @@ const PlanningEnhanced: React.FC = () => {
         projection_id: selectedProjection,
         scheduled_date: format(selectedDate, 'yyyy-MM-dd'),
         quantity: parseInt(quantity),
-        production_line: productionLine,
+        production_line: "TBD", // Will be assigned later
       });
 
       // Reset form
       setSelectedDate(undefined);
       setSelectedProjection("");
       setQuantity("");
-      setProductionLine("");
       
       toast({
         title: "Success",
@@ -102,18 +104,160 @@ const PlanningEnhanced: React.FC = () => {
     }
   };
 
-  // Calendar data for display
-  const calendarData = schedules?.reduce((acc, schedule) => {
-    const dateKey = schedule.scheduled_date;
-    if (!acc[dateKey]) {
-      acc[dateKey] = [];
+  // Calendar grid component
+  const CalendarGrid = () => {
+    const today = new Date();
+    const monthStart = startOfMonth(today);
+    const monthEnd = endOfMonth(today);
+    const daysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd });
+    
+    // Pad with previous month days to align week start
+    const startDay = getDay(monthStart);
+    const paddedDays = [];
+    for (let i = 0; i < startDay; i++) {
+      paddedDays.push(null);
     }
-    acc[dateKey].push({
-      ...schedule,
-      voucherNumber: generateVoucherNumber(new Date(schedule.scheduled_date))
-    });
-    return acc;
-  }, {} as Record<string, any[]>) || {};
+    paddedDays.push(...daysInMonth);
+
+    const getSchedulesForDate = (date: Date) => {
+      return schedules?.filter(schedule => 
+        isSameDay(new Date(schedule.scheduled_date), date)
+      ) || [];
+    };
+
+    return (
+      <div className="grid grid-cols-7 gap-1">
+        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+          <div key={day} className="p-2 text-center font-semibold text-muted-foreground border-b">
+            {day}
+          </div>
+        ))}
+        {paddedDays.map((date, index) => {
+          if (!date) {
+            return <div key={index} className="h-24 border border-muted"></div>;
+          }
+          
+          const daySchedules = getSchedulesForDate(date);
+          
+          return (
+            <div key={index} className="h-24 border border-muted p-1 overflow-y-auto">
+              <div className="font-medium text-sm mb-1">
+                {format(date, 'd')}
+              </div>
+              {daySchedules.map((schedule, scheduleIndex) => (
+                <div 
+                  key={scheduleIndex} 
+                  className="text-xs bg-blue-100 rounded p-1 mb-1 cursor-pointer hover:bg-blue-200"
+                  onClick={() => {
+                    setSelectedScheduleId(schedule.id);
+                    setShortageDialogOpen(true);
+                  }}
+                >
+                  <div className="font-medium truncate">
+                    {schedule.projections?.products?.name}
+                  </div>
+                  <div className="text-muted-foreground">
+                    {schedule.quantity} units
+                  </div>
+                  <div className="text-xs">
+                    {generateVoucherNumber(new Date(schedule.scheduled_date))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
+  // BOM Shortage Analysis Component
+  const BOMShortageAnalysis = () => {
+    const selectedSchedule = schedules?.find(s => s.id === selectedScheduleId);
+    if (!selectedSchedule) return null;
+
+    const productBOM = bomData?.filter(bom => 
+      bom.product_id === selectedSchedule.projections?.product_id
+    ) || [];
+
+    const getBOMWithInventory = () => {
+      return productBOM.map(bomItem => {
+        const inventoryItem = inventory?.find(inv => inv.raw_material_id === bomItem.raw_material_id);
+        const requiredQty = bomItem.quantity * selectedSchedule.quantity;
+        const availableQty = inventoryItem?.quantity || 0;
+        const shortQty = Math.max(0, requiredQty - availableQty);
+
+        return {
+          ...bomItem,
+          requiredQuantity: requiredQty,
+          availableQuantity: availableQty,
+          shortQuantity: shortQty,
+        };
+      });
+    };
+
+    const bomWithInventory = getBOMWithInventory();
+    
+    // Categorize BOM items (simplified categorization based on bom_type)
+    const mainAssembly = bomWithInventory.filter(item => item.bom_type === 'MAIN');
+    const subAssembly = bomWithInventory.filter(item => item.bom_type === 'SUB');
+    const accessories = bomWithInventory.filter(item => item.bom_type === 'ACCESSORY');
+
+    const BOMSection = ({ title, items }: { title: string; items: any[] }) => (
+      <div className="mb-6">
+        <h4 className="font-semibold text-lg mb-3 text-blue-600">{title}</h4>
+        {items.length === 0 ? (
+          <p className="text-muted-foreground">No items in this category</p>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Part Code</TableHead>
+                <TableHead>Material Required</TableHead>
+                <TableHead>Material in Stock</TableHead>
+                <TableHead>Short Material</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {items.map((item, index) => (
+                <TableRow key={index}>
+                  <TableCell className="font-medium">
+                    {item.raw_materials?.material_code || 'N/A'}
+                  </TableCell>
+                  <TableCell>{item.requiredQuantity}</TableCell>
+                  <TableCell>{item.availableQuantity}</TableCell>
+                  <TableCell>
+                    {item.shortQuantity > 0 ? (
+                      <Badge variant="destructive">{item.shortQuantity}</Badge>
+                    ) : (
+                      <Badge variant="secondary">0</Badge>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </div>
+    );
+
+    return (
+      <div className="space-y-4">
+        <div className="text-center pb-4 border-b">
+          <h3 className="text-xl font-bold">
+            {selectedSchedule.projections?.products?.name}
+          </h3>
+          <p className="text-muted-foreground">
+            Scheduled Quantity: {selectedSchedule.quantity} units
+          </p>
+        </div>
+        
+        <BOMSection title="Main Assembly" items={mainAssembly} />
+        <BOMSection title="Sub Assembly" items={subAssembly} />
+        <BOMSection title="Accessories" items={accessories} />
+      </div>
+    );
+  };
 
   return (
     <DashboardLayout>
@@ -123,9 +267,9 @@ const PlanningEnhanced: React.FC = () => {
         </div>
 
         <Tabs defaultValue="planning" className="space-y-4">
-          <TabsList>
+          <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="planning">Production Planning</TabsTrigger>
-            <TabsTrigger value="scheduled">Scheduled Productions</TabsTrigger>
+            <TabsTrigger value="scheduled">Scheduled Production</TabsTrigger>
           </TabsList>
 
           <TabsContent value="planning" className="space-y-6">
@@ -245,25 +389,9 @@ const PlanningEnhanced: React.FC = () => {
                     )}
                   </div>
 
-                  <div>
-                    <Label htmlFor="production-line">Production Line</Label>
-                    <Select value={productionLine} onValueChange={setProductionLine}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select production line" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {productionLines.map((line) => (
-                          <SelectItem key={line} value={line}>
-                            {line}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
                   <Button 
                     onClick={handleSchedule}
-                    disabled={!selectedDate || !selectedProjection || !quantity || !productionLine || createSchedule.isPending}
+                    disabled={!selectedDate || !selectedProjection || !quantity || createSchedule.isPending}
                     className="w-full gap-2"
                   >
                     <Factory className="h-4 w-4" />
@@ -273,45 +401,13 @@ const PlanningEnhanced: React.FC = () => {
               </Card>
             </div>
 
-            {/* Calendar View */}
+            {/* Production Calendar Grid */}
             <Card>
               <CardHeader>
-                <CardTitle>Production Calendar</CardTitle>
+                <CardTitle>Production Calendar - {format(new Date(), 'MMMM yyyy')}</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-7 gap-2 mb-4">
-                  {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                    <div key={day} className="p-2 text-center font-semibold text-muted-foreground">
-                      {day}
-                    </div>
-                  ))}
-                </div>
-                
-                {Object.keys(calendarData).length > 0 ? (
-                  <div className="space-y-2">
-                    {Object.entries(calendarData).map(([date, productions]) => (
-                      <div key={date} className="border rounded-lg p-3">
-                        <div className="font-semibold mb-2">{format(new Date(date), 'PPP')}</div>
-                        <div className="space-y-1">
-                          {productions.map((production, index) => (
-                            <div key={index} className="text-sm bg-blue-50 p-2 rounded">
-                              <div className="font-medium">
-                                {production.projections?.products?.name} - {production.quantity} units
-                              </div>
-                              <div className="text-muted-foreground">
-                                Voucher: {production.voucherNumber} | Line: {production.production_line}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-8 text-muted-foreground">
-                    No productions scheduled yet
-                  </div>
-                )}
+                <CalendarGrid />
               </CardContent>
             </Card>
           </TabsContent>
@@ -319,53 +415,47 @@ const PlanningEnhanced: React.FC = () => {
           <TabsContent value="scheduled" className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Scheduled Productions</CardTitle>
+                <CardTitle>Scheduled Production</CardTitle>
               </CardHeader>
               <CardContent>
                 {scheduledNotSentToProduction.length > 0 ? (
-                  <div className="space-y-3">
-                    {scheduledNotSentToProduction.map((schedule) => (
-                      <div key={schedule.id} className="flex items-center justify-between p-3 border rounded-lg">
-                        <div>
-                          <div className="font-medium">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Product Name</TableHead>
+                        <TableHead>Quantity</TableHead>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Voucher Number</TableHead>
+                        <TableHead>Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {scheduledNotSentToProduction.map((schedule) => (
+                        <TableRow key={schedule.id}>
+                          <TableCell className="font-medium">
                             {schedule.projections?.products?.name}
-                          </div>
-                          <div className="text-sm text-muted-foreground">
-                            Quantity: {schedule.quantity} | 
-                            Date: {format(new Date(schedule.scheduled_date), 'PPP')} | 
-                            Voucher: {generateVoucherNumber(new Date(schedule.scheduled_date))}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Dialog>
-                            <DialogTrigger asChild>
-                              <Button variant="outline" size="sm">
-                                <AlertTriangle className="h-4 w-4 mr-1" />
-                                Shortages
-                              </Button>
-                            </DialogTrigger>
-                            <DialogContent className="max-w-2xl">
-                              <DialogHeader>
-                                <DialogTitle>Material Requirements & Shortages</DialogTitle>
-                              </DialogHeader>
-                              <div className="space-y-4">
-                                <p className="text-sm text-muted-foreground">
-                                  Material requirements and availability for {schedule.projections?.products?.name}
-                                </p>
-                                {/* This would contain BOM breakdown and shortage calculations */}
-                                <div className="text-center py-8 text-muted-foreground">
-                                  Material shortage calculation will be implemented based on BOM data
-                                </div>
-                              </div>
-                            </DialogContent>
-                          </Dialog>
-                          <Badge variant="secondary">
-                            {schedule.status}
-                          </Badge>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                          </TableCell>
+                          <TableCell>{schedule.quantity}</TableCell>
+                          <TableCell>{format(new Date(schedule.scheduled_date), 'PPP')}</TableCell>
+                          <TableCell>{generateVoucherNumber(new Date(schedule.scheduled_date))}</TableCell>
+                          <TableCell>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => {
+                                setSelectedScheduleId(schedule.id);
+                                setShortageDialogOpen(true);
+                              }}
+                              className="gap-2"
+                            >
+                              <AlertTriangle className="h-4 w-4" />
+                              Shortages
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
                 ) : (
                   <div className="text-center py-8 text-muted-foreground">
                     No scheduled productions pending
@@ -375,6 +465,16 @@ const PlanningEnhanced: React.FC = () => {
             </Card>
           </TabsContent>
         </Tabs>
+
+        {/* Shortage Analysis Dialog */}
+        <Dialog open={shortageDialogOpen} onOpenChange={setShortageDialogOpen}>
+          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Material Requirements & Shortages</DialogTitle>
+            </DialogHeader>
+            <BOMShortageAnalysis />
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );
