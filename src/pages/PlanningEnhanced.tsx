@@ -177,7 +177,7 @@ const PlanningEnhanced: React.FC = () => {
     if (!selectedSchedule) return null;
 
     const productBOM = bomData?.filter(bom => 
-      bom.product_id === selectedSchedule.projections?.product_id
+      bom.product_id === selectedSchedule.projections?.products?.id
     ) || [];
 
     const getBOMWithInventory = () => {
@@ -198,10 +198,10 @@ const PlanningEnhanced: React.FC = () => {
 
     const bomWithInventory = getBOMWithInventory();
     
-    // Categorize BOM items (simplified categorization based on bom_type)
-    const mainAssembly = bomWithInventory.filter(item => item.bom_type === 'MAIN');
-    const subAssembly = bomWithInventory.filter(item => item.bom_type === 'SUB');
-    const accessories = bomWithInventory.filter(item => item.bom_type === 'ACCESSORY');
+    // Categorize BOM items based on actual database enum values
+    const mainAssembly = bomWithInventory.filter(item => item.bom_type === 'main_assembly');
+    const subAssembly = bomWithInventory.filter(item => item.bom_type === 'sub_assembly');
+    const accessories = bomWithInventory.filter(item => item.bom_type === 'accessory');
 
     const BOMSection = ({ title, items }: { title: string; items: any[] }) => (
       <div className="mb-6">
