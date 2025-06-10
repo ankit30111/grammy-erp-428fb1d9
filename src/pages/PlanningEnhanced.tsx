@@ -33,12 +33,14 @@ const PlanningEnhanced: React.FC = () => {
   const createSchedule = useCreateProductionSchedule();
   const { toast } = useToast();
 
-  // Generate voucher number
+  // Generate voucher number with correct format: PROD_MM_XX
   const generateVoucherNumber = (date: Date) => {
     const month = String(date.getMonth() + 1).padStart(2, '0');
-    const existingVouchersForMonth = schedules?.filter(schedule => 
-      new Date(schedule.scheduled_date).getMonth() + 1 === date.getMonth() + 1
-    ) || [];
+    const existingVouchersForMonth = schedules?.filter(schedule => {
+      const scheduleDate = new Date(schedule.scheduled_date);
+      return scheduleDate.getMonth() + 1 === date.getMonth() + 1 && 
+             scheduleDate.getFullYear() === date.getFullYear();
+    }) || [];
     const sequenceNumber = existingVouchersForMonth.length + 1;
     return `PROD_${month}_${String(sequenceNumber).padStart(2, '0')}`;
   };
@@ -171,7 +173,7 @@ const PlanningEnhanced: React.FC = () => {
     );
   };
 
-  // BOM Shortage Analysis Component
+  // BOM Shortage Analysis Component with real-time inventory data
   const BOMShortageAnalysis = () => {
     const selectedSchedule = schedules?.find(s => s.id === selectedScheduleId);
     if (!selectedSchedule) return null;
@@ -212,10 +214,11 @@ const PlanningEnhanced: React.FC = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Part Code</TableHead>
-                <TableHead>Material Required</TableHead>
-                <TableHead>Material in Stock</TableHead>
-                <TableHead>Short Material</TableHead>
+                <TableHead>Material Code</TableHead>
+                <TableHead>Material Name</TableHead>
+                <TableHead>Required Quantity</TableHead>
+                <TableHead>In Stock</TableHead>
+                <TableHead>Short</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -224,6 +227,7 @@ const PlanningEnhanced: React.FC = () => {
                   <TableCell className="font-medium">
                     {item.raw_materials?.material_code || 'N/A'}
                   </TableCell>
+                  <TableCell>{item.raw_materials?.name || 'N/A'}</TableCell>
                   <TableCell>{item.requiredQuantity}</TableCell>
                   <TableCell>{item.availableQuantity}</TableCell>
                   <TableCell>
@@ -249,6 +253,9 @@ const PlanningEnhanced: React.FC = () => {
           </h3>
           <p className="text-muted-foreground">
             Scheduled Quantity: {selectedSchedule.quantity} units
+          </p>
+          <p className="text-sm text-muted-foreground">
+            Voucher: {generateVoucherNumber(new Date(selectedSchedule.scheduled_date))}
           </p>
         </div>
         
