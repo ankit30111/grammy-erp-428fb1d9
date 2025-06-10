@@ -10,25 +10,28 @@ import { Calendar } from "@/components/ui/calendar";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Calendar as CalendarIcon, Factory, AlertTriangle, Package } from "lucide-react";
 import { useProjections } from "@/hooks/useProjections";
 import { useProductionSchedules, useCreateProductionSchedule } from "@/hooks/useProductionSchedules";
+import { useBOMByProduct } from "@/hooks/useBOM";
+import { useInventory } from "@/hooks/useInventory";
 import { useToast } from "@/hooks/use-toast";
-import { format } from "date-fns";
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay } from "date-fns";
 
 const PlanningEnhanced: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [selectedProjection, setSelectedProjection] = useState<string>("");
   const [quantity, setQuantity] = useState<string>("");
-  const [productionLine, setProductionLine] = useState<string>("");
-  const [shortageDetails, setShortageDetails] = useState<any>(null);
+  const [selectedProductForBOM, setSelectedProductForBOM] = useState<string>("");
+  const [shortageDialogOpen, setShortageDialogOpen] = useState(false);
   
   const { data: projections } = useProjections();
   const { data: schedules } = useProductionSchedules();
+  const { data: bomData } = useBOMByProduct(selectedProductForBOM);
+  const { data: inventory } = useInventory();
   const createSchedule = useCreateProductionSchedule();
   const { toast } = useToast();
-
-  const productionLines = ["Line 1", "Line 2", "Sub Assembly 1", "Sub Assembly 2"];
 
   // Generate voucher number
   const generateVoucherNumber = (date: Date) => {
@@ -56,7 +59,7 @@ const PlanningEnhanced: React.FC = () => {
     selectedProjectionData.quantity - (selectedProjectionData.scheduled_quantity || 0) : 0;
 
   const handleSchedule = async () => {
-    if (!selectedDate || !selectedProjection || !quantity || !productionLine) {
+    if (!selectedDate || !selectedProjection || !quantity) {
       toast({
         title: "Missing Information",
         description: "Please fill all required fields",
@@ -79,14 +82,13 @@ const PlanningEnhanced: React.FC = () => {
         projection_id: selectedProjection,
         scheduled_date: format(selectedDate, 'yyyy-MM-dd'),
         quantity: parseInt(quantity),
-        production_line: productionLine,
+        production_line: "TBD", // Will be assigned later
       });
 
       // Reset form
       setSelectedDate(undefined);
       setSelectedProjection("");
       setQuantity("");
-      setProductionLine("");
       
       toast({
         title: "Success",
@@ -102,16 +104,32 @@ const PlanningEnhanced: React.FC = () => {
     }
   };
 
-  // Calendar data for display
-  const calendarData = schedules?.reduce((acc, schedule) => {
+  // Calendar grid generation
+  const currentMonth = new Date();
+  const monthStart = startOfMonth(currentMonth);
+  const monthEnd = endOfMonth(currentMonth);
+  const monthDays = eachDayOfInterval({ start: monthStart, end: monthEnd });
+
+  // Group schedules by date
+  const schedulesByDate = schedules?.reduce((acc, schedule) => {
     const dateKey = schedule.scheduled_date;
     if (!acc[dateKey]) {
       acc[dateKey] = [];
     }
-    acc[dateKey].push({
-      ...schedule,
-      voucherNumber: generateVoucherNumber(new Date(schedule.scheduled_date))
-    });
+    acc[dateKey].push(schedule);
+    return acc;
+  }, {} as Record<string, any[]>) || {};
+
+  const handleShowShortages = (schedule: any) => {
+    setSelectedProductForBOM(schedule.projections?.product_id);
+    setShortageDialogOpen(true);
+  };
+
+  // Organize BOM by sections
+  const organizedBOM = bomData?.reduce((acc, item) => {
+    const section = item.bom_type || 'main_assembly';
+    if (!acc[section]) acc[section] = [];
+    acc[section].push(item);
     return acc;
   }, {} as Record<string, any[]>) || {};
 
@@ -123,9 +141,9 @@ const PlanningEnhanced: React.FC = () => {
         </div>
 
         <Tabs defaultValue="planning" className="space-y-4">
-          <TabsList>
+          <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="planning">Production Planning</TabsTrigger>
-            <TabsTrigger value="scheduled">Scheduled Productions</TabsTrigger>
+            <TabsTrigger value="scheduled">Scheduled Production</TabsTrigger>
           </TabsList>
 
           <TabsContent value="planning" className="space-y-6">
@@ -245,25 +263,9 @@ const PlanningEnhanced: React.FC = () => {
                     )}
                   </div>
 
-                  <div>
-                    <Label htmlFor="production-line">Production Line</Label>
-                    <Select value={productionLine} onValueChange={setProductionLine}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select production line" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {productionLines.map((line) => (
-                          <SelectItem key={line} value={line}>
-                            {line}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
                   <Button 
                     onClick={handleSchedule}
-                    disabled={!selectedDate || !selectedProjection || !quantity || !productionLine || createSchedule.isPending}
+                    disabled={!selectedDate || !selectedProjection || !quantity || createSchedule.isPending}
                     className="w-full gap-2"
                   >
                     <Factory className="h-4 w-4" />
@@ -273,45 +275,47 @@ const PlanningEnhanced: React.FC = () => {
               </Card>
             </div>
 
-            {/* Calendar View */}
+            {/* Production Calendar Grid */}
             <Card>
               <CardHeader>
-                <CardTitle>Production Calendar</CardTitle>
+                <CardTitle>Production Calendar - {format(currentMonth, 'MMMM yyyy')}</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-7 gap-2 mb-4">
+                <div className="grid grid-cols-7 gap-2">
                   {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                    <div key={day} className="p-2 text-center font-semibold text-muted-foreground">
+                    <div key={day} className="p-2 text-center font-semibold text-muted-foreground border-b">
                       {day}
                     </div>
                   ))}
-                </div>
-                
-                {Object.keys(calendarData).length > 0 ? (
-                  <div className="space-y-2">
-                    {Object.entries(calendarData).map(([date, productions]) => (
-                      <div key={date} className="border rounded-lg p-3">
-                        <div className="font-semibold mb-2">{format(new Date(date), 'PPP')}</div>
+                  
+                  {monthDays.map(day => {
+                    const dateKey = format(day, 'yyyy-MM-dd');
+                    const daySchedules = schedulesByDate[dateKey] || [];
+                    
+                    return (
+                      <div key={dateKey} className="min-h-[100px] p-2 border rounded">
+                        <div className="text-sm font-medium mb-1">
+                          {format(day, 'd')}
+                        </div>
                         <div className="space-y-1">
-                          {productions.map((production, index) => (
-                            <div key={index} className="text-sm bg-blue-50 p-2 rounded">
-                              <div className="font-medium">
-                                {production.projections?.products?.name} - {production.quantity} units
+                          {daySchedules.map((schedule, index) => (
+                            <div key={index} className="text-xs bg-blue-100 p-1 rounded cursor-pointer hover:bg-blue-200">
+                              <div className="font-medium truncate">
+                                {schedule.projections?.products?.name}
                               </div>
                               <div className="text-muted-foreground">
-                                Voucher: {production.voucherNumber} | Line: {production.production_line}
+                                Qty: {schedule.quantity}
+                              </div>
+                              <div className="text-muted-foreground">
+                                {generateVoucherNumber(new Date(schedule.scheduled_date))}
                               </div>
                             </div>
                           ))}
                         </div>
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-8 text-muted-foreground">
-                    No productions scheduled yet
-                  </div>
-                )}
+                    );
+                  })}
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -319,53 +323,45 @@ const PlanningEnhanced: React.FC = () => {
           <TabsContent value="scheduled" className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Scheduled Productions</CardTitle>
+                <CardTitle>Scheduled Production</CardTitle>
               </CardHeader>
               <CardContent>
                 {scheduledNotSentToProduction.length > 0 ? (
-                  <div className="space-y-3">
-                    {scheduledNotSentToProduction.map((schedule) => (
-                      <div key={schedule.id} className="flex items-center justify-between p-3 border rounded-lg">
-                        <div>
-                          <div className="font-medium">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Product Name</TableHead>
+                        <TableHead>Quantity</TableHead>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Voucher Number</TableHead>
+                        <TableHead>Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {scheduledNotSentToProduction.map((schedule) => (
+                        <TableRow key={schedule.id}>
+                          <TableCell className="font-medium">
                             {schedule.projections?.products?.name}
-                          </div>
-                          <div className="text-sm text-muted-foreground">
-                            Quantity: {schedule.quantity} | 
-                            Date: {format(new Date(schedule.scheduled_date), 'PPP')} | 
-                            Voucher: {generateVoucherNumber(new Date(schedule.scheduled_date))}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Dialog>
-                            <DialogTrigger asChild>
-                              <Button variant="outline" size="sm">
-                                <AlertTriangle className="h-4 w-4 mr-1" />
-                                Shortages
-                              </Button>
-                            </DialogTrigger>
-                            <DialogContent className="max-w-2xl">
-                              <DialogHeader>
-                                <DialogTitle>Material Requirements & Shortages</DialogTitle>
-                              </DialogHeader>
-                              <div className="space-y-4">
-                                <p className="text-sm text-muted-foreground">
-                                  Material requirements and availability for {schedule.projections?.products?.name}
-                                </p>
-                                {/* This would contain BOM breakdown and shortage calculations */}
-                                <div className="text-center py-8 text-muted-foreground">
-                                  Material shortage calculation will be implemented based on BOM data
-                                </div>
-                              </div>
-                            </DialogContent>
-                          </Dialog>
-                          <Badge variant="secondary">
-                            {schedule.status}
-                          </Badge>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                          </TableCell>
+                          <TableCell>{schedule.quantity}</TableCell>
+                          <TableCell>{format(new Date(schedule.scheduled_date), 'PPP')}</TableCell>
+                          <TableCell className="font-mono">
+                            {generateVoucherNumber(new Date(schedule.scheduled_date))}
+                          </TableCell>
+                          <TableCell>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => handleShowShortages(schedule)}
+                            >
+                              <AlertTriangle className="h-4 w-4 mr-1" />
+                              Shortages
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
                 ) : (
                   <div className="text-center py-8 text-muted-foreground">
                     No scheduled productions pending
@@ -375,6 +371,61 @@ const PlanningEnhanced: React.FC = () => {
             </Card>
           </TabsContent>
         </Tabs>
+
+        {/* BOM Shortage Dialog */}
+        <Dialog open={shortageDialogOpen} onOpenChange={setShortageDialogOpen}>
+          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Material Requirements & Shortages</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-6">
+              {Object.entries(organizedBOM).map(([section, items]) => (
+                <div key={section}>
+                  <h3 className="text-lg font-semibold mb-3 capitalize">
+                    {section.replace('_', ' ')}
+                  </h3>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Part Code</TableHead>
+                        <TableHead>Material Name</TableHead>
+                        <TableHead>Required</TableHead>
+                        <TableHead>In Stock</TableHead>
+                        <TableHead>Short</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {items.map((item: any) => {
+                        const stockItem = inventory?.find(inv => inv.raw_material_id === item.raw_material_id);
+                        const inStock = stockItem?.quantity || 0;
+                        const required = item.quantity;
+                        const shortage = Math.max(0, required - inStock);
+                        
+                        return (
+                          <TableRow key={item.id}>
+                            <TableCell className="font-mono">
+                              {item.raw_materials?.material_code}
+                            </TableCell>
+                            <TableCell>{item.raw_materials?.name}</TableCell>
+                            <TableCell>{required}</TableCell>
+                            <TableCell>{inStock}</TableCell>
+                            <TableCell>
+                              {shortage > 0 ? (
+                                <span className="text-red-600 font-medium">{shortage}</span>
+                              ) : (
+                                <span className="text-green-600">✓</span>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              ))}
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );

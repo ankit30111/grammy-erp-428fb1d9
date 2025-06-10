@@ -1,5 +1,6 @@
 
 import { useState, useEffect } from "react";
+import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScheduledProduction as ScheduledProductionType, mockScheduledProductions, mockGRNs, mockMaterialRequests, GRNItem, MaterialRequest } from "@/types/store";
 import EnhancedGRNReceiving from "@/components/Store/EnhancedGRNReceiving";
@@ -96,51 +97,53 @@ export default function StoreDashboard() {
   };
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <StoreDashboardHeader 
-        onSyncInventory={handleSyncInventory}
-        isSyncing={isSyncing}
-      />
+    <DashboardLayout>
+      <div className="space-y-6">
+        <StoreDashboardHeader 
+          onSyncInventory={handleSyncInventory}
+          isSyncing={isSyncing}
+        />
 
-      <Tabs defaultValue="production-vouchers" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-6">
-          <TabsTrigger value="production-vouchers">Production Voucher Management</TabsTrigger>
-          <TabsTrigger value="grn">GRN Receiving</TabsTrigger>
-          <TabsTrigger value="feedback">Production Feedback</TabsTrigger>
-          <TabsTrigger value="inventory">Inventory</TabsTrigger>
-          <TabsTrigger value="spare-orders">Spare Orders</TabsTrigger>
-          <TabsTrigger value="log-book">Log Book</TabsTrigger>
-        </TabsList>
+        <Tabs defaultValue="production-vouchers" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-6">
+            <TabsTrigger value="production-vouchers">Production Voucher Management</TabsTrigger>
+            <TabsTrigger value="grn">GRN Receiving</TabsTrigger>
+            <TabsTrigger value="feedback">Production Feedback</TabsTrigger>
+            <TabsTrigger value="inventory">Inventory</TabsTrigger>
+            <TabsTrigger value="spare-orders">Spare Orders</TabsTrigger>
+            <TabsTrigger value="log-book">Log Book</TabsTrigger>
+          </TabsList>
 
-        <TabsContent value="production-vouchers">
-          <VoucherKitManagement
-            voucherStatuses={voucherStatuses || []}
-          />
-        </TabsContent>
+          <TabsContent value="production-vouchers">
+            <VoucherKitManagement
+              voucherStatuses={voucherStatuses || []}
+            />
+          </TabsContent>
 
-        <TabsContent value="grn">
-          <EnhancedGRNReceiving 
-            onReceiveGRN={handleReceiveGRN}
-            onDiscrepancyReport={handleDiscrepancyReport}
-          />
-        </TabsContent>
+          <TabsContent value="grn">
+            <EnhancedGRNReceiving 
+              onReceiveGRN={handleReceiveGRN}
+              onDiscrepancyReport={handleDiscrepancyReport}
+            />
+          </TabsContent>
 
-        <TabsContent value="feedback">
-          <ProductionFeedback />
-        </TabsContent>
+          <TabsContent value="feedback">
+            <ProductionFeedback />
+          </TabsContent>
 
-        <TabsContent value="inventory">
-          <InventoryManagement />
-        </TabsContent>
+          <TabsContent value="inventory">
+            <InventoryManagement />
+          </TabsContent>
 
-        <TabsContent value="spare-orders">
-          <SpareOrdersPacking />
-        </TabsContent>
+          <TabsContent value="spare-orders">
+            <SpareOrdersPacking />
+          </TabsContent>
 
-        <TabsContent value="log-book">
-          <LogBook />
-        </TabsContent>
-      </Tabs>
-    </div>
+          <TabsContent value="log-book">
+            <LogBook />
+          </TabsContent>
+        </Tabs>
+      </div>
+    </DashboardLayout>
   );
 }
