@@ -13,9 +13,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Calendar as CalendarIcon, Factory, AlertTriangle, Package, Edit, Trash2, RefreshCw } from "lucide-react";
 import { useProjections } from "@/hooks/useProjections";
 import { useProductionSchedules, useCreateProductionSchedule } from "@/hooks/useProductionSchedules";
-import { useBOM } from "@/hooks/useBOM";
 import { useInventory } from "@/hooks/useInventory";
 import { useToast } from "@/hooks/use-toast";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, getDay } from "date-fns";
 import { EditScheduleDialog } from "@/components/Planning/EditScheduleDialog";
 import { DeleteScheduleDialog } from "@/components/Planning/DeleteScheduleDialog";
@@ -32,7 +33,6 @@ const PlanningEnhanced: React.FC = () => {
   
   const { data: projections } = useProjections();
   const { data: schedules, refetch: refetchSchedules } = useProductionSchedules();
-  const { data: bomData } = useBOM();
   const { data: inventory, refetch: refetchInventory } = useInventory();
   const createSchedule = useCreateProductionSchedule();
   const { toast } = useToast();
@@ -179,21 +179,70 @@ const PlanningEnhanced: React.FC = () => {
     );
   };
 
-  // Enhanced BOM Production Voucher Analysis Component with corrected shortage calculation
+  // Enhanced BOM Production Voucher Analysis Component with product-specific BOM query
   const BOMProductionVoucherAnalysis = () => {
     const selectedSchedule = schedules?.find(s => s.id === selectedScheduleId);
     if (!selectedSchedule) return null;
 
-    const productBOM = bomData?.filter(bom => 
-      bom.product_id === selectedSchedule.projections?.products?.id
-    ) || [];
+    const productId = selectedSchedule.projections?.products?.id;
+    
+    console.log('🎯 BOM Analysis Debug:');
+    console.log('- Selected Schedule:', selectedSchedule);
+    console.log('- Product ID:', productId);
+    console.log('- Schedule Quantity:', selectedSchedule.quantity);
+
+    // Use product-specific BOM query instead of global useBOM
+    const { data: productBOM = [], isLoading: bomLoading } = useQuery({
+      queryKey: ["product-bom", productId],
+      queryFn: async () => {
+        if (!productId) return [];
+        
+        console.log('🔍 Fetching BOM for product:', productId);
+        
+        const { data, error } = await supabase
+          .from("bom")
+          .select(`
+            *,
+            raw_materials!inner(
+              id,
+              material_code,
+              name,
+              category
+            )
+          `)
+          .eq("product_id", productId);
+        
+        if (error) {
+          console.error('❌ BOM fetch error:', error);
+          throw error;
+        }
+        
+        console.log('✅ BOM data fetched:', data?.length, 'items');
+        console.log('📊 BOM breakdown by type:');
+        
+        const breakdown = data?.reduce((acc, item) => {
+          acc[item.bom_type] = (acc[item.bom_type] || 0) + 1;
+          return acc;
+        }, {});
+        
+        console.log(breakdown);
+        
+        return data || [];
+      },
+      enabled: !!productId && isOpen,
+    });
 
     const getBOMWithInventory = () => {
-      return productBOM.map(bomItem => {
+      if (!productBOM.length || !inventory) {
+        console.log('⚠️ Missing data - BOM items:', productBOM.length, 'Inventory loaded:', !!inventory);
+        return [];
+      }
+
+      const bomWithInventory = productBOM.map(bomItem => {
         const inventoryItem = inventory?.find(inv => inv.raw_material_id === bomItem.raw_material_id);
         const requiredQty = bomItem.quantity * selectedSchedule.quantity;
         const availableQty = inventoryItem?.quantity || 0;
-        const shortQty = requiredQty - availableQty;
+        const shortQty = Math.max(0, requiredQty - availableQty); // Only show positive shortage or 0
 
         return {
           ...bomItem,
@@ -203,6 +252,18 @@ const PlanningEnhanced: React.FC = () => {
           status: shortQty > 0 ? 'SHORT' : 'AVAILABLE'
         };
       });
+
+      console.log('📋 Final BOM with inventory:', bomWithInventory.length, 'items processed');
+      
+      // Log breakdown by category
+      const finalBreakdown = bomWithInventory.reduce((acc, item) => {
+        acc[item.bom_type] = (acc[item.bom_type] || 0) + 1;
+        return acc;
+      }, {});
+      
+      console.log('📊 Final breakdown:', finalBreakdown);
+      
+      return bomWithInventory;
     };
 
     const bomWithInventory = getBOMWithInventory();
@@ -211,6 +272,35 @@ const PlanningEnhanced: React.FC = () => {
     const mainAssembly = bomWithInventory.filter(item => item.bom_type === 'main_assembly');
     const subAssembly = bomWithInventory.filter(item => item.bom_type === 'sub_assembly');
     const accessories = bomWithInventory.filter(item => item.bom_type === 'accessory');
+
+    console.log('🏗️ Category distribution:');
+    console.log('- Main Assembly:', mainAssembly.length);
+    console.log('- Sub Assembly:', subAssembly.length);
+    console.log('- Accessories:', accessories.length);
+    console.log('- Total:', mainAssembly.length + subAssembly.length + accessories.length);
+
+    if (bomLoading) {
+      return (
+        <div className="space-y-4">
+          <div className="text-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+            <p className="mt-2 text-muted-foreground">Loading BOM data...</p>
+          </div>
+        </div>
+      );
+    }
+
+    if (!productBOM.length) {
+      return (
+        <div className="space-y-4">
+          <div className="text-center py-8">
+            <Package className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
+            <p className="text-muted-foreground">No BOM data found for this product</p>
+            <p className="text-sm text-muted-foreground mt-1">Product ID: {productId}</p>
+          </div>
+        </div>
+      );
+    }
 
     const BOMSection = ({ title, items }: { title: string; items: any[] }) => (
       <div className="mb-6">
@@ -270,6 +360,12 @@ const PlanningEnhanced: React.FC = () => {
             </h3>
             <p className="text-muted-foreground">
               Voucher: {voucherNumber} | Scheduled Quantity: {selectedSchedule.quantity} units
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Total BOM Items: {bomWithInventory.length} | 
+              Main: {mainAssembly.length} | 
+              Sub: {subAssembly.length} | 
+              Acc: {accessories.length}
             </p>
           </div>
           <Button
@@ -559,3 +655,5 @@ const PlanningEnhanced: React.FC = () => {
 };
 
 export default PlanningEnhanced;
+
+</edits_to_apply>
