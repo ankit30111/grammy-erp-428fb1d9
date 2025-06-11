@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { usePurchaseOrders } from "@/hooks/usePurchaseOrders";
@@ -31,15 +30,25 @@ const GRNForm = () => {
     setSelectedPO(poId);
     const po = purchaseOrders?.find(p => p.id === poId);
     if (po?.purchase_order_items) {
-      const items: GRNItem[] = po.purchase_order_items.map(item => ({
-        raw_material_id: item.raw_material_id,
-        material_code: item.raw_materials?.material_code || '',
-        material_name: item.raw_materials?.name || '',
-        po_quantity: item.quantity,
-        received_quantity: 0,
-        pending_quantity: item.pending_quantity || item.quantity
-      }));
+      const items: GRNItem[] = po.purchase_order_items
+        .filter(item => (item.pending_quantity || item.quantity) > 0) // Only show items with pending quantities
+        .map(item => ({
+          raw_material_id: item.raw_material_id,
+          material_code: item.raw_materials?.material_code || '',
+          material_name: item.raw_materials?.name || '',
+          po_quantity: item.quantity,
+          received_quantity: 0,
+          pending_quantity: item.pending_quantity || item.quantity
+        }));
       setGRNItems(items);
+      
+      if (items.length === 0) {
+        toast({
+          title: "No Pending Items",
+          description: "All items in this purchase order have been fully received.",
+          variant: "destructive",
+        });
+      }
     }
   };
 
@@ -143,14 +152,23 @@ const GRNForm = () => {
     }
   };
 
-  // Filter POs to show only those with status SENT or APPROVED and have pending items
-  const availablePOs = purchaseOrders?.filter(po => 
-    ['SENT', 'APPROVED'].includes(po.status) &&
-    po.purchase_order_items?.some((item: any) => (item.pending_quantity || item.quantity) > 0)
-  ) || [];
+  // Enhanced filtering for available POs - only show POs that have items with pending quantities > 0
+  const availablePOs = purchaseOrders?.filter(po => {
+    // Check if PO status allows GRN creation
+    const validStatus = ['SENT', 'APPROVED'].includes(po.status);
+    
+    // Check if PO has any items with pending quantities
+    const hasPendingItems = po.purchase_order_items?.some((item: any) => {
+      const pending = item.pending_quantity || item.quantity;
+      return pending > 0;
+    });
+    
+    return validStatus && hasPendingItems;
+  }) || [];
 
   console.log('Available POs for GRN:', availablePOs);
-  console.log('Total PO count:', availablePOs.length);
+  console.log('Total Available PO count:', availablePOs.length);
+  console.log('All POs:', purchaseOrders?.length);
 
   return (
     <Card>
@@ -183,16 +201,35 @@ const GRNForm = () => {
 
         {selectedPO && grnItems.length === 0 && (
           <div className="text-center py-8 text-muted-foreground">
-            No items found for selected PO
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <p className="text-yellow-800 font-medium">No pending items found for selected PO</p>
+              <p className="text-yellow-600 text-sm mt-1">All items in this purchase order may have been fully received.</p>
+            </div>
           </div>
         )}
 
         {!selectedPO && (
           <div className="text-center py-8 text-muted-foreground">
-            {availablePOs.length === 0 
-              ? "No purchase orders available for GRN creation"
-              : "Select a Purchase Order to begin creating GRN"
-            }
+            {isLoading ? (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <p className="text-blue-800">Loading purchase orders...</p>
+              </div>
+            ) : availablePOs.length === 0 ? (
+              <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                <p className="text-orange-800 font-medium">No purchase orders available for GRN creation</p>
+                <p className="text-orange-600 text-sm mt-1">
+                  Purchase orders must be in 'SENT' or 'APPROVED' status and have pending items to receive.
+                </p>
+                <p className="text-orange-600 text-sm">
+                  Total POs in system: {purchaseOrders?.length || 0}
+                </p>
+              </div>
+            ) : (
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                <p className="text-gray-800 font-medium">Select a Purchase Order to begin creating GRN</p>
+                <p className="text-gray-600 text-sm mt-1">{availablePOs.length} purchase orders available</p>
+              </div>
+            )}
           </div>
         )}
       </CardContent>
