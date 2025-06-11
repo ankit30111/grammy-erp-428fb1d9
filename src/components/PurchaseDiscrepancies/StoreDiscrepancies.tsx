@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -33,14 +32,17 @@ const StoreDiscrepancies = () => {
             name
           )
         `)
-        .neq('received_quantity', 'accepted_quantity')
         .not('accepted_quantity', 'is', null)
         .order('created_at', { ascending: false });
       
       if (error) throw error;
       
       // Filter to only include items where received_quantity != accepted_quantity
-      return data?.filter(item => Number(item.received_quantity) !== Number(item.accepted_quantity)) || [];
+      return data?.filter(item => {
+        const receivedQty = Number(item.received_quantity) || 0;
+        const acceptedQty = Number(item.accepted_quantity) || 0;
+        return receivedQty !== acceptedQty;
+      }) || [];
     },
   });
 
