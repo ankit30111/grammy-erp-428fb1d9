@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,6 +25,7 @@ const PlanningEnhanced: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [selectedProjection, setSelectedProjection] = useState<string>("");
   const [quantity, setQuantity] = useState<string>("");
+  const [productionLine, setProductionLine] = useState<string>("");
   const [shortageDialogOpen, setShortageDialogOpen] = useState(false);
   const [selectedScheduleId, setSelectedScheduleId] = useState<string>("");
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -36,6 +38,9 @@ const PlanningEnhanced: React.FC = () => {
   const { data: inventory, refetch: refetchInventory } = useInventory();
   const createSchedule = useCreateProductionSchedule();
   const { toast } = useToast();
+
+  // Production lines available for selection
+  const productionLines = ["Line 1", "Line 2", "Sub Assembly 1", "Sub Assembly 2"];
 
   // Get unscheduled projections
   const unscheduledProjections = projections?.filter(projection => {
@@ -53,10 +58,10 @@ const PlanningEnhanced: React.FC = () => {
     selectedProjectionData.quantity - (selectedProjectionData.scheduled_quantity || 0) : 0;
 
   const handleSchedule = async () => {
-    if (!selectedDate || !selectedProjection || !quantity) {
+    if (!selectedDate || !selectedProjection || !quantity || !productionLine) {
       toast({
         title: "Missing Information",
-        description: "Please fill all required fields",
+        description: "Please fill all required fields including production line",
         variant: "destructive",
       });
       return;
@@ -76,13 +81,14 @@ const PlanningEnhanced: React.FC = () => {
         projection_id: selectedProjection,
         scheduled_date: format(selectedDate, 'yyyy-MM-dd'),
         quantity: parseInt(quantity),
-        production_line: "TBD", // Will be assigned later
+        production_line: productionLine,
       });
 
       // Reset form
       setSelectedDate(undefined);
       setSelectedProjection("");
       setQuantity("");
+      setProductionLine("");
       
     } catch (error) {
       console.error('Error scheduling production:', error);
@@ -406,9 +412,25 @@ const PlanningEnhanced: React.FC = () => {
                     )}
                   </div>
 
+                  <div>
+                    <Label htmlFor="production-line">Production Line</Label>
+                    <Select value={productionLine} onValueChange={setProductionLine}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select production line" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {productionLines.map((line) => (
+                          <SelectItem key={line} value={line}>
+                            {line}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
                   <Button 
                     onClick={handleSchedule}
-                    disabled={!selectedDate || !selectedProjection || !quantity || createSchedule.isPending}
+                    disabled={!selectedDate || !selectedProjection || !quantity || !productionLine || createSchedule.isPending}
                     className="w-full gap-2"
                   >
                     <Factory className="h-4 w-4" />
