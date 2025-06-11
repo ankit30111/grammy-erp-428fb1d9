@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -229,7 +230,7 @@ const PlanningEnhanced: React.FC = () => {
         
         return data || [];
       },
-      enabled: !!productId && isOpen,
+      enabled: !!productId && shortageDialogOpen,
     });
 
     const getBOMWithInventory = () => {
@@ -655,5 +656,3 @@ const PlanningEnhanced: React.FC = () => {
 };
 
 export default PlanningEnhanced;
-
-</edits_to_apply>
