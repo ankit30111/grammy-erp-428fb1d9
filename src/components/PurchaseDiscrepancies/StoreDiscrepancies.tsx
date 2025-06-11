@@ -1,3 +1,4 @@
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -32,16 +33,22 @@ const StoreDiscrepancies = () => {
             name
           )
         `)
+        .eq('store_confirmed', true)
         .not('accepted_quantity', 'is', null)
         .order('created_at', { ascending: false });
       
       if (error) throw error;
       
-      // Filter to only include items where received_quantity != accepted_quantity
+      // Filter to only include items where IQC accepted quantity != store accepted quantity
+      // The accepted_quantity field represents what IQC approved for the store
+      // If store confirmed a different amount, it's a discrepancy
       return data?.filter(item => {
+        const iqcAcceptedQty = Number(item.accepted_quantity) || 0;
         const receivedQty = Number(item.received_quantity) || 0;
-        const acceptedQty = Number(item.accepted_quantity) || 0;
-        return receivedQty !== acceptedQty;
+        
+        // Store discrepancy occurs when store accepts different quantity than what IQC approved
+        // Since accepted_quantity is what IQC approved, compare with received_quantity to see store variance
+        return iqcAcceptedQty !== receivedQty;
       }) || [];
     },
   });
@@ -53,14 +60,17 @@ const StoreDiscrepancies = () => {
   };
 
   const getDiscrepancyAmount = (item: any) => {
-    return (Number(item.received_quantity) || 0) - (Number(item.accepted_quantity) || 0);
+    // Compare what IQC approved (accepted_quantity) vs what was originally received
+    const iqcAccepted = Number(item.accepted_quantity) || 0;
+    const originalReceived = Number(item.received_quantity) || 0;
+    return originalReceived - iqcAccepted;
   };
 
   const getDiscrepancyType = (discrepancy: number) => {
     if (discrepancy > 0) {
-      return { type: 'Excess', color: 'warning' as const, text: `+${discrepancy}` };
+      return { type: 'Store Rejected More', color: 'warning' as const, text: `+${discrepancy}` };
     } else {
-      return { type: 'Shortage', color: 'destructive' as const, text: `${discrepancy}` };
+      return { type: 'Store Accepted Less', color: 'destructive' as const, text: `${discrepancy}` };
     }
   };
 
@@ -96,6 +106,7 @@ const StoreDiscrepancies = () => {
                   <TableHead>Material Name</TableHead>
                   <TableHead>Vendor</TableHead>
                   <TableHead>GRN Quantity</TableHead>
+                  <TableHead>IQC Accepted</TableHead>
                   <TableHead>Store Accepted</TableHead>
                   <TableHead>Discrepancy</TableHead>
                   <TableHead>Type</TableHead>
@@ -114,6 +125,7 @@ const StoreDiscrepancies = () => {
                       <TableCell>{item.raw_materials?.name}</TableCell>
                       <TableCell>{item.grn?.vendors?.name}</TableCell>
                       <TableCell>{item.received_quantity}</TableCell>
+                      <TableCell>{item.accepted_quantity}</TableCell>
                       <TableCell>{item.accepted_quantity}</TableCell>
                       <TableCell className="font-medium">
                         <span className={discrepancyInfo.color === 'destructive' ? 'text-red-600' : 'text-orange-600'}>
@@ -179,7 +191,7 @@ const StoreDiscrepancies = () => {
               <Package className="h-12 w-12 text-green-500 mx-auto mb-4" />
               <h3 className="text-lg font-medium mb-2">No Store Discrepancies Found</h3>
               <p className="text-muted-foreground">
-                All GRN quantities match the store accepted quantities.
+                All IQC accepted quantities match the store confirmed quantities.
               </p>
             </div>
           )}

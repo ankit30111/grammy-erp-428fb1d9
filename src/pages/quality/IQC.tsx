@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -48,24 +49,25 @@ const IQC = () => {
     },
   });
 
-  // Fetch completed GRNs - those with approved, rejected, or segregated IQC status
-  const { data: completedGRNs = [] } = useQuery({
-    queryKey: ["completed-grns"],
+  // Fetch completed IQC items - individual grn_items with completed IQC status
+  const { data: completedIQCItems = [] } = useQuery({
+    queryKey: ["completed-iqc-items"],
     queryFn: async () => {
       const { data } = await supabase
-        .from("grn")
+        .from("grn_items")
         .select(`
           *,
-          vendors!inner(name),
-          purchase_orders!inner(po_number),
-          grn_items!inner(
-            *,
-            raw_materials!inner(name, material_code)
-          )
+          grn!inner(
+            grn_number,
+            vendors!inner(name, vendor_code),
+            purchase_orders!inner(po_number)
+          ),
+          raw_materials!inner(name, material_code)
         `)
-        .eq("status", "IQC_COMPLETED")
-        .order("updated_at", { ascending: false })
-        .limit(20);
+        .not("iqc_status", "is", null)
+        .neq("iqc_status", "PENDING")
+        .order("iqc_completed_at", { ascending: false })
+        .limit(50);
       
       return data || [];
     },
@@ -87,6 +89,21 @@ const IQC = () => {
     if (hasSegregated) return <Badge variant="outline">Segregated</Badge>;
     if (allApproved) return <Badge variant="default">Approved</Badge>;
     return <Badge variant="outline">Mixed Results</Badge>;
+  };
+
+  const getItemStatusBadge = (status: string) => {
+    switch (status) {
+      case 'APPROVED':
+        return <Badge variant="default">Approved</Badge>;
+      case 'REJECTED':
+        return <Badge variant="destructive">Rejected</Badge>;
+      case 'SEGREGATED':
+        return <Badge variant="outline">Segregated</Badge>;
+      case 'FAILED':
+        return <Badge variant="destructive">Failed</Badge>;
+      default:
+        return <Badge variant="secondary">{status}</Badge>;
+    }
   };
 
   const getNotifyVendorButton = (grn: any) => {
@@ -180,16 +197,16 @@ const IQC = () => {
           <TabsContent value="completed">
             <Card>
               <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-2 sm:space-y-0">
-                <CardTitle>Completed IQC</CardTitle>
+                <CardTitle>Completed IQC Items</CardTitle>
                 <div className="relative w-full sm:w-64">
                   <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input placeholder="Search by GRN or vendor" className="pl-8" />
+                  <Input placeholder="Search by GRN or material" className="pl-8" />
                 </div>
               </CardHeader>
               <CardContent>
-                {completedGRNs.length === 0 ? (
+                {completedIQCItems.length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground">
-                    No completed IQC inspections found
+                    No completed IQC items found
                   </div>
                 ) : (
                   <Table>
@@ -197,30 +214,40 @@ const IQC = () => {
                       <TableRow>
                         <TableHead>GRN Number</TableHead>
                         <TableHead>PO Number</TableHead>
+                        <TableHead>Material Code</TableHead>
+                        <TableHead>Material Name</TableHead>
                         <TableHead>Vendor</TableHead>
-                        <TableHead>Completion Date</TableHead>
-                        <TableHead>Items Count</TableHead>
-                        <TableHead>Status</TableHead>
+                        <TableHead>Received Qty</TableHead>
+                        <TableHead>Accepted Qty</TableHead>
+                        <TableHead>Rejected Qty</TableHead>
+                        <TableHead>IQC Status</TableHead>
+                        <TableHead>Completed Date</TableHead>
                         <TableHead>Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {completedGRNs.map((grn) => (
-                        <TableRow key={grn.id}>
-                          <TableCell className="font-medium">{grn.grn_number}</TableCell>
-                          <TableCell className="font-medium text-blue-600">{grn.purchase_orders?.po_number}</TableCell>
-                          <TableCell>{grn.vendors?.name}</TableCell>
-                          <TableCell>{new Date(grn.updated_at).toLocaleDateString()}</TableCell>
-                          <TableCell>{grn.grn_items?.length || 0}</TableCell>
-                          <TableCell>{getStatusBadge(grn)}</TableCell>
+                      {completedIQCItems.map((item) => (
+                        <TableRow key={item.id}>
+                          <TableCell className="font-medium">{item.grn?.grn_number}</TableCell>
+                          <TableCell className="font-medium text-blue-600">{item.grn?.purchase_orders?.po_number}</TableCell>
+                          <TableCell className="font-mono">{item.raw_materials?.material_code}</TableCell>
+                          <TableCell>{item.raw_materials?.name}</TableCell>
+                          <TableCell>{item.grn?.vendors?.name}</TableCell>
+                          <TableCell>{item.received_quantity}</TableCell>
+                          <TableCell>{item.accepted_quantity}</TableCell>
+                          <TableCell>{item.rejected_quantity || 0}</TableCell>
+                          <TableCell>{getItemStatusBadge(item.iqc_status)}</TableCell>
                           <TableCell>
-                            <div className="flex gap-1">
-                              <Button variant="outline" size="sm">
-                                <FileCheck className="h-3 w-3 mr-1" />
-                                Report
-                              </Button>
-                              {getNotifyVendorButton(grn)}
-                            </div>
+                            {item.iqc_completed_at 
+                              ? new Date(item.iqc_completed_at).toLocaleDateString()
+                              : '-'
+                            }
+                          </TableCell>
+                          <TableCell>
+                            <Button variant="outline" size="sm">
+                              <FileCheck className="h-3 w-3 mr-1" />
+                              Report
+                            </Button>
                           </TableCell>
                         </TableRow>
                       ))}
