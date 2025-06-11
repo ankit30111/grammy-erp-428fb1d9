@@ -36,6 +36,7 @@ import SalesDashboard from "@/pages/dashboards/SalesDashboard";
 import HRDashboard from "@/pages/dashboards/HRDashboard";
 import GRN from "./pages/GRN";
 import Approvals from "./pages/Approvals";
+import PurchaseDiscrepancies from "./pages/PurchaseDiscrepancies";
 import { AuthGuard } from "@/components/Auth/AuthGuard";
 
 const queryClient = new QueryClient();

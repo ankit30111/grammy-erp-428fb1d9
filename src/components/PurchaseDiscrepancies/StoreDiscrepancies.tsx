@@ -40,7 +40,7 @@ const StoreDiscrepancies = () => {
       if (error) throw error;
       
       // Filter to only include items where received_quantity != accepted_quantity
-      return data?.filter(item => item.received_quantity !== item.accepted_quantity) || [];
+      return data?.filter(item => Number(item.received_quantity) !== Number(item.accepted_quantity)) || [];
     },
   });
 
@@ -51,14 +51,14 @@ const StoreDiscrepancies = () => {
   };
 
   const getDiscrepancyAmount = (item: any) => {
-    return (item.received_quantity || 0) - (item.accepted_quantity || 0);
+    return (Number(item.received_quantity) || 0) - (Number(item.accepted_quantity) || 0);
   };
 
   const getDiscrepancyType = (discrepancy: number) => {
     if (discrepancy > 0) {
-      return { type: 'Excess', color: 'warning', text: `+${discrepancy}` };
+      return { type: 'Excess', color: 'warning' as const, text: `+${discrepancy}` };
     } else {
-      return { type: 'Shortage', color: 'destructive', text: `${discrepancy}` };
+      return { type: 'Shortage', color: 'destructive' as const, text: `${discrepancy}` };
     }
   };
 
