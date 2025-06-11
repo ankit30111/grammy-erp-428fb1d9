@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -183,7 +184,7 @@ const PlanningEnhanced: React.FC = () => {
                     {schedule.quantity} units
                   </div>
                   <div className="text-xs">
-                    {generateVoucherNumber(new Date(schedule.scheduled_date))}
+                    Scheduled
                   </div>
                 </div>
               ))}
@@ -276,7 +277,7 @@ const PlanningEnhanced: React.FC = () => {
             Scheduled Quantity: {selectedSchedule.quantity} units
           </p>
           <p className="text-sm text-muted-foreground">
-            Voucher: {generateVoucherNumber(new Date(selectedSchedule.scheduled_date))}
+            Date: {format(new Date(selectedSchedule.scheduled_date), 'PPP')}
           </p>
         </div>
         
