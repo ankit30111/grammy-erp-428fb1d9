@@ -18,7 +18,6 @@ import { useBOM } from "@/hooks/useBOM";
 import { useInventory } from "@/hooks/useInventory";
 import { useToast } from "@/hooks/use-toast";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, getDay } from "date-fns";
-import { supabase } from "@/integrations/supabase/client";
 
 const PlanningEnhanced: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<Date>();
@@ -35,34 +34,15 @@ const PlanningEnhanced: React.FC = () => {
   const { toast } = useToast();
 
   // Generate voucher number with correct format: PROD_MM_XX
-  const generateVoucherNumber = async (date: Date) => {
+  const generateVoucherNumber = (date: Date) => {
     const month = String(date.getMonth() + 1).padStart(2, '0');
-    const year = date.getFullYear();
-    
-    try {
-      // Query existing production orders for the same month and year
-      const { data: existingOrders, error } = await supabase
-        .from('production_orders')
-        .select('voucher_number, scheduled_date')
-        .gte('scheduled_date', `${year}-${month}-01`)
-        .lt('scheduled_date', `${year}-${String(date.getMonth() + 2).padStart(2, '0')}-01`);
-      
-      if (error) {
-        console.error('Error fetching existing orders:', error);
-        return `PROD_${month}_01`; // Fallback
-      }
-      
-      // Filter vouchers that match the PROD_MM_XX pattern for this month
-      const monthVouchers = existingOrders?.filter(order => 
-        order.voucher_number && order.voucher_number.startsWith(`PROD_${month}_`)
-      ) || [];
-      
-      const sequenceNumber = monthVouchers.length + 1;
-      return `PROD_${month}_${String(sequenceNumber).padStart(2, '0')}`;
-    } catch (error) {
-      console.error('Error generating voucher number:', error);
-      return `PROD_${month}_01`; // Fallback
-    }
+    const existingVouchersForMonth = schedules?.filter(schedule => {
+      const scheduleDate = new Date(schedule.scheduled_date);
+      return scheduleDate.getMonth() + 1 === date.getMonth() + 1 && 
+             scheduleDate.getFullYear() === date.getFullYear();
+    }) || [];
+    const sequenceNumber = existingVouchersForMonth.length + 1;
+    return `PROD_${month}_${String(sequenceNumber).padStart(2, '0')}`;
   };
 
   // Get unscheduled projections
@@ -100,8 +80,6 @@ const PlanningEnhanced: React.FC = () => {
     }
 
     try {
-      const voucherNumber = await generateVoucherNumber(selectedDate);
-      
       await createSchedule.mutateAsync({
         projection_id: selectedProjection,
         scheduled_date: format(selectedDate, 'yyyy-MM-dd'),
@@ -116,7 +94,7 @@ const PlanningEnhanced: React.FC = () => {
       
       toast({
         title: "Success",
-        description: `Production scheduled with voucher: ${voucherNumber}`,
+        description: `Production scheduled with voucher: ${generateVoucherNumber(selectedDate)}`,
       });
     } catch (error) {
       console.error('Error scheduling production:', error);
@@ -184,7 +162,7 @@ const PlanningEnhanced: React.FC = () => {
                     {schedule.quantity} units
                   </div>
                   <div className="text-xs">
-                    Scheduled
+                    {generateVoucherNumber(new Date(schedule.scheduled_date))}
                   </div>
                 </div>
               ))}
@@ -277,7 +255,7 @@ const PlanningEnhanced: React.FC = () => {
             Scheduled Quantity: {selectedSchedule.quantity} units
           </p>
           <p className="text-sm text-muted-foreground">
-            Date: {format(new Date(selectedSchedule.scheduled_date), 'PPP')}
+            Voucher: {generateVoucherNumber(new Date(selectedSchedule.scheduled_date))}
           </p>
         </div>
         
@@ -395,7 +373,7 @@ const PlanningEnhanced: React.FC = () => {
                         <strong>Selected Date:</strong> {format(selectedDate, 'PPP')}
                       </p>
                       <p className="text-sm text-blue-800">
-                        <strong>Voucher Number:</strong> Will be generated automatically
+                        <strong>Voucher Number:</strong> {generateVoucherNumber(selectedDate)}
                       </p>
                     </div>
                   )}
@@ -466,7 +444,7 @@ const PlanningEnhanced: React.FC = () => {
                           </TableCell>
                           <TableCell>{schedule.quantity}</TableCell>
                           <TableCell>{format(new Date(schedule.scheduled_date), 'PPP')}</TableCell>
-                          <TableCell>Will be generated on order creation</TableCell>
+                          <TableCell>{generateVoucherNumber(new Date(schedule.scheduled_date))}</TableCell>
                           <TableCell>
                             <Button 
                               variant="outline" 
