@@ -84,7 +84,7 @@ const GRNForm = () => {
 
     setIsSubmitting(true);
     try {
-      // Create GRN - let the trigger generate the grn_number with month format
+      // Create GRN - the trigger will generate grn_number with GRN_MM_XX format
       const selectedPOData = purchaseOrders?.find(p => p.id === selectedPO);
       const { data: grn, error: grnError } = await supabase
         .from('grn')
@@ -119,7 +119,7 @@ const GRNForm = () => {
 
       toast({
         title: "GRN Created",
-        description: `GRN ${grn.grn_number} created successfully`,
+        description: `GRN ${grn.grn_number} created successfully with the new format`,
       });
 
       // Reset form
