@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -121,9 +120,18 @@ export const EditablePurchaseOrders = () => {
                 <div className="flex items-center justify-between">
                   <CardTitle className="flex items-center gap-2">
                     {po.po_number}
-                    <Badge variant={po.status === 'PENDING' ? 'warning' : 'secondary'}>
+                    <Badge variant={
+                      po.status === 'PENDING' ? 'warning' : 
+                      po.status === 'APPROVED' ? 'default' : 
+                      'secondary'
+                    }>
                       {po.status}
                     </Badge>
+                    {po.status === 'PENDING' && (
+                      <Badge variant="outline" className="text-blue-600 border-blue-300">
+                        Awaiting Approval
+                      </Badge>
+                    )}
                   </CardTitle>
                   <div className="flex gap-2">
                     {editingPO === po.id ? (
@@ -156,6 +164,17 @@ export const EditablePurchaseOrders = () => {
                 </div>
               </CardHeader>
               <CardContent>
+                {/* Status workflow information */}
+                {po.status === 'PENDING' && (
+                  <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <p className="text-sm font-medium text-yellow-800 mb-1">Approval Required</p>
+                    <p className="text-xs text-yellow-600">
+                      This purchase order needs approval before materials can be received. 
+                      Go to <strong>Approvals</strong> page to review and approve.
+                    </p>
+                  </div>
+                )}
+
                 {editingPO === po.id ? (
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                     <div>
@@ -280,11 +299,11 @@ export const EditablePurchaseOrders = () => {
                   </div>
                 )}
 
-                {/* Workflow Status Indicator */}
+                {/* Updated Workflow Status Indicator */}
                 <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-                  <p className="text-sm font-medium text-blue-800 mb-1">Material Acceptance Workflow:</p>
+                  <p className="text-sm font-medium text-blue-800 mb-1">Purchase Order Workflow:</p>
                   <p className="text-xs text-blue-600">
-                    GRN Created → IQC Approval → Store Physical Verification → Inventory Update → PO Received Qty Updated
+                    PO Created → {po.status === 'PENDING' ? '⏳ Pending Approval' : '✅ Approved'} → GRN Created → IQC Approval → Store Physical Verification → Inventory Update
                   </p>
                 </div>
 

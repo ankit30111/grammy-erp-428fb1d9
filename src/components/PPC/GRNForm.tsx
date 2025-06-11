@@ -152,10 +152,10 @@ const GRNForm = () => {
     }
   };
 
-  // Enhanced filtering for available POs - only show POs that have items with pending quantities > 0
+  // Enhanced filtering for available POs - only show APPROVED POs that have items with pending quantities > 0
   const availablePOs = purchaseOrders?.filter(po => {
-    // Check if PO status allows GRN creation
-    const validStatus = ['SENT', 'APPROVED'].includes(po.status);
+    // Check if PO status is APPROVED (removed SENT from the list)
+    const validStatus = po.status === 'APPROVED';
     
     // Check if PO has any items with pending quantities
     const hasPendingItems = po.purchase_order_items?.some((item: any) => {
@@ -216,18 +216,19 @@ const GRNForm = () => {
               </div>
             ) : availablePOs.length === 0 ? (
               <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-                <p className="text-orange-800 font-medium">No purchase orders available for GRN creation</p>
+                <p className="text-orange-800 font-medium">No approved purchase orders available for GRN creation</p>
                 <p className="text-orange-600 text-sm mt-1">
-                  Purchase orders must be in 'SENT' or 'APPROVED' status and have pending items to receive.
+                  Purchase orders must be approved and have pending items to receive.
                 </p>
                 <p className="text-orange-600 text-sm">
-                  Total POs in system: {purchaseOrders?.length || 0}
+                  Total POs in system: {purchaseOrders?.length || 0} | 
+                  Go to <strong>Approvals</strong> page to approve pending purchase orders.
                 </p>
               </div>
             ) : (
               <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
                 <p className="text-gray-800 font-medium">Select a Purchase Order to begin creating GRN</p>
-                <p className="text-gray-600 text-sm mt-1">{availablePOs.length} purchase orders available</p>
+                <p className="text-gray-600 text-sm mt-1">{availablePOs.length} approved purchase orders available</p>
               </div>
             )}
           </div>

@@ -1,5 +1,4 @@
-
-import { Home, Plus, Wrench, Calendar, Package, BarChart2, Layers, ClipboardCheck, DollarSign, Users, FileText, UserPlus, Building2, User, MessageSquare } from "lucide-react";
+import { Home, Plus, Wrench, Calendar, Package, BarChart2, Layers, ClipboardCheck, DollarSign, Users, FileText, UserPlus, Building2, User, MessageSquare, CheckSquare } from "lucide-react";
 
 interface NavigationSubItem {
   to: string;
@@ -23,6 +22,7 @@ export const navigationItems: NavigationItem[] = [
   { to: "/store", icon: <Package size={20} />, label: "Store" },
   { to: "/production", icon: <BarChart2 size={20} />, label: "Production" },
   { to: "/finished-goods", icon: <Layers size={20} />, label: "Finished Goods" },
+  { to: "/approvals", icon: <CheckSquare size={20} />, label: "Approvals" },
   {
     to: "/quality",
     icon: <ClipboardCheck size={20} />,
