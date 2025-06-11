@@ -1,17 +1,19 @@
+
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Package, Clock, Edit } from "lucide-react";
+import { Package, Clock, Edit, Search, Filter } from "lucide-react";
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { useGRN } from "@/hooks/useGRN";
 import GRNForm from "@/components/PPC/GRNForm";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const GRN = () => {
   const [activeTab, setActiveTab] = useState("create");
@@ -19,6 +21,7 @@ const GRN = () => {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingGRN, setEditingGRN] = useState<any>(null);
   const [editQuantities, setEditQuantities] = useState<Record<string, number>>({});
+  const [searchQuery, setSearchQuery] = useState("");
   
   const { data: existingGRNs, isLoading: grnLoading, refetch } = useGRN();
   const { toast } = useToast();
@@ -66,6 +69,26 @@ const GRN = () => {
     }
   };
 
+  // Filter GRNs based on search query
+  const filteredGRNs = existingGRNs?.filter(grn => 
+    grn.grn_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    grn.vendors?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    grn.purchase_orders?.po_number?.toLowerCase().includes(searchQuery.toLowerCase())
+  ) || [];
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'RECEIVED':
+        return <Badge variant="outline" className="bg-blue-100 text-blue-800 hover:bg-blue-100">Received</Badge>;
+      case 'IQC_COMPLETED':
+        return <Badge variant="outline" className="bg-green-100 text-green-800 hover:bg-green-100">IQC Completed</Badge>;
+      case 'STORE_RECEIVED':
+        return <Badge variant="default">Store Received</Badge>;
+      default:
+        return <Badge variant="secondary">{status}</Badge>;
+    }
+  };
+
   return (
     <DashboardLayout>
       <div className="grid gap-4 md:gap-6">
@@ -73,42 +96,51 @@ const GRN = () => {
           <h1 className="text-2xl font-bold">Goods Receipt Note (GRN)</h1>
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">Last updated:</span>
-            <span className="text-sm font-medium">Today, 14:35</span>
+            <span className="text-sm font-medium">Today, {new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' })}</span>
             <Clock className="h-4 w-4 text-muted-foreground" />
           </div>
         </div>
 
-        <div className="flex w-full mb-4">
-          <Button 
-            variant={activeTab === "create" ? "default" : "outline"}
-            className="flex-1"
-            onClick={() => setActiveTab("create")}
-          >
-            <Package className="h-4 w-4 mr-2" />
-            Create GRN
-          </Button>
-          <Button 
-            variant={activeTab === "view" ? "default" : "outline"}
-            className="flex-1"
-            onClick={() => setActiveTab("view")}
-          >
-            <Clock className="h-4 w-4 mr-2" />
-            Recent GRNs
-          </Button>
-        </div>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="create">
+              <Package className="h-4 w-4 mr-2" />
+              Create GRN
+            </TabsTrigger>
+            <TabsTrigger value="tracking">
+              <Clock className="h-4 w-4 mr-2" />
+              GRN Tracking
+            </TabsTrigger>
+          </TabsList>
 
-        {activeTab === "create" ? (
-          <GRNForm />
-        ) : (
-          <div className="space-y-4">
+          <TabsContent value="create" className="space-y-4">
+            <GRNForm />
+          </TabsContent>
+
+          <TabsContent value="tracking" className="space-y-4">
             <Card>
-              <CardHeader>
-                <CardTitle>Recent GRNs</CardTitle>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+                <CardTitle>GRN Tracking</CardTitle>
+                <div className="flex items-center gap-2">
+                  <div className="relative">
+                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search GRN, PO, or vendor..."
+                      className="pl-8 w-64"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                  </div>
+                  <Button variant="outline" size="sm">
+                    <Filter className="h-4 w-4 mr-2" />
+                    Filter
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
                 {grnLoading ? (
                   <div className="text-center py-8">Loading GRNs...</div>
-                ) : existingGRNs && existingGRNs.length > 0 ? (
+                ) : filteredGRNs && filteredGRNs.length > 0 ? (
                   <>
                     <Table>
                       <TableHeader>
@@ -117,29 +149,20 @@ const GRN = () => {
                           <TableHead>Date</TableHead>
                           <TableHead>Vendor</TableHead>
                           <TableHead>PO Reference</TableHead>
+                          <TableHead>Items Count</TableHead>
                           <TableHead>Status</TableHead>
                           <TableHead>Actions</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {existingGRNs.map((grn) => (
+                        {filteredGRNs.map((grn) => (
                           <TableRow key={grn.id}>
                             <TableCell className="font-medium">{grn.grn_number}</TableCell>
                             <TableCell>{new Date(grn.received_date).toLocaleDateString()}</TableCell>
                             <TableCell>{grn.vendors?.name || 'N/A'}</TableCell>
-                            <TableCell>{grn.purchase_orders?.po_number || 'N/A'}</TableCell>
-                            <TableCell>
-                              <Badge 
-                                variant="outline"
-                                className={
-                                  grn.status === "RECEIVED" ? "bg-green-100 text-green-800 hover:bg-green-100" :
-                                  grn.status === "REJECTED" ? "bg-red-100 text-red-800 hover:bg-red-100" :
-                                  "bg-yellow-100 text-yellow-800 hover:bg-yellow-100"
-                                }
-                              >
-                                {grn.status}
-                              </Badge>
-                            </TableCell>
+                            <TableCell className="text-blue-600 font-medium">{grn.purchase_orders?.po_number || 'N/A'}</TableCell>
+                            <TableCell>{grn.grn_items?.length || 0}</TableCell>
+                            <TableCell>{getStatusBadge(grn.status)}</TableCell>
                             <TableCell className="space-x-2">
                               <Button 
                                 variant="outline" 
@@ -148,15 +171,17 @@ const GRN = () => {
                               >
                                 {selectedGRN === grn.id ? "Hide Details" : "View Details"}
                               </Button>
-                              <Button 
-                                variant="outline" 
-                                size="sm"
-                                onClick={() => handleEditGRN(grn)}
-                                className="gap-1"
-                              >
-                                <Edit className="h-4 w-4" />
-                                Edit
-                              </Button>
+                              {grn.status === 'RECEIVED' && (
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={() => handleEditGRN(grn)}
+                                  className="gap-1"
+                                >
+                                  <Edit className="h-4 w-4" />
+                                  Edit
+                                </Button>
+                              )}
                             </TableCell>
                           </TableRow>
                         ))}
@@ -165,24 +190,30 @@ const GRN = () => {
                     
                     {selectedGRN && (
                       <div className="mt-6 border-t pt-4">
-                        <h3 className="text-lg font-medium mb-4">GRN Details: {selectedGRN}</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                        <h3 className="text-lg font-medium mb-4">GRN Details: {filteredGRNs.find(grn => grn.id === selectedGRN)?.grn_number}</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
                           <div>
                             <span className="text-sm text-muted-foreground">Status</span>
                             <p className="font-medium">
-                              {existingGRNs.find(grn => grn.id === selectedGRN)?.status}
+                              {filteredGRNs.find(grn => grn.id === selectedGRN)?.status}
                             </p>
                           </div>
                           <div>
                             <span className="text-sm text-muted-foreground">PO Reference</span>
                             <p className="font-medium">
-                              {existingGRNs.find(grn => grn.id === selectedGRN)?.purchase_orders?.po_number}
+                              {filteredGRNs.find(grn => grn.id === selectedGRN)?.purchase_orders?.po_number}
                             </p>
                           </div>
                           <div>
                             <span className="text-sm text-muted-foreground">Vendor</span>
                             <p className="font-medium">
-                              {existingGRNs.find(grn => grn.id === selectedGRN)?.vendors?.name}
+                              {filteredGRNs.find(grn => grn.id === selectedGRN)?.vendors?.name}
+                            </p>
+                          </div>
+                          <div>
+                            <span className="text-sm text-muted-foreground">Invoice Info</span>
+                            <p className="font-medium">
+                              {filteredGRNs.find(grn => grn.id === selectedGRN)?.notes || 'N/A'}
                             </p>
                           </div>
                         </div>
@@ -194,26 +225,27 @@ const GRN = () => {
                               <TableHead>Material Name</TableHead>
                               <TableHead>PO Quantity</TableHead>
                               <TableHead>Received Quantity</TableHead>
-                              <TableHead>Status</TableHead>
+                              <TableHead>IQC Status</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {existingGRNs.find(grn => grn.id === selectedGRN)?.grn_items?.map((item, idx) => (
+                            {filteredGRNs.find(grn => grn.id === selectedGRN)?.grn_items?.map((item, idx) => (
                               <TableRow key={idx}>
                                 <TableCell className="font-mono">{item.raw_materials?.material_code}</TableCell>
                                 <TableCell>{item.raw_materials?.name}</TableCell>
                                 <TableCell>{item.po_quantity?.toLocaleString()}</TableCell>
                                 <TableCell>{item.received_quantity?.toLocaleString()}</TableCell>
                                 <TableCell>
-                                  {item.received_quantity < item.po_quantity ? (
-                                    <Badge variant="outline" className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">
-                                      Partial
-                                    </Badge>
-                                  ) : (
-                                    <Badge variant="outline" className="bg-green-100 text-green-800 hover:bg-green-100">
-                                      Complete
-                                    </Badge>
-                                  )}
+                                  <Badge 
+                                    variant="outline"
+                                    className={
+                                      item.iqc_status === 'APPROVED' ? "bg-green-100 text-green-800 hover:bg-green-100" :
+                                      item.iqc_status === 'REJECTED' ? "bg-red-100 text-red-800 hover:bg-red-100" :
+                                      "bg-yellow-100 text-yellow-800 hover:bg-yellow-100"
+                                    }
+                                  >
+                                    {item.iqc_status || 'PENDING'}
+                                  </Badge>
                                 </TableCell>
                               </TableRow>
                             ))}
@@ -225,14 +257,16 @@ const GRN = () => {
                 ) : (
                   <div className="text-center py-8">
                     <Package className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
-                    <p className="text-muted-foreground">No GRNs found</p>
+                    <p className="text-muted-foreground">
+                      {searchQuery ? "No GRNs found matching your search" : "No GRNs found"}
+                    </p>
                     <p className="text-sm text-muted-foreground mt-2">Create your first GRN to get started</p>
                   </div>
                 )}
               </CardContent>
             </Card>
-          </div>
-        )}
+          </TabsContent>
+        </Tabs>
 
         {/* Edit GRN Dialog */}
         <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>

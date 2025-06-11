@@ -34,6 +34,7 @@ import StoreDashboard from "@/pages/dashboards/StoreDashboard";
 import ProductionMainDashboard from "@/pages/dashboards/ProductionMainDashboard";
 import SalesDashboard from "@/pages/dashboards/SalesDashboard";
 import HRDashboard from "@/pages/dashboards/HRDashboard";
+import GRN from "./pages/GRN";
 import { AuthGuard } from "@/components/Auth/AuthGuard";
 
 const queryClient = new QueryClient();
@@ -59,6 +60,7 @@ function App() {
             <Route path="/production" element={<AuthGuard><Production /></AuthGuard>} />
             <Route path="/planning" element={<AuthGuard><PlanningEnhanced /></AuthGuard>} />
             <Route path="/store" element={<AuthGuard><Store /></AuthGuard>} />
+            <Route path="/grn" element={<AuthGuard><GRN /></AuthGuard>} />
             <Route path="/sales" element={<AuthGuard><Sales /></AuthGuard>} />
             <Route path="/purchase" element={<AuthGuard><Purchase /></AuthGuard>} />
             <Route path="/projection" element={<AuthGuard><Projection /></AuthGuard>} />

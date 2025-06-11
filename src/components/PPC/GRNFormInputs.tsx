@@ -1,77 +1,98 @@
 
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { RefreshCw } from "lucide-react";
 
 interface PurchaseOrder {
   id: string;
   po_number: string;
+  vendor_id: string;
+  vendors?: { name: string };
+  total_amount?: number;
   status: string;
-  vendors?: {
-    name: string;
-  };
+  purchase_order_items?: any[];
 }
 
 interface GRNFormInputsProps {
   selectedPO: string;
   onPOSelection: (poId: string) => void;
-  billNumber: string;
-  onBillNumberChange: (value: string) => void;
+  invoiceNumber: string;
+  onInvoiceNumberChange: (invoice: string) => void;
   receivedDate: string;
-  onReceivedDateChange: (value: string) => void;
+  onReceivedDateChange: (date: string) => void;
   availablePOs: PurchaseOrder[];
+  onRefresh: () => void;
+  isLoading: boolean;
 }
 
 const GRNFormInputs = ({
   selectedPO,
   onPOSelection,
-  billNumber,
-  onBillNumberChange,
+  invoiceNumber,
+  onInvoiceNumberChange,
   receivedDate,
   onReceivedDateChange,
-  availablePOs
+  availablePOs,
+  onRefresh,
+  isLoading
 }: GRNFormInputsProps) => {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-      <div>
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="space-y-2">
         <Label htmlFor="po-select">Purchase Order</Label>
-        <Select value={selectedPO} onValueChange={onPOSelection}>
-          <SelectTrigger>
-            <SelectValue placeholder={availablePOs.length === 0 ? "No purchase orders available" : "Select PO"} />
-          </SelectTrigger>
-          <SelectContent>
-            {availablePOs.map((po) => (
-              <SelectItem key={po.id} value={po.id}>
-                {po.po_number} - {po.vendors?.name} ({po.status})
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        {availablePOs.length === 0 && (
-          <p className="text-sm text-muted-foreground mt-1">
-            Create purchase orders first to generate GRNs
-          </p>
-        )}
+        <div className="flex gap-2">
+          <Select value={selectedPO} onValueChange={onPOSelection}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select PO" />
+            </SelectTrigger>
+            <SelectContent>
+              {availablePOs.map((po) => (
+                <SelectItem key={po.id} value={po.id}>
+                  {po.po_number} - {po.vendors?.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onRefresh}
+            disabled={isLoading}
+          >
+            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+          </Button>
+        </div>
       </div>
 
-      <div>
-        <Label htmlFor="bill-number">Bill Number</Label>
+      <div className="space-y-2">
+        <Label htmlFor="invoice-number">Invoice Number</Label>
         <Input
-          id="bill-number"
-          value={billNumber}
-          onChange={(e) => onBillNumberChange(e.target.value)}
-          placeholder="Enter bill number"
+          id="invoice-number"
+          type="text"
+          value={invoiceNumber}
+          onChange={(e) => onInvoiceNumberChange(e.target.value)}
+          placeholder="Enter invoice number"
         />
       </div>
 
-      <div>
-        <Label htmlFor="received-date">Received Date</Label>
+      <div className="space-y-2">
+        <Label htmlFor="received-date">Date of Receiving</Label>
         <Input
           id="received-date"
           type="date"
           value={receivedDate}
           onChange={(e) => onReceivedDateChange(e.target.value)}
         />
+      </div>
+
+      <div className="flex items-end">
+        {selectedPO && (
+          <div className="text-sm text-muted-foreground">
+            Selected PO: {availablePOs.find(po => po.id === selectedPO)?.po_number}
+          </div>
+        )}
       </div>
     </div>
   );

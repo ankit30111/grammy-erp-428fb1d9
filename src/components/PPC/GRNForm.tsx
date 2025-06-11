@@ -14,11 +14,12 @@ interface GRNItem {
   material_name: string;
   po_quantity: number;
   received_quantity: number;
+  pending_quantity: number;
 }
 
 const GRNForm = () => {
   const [selectedPO, setSelectedPO] = useState<string>("");
-  const [billNumber, setBillNumber] = useState("");
+  const [invoiceNumber, setInvoiceNumber] = useState("");
   const [receivedDate, setReceivedDate] = useState(new Date().toISOString().split('T')[0]);
   const [grnItems, setGRNItems] = useState<GRNItem[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -35,7 +36,8 @@ const GRNForm = () => {
         material_code: item.raw_materials?.material_code || '',
         material_name: item.raw_materials?.name || '',
         po_quantity: item.quantity,
-        received_quantity: 0
+        received_quantity: 0,
+        pending_quantity: item.pending_quantity || item.quantity
       }));
       setGRNItems(items);
     }
@@ -43,15 +45,26 @@ const GRNForm = () => {
 
   const updateReceivedQuantity = (index: number, quantity: number) => {
     const updatedItems = [...grnItems];
+    const maxReceivable = updatedItems[index].pending_quantity;
+    
+    if (quantity > maxReceivable) {
+      toast({
+        title: "Invalid Quantity",
+        description: `Cannot receive more than ${maxReceivable} items. Only ${maxReceivable} items are pending for this material.`,
+        variant: "destructive",
+      });
+      return;
+    }
+    
     updatedItems[index].received_quantity = quantity;
     setGRNItems(updatedItems);
   };
 
   const handleSubmit = async () => {
-    if (!selectedPO || !billNumber || grnItems.length === 0) {
+    if (!selectedPO || !invoiceNumber || grnItems.length === 0) {
       toast({
         title: "Missing Information",
-        description: "Please select PO, enter bill number and add items",
+        description: "Please select PO, enter invoice number and add items",
         variant: "destructive",
       });
       return;
@@ -71,17 +84,17 @@ const GRNForm = () => {
 
     setIsSubmitting(true);
     try {
-      // Create GRN - let the trigger generate the grn_number
+      // Create GRN - let the trigger generate the grn_number with month format
       const selectedPOData = purchaseOrders?.find(p => p.id === selectedPO);
       const { data: grn, error: grnError } = await supabase
         .from('grn')
         .insert({
-          grn_number: '', // Empty string will be replaced by trigger
+          grn_number: '', // Empty string will be replaced by trigger with GRN_MM_XX format
           purchase_order_id: selectedPO,
           vendor_id: selectedPOData?.vendor_id || '',
           received_date: receivedDate,
           status: 'RECEIVED',
-          notes: `Bill Number: ${billNumber}`
+          notes: `Invoice Number: ${invoiceNumber}`
         })
         .select()
         .single();
@@ -111,9 +124,12 @@ const GRNForm = () => {
 
       // Reset form
       setSelectedPO("");
-      setBillNumber("");
+      setInvoiceNumber("");
       setGRNItems([]);
       setReceivedDate(new Date().toISOString().split('T')[0]);
+
+      // Refresh PO data to update pending quantities
+      refetchPOs();
 
     } catch (error) {
       console.error('Error creating GRN:', error);
@@ -127,10 +143,13 @@ const GRNForm = () => {
     }
   };
 
-  // Show ALL purchase orders, not just filtered ones
-  const availablePOs = purchaseOrders || [];
+  // Filter POs to show only those with status SENT or APPROVED and have pending items
+  const availablePOs = purchaseOrders?.filter(po => 
+    ['SENT', 'APPROVED'].includes(po.status) &&
+    po.purchase_order_items?.some((item: any) => (item.pending_quantity || item.quantity) > 0)
+  ) || [];
 
-  console.log('Available POs:', availablePOs);
+  console.log('Available POs for GRN:', availablePOs);
   console.log('Total PO count:', availablePOs.length);
 
   return (
@@ -143,11 +162,13 @@ const GRNForm = () => {
         <GRNFormInputs
           selectedPO={selectedPO}
           onPOSelection={handlePOSelection}
-          billNumber={billNumber}
-          onBillNumberChange={setBillNumber}
+          invoiceNumber={invoiceNumber}
+          onInvoiceNumberChange={setInvoiceNumber}
           receivedDate={receivedDate}
           onReceivedDateChange={setReceivedDate}
           availablePOs={availablePOs}
+          onRefresh={() => refetchPOs()}
+          isLoading={isLoading}
         />
 
         {grnItems.length > 0 && (
@@ -156,7 +177,7 @@ const GRNForm = () => {
             onQuantityUpdate={updateReceivedQuantity}
             onSubmit={handleSubmit}
             isSubmitting={isSubmitting}
-            billNumber={billNumber}
+            invoiceNumber={invoiceNumber}
           />
         )}
 
