@@ -63,6 +63,7 @@ function App() {
             <Route path="/store" element={<AuthGuard><Store /></AuthGuard>} />
             <Route path="/grn" element={<AuthGuard><GRN /></AuthGuard>} />
             <Route path="/approvals" element={<AuthGuard><Approvals /></AuthGuard>} />
+            <Route path="/purchase-discrepancies" element={<AuthGuard><PurchaseDiscrepancies /></AuthGuard>} />
             <Route path="/sales" element={<AuthGuard><Sales /></AuthGuard>} />
             <Route path="/purchase" element={<AuthGuard><Purchase /></AuthGuard>} />
             <Route path="/projection" element={<AuthGuard><Projection /></AuthGuard>} />

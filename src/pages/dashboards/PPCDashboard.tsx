@@ -146,6 +146,14 @@ const PPCDashboard = () => {
                 <Clipboard className="h-4 w-4 mr-2" />
                 Goods Receipt Notes
               </Button>
+              <Button 
+                onClick={() => navigate('/purchase-discrepancies')} 
+                className="w-full justify-start"
+                variant="outline"
+              >
+                <AlertTriangle className="h-4 w-4 mr-2" />
+                Purchase Discrepancies
+              </Button>
             </CardContent>
           </Card>
         </div>
