@@ -15,7 +15,7 @@ import OQC from "./pages/quality/OQC";
 import Production from "./pages/Production";
 import Planning from "./pages/Planning";
 import PlanningEnhanced from "./pages/PlanningEnhanced";
-import Store from "./pages/store/StoreDashboard";
+import Store from "./pages/Store";
 import Sales from "./pages/Sales";
 import Purchase from "./pages/Purchase";
 import Projection from "./pages/Projection";
