@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -38,18 +37,37 @@ const generateVoucherNumber = async (scheduledDate: string) => {
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const year = date.getFullYear();
   
+  // Calculate the start and end of the month for the query
+  const monthStart = `${year}-${month}-01`;
+  
+  // Calculate next month properly
+  let nextMonth = date.getMonth() + 1;
+  let nextYear = year;
+  
+  if (nextMonth === 12) {
+    nextMonth = 0; // January
+    nextYear = year + 1;
+  }
+  
+  const nextMonthPadded = String(nextMonth + 1).padStart(2, '0');
+  const monthEnd = `${nextYear}-${nextMonthPadded}-01`;
+  
+  console.log('📅 Date range for voucher query:', { monthStart, monthEnd, scheduledDate });
+  
   // Get existing production orders for the same month and year to determine sequence
   const { data: existingOrders, error } = await supabase
     .from('production_orders')
     .select('voucher_number')
-    .gte('scheduled_date', `${year}-${month}-01`)
-    .lt('scheduled_date', `${year}-${month === '12' ? year + 1 : year}-${month === '12' ? '01' : String(parseInt(month) + 1).padStart(2, '0')}-01`)
+    .gte('scheduled_date', monthStart)
+    .lt('scheduled_date', monthEnd)
     .order('voucher_number', { ascending: false });
   
   if (error) {
     console.error('Error fetching existing vouchers:', error);
     throw error;
   }
+  
+  console.log('📋 Existing orders found:', existingOrders);
   
   // Find the highest sequence number for this month using the correct PROD_MM_XX pattern
   let maxSequence = 0;
@@ -68,7 +86,10 @@ const generateVoucherNumber = async (scheduledDate: string) => {
   
   // Generate next sequence number with correct format
   const nextSequence = maxSequence + 1;
-  return `PROD_${month}_${String(nextSequence).padStart(2, '0')}`;
+  const voucherNumber = `PROD_${month}_${String(nextSequence).padStart(2, '0')}`;
+  
+  console.log('🎯 Generated voucher number:', voucherNumber);
+  return voucherNumber;
 };
 
 export const useCreateProductionSchedule = () => {
