@@ -179,8 +179,8 @@ const PlanningEnhanced: React.FC = () => {
     );
   };
 
-  // Enhanced BOM Shortage Analysis Component with real-time inventory data
-  const BOMShortageAnalysis = () => {
+  // Enhanced BOM Production Voucher Analysis Component with real-time inventory data
+  const BOMProductionVoucherAnalysis = () => {
     const selectedSchedule = schedules?.find(s => s.id === selectedScheduleId);
     if (!selectedSchedule) return null;
 
@@ -193,7 +193,7 @@ const PlanningEnhanced: React.FC = () => {
         const inventoryItem = inventory?.find(inv => inv.raw_material_id === bomItem.raw_material_id);
         const requiredQty = bomItem.quantity * selectedSchedule.quantity;
         const availableQty = inventoryItem?.quantity || 0;
-        const shortQty = Math.max(0, requiredQty - availableQty);
+        const shortQty = requiredQty - availableQty;
 
         return {
           ...bomItem,
@@ -240,7 +240,7 @@ const PlanningEnhanced: React.FC = () => {
                   <TableCell className="font-medium">{item.availableQuantity}</TableCell>
                   <TableCell>
                     {item.shortQuantity > 0 ? (
-                      <Badge variant="destructive">{item.shortQuantity}</Badge>
+                      <Badge variant="destructive">-{item.shortQuantity}</Badge>
                     ) : (
                       <Badge variant="secondary">0</Badge>
                     )}
@@ -258,6 +258,9 @@ const PlanningEnhanced: React.FC = () => {
       </div>
     );
 
+    // Get actual voucher number from production_orders
+    const voucherNumber = selectedSchedule.production_orders?.[0]?.voucher_number || 'Generating...';
+
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between pb-4 border-b">
@@ -266,7 +269,7 @@ const PlanningEnhanced: React.FC = () => {
               {selectedSchedule.projections?.products?.name}
             </h3>
             <p className="text-muted-foreground">
-              Scheduled Quantity: {selectedSchedule.quantity} units
+              Voucher: {voucherNumber} | Scheduled Quantity: {selectedSchedule.quantity} units
             </p>
           </div>
           <Button
@@ -448,66 +451,62 @@ const PlanningEnhanced: React.FC = () => {
                         <TableHead>Customer</TableHead>
                         <TableHead>Quantity</TableHead>
                         <TableHead>Date</TableHead>
-                        <TableHead>Production Line</TableHead>
                         <TableHead>Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {scheduledNotSentToProduction.map((schedule) => (
-                        <TableRow key={schedule.id}>
-                          <TableCell className="font-medium font-mono">
-                            {/* Will show correct voucher number from production_orders table */}
-                            PROD_{format(new Date(schedule.scheduled_date), 'MM')}_XX
-                          </TableCell>
-                          <TableCell className="font-medium">
-                            {schedule.projections?.products?.name}
-                          </TableCell>
-                          <TableCell>
-                            {schedule.projections?.customers?.name}
-                          </TableCell>
-                          <TableCell>{schedule.quantity}</TableCell>
-                          <TableCell>{format(new Date(schedule.scheduled_date), 'PPP')}</TableCell>
-                          <TableCell>
-                            <Badge variant="outline">
-                              {schedule.production_line === "TBD" ? "To be assigned" : schedule.production_line}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex gap-2">
-                              <Button 
-                                variant="outline" 
-                                size="sm"
-                                onClick={() => handleEditSchedule(schedule)}
-                                className="gap-2"
-                              >
-                                <Edit className="h-4 w-4" />
-                                Edit
-                              </Button>
-                              <Button 
-                                variant="outline" 
-                                size="sm"
-                                onClick={() => handleDeleteSchedule(schedule)}
-                                className="gap-2 text-destructive hover:text-destructive"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                                Delete
-                              </Button>
-                              <Button 
-                                variant="outline" 
-                                size="sm"
-                                onClick={() => {
-                                  setSelectedScheduleId(schedule.id);
-                                  setShortageDialogOpen(true);
-                                }}
-                                className="gap-2"
-                              >
-                                <AlertTriangle className="h-4 w-4" />
-                                Shortages
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                      {scheduledNotSentToProduction.map((schedule) => {
+                        const voucherNumber = schedule.production_orders?.[0]?.voucher_number || 'Generating...';
+                        return (
+                          <TableRow key={schedule.id}>
+                            <TableCell className="font-medium font-mono">
+                              {voucherNumber}
+                            </TableCell>
+                            <TableCell className="font-medium">
+                              {schedule.projections?.products?.name}
+                            </TableCell>
+                            <TableCell>
+                              {schedule.projections?.customers?.name}
+                            </TableCell>
+                            <TableCell>{schedule.quantity}</TableCell>
+                            <TableCell>{format(new Date(schedule.scheduled_date), 'PPP')}</TableCell>
+                            <TableCell>
+                              <div className="flex gap-2">
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={() => handleEditSchedule(schedule)}
+                                  className="gap-2"
+                                >
+                                  <Edit className="h-4 w-4" />
+                                  Edit
+                                </Button>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={() => handleDeleteSchedule(schedule)}
+                                  className="gap-2 text-destructive hover:text-destructive"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                  Delete
+                                </Button>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={() => {
+                                    setSelectedScheduleId(schedule.id);
+                                    setShortageDialogOpen(true);
+                                  }}
+                                  className="gap-2"
+                                >
+                                  <AlertTriangle className="h-4 w-4" />
+                                  Production Voucher
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
                     </TableBody>
                   </Table>
                 ) : (
@@ -545,13 +544,13 @@ const PlanningEnhanced: React.FC = () => {
           />
         )}
 
-        {/* Enhanced Shortage Analysis Dialog */}
+        {/* Enhanced Production Voucher Analysis Dialog */}
         <Dialog open={shortageDialogOpen} onOpenChange={setShortageDialogOpen}>
           <DialogContent className="max-w-5xl max-h-[80vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Material Requirements & Real-time Inventory Status</DialogTitle>
+              <DialogTitle>Production Voucher - Material Requirements & Real-time Inventory Status</DialogTitle>
             </DialogHeader>
-            <BOMShortageAnalysis />
+            <BOMProductionVoucherAnalysis />
           </DialogContent>
         </Dialog>
       </div>

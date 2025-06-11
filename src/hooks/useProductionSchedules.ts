@@ -1,3 +1,4 @@
+
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -21,6 +22,12 @@ export const useProductionSchedules = () => {
               id,
               name
             )
+          ),
+          production_orders!production_schedule_id (
+            id,
+            voucher_number,
+            status,
+            kit_status
           )
         `)
         .order('scheduled_date', { ascending: true });
