@@ -179,7 +179,7 @@ const PlanningEnhanced: React.FC = () => {
     );
   };
 
-  // Enhanced BOM Production Voucher Analysis Component with real-time inventory data
+  // Enhanced BOM Production Voucher Analysis Component with corrected shortage calculation
   const BOMProductionVoucherAnalysis = () => {
     const selectedSchedule = schedules?.find(s => s.id === selectedScheduleId);
     if (!selectedSchedule) return null;
@@ -240,7 +240,7 @@ const PlanningEnhanced: React.FC = () => {
                   <TableCell className="font-medium">{item.availableQuantity}</TableCell>
                   <TableCell>
                     {item.shortQuantity > 0 ? (
-                      <Badge variant="destructive">-{item.shortQuantity}</Badge>
+                      <Badge variant="destructive">{item.shortQuantity}</Badge>
                     ) : (
                       <Badge variant="secondary">0</Badge>
                     )}
