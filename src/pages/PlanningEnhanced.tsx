@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,13 +10,15 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Calendar as CalendarIcon, Factory, AlertTriangle, Package } from "lucide-react";
+import { Calendar as CalendarIcon, Factory, AlertTriangle, Package, Edit, Trash2, RefreshCw } from "lucide-react";
 import { useProjections } from "@/hooks/useProjections";
 import { useProductionSchedules, useCreateProductionSchedule } from "@/hooks/useProductionSchedules";
 import { useBOM } from "@/hooks/useBOM";
 import { useInventory } from "@/hooks/useInventory";
 import { useToast } from "@/hooks/use-toast";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, getDay } from "date-fns";
+import { EditScheduleDialog } from "@/components/Planning/EditScheduleDialog";
+import { DeleteScheduleDialog } from "@/components/Planning/DeleteScheduleDialog";
 
 const PlanningEnhanced: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<Date>();
@@ -25,11 +26,14 @@ const PlanningEnhanced: React.FC = () => {
   const [quantity, setQuantity] = useState<string>("");
   const [shortageDialogOpen, setShortageDialogOpen] = useState(false);
   const [selectedScheduleId, setSelectedScheduleId] = useState<string>("");
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedSchedule, setSelectedSchedule] = useState<any>(null);
   
   const { data: projections } = useProjections();
-  const { data: schedules } = useProductionSchedules();
+  const { data: schedules, refetch: refetchSchedules } = useProductionSchedules();
   const { data: bomData } = useBOM();
-  const { data: inventory } = useInventory();
+  const { data: inventory, refetch: refetchInventory } = useInventory();
   const createSchedule = useCreateProductionSchedule();
   const { toast } = useToast();
 
@@ -88,6 +92,27 @@ const PlanningEnhanced: React.FC = () => {
         variant: "destructive",
       });
     }
+  };
+
+  const handleEditSchedule = (schedule: any) => {
+    setSelectedSchedule(schedule);
+    setEditDialogOpen(true);
+  };
+
+  const handleDeleteSchedule = (schedule: any) => {
+    setSelectedSchedule(schedule);
+    setDeleteDialogOpen(true);
+  };
+
+  const getMaxQuantityForEdit = (schedule: any) => {
+    const projection = projections?.find(p => p.id === schedule.projection_id);
+    if (!projection) return 0;
+    
+    const currentScheduled = projection.scheduled_quantity || 0;
+    const currentScheduleQuantity = schedule.quantity || 0;
+    const remainingQuantity = projection.quantity - currentScheduled + currentScheduleQuantity;
+    
+    return remainingQuantity;
   };
 
   // Calendar grid component
@@ -154,7 +179,7 @@ const PlanningEnhanced: React.FC = () => {
     );
   };
 
-  // BOM Shortage Analysis Component with real-time inventory data
+  // Enhanced BOM Shortage Analysis Component with real-time inventory data
   const BOMShortageAnalysis = () => {
     const selectedSchedule = schedules?.find(s => s.id === selectedScheduleId);
     if (!selectedSchedule) return null;
@@ -175,6 +200,7 @@ const PlanningEnhanced: React.FC = () => {
           requiredQuantity: requiredQty,
           availableQuantity: availableQty,
           shortQuantity: shortQty,
+          status: shortQty > 0 ? 'SHORT' : 'AVAILABLE'
         };
       });
     };
@@ -197,9 +223,10 @@ const PlanningEnhanced: React.FC = () => {
               <TableRow>
                 <TableHead>Material Code</TableHead>
                 <TableHead>Material Name</TableHead>
-                <TableHead>Required Quantity</TableHead>
+                <TableHead>Required</TableHead>
                 <TableHead>In Stock</TableHead>
                 <TableHead>Short</TableHead>
+                <TableHead>Status</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -209,14 +236,19 @@ const PlanningEnhanced: React.FC = () => {
                     {item.raw_materials?.material_code || 'N/A'}
                   </TableCell>
                   <TableCell>{item.raw_materials?.name || 'N/A'}</TableCell>
-                  <TableCell>{item.requiredQuantity}</TableCell>
-                  <TableCell>{item.availableQuantity}</TableCell>
+                  <TableCell className="font-medium">{item.requiredQuantity}</TableCell>
+                  <TableCell className="font-medium">{item.availableQuantity}</TableCell>
                   <TableCell>
                     {item.shortQuantity > 0 ? (
                       <Badge variant="destructive">{item.shortQuantity}</Badge>
                     ) : (
                       <Badge variant="secondary">0</Badge>
                     )}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={item.status === 'AVAILABLE' ? 'default' : 'destructive'}>
+                      {item.status}
+                    </Badge>
                   </TableCell>
                 </TableRow>
               ))}
@@ -228,13 +260,24 @@ const PlanningEnhanced: React.FC = () => {
 
     return (
       <div className="space-y-4">
-        <div className="text-center pb-4 border-b">
-          <h3 className="text-xl font-bold">
-            {selectedSchedule.projections?.products?.name}
-          </h3>
-          <p className="text-muted-foreground">
-            Scheduled Quantity: {selectedSchedule.quantity} units
-          </p>
+        <div className="flex items-center justify-between pb-4 border-b">
+          <div>
+            <h3 className="text-xl font-bold">
+              {selectedSchedule.projections?.products?.name}
+            </h3>
+            <p className="text-muted-foreground">
+              Scheduled Quantity: {selectedSchedule.quantity} units
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => refetchInventory()}
+            className="gap-2"
+          >
+            <RefreshCw className="h-4 w-4" />
+            Refresh Inventory
+          </Button>
         </div>
         
         <BOMSection title="Main Assembly" items={mainAssembly} />
@@ -396,7 +439,9 @@ const PlanningEnhanced: React.FC = () => {
                   <Table>
                     <TableHeader>
                       <TableRow>
+                        <TableHead>Voucher Number</TableHead>
                         <TableHead>Product Name</TableHead>
+                        <TableHead>Customer</TableHead>
                         <TableHead>Quantity</TableHead>
                         <TableHead>Date</TableHead>
                         <TableHead>Actions</TableHead>
@@ -405,24 +450,51 @@ const PlanningEnhanced: React.FC = () => {
                     <TableBody>
                       {scheduledNotSentToProduction.map((schedule) => (
                         <TableRow key={schedule.id}>
+                          <TableCell className="font-medium font-mono">
+                            {/* Will show correct voucher number from production_orders table */}
+                            PROD_{format(new Date(schedule.scheduled_date), 'MM')}_XX
+                          </TableCell>
                           <TableCell className="font-medium">
                             {schedule.projections?.products?.name}
+                          </TableCell>
+                          <TableCell>
+                            {schedule.projections?.customers?.name}
                           </TableCell>
                           <TableCell>{schedule.quantity}</TableCell>
                           <TableCell>{format(new Date(schedule.scheduled_date), 'PPP')}</TableCell>
                           <TableCell>
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              onClick={() => {
-                                setSelectedScheduleId(schedule.id);
-                                setShortageDialogOpen(true);
-                              }}
-                              className="gap-2"
-                            >
-                              <AlertTriangle className="h-4 w-4" />
-                              Shortages
-                            </Button>
+                            <div className="flex gap-2">
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => handleEditSchedule(schedule)}
+                                className="gap-2"
+                              >
+                                <Edit className="h-4 w-4" />
+                                Edit
+                              </Button>
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => handleDeleteSchedule(schedule)}
+                                className="gap-2 text-destructive hover:text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                                Delete
+                              </Button>
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedScheduleId(schedule.id);
+                                  setShortageDialogOpen(true);
+                                }}
+                                className="gap-2"
+                              >
+                                <AlertTriangle className="h-4 w-4" />
+                                Shortages
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -438,11 +510,36 @@ const PlanningEnhanced: React.FC = () => {
           </TabsContent>
         </Tabs>
 
-        {/* Shortage Analysis Dialog */}
+        {/* Edit Schedule Dialog */}
+        {selectedSchedule && (
+          <EditScheduleDialog
+            isOpen={editDialogOpen}
+            onClose={() => {
+              setEditDialogOpen(false);
+              setSelectedSchedule(null);
+            }}
+            schedule={selectedSchedule}
+            maxQuantity={getMaxQuantityForEdit(selectedSchedule)}
+          />
+        )}
+
+        {/* Delete Schedule Dialog */}
+        {selectedSchedule && (
+          <DeleteScheduleDialog
+            isOpen={deleteDialogOpen}
+            onClose={() => {
+              setDeleteDialogOpen(false);
+              setSelectedSchedule(null);
+            }}
+            schedule={selectedSchedule}
+          />
+        )}
+
+        {/* Enhanced Shortage Analysis Dialog */}
         <Dialog open={shortageDialogOpen} onOpenChange={setShortageDialogOpen}>
-          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogContent className="max-w-5xl max-h-[80vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Material Requirements & Shortages</DialogTitle>
+              <DialogTitle>Material Requirements & Real-time Inventory Status</DialogTitle>
             </DialogHeader>
             <BOMShortageAnalysis />
           </DialogContent>

@@ -1,3 +1,4 @@
+
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -31,7 +32,7 @@ export const useProductionSchedules = () => {
   });
 };
 
-// Helper function to generate voucher number based on scheduled date
+// Helper function to generate voucher number based on scheduled date with correct PROD_MM_XX format
 const generateVoucherNumber = async (scheduledDate: string) => {
   const date = new Date(scheduledDate);
   const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -42,7 +43,7 @@ const generateVoucherNumber = async (scheduledDate: string) => {
     .from('production_orders')
     .select('voucher_number')
     .gte('scheduled_date', `${year}-${month}-01`)
-    .lt('scheduled_date', `${year}-${month === '12' ? '01' : String(parseInt(month) + 1).padStart(2, '0')}-01`)
+    .lt('scheduled_date', `${year}-${month === '12' ? year + 1 : year}-${month === '12' ? '01' : String(parseInt(month) + 1).padStart(2, '0')}-01`)
     .order('voucher_number', { ascending: false });
   
   if (error) {
@@ -50,7 +51,7 @@ const generateVoucherNumber = async (scheduledDate: string) => {
     throw error;
   }
   
-  // Find the highest sequence number for this month
+  // Find the highest sequence number for this month using the correct PROD_MM_XX pattern
   let maxSequence = 0;
   if (existingOrders && existingOrders.length > 0) {
     const voucherPattern = new RegExp(`^PROD_${month}_(\\d{2})$`);
@@ -65,7 +66,7 @@ const generateVoucherNumber = async (scheduledDate: string) => {
     });
   }
   
-  // Generate next sequence number
+  // Generate next sequence number with correct format
   const nextSequence = maxSequence + 1;
   return `PROD_${month}_${String(nextSequence).padStart(2, '0')}`;
 };
@@ -186,6 +187,7 @@ export const useDeleteProductionSchedule = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['production_schedules'] });
       queryClient.invalidateQueries({ queryKey: ['production-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['projections'] });
       toast({
         title: "Success",
         description: "Production schedule deleted successfully",
@@ -213,9 +215,21 @@ export const useUpdateProductionSchedule = () => {
         .eq('id', scheduleId);
 
       if (error) throw error;
+
+      // Also update related production order if quantity changed
+      if (updates.quantity) {
+        const { error: orderError } = await supabase
+          .from('production_orders')
+          .update({ quantity: updates.quantity })
+          .eq('production_schedule_id', scheduleId);
+
+        if (orderError) throw orderError;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['production_schedules'] });
+      queryClient.invalidateQueries({ queryKey: ['production-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['projections'] });
       toast({
         title: "Success",
         description: "Production schedule updated successfully",
