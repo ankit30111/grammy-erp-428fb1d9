@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -32,29 +31,43 @@ export const useProductionSchedules = () => {
   });
 };
 
-// Helper function to generate voucher number
+// Helper function to generate voucher number based on scheduled date
 const generateVoucherNumber = async (scheduledDate: string) => {
   const date = new Date(scheduledDate);
   const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = date.getFullYear();
   
-  // Get count of existing vouchers for this month
-  const { data: existingVouchers, error } = await supabase
+  // Get existing production orders for the same month and year to determine sequence
+  const { data: existingOrders, error } = await supabase
     .from('production_orders')
     .select('voucher_number')
-    .like('voucher_number', `${month}-%`)
-    .order('voucher_number', { ascending: false })
-    .limit(1);
+    .gte('scheduled_date', `${year}-${month}-01`)
+    .lt('scheduled_date', `${year}-${month === '12' ? '01' : String(parseInt(month) + 1).padStart(2, '0')}-01`)
+    .order('voucher_number', { ascending: false });
   
-  if (error) throw error;
-  
-  let sequence = 1;
-  if (existingVouchers && existingVouchers.length > 0) {
-    const lastVoucher = existingVouchers[0].voucher_number;
-    const lastSequence = parseInt(lastVoucher.split('-')[1]) || 0;
-    sequence = lastSequence + 1;
+  if (error) {
+    console.error('Error fetching existing vouchers:', error);
+    throw error;
   }
   
-  return `${month}-${String(sequence).padStart(2, '0')}`;
+  // Find the highest sequence number for this month
+  let maxSequence = 0;
+  if (existingOrders && existingOrders.length > 0) {
+    const voucherPattern = new RegExp(`^PROD_${month}_(\\d{2})$`);
+    existingOrders.forEach(order => {
+      const match = order.voucher_number.match(voucherPattern);
+      if (match) {
+        const sequence = parseInt(match[1]);
+        if (sequence > maxSequence) {
+          maxSequence = sequence;
+        }
+      }
+    });
+  }
+  
+  // Generate next sequence number
+  const nextSequence = maxSequence + 1;
+  return `PROD_${month}_${String(nextSequence).padStart(2, '0')}`;
 };
 
 export const useCreateProductionSchedule = () => {
@@ -64,6 +77,10 @@ export const useCreateProductionSchedule = () => {
   return useMutation({
     mutationFn: async (scheduleData: any) => {
       console.log('🎯 Creating production schedule with data:', scheduleData);
+      
+      // Generate voucher number based on scheduled date
+      const voucherNumber = await generateVoucherNumber(scheduleData.scheduled_date);
+      console.log('📋 Generated voucher number:', voucherNumber);
       
       // First create the production schedule with the selected production line
       const { data: schedule, error: scheduleError } = await supabase
@@ -84,9 +101,6 @@ export const useCreateProductionSchedule = () => {
       }
 
       console.log('✅ Schedule created:', schedule);
-
-      // Generate voucher number
-      const voucherNumber = await generateVoucherNumber(scheduleData.scheduled_date);
 
       // Get product_id from projection
       const { data: projection, error: projectionError } = await supabase
@@ -122,9 +136,9 @@ export const useCreateProductionSchedule = () => {
 
       console.log('✅ Production order created:', productionOrder);
       
-      return { schedule, productionOrder };
+      return { schedule, productionOrder, voucherNumber };
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['production_schedules'] });
       queryClient.invalidateQueries({ queryKey: ['projections'] });
       queryClient.invalidateQueries({ queryKey: ['production-orders'] });
@@ -133,7 +147,7 @@ export const useCreateProductionSchedule = () => {
       queryClient.invalidateQueries({ queryKey: ['production-queue'] });
       toast({
         title: "Success",
-        description: "Production scheduled successfully and assigned to production line",
+        description: `Production scheduled successfully with voucher: ${data.voucherNumber}`,
       });
     },
     onError: (error) => {

@@ -33,18 +33,6 @@ const PlanningEnhanced: React.FC = () => {
   const createSchedule = useCreateProductionSchedule();
   const { toast } = useToast();
 
-  // Generate voucher number with correct format: PROD_MM_XX
-  const generateVoucherNumber = (date: Date) => {
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const existingVouchersForMonth = schedules?.filter(schedule => {
-      const scheduleDate = new Date(schedule.scheduled_date);
-      return scheduleDate.getMonth() + 1 === date.getMonth() + 1 && 
-             scheduleDate.getFullYear() === date.getFullYear();
-    }) || [];
-    const sequenceNumber = existingVouchersForMonth.length + 1;
-    return `PROD_${month}_${String(sequenceNumber).padStart(2, '0')}`;
-  };
-
   // Get unscheduled projections
   const unscheduledProjections = projections?.filter(projection => {
     const balanceQuantity = projection.quantity - (projection.scheduled_quantity || 0);
@@ -92,10 +80,6 @@ const PlanningEnhanced: React.FC = () => {
       setSelectedProjection("");
       setQuantity("");
       
-      toast({
-        title: "Success",
-        description: `Production scheduled with voucher: ${generateVoucherNumber(selectedDate)}`,
-      });
     } catch (error) {
       console.error('Error scheduling production:', error);
       toast({
@@ -160,9 +144,6 @@ const PlanningEnhanced: React.FC = () => {
                   </div>
                   <div className="text-muted-foreground">
                     {schedule.quantity} units
-                  </div>
-                  <div className="text-xs">
-                    {generateVoucherNumber(new Date(schedule.scheduled_date))}
                   </div>
                 </div>
               ))}
@@ -253,9 +234,6 @@ const PlanningEnhanced: React.FC = () => {
           </h3>
           <p className="text-muted-foreground">
             Scheduled Quantity: {selectedSchedule.quantity} units
-          </p>
-          <p className="text-sm text-muted-foreground">
-            Voucher: {generateVoucherNumber(new Date(selectedSchedule.scheduled_date))}
           </p>
         </div>
         
@@ -367,17 +345,6 @@ const PlanningEnhanced: React.FC = () => {
                     </Select>
                   </div>
 
-                  {selectedDate && (
-                    <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                      <p className="text-sm text-blue-800">
-                        <strong>Selected Date:</strong> {format(selectedDate, 'PPP')}
-                      </p>
-                      <p className="text-sm text-blue-800">
-                        <strong>Voucher Number:</strong> {generateVoucherNumber(selectedDate)}
-                      </p>
-                    </div>
-                  )}
-
                   <div>
                     <Label htmlFor="quantity">Quantity to Produce</Label>
                     <Input
@@ -432,7 +399,6 @@ const PlanningEnhanced: React.FC = () => {
                         <TableHead>Product Name</TableHead>
                         <TableHead>Quantity</TableHead>
                         <TableHead>Date</TableHead>
-                        <TableHead>Voucher Number</TableHead>
                         <TableHead>Actions</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -444,7 +410,6 @@ const PlanningEnhanced: React.FC = () => {
                           </TableCell>
                           <TableCell>{schedule.quantity}</TableCell>
                           <TableCell>{format(new Date(schedule.scheduled_date), 'PPP')}</TableCell>
-                          <TableCell>{generateVoucherNumber(new Date(schedule.scheduled_date))}</TableCell>
                           <TableCell>
                             <Button 
                               variant="outline" 
