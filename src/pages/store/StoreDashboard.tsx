@@ -1,3 +1,4 @@
+
 import { useState, lazy, Suspense } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -55,7 +56,6 @@ const StoreDashboard = () => {
         <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="production-vouchers">Production Vouchers</TabsTrigger>
           <TabsTrigger value="grn-receiving">GRN Receiving</TabsTrigger>
-          <TabsTrigger value="material-requests">Material Requests</TabsTrigger>
           <TabsTrigger value="production-feedback" className="relative">
             Production Feedback
             {pendingFeedbackCount > 0 && (
@@ -64,9 +64,10 @@ const StoreDashboard = () => {
               </Badge>
             )}
           </TabsTrigger>
-          <TabsTrigger value="logbook">LogBook</TabsTrigger>
+          <TabsTrigger value="material-requests">Material Requests</TabsTrigger>
           <TabsTrigger value="inventory">Inventory</TabsTrigger>
           <TabsTrigger value="stock-reconciliation">Stock Reconciliation</TabsTrigger>
+          <TabsTrigger value="logbook">LogBook</TabsTrigger>
         </TabsList>
 
         <TabsContent value="production-vouchers" className="space-y-4">
@@ -101,16 +102,6 @@ const StoreDashboard = () => {
           </Suspense>
         </TabsContent>
 
-        <TabsContent value="material-requests" className="space-y-4">
-          <div className="flex items-center space-x-2 mb-4">
-            <ArrowLeftRight className="h-5 w-5" />
-            <h2 className="text-xl font-semibold">Material Requests</h2>
-          </div>
-          <Suspense fallback={<TabLoader />}>
-            <MaterialRequestsTab />
-          </Suspense>
-        </TabsContent>
-
         <TabsContent value="production-feedback" className="space-y-4">
           <div className="flex items-center space-x-2 mb-4">
             <AlertTriangle className="h-5 w-5" />
@@ -122,13 +113,13 @@ const StoreDashboard = () => {
           </Suspense>
         </TabsContent>
 
-        <TabsContent value="logbook" className="space-y-4">
+        <TabsContent value="material-requests" className="space-y-4">
           <div className="flex items-center space-x-2 mb-4">
-            <BookOpen className="h-5 w-5" />
-            <h2 className="text-xl font-semibold">Material Movement LogBook</h2>
+            <ArrowLeftRight className="h-5 w-5" />
+            <h2 className="text-xl font-semibold">Material Requests</h2>
           </div>
           <Suspense fallback={<TabLoader />}>
-            <LogBook />
+            <MaterialRequestsTab />
           </Suspense>
         </TabsContent>
 
@@ -150,6 +141,17 @@ const StoreDashboard = () => {
           </div>
           <Suspense fallback={<TabLoader />}>
             <StockReconciliation />
+          </Suspense>
+        </TabsContent>
+
+        <TabsContent value="logbook" className="space-y-4">
+          <div className="flex items-center space-x-2 mb-4">
+            <BookOpen className="h-5 w-5" />
+            <h2 className="text-xl font-semibold">Material Movement LogBook</h2>
+            <Badge variant="outline">Complete Material Audit Trail</Badge>
+          </div>
+          <Suspense fallback={<TabLoader />}>
+            <LogBook />
           </Suspense>
         </TabsContent>
       </Tabs>

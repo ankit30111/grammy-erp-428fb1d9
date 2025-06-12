@@ -2504,6 +2504,18 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      log_material_movement: {
+        Args: {
+          p_raw_material_id: string
+          p_movement_type: string
+          p_quantity: number
+          p_reference_id: string
+          p_reference_type: string
+          p_reference_number: string
+          p_notes?: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       bom_type: "main_assembly" | "sub_assembly" | "accessory"

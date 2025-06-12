@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -68,7 +67,7 @@ export const useUpdateInventory = () => {
   });
 };
 
-// CRITICAL FIX: Enhanced inventory deduction with proper error handling
+// ENHANCED: Inventory deduction with proper material movement logging
 export const useInventoryDeduction = () => {
   const queryClient = useQueryClient();
   
@@ -86,7 +85,7 @@ export const useInventoryDeduction = () => {
       referenceNumber: string;
       notes?: string;
     }) => {
-      console.log(`🔄 CRITICAL: Processing inventory deduction for material ${rawMaterialId}`);
+      console.log(`🔄 ENHANCED: Processing inventory deduction for material ${rawMaterialId}`);
       console.log(`   - Quantity to deduct: ${quantityToDeduct}`);
       console.log(`   - Reference: ${referenceNumber}`);
       
@@ -114,7 +113,7 @@ export const useInventoryDeduction = () => {
       const newStock = currentStock - quantityToDeduct;
       console.log(`🔄 Planned stock reduction: ${currentStock} → ${newStock}`);
 
-      // STEP 2: CRITICAL - Update inventory atomically
+      // STEP 2: CRITICAL - Update inventory (this will trigger the logging automatically via database trigger)
       const { data: updatedInventory, error: updateError } = await supabase
         .from("inventory")
         .update({
@@ -137,28 +136,27 @@ export const useInventoryDeduction = () => {
         deducted: quantityToDeduct
       });
 
-      // STEP 3: Log material movement for audit trail
+      // STEP 3: Additional manual logging for production voucher context
       const { error: movementError } = await supabase
-        .from("material_movements")
-        .insert({
-          raw_material_id: rawMaterialId,
-          movement_type: "ISSUED_TO_PRODUCTION",
-          quantity: quantityToDeduct,
-          reference_id: referenceId,
-          reference_type: "PRODUCTION_ORDER",
-          reference_number: referenceNumber,
-          notes: notes || `Material dispatched to production. Stock: ${currentStock} → ${newStock}`
+        .rpc('log_material_movement', {
+          p_raw_material_id: rawMaterialId,
+          p_movement_type: "ISSUED_TO_PRODUCTION",
+          p_quantity: quantityToDeduct,
+          p_reference_id: referenceId,
+          p_reference_type: "PRODUCTION_ORDER",
+          p_reference_number: referenceNumber,
+          p_notes: notes || `Material dispatched to production via voucher. Stock: ${currentStock} → ${newStock}`
         });
 
       if (movementError) {
-        console.error("❌ Error logging material movement:", movementError);
+        console.error("❌ Error logging production movement:", movementError);
         // Don't fail the transaction for logging errors, but log it
-        console.warn("⚠️ Material movement logging failed, but inventory deduction successful");
+        console.warn("⚠️ Production movement logging failed, but inventory deduction successful");
       } else {
-        console.log("✅ MATERIAL MOVEMENT LOGGED SUCCESSFULLY");
+        console.log("✅ PRODUCTION MOVEMENT LOGGED SUCCESSFULLY");
       }
 
-      console.log(`✅ INVENTORY DEDUCTION COMPLETE: ${currentStock} → ${newStock}`);
+      console.log(`✅ ENHANCED INVENTORY DEDUCTION COMPLETE: ${currentStock} → ${newStock}`);
       return {
         previousStock: currentStock,
         newStock,
@@ -176,19 +174,20 @@ export const useInventoryDeduction = () => {
   });
 };
 
-// ENHANCED: Manual sync with better error checking and duplicate prevention
+// ENHANCED: Manual sync that respects store physical quantities
 export const useManualInventorySync = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
     mutationFn: async () => {
-      console.log("🔧 Starting enhanced manual inventory sync...");
+      console.log("🔧 Starting enhanced manual inventory sync with store physical quantities...");
       
-      // Get all store confirmed GRN items with detailed logging
+      // Get all store confirmed GRN items with their physical quantities
       const { data: confirmedItems, error } = await supabase
         .from("grn_items")
         .select(`
           raw_material_id,
+          store_physical_quantity,
           accepted_quantity,
           store_confirmed_at,
           grn!inner(grn_number),
@@ -221,25 +220,28 @@ export const useManualInventorySync = () => {
         inventoryMap.set(item.raw_material_id, item.quantity);
       });
 
-      // Calculate what the correct quantities should be based on GRN data
+      // Calculate what the correct quantities should be based on STORE PHYSICAL QUANTITIES
       const correctQuantities = new Map();
       confirmedItems?.forEach(item => {
         const current = correctQuantities.get(item.raw_material_id) || 0;
-        const newTotal = current + item.accepted_quantity;
+        // Use store_physical_quantity if available, otherwise fall back to accepted_quantity
+        const quantityToAdd = item.store_physical_quantity || item.accepted_quantity;
+        const newTotal = current + quantityToAdd;
         correctQuantities.set(item.raw_material_id, newTotal);
         
-        console.log(`🧮 Material ${item.raw_materials?.material_code}: Adding ${item.accepted_quantity}, Total should be: ${newTotal}`);
+        console.log(`🧮 Material ${item.raw_materials?.material_code}: Adding ${quantityToAdd} (Store Physical: ${item.store_physical_quantity}, IQC: ${item.accepted_quantity}), Total should be: ${newTotal}`);
         console.log(`   - GRN: ${item.grn?.grn_number}, Confirmed at: ${item.store_confirmed_at}`);
       });
 
       // Compare and fix any discrepancies
+      let correctedCount = 0;
       for (const [materialId, correctQuantity] of correctQuantities) {
         const currentQuantity = inventoryMap.get(materialId) || 0;
         
         if (currentQuantity !== correctQuantity) {
           console.log(`🔧 FIXING DISCREPANCY for material ${materialId}:`);
           console.log(`   - Current in inventory: ${currentQuantity}`);
-          console.log(`   - Should be (from GRN): ${correctQuantity}`);
+          console.log(`   - Should be (from Store Physical): ${correctQuantity}`);
           console.log(`   - Difference: ${correctQuantity - currentQuantity}`);
           
           // Update to correct quantity
@@ -258,21 +260,22 @@ export const useManualInventorySync = () => {
             console.error(`❌ Error fixing inventory for material ${materialId}:`, upsertError);
           } else {
             console.log(`✅ FIXED: Material ${materialId} quantity corrected to ${correctQuantity}`);
+            correctedCount++;
           }
         } else {
           console.log(`✅ Material ${materialId} quantity is correct: ${correctQuantity}`);
         }
       }
 
-      console.log("🎉 Enhanced manual inventory sync completed");
-      return { success: true, correctedItems: correctQuantities.size };
+      console.log("🎉 Enhanced manual inventory sync completed with store physical quantities");
+      return { success: true, correctedItems: correctedCount };
     },
     onSuccess: (result) => {
       // CRITICAL: Invalidate all inventory queries for immediate refresh
       queryClient.invalidateQueries({ queryKey: ["inventory"] });
       queryClient.invalidateQueries({ queryKey: ["inventory-real-time"] });
       queryClient.invalidateQueries({ queryKey: ["material-movements-logbook"] });
-      console.log(`✅ Enhanced sync completed. Processed ${result.correctedItems} materials.`);
+      console.log(`✅ Enhanced sync completed. Corrected ${result.correctedItems} materials.`);
     },
   });
 };
