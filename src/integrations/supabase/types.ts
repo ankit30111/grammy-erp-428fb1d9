@@ -1507,6 +1507,78 @@ export type Database = {
           },
         ]
       }
+      production_discrepancies: {
+        Row: {
+          created_at: string
+          discrepancy_quantity: number
+          discrepancy_type: string
+          id: string
+          production_order_id: string
+          raw_material_id: string
+          reason: string | null
+          received_quantity: number
+          reported_at: string
+          reported_by: string | null
+          resolution_notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          sent_quantity: number
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          discrepancy_quantity: number
+          discrepancy_type: string
+          id?: string
+          production_order_id: string
+          raw_material_id: string
+          reason?: string | null
+          received_quantity: number
+          reported_at?: string
+          reported_by?: string | null
+          resolution_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          sent_quantity: number
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          discrepancy_quantity?: number
+          discrepancy_type?: string
+          id?: string
+          production_order_id?: string
+          raw_material_id?: string
+          reason?: string | null
+          received_quantity?: number
+          reported_at?: string
+          reported_by?: string | null
+          resolution_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          sent_quantity?: number
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_production_discrepancy_production_order"
+            columns: ["production_order_id"]
+            isOneToOne: false
+            referencedRelation: "production_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_production_discrepancy_raw_material"
+            columns: ["raw_material_id"]
+            isOneToOne: false
+            referencedRelation: "raw_materials"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       production_material_receipts: {
         Row: {
           created_at: string
@@ -2574,6 +2646,25 @@ export type Database = {
           p_quantity: number
           p_received_by?: string
           p_notes?: string
+        }
+        Returns: undefined
+      }
+      log_production_material_receipt_with_discrepancy_check: {
+        Args: {
+          p_production_order_id: string
+          p_raw_material_id: string
+          p_quantity: number
+          p_received_by?: string
+          p_notes?: string
+        }
+        Returns: undefined
+      }
+      resolve_production_discrepancy: {
+        Args: {
+          p_discrepancy_id: string
+          p_action: string
+          p_reviewed_by: string
+          p_resolution_notes?: string
         }
         Returns: undefined
       }

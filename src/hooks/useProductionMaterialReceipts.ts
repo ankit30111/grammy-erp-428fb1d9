@@ -31,7 +31,7 @@ export const useProductionMaterialReceipts = (productionOrderId: string) => {
     refetchInterval: 3000, // Real-time updates
   });
 
-  // Log production material receipt
+  // Log production material receipt with enhanced discrepancy checking
   const logProductionReceiptMutation = useMutation({
     mutationFn: async ({ 
       rawMaterialId, 
@@ -42,14 +42,14 @@ export const useProductionMaterialReceipts = (productionOrderId: string) => {
       quantity: number; 
       notes?: string;
     }) => {
-      console.log("📝 Logging production material receipt:", {
+      console.log("📝 Logging production material receipt with discrepancy check:", {
         productionOrderId,
         rawMaterialId,
         quantity,
         notes
       });
 
-      const { error } = await supabase.rpc("log_production_material_receipt", {
+      const { error } = await supabase.rpc("log_production_material_receipt_with_discrepancy_check", {
         p_production_order_id: productionOrderId,
         p_raw_material_id: rawMaterialId,
         p_quantity: quantity,
@@ -68,6 +68,7 @@ export const useProductionMaterialReceipts = (productionOrderId: string) => {
       queryClient.invalidateQueries({ queryKey: ["production-material-receipts"] });
       queryClient.invalidateQueries({ queryKey: ["material-dispatch-tracking"] });
       queryClient.invalidateQueries({ queryKey: ["material-movements-logbook"] });
+      queryClient.invalidateQueries({ queryKey: ["production-discrepancies"] });
       toast.success("Material receipt logged successfully");
     },
     onError: (error) => {

@@ -3,7 +3,8 @@ import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, AlertTriangle, Package } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { CheckCircle, AlertTriangle, Package, ExclamationTriangle } from "lucide-react";
 
 interface ProductionMaterialReceiptInputProps {
   materialCode: string;
@@ -30,10 +31,11 @@ export default function ProductionMaterialReceiptInput({
   const remainingQuantity = Math.max(0, sentQuantity - receivedQuantity);
   const isFullyReceived = receivedQuantity >= sentQuantity;
   const isOverReceived = receivedQuantity > sentQuantity;
+  const willCreateDiscrepancy = inputQuantity && parseInt(inputQuantity) !== remainingQuantity;
 
   const handleSubmit = () => {
     const quantity = parseInt(inputQuantity);
-    if (quantity > 0 && quantity <= remainingQuantity) {
+    if (quantity > 0) {
       onReceiptLog(quantity, notes.trim() || undefined);
       setInputQuantity("");
       setNotes("");
@@ -60,6 +62,25 @@ export default function ProductionMaterialReceiptInput({
       </Badge>;
     }
     return <Badge variant="outline">Awaiting Receipt</Badge>;
+  };
+
+  const getDiscrepancyWarning = () => {
+    if (!inputQuantity || !willCreateDiscrepancy) return null;
+
+    const quantity = parseInt(inputQuantity);
+    const expectedQuantity = remainingQuantity;
+    const discrepancyType = quantity > expectedQuantity ? 'EXCESS' : 'SHORTAGE';
+    const discrepancyAmount = Math.abs(quantity - expectedQuantity);
+
+    return (
+      <Alert className="border-orange-200 bg-orange-50">
+        <ExclamationTriangle className="h-4 w-4 text-orange-600" />
+        <AlertDescription className="text-orange-800">
+          <strong>Quantity Mismatch Detected:</strong> {discrepancyType.toLowerCase()} of {discrepancyAmount} units.
+          This will create a discrepancy record for store review.
+        </AlertDescription>
+      </Alert>
+    );
   };
 
   return (
@@ -93,15 +114,16 @@ export default function ProductionMaterialReceiptInput({
         </div>
       </div>
 
-      {!isFullyReceived && remainingQuantity > 0 && (
+      {!isFullyReceived && (
         <div className="space-y-2">
+          {getDiscrepancyWarning()}
+          
           <div className="flex gap-2">
             <Input
               type="number"
-              placeholder="Enter qty received"
+              placeholder="Enter actual qty received"
               value={inputQuantity}
               onChange={(e) => setInputQuantity(e.target.value)}
-              max={remainingQuantity}
               min={1}
               className="flex-1"
               disabled={isLogging}
@@ -109,25 +131,33 @@ export default function ProductionMaterialReceiptInput({
             <Button 
               size="sm" 
               onClick={handleSubmit}
-              disabled={!inputQuantity || parseInt(inputQuantity) <= 0 || parseInt(inputQuantity) > remainingQuantity || isLogging}
+              disabled={!inputQuantity || parseInt(inputQuantity) <= 0 || isLogging}
+              className="gap-1"
             >
-              {isLogging ? "Logging..." : "Log Receipt"}
+              {isLogging ? (
+                "Logging..."
+              ) : (
+                <>
+                  <CheckCircle className="h-3 w-3" />
+                  Log Receipt
+                </>
+              )}
             </Button>
           </div>
           <Input
-            placeholder="Add notes (optional)"
+            placeholder="Add notes (optional, required for discrepancies)"
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             className="text-xs"
             disabled={isLogging}
           />
           <div className="text-xs text-muted-foreground">
-            Max quantity: {remainingQuantity}
+            Expected: {remainingQuantity} units. Enter actual quantity received by production.
           </div>
         </div>
       )}
 
-      {isFullyReceived && (
+      {isFullyReceived && !isOverReceived && (
         <div className="text-xs text-green-600 font-medium">
           ✓ All materials received successfully
         </div>
@@ -135,7 +165,7 @@ export default function ProductionMaterialReceiptInput({
 
       {isOverReceived && (
         <div className="text-xs text-red-600 font-medium">
-          ⚠️ Over received by {receivedQuantity - sentQuantity} units
+          ⚠️ Over received by {receivedQuantity - sentQuantity} units - discrepancy created for store review
         </div>
       )}
     </div>
