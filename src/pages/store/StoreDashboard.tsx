@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 // Import existing components
 import ProductionVoucherDetails from "@/components/Store/ProductionVoucherDetails";
+import ProductionVoucherList from "@/components/Store/ProductionVoucherList";
 import GRNManagement from "@/components/Purchase/GRNManagement";
 import MaterialRequestsTab from "@/components/Store/MaterialRequestsTab";
 import LogBook from "@/components/Store/LogBook";
@@ -64,10 +65,17 @@ const StoreDashboard = () => {
             <h2 className="text-xl font-semibold">Production Voucher Management</h2>
             <Badge variant="outline">Real-time Inventory Deduction</Badge>
           </div>
-          <ProductionVoucherDetails 
-            voucherId={selectedVoucherId} 
-            onBack={() => setSelectedVoucherId(null)} 
-          />
+          
+          {selectedVoucherId ? (
+            <ProductionVoucherDetails 
+              voucherId={selectedVoucherId} 
+              onBack={() => setSelectedVoucherId(null)} 
+            />
+          ) : (
+            <ProductionVoucherList 
+              onSelectVoucher={setSelectedVoucherId}
+            />
+          )}
         </TabsContent>
 
         <TabsContent value="grn-management" className="space-y-4">
