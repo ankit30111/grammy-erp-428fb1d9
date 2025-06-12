@@ -1,4 +1,3 @@
-
 import { useState, lazy, Suspense } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -9,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 // Lazy load components for better performance
 const ProductionVoucherDetails = lazy(() => import("@/components/Store/ProductionVoucherDetails"));
 const ProductionVoucherList = lazy(() => import("@/components/Store/ProductionVoucherList"));
-const GRNManagement = lazy(() => import("@/components/Purchase/GRNManagement"));
+const GRNReceiving = lazy(() => import("@/components/Store/GRNReceiving"));
 const MaterialRequestsTab = lazy(() => import("@/components/Store/MaterialRequestsTab"));
 const LogBook = lazy(() => import("@/components/Store/LogBook"));
 const InventoryManagement = lazy(() => import("@/components/Store/InventoryManagement"));
@@ -55,7 +54,7 @@ const StoreDashboard = () => {
       <Tabs defaultValue="production-vouchers" className="space-y-4">
         <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="production-vouchers">Production Vouchers</TabsTrigger>
-          <TabsTrigger value="grn-management">GRN Management</TabsTrigger>
+          <TabsTrigger value="grn-receiving">GRN Receiving</TabsTrigger>
           <TabsTrigger value="material-requests">Material Requests</TabsTrigger>
           <TabsTrigger value="production-feedback" className="relative">
             Production Feedback
@@ -91,13 +90,14 @@ const StoreDashboard = () => {
           </Suspense>
         </TabsContent>
 
-        <TabsContent value="grn-management" className="space-y-4">
+        <TabsContent value="grn-receiving" className="space-y-4">
           <div className="flex items-center space-x-2 mb-4">
             <FileText className="h-5 w-5" />
-            <h2 className="text-xl font-semibold">GRN Management</h2>
+            <h2 className="text-xl font-semibold">GRN Receiving</h2>
+            <Badge variant="outline">Physical Verification & Receipt</Badge>
           </div>
           <Suspense fallback={<TabLoader />}>
-            <GRNManagement />
+            <GRNReceiving />
           </Suspense>
         </TabsContent>
 

@@ -35,15 +35,25 @@ const StoreDiscrepancyActionDialog = ({
 
   const actionMutation = useMutation({
     mutationFn: async (actionData: any) => {
-      // Here you would implement the actual action logic
       console.log('Taking action:', actionType, actionData);
       
-      // You could create a discrepancy_actions table to track these
+      // Update the discrepancy status based on action
+      const updateData: any = {
+        updated_at: new Date().toISOString()
+      };
+
+      if (actionType === 'accept-discrepancy') {
+        updateData.status = 'RESOLVED';
+        updateData.resolved_at = new Date().toISOString();
+        updateData.resolution_notes = formData.remarks;
+      } else if (actionType === 'notify-vendor') {
+        updateData.vendor_notified = true;
+        updateData.vendor_notified_at = new Date().toISOString();
+      }
+
       const { error } = await supabase
-        .from('grn_items')
-        .update({ 
-          // You might want to add action tracking fields
-        })
+        .from('store_discrepancies')
+        .update(updateData)
         .eq('id', discrepancy.id);
       
       if (error) throw error;
@@ -83,16 +93,11 @@ const StoreDiscrepancyActionDialog = ({
         return 'Issue Credit Note';
       case 'request-delivery':
         return 'Request Additional Delivery';
-      case 'accept-delivery':
-        return 'Accept Short Delivery';
+      case 'accept-discrepancy':
+        return 'Accept Discrepancy';
       default:
         return 'Action';
     }
-  };
-
-  const getDiscrepancyAmount = () => {
-    if (!discrepancy) return 0;
-    return (discrepancy.received_quantity || 0) - (discrepancy.accepted_quantity || 0);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -106,8 +111,6 @@ const StoreDiscrepancyActionDialog = ({
   };
 
   if (!discrepancy) return null;
-
-  const discrepancyAmount = getDiscrepancyAmount();
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -127,9 +130,15 @@ const StoreDiscrepancyActionDialog = ({
               <strong>GRN:</strong> {discrepancy.grn?.grn_number}
             </div>
             <div className="text-sm text-muted-foreground">
+              <strong>IQC Approved:</strong> {discrepancy.iqc_accepted_quantity}
+            </div>
+            <div className="text-sm text-muted-foreground">
+              <strong>Store Physical:</strong> {discrepancy.store_physical_quantity}
+            </div>
+            <div className="text-sm text-muted-foreground">
               <strong>Discrepancy:</strong> 
-              <span className={discrepancyAmount < 0 ? 'text-red-600' : 'text-orange-600'}>
-                {discrepancyAmount > 0 ? `+${discrepancyAmount}` : discrepancyAmount} units
+              <span className={discrepancy.discrepancy_type === 'SHORTAGE' ? 'text-red-600' : 'text-orange-600'}>
+                {discrepancy.discrepancy_type === 'SHORTAGE' ? '-' : '+'}{discrepancy.discrepancy_quantity} units
               </span>
             </div>
           </div>
@@ -198,7 +207,7 @@ const StoreDiscrepancyActionDialog = ({
             </>
           )}
 
-          {actionType === 'accept-delivery' && (
+          {actionType === 'accept-discrepancy' && (
             <div className="space-y-2">
               <Label htmlFor="remarks">Acceptance Remarks</Label>
               <Textarea

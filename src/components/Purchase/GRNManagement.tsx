@@ -57,6 +57,7 @@ const GRNManagement = () => {
       case 'PENDING': return 'warning';
       case 'ACCEPTED': return 'default';
       case 'REJECTED': return 'destructive';
+      case 'SEGREGATED': return 'secondary';
       default: return 'secondary';
     }
   };
@@ -81,7 +82,6 @@ const GRNManagement = () => {
       itemId: item.id,
       updates: {
         received_quantity: newQuantity,
-        accepted_quantity: newQuantity, // For now, assume all received is accepted
       }
     });
 
@@ -95,28 +95,35 @@ const GRNManagement = () => {
   };
 
   const handleIQCApproval = (itemId: string, approved: boolean) => {
-    updateGRNItem.mutate({
-      itemId,
-      updates: {
-        iqc_status: approved ? 'ACCEPTED' : 'REJECTED',
-        iqc_approved_at: new Date().toISOString(),
-        accepted_quantity: approved ? undefined : 0, // If rejected, set accepted quantity to 0
-      }
-    });
+    if (approved) {
+      updateGRNItem.mutate({
+        itemId,
+        updates: {
+          iqc_status: 'ACCEPTED',
+          iqc_approved_at: new Date().toISOString(),
+        }
+      });
+    } else {
+      updateGRNItem.mutate({
+        itemId,
+        updates: {
+          iqc_status: 'REJECTED',
+          iqc_approved_at: new Date().toISOString(),
+          accepted_quantity: 0,
+        }
+      });
+    }
   };
 
-  const handleStoreConfirmation = (itemId: string) => {
+  const handleIQCSegregation = (itemId: string, acceptedQty: number) => {
     updateGRNItem.mutate({
       itemId,
       updates: {
-        store_confirmed: true,
-        store_confirmed_at: new Date().toISOString(),
+        iqc_status: 'SEGREGATED',
+        iqc_approved_at: new Date().toISOString(),
+        accepted_quantity: acceptedQty,
+        rejected_quantity: 0, // Calculate if needed
       }
-    });
-
-    toast({
-      title: "Material Received to Store",
-      description: "Inventory updated and PO received quantity will be updated automatically",
     });
   };
 
@@ -160,12 +167,12 @@ const GRNManagement = () => {
 
   return (
     <div className="space-y-6">
-      {/* Workflow Status Header */}
+      {/* IQC Workflow Header */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-blue-600" />
-            Material Acceptance Workflow
+            IQC Inspection Workflow
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -177,17 +184,12 @@ const GRNManagement = () => {
             <div className="text-gray-400">→</div>
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 bg-orange-600 rounded-full"></div>
-              <span>2. IQC Approval</span>
-            </div>
-            <div className="text-gray-400">→</div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 bg-purple-600 rounded-full"></div>
-              <span>3. Store Verification</span>
+              <span>2. IQC Inspection</span>
             </div>
             <div className="text-gray-400">→</div>
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 bg-green-600 rounded-full"></div>
-              <span>4. Inventory & PO Updated</span>
+              <span>3. Forward to Store</span>
             </div>
           </div>
         </CardContent>
@@ -234,7 +236,7 @@ const GRNManagement = () => {
                   <TableHead>Received Qty</TableHead>
                   <TableHead>IQC Status</TableHead>
                   <TableHead>Store Status</TableHead>
-                  <TableHead>Workflow Actions</TableHead>
+                  <TableHead>IQC Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -273,14 +275,16 @@ const GRNManagement = () => {
                       ) : (
                         <div className="flex items-center gap-2">
                           <span>{item.received_quantity}</span>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleEditQuantity(item)}
-                            className="h-6 w-6 p-0"
-                          >
-                            <Edit className="h-3 w-3" />
-                          </Button>
+                          {grn.status === 'PENDING' && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleEditQuantity(item)}
+                              className="h-6 w-6 p-0"
+                            >
+                              <Edit className="h-3 w-3" />
+                            </Button>
+                          )}
                         </div>
                       )}
                     </TableCell>
@@ -292,8 +296,10 @@ const GRNManagement = () => {
                     <TableCell>
                       {item.store_confirmed ? (
                         <Badge variant="default">Received to Store</Badge>
+                      ) : item.iqc_status === 'ACCEPTED' || item.iqc_status === 'SEGREGATED' ? (
+                        <Badge variant="secondary">Ready for Store</Badge>
                       ) : (
-                        <Badge variant="secondary">Pending Receipt</Badge>
+                        <Badge variant="outline">Pending IQC</Badge>
                       )}
                     </TableCell>
                     <TableCell>
@@ -316,20 +322,29 @@ const GRNManagement = () => {
                             >
                               IQC Reject
                             </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                const acceptedQty = prompt(`Enter accepted quantity (max: ${item.received_quantity}):`);
+                                if (acceptedQty && parseInt(acceptedQty) > 0 && parseInt(acceptedQty) <= item.received_quantity) {
+                                  handleIQCSegregation(item.id, parseInt(acceptedQty));
+                                }
+                              }}
+                              className="text-blue-600 border-blue-300 hover:bg-blue-50 text-xs"
+                            >
+                              Segregate
+                            </Button>
                           </>
                         )}
-                        {item.iqc_status === 'ACCEPTED' && !item.store_confirmed && (
-                          <Button
-                            size="sm"
-                            onClick={() => handleStoreConfirmation(item.id)}
-                            className="bg-blue-600 hover:bg-blue-700 text-xs"
-                          >
-                            Confirm to Store
-                          </Button>
+                        {(item.iqc_status === 'ACCEPTED' || item.iqc_status === 'SEGREGATED') && !item.store_confirmed && (
+                          <Badge variant="secondary" className="text-xs">
+                            Forwarded to Store
+                          </Badge>
                         )}
-                        {item.iqc_status === 'ACCEPTED' && item.store_confirmed && (
+                        {item.store_confirmed && (
                           <Badge variant="default" className="text-xs">
-                            Workflow Complete
+                            Process Complete
                           </Badge>
                         )}
                       </div>

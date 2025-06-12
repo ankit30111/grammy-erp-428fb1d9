@@ -832,6 +832,8 @@ export type Database = {
           iqc_completed_at: string | null
           iqc_completed_by: string | null
           iqc_status: string | null
+          physical_verification_date: string | null
+          physical_verified_by: string | null
           po_quantity: number
           raw_material_id: string
           received_quantity: number
@@ -839,6 +841,7 @@ export type Database = {
           store_confirmed: boolean | null
           store_confirmed_at: string | null
           store_confirmed_by: string | null
+          store_physical_quantity: number | null
         }
         Insert: {
           accepted_quantity?: number | null
@@ -850,6 +853,8 @@ export type Database = {
           iqc_completed_at?: string | null
           iqc_completed_by?: string | null
           iqc_status?: string | null
+          physical_verification_date?: string | null
+          physical_verified_by?: string | null
           po_quantity: number
           raw_material_id: string
           received_quantity?: number
@@ -857,6 +862,7 @@ export type Database = {
           store_confirmed?: boolean | null
           store_confirmed_at?: string | null
           store_confirmed_by?: string | null
+          store_physical_quantity?: number | null
         }
         Update: {
           accepted_quantity?: number | null
@@ -868,6 +874,8 @@ export type Database = {
           iqc_completed_at?: string | null
           iqc_completed_by?: string | null
           iqc_status?: string | null
+          physical_verification_date?: string | null
+          physical_verified_by?: string | null
           po_quantity?: number
           raw_material_id?: string
           received_quantity?: number
@@ -875,6 +883,7 @@ export type Database = {
           store_confirmed?: boolean | null
           store_confirmed_at?: string | null
           store_confirmed_by?: string | null
+          store_physical_quantity?: number | null
         }
         Relationships: [
           {
@@ -2098,6 +2107,91 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      store_discrepancies: {
+        Row: {
+          created_at: string
+          discrepancy_quantity: number
+          discrepancy_type: string
+          grn_id: string
+          grn_item_id: string
+          id: string
+          iqc_accepted_quantity: number
+          raw_material_id: string
+          reported_at: string
+          reported_by: string | null
+          resolution_notes: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          status: string
+          store_physical_quantity: number
+          updated_at: string
+          vendor_notified: boolean | null
+          vendor_notified_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          discrepancy_quantity: number
+          discrepancy_type: string
+          grn_id: string
+          grn_item_id: string
+          id?: string
+          iqc_accepted_quantity: number
+          raw_material_id: string
+          reported_at?: string
+          reported_by?: string | null
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          store_physical_quantity: number
+          updated_at?: string
+          vendor_notified?: boolean | null
+          vendor_notified_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          discrepancy_quantity?: number
+          discrepancy_type?: string
+          grn_id?: string
+          grn_item_id?: string
+          id?: string
+          iqc_accepted_quantity?: number
+          raw_material_id?: string
+          reported_at?: string
+          reported_by?: string | null
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          store_physical_quantity?: number
+          updated_at?: string
+          vendor_notified?: boolean | null
+          vendor_notified_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "store_discrepancies_grn_id_fkey"
+            columns: ["grn_id"]
+            isOneToOne: false
+            referencedRelation: "grn"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "store_discrepancies_grn_item_id_fkey"
+            columns: ["grn_item_id"]
+            isOneToOne: false
+            referencedRelation: "grn_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "store_discrepancies_raw_material_id_fkey"
+            columns: ["raw_material_id"]
+            isOneToOne: false
+            referencedRelation: "raw_materials"
             referencedColumns: ["id"]
           },
         ]

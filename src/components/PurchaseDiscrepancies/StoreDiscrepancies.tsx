@@ -8,6 +8,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
 import StoreDiscrepancyActionDialog from "./StoreDiscrepancyActionDialog";
+import { format } from "date-fns";
 
 const StoreDiscrepancies = () => {
   const [selectedDiscrepancy, setSelectedDiscrepancy] = useState<any>(null);
@@ -18,7 +19,7 @@ const StoreDiscrepancies = () => {
     queryKey: ['store-discrepancies'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('grn_items')
+        .from('store_discrepancies')
         .select(`
           *,
           grn (
@@ -33,23 +34,11 @@ const StoreDiscrepancies = () => {
             name
           )
         `)
-        .eq('store_confirmed', true)
-        .not('accepted_quantity', 'is', null)
+        .eq('status', 'PENDING')
         .order('created_at', { ascending: false });
       
       if (error) throw error;
-      
-      // Filter to only include items where IQC accepted quantity != store accepted quantity
-      // The accepted_quantity field represents what IQC approved for the store
-      // If store confirmed a different amount, it's a discrepancy
-      return data?.filter(item => {
-        const iqcAcceptedQty = Number(item.accepted_quantity) || 0;
-        const receivedQty = Number(item.received_quantity) || 0;
-        
-        // Store discrepancy occurs when store accepts different quantity than what IQC approved
-        // Since accepted_quantity is what IQC approved, compare with received_quantity to see store variance
-        return iqcAcceptedQty !== receivedQty;
-      }) || [];
+      return data || [];
     },
   });
 
@@ -59,18 +48,21 @@ const StoreDiscrepancies = () => {
     setDialogOpen(true);
   };
 
-  const getDiscrepancyAmount = (item: any) => {
-    // Compare what IQC approved (accepted_quantity) vs what was originally received
-    const iqcAccepted = Number(item.accepted_quantity) || 0;
-    const originalReceived = Number(item.received_quantity) || 0;
-    return originalReceived - iqcAccepted;
-  };
-
-  const getDiscrepancyType = (discrepancy: number) => {
-    if (discrepancy > 0) {
-      return { type: 'Store Rejected More', color: 'warning' as const, text: `+${discrepancy}` };
+  const getDiscrepancyTypeInfo = (discrepancy: any) => {
+    if (discrepancy.discrepancy_type === 'SHORTAGE') {
+      return { 
+        type: 'Material Shortage', 
+        color: 'destructive' as const, 
+        text: `-${discrepancy.discrepancy_quantity}`,
+        description: 'Store received less than IQC approved'
+      };
     } else {
-      return { type: 'Store Accepted Less', color: 'destructive' as const, text: `${discrepancy}` };
+      return { 
+        type: 'Material Excess', 
+        color: 'warning' as const, 
+        text: `+${discrepancy.discrepancy_quantity}`,
+        description: 'Store received more than IQC approved'
+      };
     }
   };
 
@@ -90,7 +82,7 @@ const StoreDiscrepancies = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Package className="h-5 w-5 text-blue-600" />
-            Store Receiving Discrepancies
+            Store Physical Verification Discrepancies
             {storeDiscrepancies && storeDiscrepancies.length > 0 && (
               <Badge variant="secondary">{storeDiscrepancies.length} items</Badge>
             )}
@@ -105,28 +97,26 @@ const StoreDiscrepancies = () => {
                   <TableHead>Material Code</TableHead>
                   <TableHead>Material Name</TableHead>
                   <TableHead>Vendor</TableHead>
-                  <TableHead>GRN Quantity</TableHead>
-                  <TableHead>IQC Accepted</TableHead>
-                  <TableHead>Store Accepted</TableHead>
+                  <TableHead>IQC Approved Qty</TableHead>
+                  <TableHead>Store Physical Qty</TableHead>
                   <TableHead>Discrepancy</TableHead>
                   <TableHead>Type</TableHead>
+                  <TableHead>Reported Date</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {storeDiscrepancies.map((item) => {
-                  const discrepancy = getDiscrepancyAmount(item);
-                  const discrepancyInfo = getDiscrepancyType(discrepancy);
+                {storeDiscrepancies.map((discrepancy) => {
+                  const discrepancyInfo = getDiscrepancyTypeInfo(discrepancy);
                   
                   return (
-                    <TableRow key={item.id}>
-                      <TableCell className="font-mono">{item.grn?.grn_number}</TableCell>
-                      <TableCell className="font-mono">{item.raw_materials?.material_code}</TableCell>
-                      <TableCell>{item.raw_materials?.name}</TableCell>
-                      <TableCell>{item.grn?.vendors?.name}</TableCell>
-                      <TableCell>{item.received_quantity}</TableCell>
-                      <TableCell>{item.accepted_quantity}</TableCell>
-                      <TableCell>{item.accepted_quantity}</TableCell>
+                    <TableRow key={discrepancy.id}>
+                      <TableCell className="font-mono">{discrepancy.grn?.grn_number}</TableCell>
+                      <TableCell className="font-mono">{discrepancy.raw_materials?.material_code}</TableCell>
+                      <TableCell>{discrepancy.raw_materials?.name}</TableCell>
+                      <TableCell>{discrepancy.grn?.vendors?.name}</TableCell>
+                      <TableCell>{discrepancy.iqc_accepted_quantity}</TableCell>
+                      <TableCell>{discrepancy.store_physical_quantity}</TableCell>
                       <TableCell className="font-medium">
                         <span className={discrepancyInfo.color === 'destructive' ? 'text-red-600' : 'text-orange-600'}>
                           {discrepancyInfo.text}
@@ -138,42 +128,45 @@ const StoreDiscrepancies = () => {
                         </Badge>
                       </TableCell>
                       <TableCell>
+                        {format(new Date(discrepancy.reported_at), 'MMM dd, yyyy')}
+                      </TableCell>
+                      <TableCell>
                         <div className="flex gap-1">
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => handleAction(item, 'notify-vendor')}
+                            onClick={() => handleAction(discrepancy, 'notify-vendor')}
                             className="gap-1"
                           >
                             <Mail className="h-3 w-3" />
                             Notify
                           </Button>
-                          {discrepancy < 0 && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleAction(item, 'credit-note')}
-                              className="gap-1"
-                            >
-                              <CreditCard className="h-3 w-3" />
-                              Credit
-                            </Button>
-                          )}
-                          {discrepancy < 0 && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleAction(item, 'request-delivery')}
-                              className="gap-1"
-                            >
-                              <Truck className="h-3 w-3" />
-                              Request
-                            </Button>
+                          {discrepancy.discrepancy_type === 'SHORTAGE' && (
+                            <>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleAction(discrepancy, 'credit-note')}
+                                className="gap-1"
+                              >
+                                <CreditCard className="h-3 w-3" />
+                                Credit
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleAction(discrepancy, 'request-delivery')}
+                                className="gap-1"
+                              >
+                                <Truck className="h-3 w-3" />
+                                Request
+                              </Button>
+                            </>
                           )}
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => handleAction(item, 'accept-delivery')}
+                            onClick={() => handleAction(discrepancy, 'accept-discrepancy')}
                             className="gap-1"
                           >
                             <CheckCircle className="h-3 w-3" />
@@ -191,7 +184,7 @@ const StoreDiscrepancies = () => {
               <Package className="h-12 w-12 text-green-500 mx-auto mb-4" />
               <h3 className="text-lg font-medium mb-2">No Store Discrepancies Found</h3>
               <p className="text-muted-foreground">
-                All IQC accepted quantities match the store confirmed quantities.
+                All physical verification quantities match the IQC approved quantities.
               </p>
             </div>
           )}
