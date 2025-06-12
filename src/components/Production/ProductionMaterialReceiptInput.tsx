@@ -1,10 +1,9 @@
-
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { CheckCircle, AlertTriangle, Package, ExclamationTriangle } from "lucide-react";
+import { CheckCircle, AlertTriangle, Package } from "lucide-react";
 
 interface ProductionMaterialReceiptInputProps {
   materialCode: string;
@@ -74,7 +73,7 @@ export default function ProductionMaterialReceiptInput({
 
     return (
       <Alert className="border-orange-200 bg-orange-50">
-        <ExclamationTriangle className="h-4 w-4 text-orange-600" />
+        <AlertTriangle className="h-4 w-4 text-orange-600" />
         <AlertDescription className="text-orange-800">
           <strong>Quantity Mismatch Detected:</strong> {discrepancyType.toLowerCase()} of {discrepancyAmount} units.
           This will create a discrepancy record for store review.

@@ -1,4 +1,3 @@
-
 import { memo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -8,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
-import { CheckCircle, XCircle, AlertTriangle, Package, RefreshCw, ExclamationTriangle } from "lucide-react";
+import { CheckCircle, XCircle, AlertTriangle, Package, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { useProductionDiscrepancies } from "@/hooks/useProductionDiscrepancies";
 import { useState } from "react";
@@ -232,7 +231,7 @@ const ProductionFeedbackTab = memo(() => {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <ExclamationTriangle className="h-5 w-5 text-orange-600" />
+            <AlertTriangle className="h-5 w-5 text-orange-600" />
             Production Quantity Discrepancies ({discrepancies.filter(d => d.status === 'PENDING').length})
             <Badge variant="outline">Store Review Required</Badge>
             <Button
