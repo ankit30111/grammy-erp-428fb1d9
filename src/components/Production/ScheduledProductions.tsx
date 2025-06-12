@@ -14,11 +14,11 @@ import EnhancedBOMTable from "./EnhancedBOMTable";
 const ScheduledProductions = () => {
   const [selectedProduction, setSelectedProduction] = useState<any>(null);
 
-  // Fetch scheduled production orders
-  const { data: productionOrders = [], isLoading } = useQuery({
+  // Fetch all production orders that are not completed
+  const { data: productionOrders = [], isLoading, error } = useQuery({
     queryKey: ["scheduled-production-orders"],
     queryFn: async () => {
-      console.log("🔍 Fetching scheduled production orders...");
+      console.log("🔍 Fetching all production orders...");
       
       const { data, error } = await supabase
         .from("production_orders")
@@ -30,10 +30,16 @@ const ScheduledProductions = () => {
             product_code
           ),
           production_schedules!production_schedule_id (
-            production_line
+            production_line,
+            scheduled_date,
+            projections!projection_id (
+              customers!customer_id (
+                name
+              )
+            )
           )
         `)
-        .in("status", ["PENDING", "IN_PROGRESS", "MATERIALS_SENT"])
+        .not("status", "eq", "COMPLETED")
         .order("scheduled_date", { ascending: true });
 
       if (error) {
@@ -41,7 +47,9 @@ const ScheduledProductions = () => {
         throw error;
       }
 
-      console.log("📋 Scheduled production orders:", data);
+      console.log("📋 All production orders found:", data);
+      console.log("📊 Production orders count:", data?.length || 0);
+      
       return data || [];
     },
     refetchInterval: 5000, // Real-time updates
@@ -49,12 +57,15 @@ const ScheduledProductions = () => {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
+      case 'SCHEDULED':
       case 'PENDING':
-        return <Badge variant="secondary">Pending</Badge>;
+        return <Badge variant="secondary">Scheduled</Badge>;
       case 'IN_PROGRESS':
         return <Badge variant="default">In Progress</Badge>;
       case 'MATERIALS_SENT':
         return <Badge variant="outline">Materials Sent</Badge>;
+      case 'PENDING_OQC':
+        return <Badge variant="outline">Pending OQC</Badge>;
       default:
         return <Badge variant="secondary">{status}</Badge>;
     }
@@ -84,6 +95,25 @@ const ScheduledProductions = () => {
     );
   }
 
+  if (error) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Calendar className="h-5 w-5" />
+            Scheduled Productions - Error
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-8 text-red-600">
+            <p>Error loading production orders: {error.message}</p>
+            <p className="text-sm mt-1">Please check the console for more details</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <>
       <Card>
@@ -107,6 +137,7 @@ const ScheduledProductions = () => {
                   <TableHead>Voucher Number</TableHead>
                   <TableHead>Product</TableHead>
                   <TableHead>Product Code</TableHead>
+                  <TableHead>Customer</TableHead>
                   <TableHead>Scheduled Date</TableHead>
                   <TableHead>Quantity</TableHead>
                   <TableHead>Production Line</TableHead>
@@ -121,19 +152,19 @@ const ScheduledProductions = () => {
                     <TableCell className="font-medium">
                       {production.voucher_number}
                     </TableCell>
-                    <TableCell>{production.products?.name}</TableCell>
+                    <TableCell>{production.products?.name || 'N/A'}</TableCell>
                     <TableCell className="font-mono">
-                      {production.products?.product_code}
+                      {production.products?.product_code || 'N/A'}
                     </TableCell>
                     <TableCell>
-                      {format(new Date(production.scheduled_date), "MMM dd, yyyy")}
+                      {production.production_schedules?.projections?.customers?.name || 'N/A'}
+                    </TableCell>
+                    <TableCell>
+                      {production.scheduled_date ? format(new Date(production.scheduled_date), "MMM dd, yyyy") : 'N/A'}
                     </TableCell>
                     <TableCell className="font-medium">{production.quantity}</TableCell>
                     <TableCell>
-                      {production.production_schedules?.production_line || 
-                       (production.production_lines && Object.keys(production.production_lines).length > 0 
-                         ? Object.values(production.production_lines).join(", ") 
-                         : "Not Assigned")}
+                      {production.production_schedules?.production_line || "Not Assigned"}
                     </TableCell>
                     <TableCell>{getStatusBadge(production.status)}</TableCell>
                     <TableCell>{getKitStatusBadge(production.kit_status)}</TableCell>
@@ -185,7 +216,7 @@ const ScheduledProductions = () => {
                     <div>
                       <span className="text-sm text-muted-foreground">Scheduled Date:</span>
                       <p className="font-medium">
-                        {format(new Date(selectedProduction.scheduled_date), "MMM dd, yyyy")}
+                        {selectedProduction.scheduled_date ? format(new Date(selectedProduction.scheduled_date), "MMM dd, yyyy") : 'N/A'}
                       </p>
                     </div>
                     <div>
