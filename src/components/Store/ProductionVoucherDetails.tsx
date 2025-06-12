@@ -104,13 +104,13 @@ export default function ProductionVoucherDetails({ voucherId, onBack }: Producti
     enabled: bomData.length > 0,
   });
 
-  // Enhanced material dispatch mutation with better error handling
+  // Enhanced material dispatch mutation with improved error handling
   const dispatchMutation = useMutation({
     mutationFn: async ({ materialId, dispatchQty }: { materialId: string; dispatchQty: number }) => {
-      console.log("🚀 Starting ENHANCED material dispatch:", { materialId, dispatchQty, voucherId });
+      console.log("🚀 Starting material dispatch:", { materialId, dispatchQty, voucherId });
       
       try {
-        // STEP 1: Get current inventory with detailed validation
+        // STEP 1: Get current inventory with validation
         const { data: currentInventory, error: inventoryError } = await supabase
           .from("inventory")
           .select("id, quantity, raw_material_id")
@@ -118,7 +118,7 @@ export default function ProductionVoucherDetails({ voucherId, onBack }: Producti
           .single();
 
         if (inventoryError) {
-          console.error("❌ CRITICAL: Error fetching current inventory:", inventoryError);
+          console.error("❌ Error fetching inventory:", inventoryError);
           throw new Error(`Failed to fetch inventory: ${inventoryError.message}`);
         }
 
@@ -138,7 +138,7 @@ export default function ProductionVoucherDetails({ voucherId, onBack }: Producti
         const newStock = currentStock - dispatchQty;
         console.log(`🔄 Planned stock reduction: ${currentStock} → ${newStock}`);
 
-        // STEP 2: Get material details for better logging
+        // STEP 2: Get material details for logging
         const { data: materialData, error: materialError } = await supabase
           .from("raw_materials")
           .select("material_code, name")
@@ -150,7 +150,7 @@ export default function ProductionVoucherDetails({ voucherId, onBack }: Producti
           throw new Error(`Failed to fetch material details: ${materialError.message}`);
         }
 
-        // STEP 3: Update inventory (this triggers the database trigger for automatic logging)
+        // STEP 3: Update inventory (this will trigger the database logging function)
         const { data: updatedInventory, error: updateError } = await supabase
           .from("inventory")
           .update({
@@ -162,7 +162,7 @@ export default function ProductionVoucherDetails({ voucherId, onBack }: Producti
           .single();
 
         if (updateError) {
-          console.error("❌ CRITICAL: Inventory update failed:", updateError);
+          console.error("❌ Inventory update failed:", updateError);
           throw new Error(`Failed to update inventory: ${updateError.message}`);
         }
 
@@ -173,7 +173,7 @@ export default function ProductionVoucherDetails({ voucherId, onBack }: Producti
           deducted: dispatchQty
         });
 
-        // STEP 4: Additional manual logging for production voucher context with better reference data
+        // STEP 4: Additional manual logging for production voucher context
         const { error: movementError } = await supabase
           .from("material_movements")
           .insert({
@@ -189,12 +189,13 @@ export default function ProductionVoucherDetails({ voucherId, onBack }: Producti
 
         if (movementError) {
           console.error("❌ Error logging production movement:", movementError);
-          console.warn("⚠️ Material dispatched but additional logging failed");
+          // Don't throw here as the inventory was already updated successfully
+          console.warn("⚠️ Material dispatched but movement logging failed - will be logged by trigger");
         } else {
           console.log("✅ PRODUCTION MOVEMENT LOGGED SUCCESSFULLY");
         }
 
-        console.log(`✅ ENHANCED MATERIAL DISPATCH COMPLETE: ${currentStock} → ${newStock}`);
+        console.log(`✅ MATERIAL DISPATCH COMPLETE: ${currentStock} → ${newStock}`);
         return {
           materialCode: materialData.material_code,
           materialName: materialData.name,
@@ -228,6 +229,9 @@ export default function ProductionVoucherDetails({ voucherId, onBack }: Producti
       
       // Trigger storage event for real-time updates across tabs
       localStorage.setItem('material_dispatched', Date.now().toString());
+      
+      // Trigger custom event for LogBook refresh
+      window.dispatchEvent(new CustomEvent('refreshLogBook'));
       
       console.log("🔄 ALL DATA REFRESHED AFTER SUCCESSFUL DISPATCH");
     },

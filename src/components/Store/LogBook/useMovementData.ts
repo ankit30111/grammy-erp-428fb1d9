@@ -24,7 +24,7 @@ export const useMovementData = (filterType: string) => {
   const { data: movements = [], isLoading, refetch } = useQuery({
     queryKey: ["material-movements-logbook", filterType],
     queryFn: async () => {
-      console.log("🔍 Fetching ENHANCED material movements for LogBook...", { filterType });
+      console.log("🔍 Fetching material movements for LogBook...", { filterType });
       
       let query = supabase
         .from("material_movements")
@@ -51,16 +51,16 @@ export const useMovementData = (filterType: string) => {
         query = query.eq("movement_type", filterType);
       }
 
-      const { data, error } = await query.limit(1000); // Increased limit for complete view
+      const { data, error } = await query.limit(1000);
 
       if (error) {
         console.error("❌ Error fetching movements:", error);
         throw error;
       }
 
-      console.log("📋 ENHANCED material movements fetched:", data?.length, "entries");
+      console.log("📋 Material movements fetched:", data?.length, "entries");
       
-      // Log all movement types for debugging
+      // Log movement types for debugging
       const movementTypes = data?.map(m => m.movement_type) || [];
       const uniqueTypes = [...new Set(movementTypes)];
       console.log("📊 Movement types found:", uniqueTypes);
@@ -95,7 +95,7 @@ export const useMovementData = (filterType: string) => {
     return () => window.removeEventListener('storage', handleStorageChange);
   }, [refetch]);
 
-  // Also listen for custom events
+  // Enhanced custom event listener for immediate refresh
   useEffect(() => {
     const handleCustomRefresh = () => {
       console.log("🔄 CUSTOM-REFRESH: LogBook refresh requested");
@@ -104,6 +104,29 @@ export const useMovementData = (filterType: string) => {
 
     window.addEventListener('refreshLogBook', handleCustomRefresh);
     return () => window.removeEventListener('refreshLogBook', handleCustomRefresh);
+  }, [refetch]);
+
+  // Add listener for database changes via Supabase realtime
+  useEffect(() => {
+    const channel = supabase
+      .channel('material-movements-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'material_movements'
+        },
+        (payload) => {
+          console.log('📡 Real-time material movement change:', payload);
+          refetch();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [refetch]);
 
   return {
