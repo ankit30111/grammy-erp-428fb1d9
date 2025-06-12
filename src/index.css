@@ -81,26 +81,10 @@
 @layer base {
   * {
     @apply border-border;
-    box-sizing: border-box;
-  }
-
-  html, body {
-    margin: 0;
-    padding: 0;
-    width: 100%;
-    height: 100%;
-    overflow-x: hidden;
   }
 
   body {
     @apply bg-background text-foreground;
-  }
-
-  #root {
-    margin: 0;
-    padding: 0;
-    width: 100%;
-    min-height: 100vh;
   }
 }
 
@@ -119,13 +103,5 @@
   
   .status-badge {
     @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
-  }
-
-  .page-container {
-    @apply w-full h-full;
-  }
-
-  .content-wrapper {
-    @apply w-full max-w-none;
   }
 }

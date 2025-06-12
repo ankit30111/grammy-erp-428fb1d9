@@ -19,7 +19,6 @@ export const useBOM = () => {
             id,
             name,
             material_code,
-            category,
             vendor_id,
             vendors (
               id,
@@ -41,17 +40,16 @@ export const useBOMByProduct = (productId: string) => {
       const { data, error } = await supabase
         .from('bom')
         .select(`
-          id,
-          product_id,
-          raw_material_id,
-          quantity,
-          bom_type,
-          is_critical,
+          *,
           raw_materials (
             id,
-            material_code,
             name,
-            category
+            material_code,
+            vendor_id,
+            vendors (
+              id,
+              name
+            )
           )
         `)
         .eq('product_id', productId);

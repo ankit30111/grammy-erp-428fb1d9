@@ -5,9 +5,7 @@ import StoreDashboard from "./store/StoreDashboard";
 export default function Store() {
   return (
     <DashboardLayout>
-      <div className="w-full h-full">
-        <StoreDashboard />
-      </div>
+      <StoreDashboard />
     </DashboardLayout>
   );
 }

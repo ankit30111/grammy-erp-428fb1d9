@@ -33,19 +33,17 @@ export const MovementFilters = ({
       </div>
       <div className="flex gap-2">
         <Select value={filterType} onValueChange={onFilterChange}>
-          <SelectTrigger className="w-64">
+          <SelectTrigger className="w-56">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Movements ({totalMovements})</SelectItem>
-            <SelectItem value="GRN_RECEIPT">GRN Receipts</SelectItem>
             <SelectItem value="ISSUED_TO_PRODUCTION">Issued to Production</SelectItem>
             <SelectItem value="PRODUCTION_RETURN">Production Returns</SelectItem>
             <SelectItem value="PRODUCTION_FEEDBACK_RETURN">Feedback Returns</SelectItem>
+            <SelectItem value="GRN_RECEIPT">GRN Receipts</SelectItem>
             <SelectItem value="STOCK_ADJUSTMENT">Stock Adjustments</SelectItem>
             <SelectItem value="STOCK_RECONCILIATION">Stock Reconciliation</SelectItem>
-            <SelectItem value="INVENTORY_DEDUCTION">Inventory Deductions</SelectItem>
-            <SelectItem value="INVENTORY_ADDITION">Inventory Additions</SelectItem>
           </SelectContent>
         </Select>
         <Button

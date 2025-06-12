@@ -1,16 +1,14 @@
+
 import { memo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { CheckCircle, XCircle, AlertTriangle, Package, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
-import { useProductionDiscrepancies } from "@/hooks/useProductionDiscrepancies";
-import { useState } from "react";
 
 interface MaterialRequest {
   id: string;
@@ -35,14 +33,14 @@ interface MaterialRequest {
 
 const ProductionFeedbackTab = memo(() => {
   const queryClient = useQueryClient();
-  const [resolutionNotes, setResolutionNotes] = useState<Record<string, string>>({});
 
-  // Fetch material requests
+  // Enhanced query to fetch all production feedback and discrepancies
   const { data: feedbackItems = [], isLoading, refetch } = useQuery({
     queryKey: ["production-feedback"],
     queryFn: async () => {
       console.log("🔍 Fetching production feedback and discrepancies...");
       
+      // Fetch material requests that indicate production issues
       const { data: materialRequests, error: requestsError } = await supabase
         .from("material_requests")
         .select(`
@@ -75,16 +73,27 @@ const ProductionFeedbackTab = memo(() => {
       }
 
       console.log("📋 Production feedback items found:", materialRequests?.length || 0);
+      
+      // Filter items that are actually discrepancies or feedback
+      const feedbackItems = materialRequests?.filter(item => 
+        item.reason && (
+          item.reason.toLowerCase().includes('discrepancy') ||
+          item.reason.toLowerCase().includes('shortage') ||
+          item.reason.toLowerCase().includes('damaged') ||
+          item.reason.toLowerCase().includes('insufficient') ||
+          item.reason.toLowerCase().includes('defect')
+        )
+      ) || [];
+
+      console.log("🚨 Actual feedback/discrepancy items:", feedbackItems.length);
+      
       return materialRequests || [];
     },
-    refetchInterval: 10000,
+    refetchInterval: 10000, // Real-time for production feedback
     staleTime: 5000,
   });
 
-  // Fetch production discrepancies
-  const { discrepancies, resolveDiscrepancy, isResolving } = useProductionDiscrepancies();
-
-  // Material request handling
+  // Mutation to handle feedback response
   const handleFeedbackMutation = useMutation({
     mutationFn: async ({ feedbackId, action, rawMaterialId, approvedQuantity }: {
       feedbackId: string;
@@ -95,6 +104,7 @@ const ProductionFeedbackTab = memo(() => {
       console.log(`🔄 Processing production feedback ${action}:`, { feedbackId, rawMaterialId, approvedQuantity });
 
       if (action === 'ACCEPT' && rawMaterialId && approvedQuantity) {
+        // Update material request as approved
         const { error: updateError } = await supabase
           .from("material_requests")
           .update({ 
@@ -106,6 +116,7 @@ const ProductionFeedbackTab = memo(() => {
 
         if (updateError) throw updateError;
 
+        // Update inventory - add back the returned/discrepant material
         const { data: currentInventory, error: fetchError } = await supabase
           .from("inventory")
           .select("quantity")
@@ -124,6 +135,7 @@ const ProductionFeedbackTab = memo(() => {
 
         if (inventoryError) throw inventoryError;
 
+        // Log the movement
         const { error: logError } = await supabase
           .from("material_movements")
           .insert({
@@ -139,6 +151,7 @@ const ProductionFeedbackTab = memo(() => {
         if (logError) throw logError;
 
       } else {
+        // Reject feedback
         const { error: rejectError } = await supabase
           .from("material_requests")
           .update({ 
@@ -184,12 +197,6 @@ const ProductionFeedbackTab = memo(() => {
     });
   };
 
-  const handleDiscrepancyResolve = (discrepancyId: string, action: 'APPROVE' | 'REJECT') => {
-    const notes = resolutionNotes[discrepancyId];
-    resolveDiscrepancy({ discrepancyId, action, resolutionNotes: notes });
-    setResolutionNotes(prev => ({ ...prev, [discrepancyId]: '' }));
-  };
-
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'PENDING':
@@ -203,15 +210,17 @@ const ProductionFeedbackTab = memo(() => {
     }
   };
 
-  const getDiscrepancyTypeBadge = (type: string) => {
-    switch (type) {
-      case 'SHORTAGE':
-        return <Badge variant="destructive">Shortage</Badge>;
-      case 'EXCESS':
-        return <Badge variant="secondary">Excess</Badge>;
-      default:
-        return <Badge variant="outline">{type}</Badge>;
-    }
+  const getFeedbackType = (reason: string) => {
+    if (!reason) return "Additional Request";
+    
+    const reasonLower = reason.toLowerCase();
+    if (reasonLower.includes('discrepancy')) return "Quantity Discrepancy";
+    if (reasonLower.includes('damaged')) return "Damaged Material";
+    if (reasonLower.includes('defect')) return "Material Defect";
+    if (reasonLower.includes('shortage')) return "Material Shortage";
+    if (reasonLower.includes('insufficient')) return "Insufficient Quality";
+    
+    return "Production Issue";
   };
 
   if (isLoading) {
@@ -227,13 +236,12 @@ const ProductionFeedbackTab = memo(() => {
 
   return (
     <div className="space-y-6">
-      {/* Production Discrepancies Section */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <AlertTriangle className="h-5 w-5 text-orange-600" />
-            Production Quantity Discrepancies ({discrepancies.filter(d => d.status === 'PENDING').length})
-            <Badge variant="outline">Store Review Required</Badge>
+            <AlertTriangle className="h-5 w-5" />
+            Production Feedback & Discrepancies ({feedbackItems.length})
+            <Badge variant="outline">Store-Production Reconciliation</Badge>
             <Button
               variant="outline"
               size="sm"
@@ -246,124 +254,12 @@ const ProductionFeedbackTab = memo(() => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {discrepancies.filter(d => d.status === 'PENDING').length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <CheckCircle className="h-12 w-12 mx-auto mb-2 text-green-500" />
-              <p>No pending quantity discrepancies</p>
-              <p className="text-sm mt-1">
-                All production receipts match store dispatch quantities
-              </p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Voucher</TableHead>
-                    <TableHead>Material</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Sent Qty</TableHead>
-                    <TableHead>Received Qty</TableHead>
-                    <TableHead>Discrepancy</TableHead>
-                    <TableHead>Reason</TableHead>
-                    <TableHead>Resolution Notes</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {discrepancies.filter(d => d.status === 'PENDING').map((discrepancy) => (
-                    <TableRow key={discrepancy.id}>
-                      <TableCell>
-                        {format(new Date(discrepancy.created_at), "MMM dd, yyyy HH:mm")}
-                      </TableCell>
-                      <TableCell className="font-mono">
-                        {discrepancy.production_orders?.voucher_number}
-                      </TableCell>
-                      <TableCell>
-                        <div>
-                          <div className="font-mono text-sm">{discrepancy.raw_materials?.material_code}</div>
-                          <div className="text-xs text-muted-foreground">{discrepancy.raw_materials?.name}</div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {getDiscrepancyTypeBadge(discrepancy.discrepancy_type)}
-                      </TableCell>
-                      <TableCell className="font-medium text-blue-600">
-                        {discrepancy.sent_quantity}
-                      </TableCell>
-                      <TableCell className="font-medium text-green-600">
-                        {discrepancy.received_quantity}
-                      </TableCell>
-                      <TableCell className="font-medium text-red-600">
-                        {discrepancy.discrepancy_quantity}
-                      </TableCell>
-                      <TableCell className="max-w-xs">
-                        <p className="text-sm truncate" title={discrepancy.reason}>
-                          {discrepancy.reason}
-                        </p>
-                      </TableCell>
-                      <TableCell>
-                        <Textarea
-                          placeholder="Add resolution notes..."
-                          value={resolutionNotes[discrepancy.id] || ''}
-                          onChange={(e) => setResolutionNotes(prev => ({
-                            ...prev,
-                            [discrepancy.id]: e.target.value
-                          }))}
-                          className="min-h-[60px] text-xs"
-                          disabled={isResolving}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleDiscrepancyResolve(discrepancy.id, 'APPROVE')}
-                            className="gap-1"
-                            disabled={isResolving}
-                          >
-                            <CheckCircle className="h-3 w-3" />
-                            Approve
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleDiscrepancyResolve(discrepancy.id, 'REJECT')}
-                            className="gap-1"
-                            disabled={isResolving}
-                          >
-                            <XCircle className="h-3 w-3" />
-                            Reject
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Material Requests Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <AlertTriangle className="h-5 w-5" />
-            Material Requests & Issues ({feedbackItems.length})
-            <Badge variant="outline">Production Feedback</Badge>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
           {feedbackItems.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <AlertTriangle className="h-12 w-12 mx-auto mb-2 text-muted-foreground/50" />
-              <p>No pending material requests</p>
+              <p>No pending production feedback</p>
               <p className="text-sm mt-1">
-                Material requests and production issues will appear here
+                Material discrepancies and production issues will appear here when reported
               </p>
             </div>
           ) : (
@@ -374,7 +270,9 @@ const ProductionFeedbackTab = memo(() => {
                     <TableHead>Date</TableHead>
                     <TableHead>Voucher</TableHead>
                     <TableHead>Product</TableHead>
-                    <TableHead>Material</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Material Code</TableHead>
+                    <TableHead>Material Name</TableHead>
                     <TableHead>Quantity</TableHead>
                     <TableHead>Issue Details</TableHead>
                     <TableHead>Status</TableHead>
@@ -394,10 +292,15 @@ const ProductionFeedbackTab = memo(() => {
                         {feedback.production_orders?.products?.name}
                       </TableCell>
                       <TableCell>
-                        <div>
-                          <div className="font-mono text-sm">{feedback.raw_materials?.material_code}</div>
-                          <div className="text-xs text-muted-foreground">{feedback.raw_materials?.name}</div>
-                        </div>
+                        <Badge variant="outline">
+                          {getFeedbackType(feedback.reason)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="font-mono">
+                        {feedback.raw_materials?.material_code}
+                      </TableCell>
+                      <TableCell>
+                        {feedback.raw_materials?.name}
                       </TableCell>
                       <TableCell className="font-medium">
                         {feedback.requested_quantity} units
