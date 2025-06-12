@@ -8,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 // Import existing components
 import ProductionVoucherDetails from "@/components/Store/ProductionVoucherDetails";
-import GRNManagement from "@/components/Store/GRNManagement";
+import GRNManagement from "@/components/Purchase/GRNManagement";
 import MaterialRequestsTab from "@/components/Store/MaterialRequestsTab";
 import LogBook from "@/components/Store/LogBook";
 import InventoryManagement from "@/components/Store/InventoryManagement";
@@ -17,6 +17,8 @@ import InventoryManagement from "@/components/Store/InventoryManagement";
 import ProductionFeedbackTab from "@/components/Store/ProductionFeedbackTab";
 
 const StoreDashboard = () => {
+  const [selectedVoucherId, setSelectedVoucherId] = useState<string | null>(null);
+
   // Get pending feedback count for tab badge
   const { data: pendingFeedbackCount = 0 } = useQuery({
     queryKey: ["pending-feedback-count"],
@@ -62,7 +64,10 @@ const StoreDashboard = () => {
             <h2 className="text-xl font-semibold">Production Voucher Management</h2>
             <Badge variant="outline">Real-time Inventory Deduction</Badge>
           </div>
-          <ProductionVoucherDetails />
+          <ProductionVoucherDetails 
+            voucherId={selectedVoucherId} 
+            onBack={() => setSelectedVoucherId(null)} 
+          />
         </TabsContent>
 
         <TabsContent value="grn-management" className="space-y-4">
