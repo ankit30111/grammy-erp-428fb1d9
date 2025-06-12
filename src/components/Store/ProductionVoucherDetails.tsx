@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -86,7 +85,7 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
     refetchInterval: 3000, // Auto-refresh every 3 seconds
   });
 
-  // Fetch dispatched materials for this voucher
+  // Enhanced dispatched materials query to track actual received quantities
   const { data: dispatchedItems = [] } = useQuery({
     queryKey: ["dispatched-materials", voucherId],
     queryFn: async () => {
@@ -97,6 +96,7 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
         .select(`
           raw_material_id,
           actual_quantity,
+          verified_by_production,
           created_at,
           kit_preparation!inner(production_order_id)
         `)
@@ -115,10 +115,17 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
   // Create inventory lookup map
   const inventoryMap = new Map();
   inventoryData.forEach(item => {
-    inventoryMap.set(item.raw_material_id, item.quantity);
+    inventoryMap.set(item.raw_materials.id, item.quantity);
   });
 
-  // Calculate total dispatched quantities by material
+  // Enhanced calculation to use production-verified quantities
+  const getActualReceivedQuantity = (materialId: string) => {
+    return dispatchedItems
+      .filter(item => item.raw_material_id === materialId && item.verified_by_production)
+      .reduce((sum, item) => sum + item.actual_quantity, 0);
+  };
+
+  // Get total dispatched (sent) quantities regardless of production verification
   const getDispatchedQuantity = (materialId: string) => {
     return dispatchedItems
       .filter(item => item.raw_material_id === materialId)
@@ -416,7 +423,7 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
           </div>
 
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Material Dispatch - Real Time Inventory Sync</h3>
+            <h3 className="text-lg font-semibold">Enhanced Material Dispatch - Production Feedback Integration</h3>
             
             <Table>
               <TableHeader>
@@ -426,9 +433,10 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
                   <TableHead>Category</TableHead>
                   <TableHead>Required Qty</TableHead>
                   <TableHead>Current Stock</TableHead>
-                  <TableHead>Already Dispatched</TableHead>
+                  <TableHead>Total Dispatched</TableHead>
+                  <TableHead>Actual Received</TableHead>
                   <TableHead>Qty to Dispatch</TableHead>
-                  <TableHead>Remaining Need</TableHead>
+                  <TableHead>Balance Needed</TableHead>
                   <TableHead>Status</TableHead>
                 </TableRow>
               </TableHeader>
@@ -436,11 +444,16 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
                 {bom.map((item) => {
                   const requiredQty = item.quantity * orderQuantity;
                   const currentStock = getCurrentStock(item.raw_materials.id);
-                  const alreadyDispatched = getDispatchedQuantity(item.raw_materials.id);
+                  const totalDispatched = getDispatchedQuantity(item.raw_materials.id);
+                  const actualReceived = getActualReceivedQuantity(item.raw_materials.id);
                   const qtyToDispatch = quantities[item.raw_materials.id] || 0;
-                  const remainingNeed = Math.max(0, requiredQty - alreadyDispatched - qtyToDispatch);
+                  
+                  // Enhanced balance calculation: Required - Actual Received by Production
+                  const balanceNeeded = Math.max(0, requiredQty - actualReceived - qtyToDispatch);
+                  
                   const hasInsufficientStock = qtyToDispatch > currentStock;
-                  const isFullyDispatched = alreadyDispatched >= requiredQty;
+                  const isFullyReceived = actualReceived >= requiredQty;
+                  const hasPendingMaterial = totalDispatched > actualReceived; // Material in transit
 
                   return (
                     <TableRow key={item.raw_materials.id}>
@@ -455,19 +468,25 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
                         <div className="text-xs text-muted-foreground">Live Stock</div>
                       </TableCell>
                       <TableCell className="text-blue-600 font-medium">
-                        {alreadyDispatched}
+                        {totalDispatched}
                         <div className="text-xs text-muted-foreground">Total Sent</div>
+                      </TableCell>
+                      <TableCell className="text-green-600 font-medium">
+                        {actualReceived}
+                        <div className="text-xs text-muted-foreground">
+                          {hasPendingMaterial ? `(+${totalDispatched - actualReceived} pending)` : 'Confirmed'}
+                        </div>
                       </TableCell>
                       <TableCell>
                         <Input
                           type="number"
                           min="0"
-                          max={Math.min(currentStock, remainingNeed)}
+                          max={Math.min(currentStock, balanceNeeded)}
                           value={quantities[item.raw_materials.id] || ""}
                           onChange={(e) => handleQuantityChange(item.raw_materials.id, e.target.value)}
                           className={`w-24 ${hasInsufficientStock ? 'border-red-500' : ''}`}
                           placeholder="0"
-                          disabled={isFullyDispatched}
+                          disabled={isFullyReceived}
                         />
                         {hasInsufficientStock && (
                           <p className="text-xs text-red-500 mt-1">
@@ -475,14 +494,22 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
                           </p>
                         )}
                       </TableCell>
-                      <TableCell className={`font-medium ${remainingNeed > 0 ? 'text-orange-600' : 'text-green-600'}`}>
-                        {remainingNeed}
+                      <TableCell className={`font-medium ${balanceNeeded > 0 ? 'text-orange-600' : 'text-green-600'}`}>
+                        {balanceNeeded}
+                        <div className="text-xs text-muted-foreground">
+                          After dispatch
+                        </div>
                       </TableCell>
                       <TableCell>
-                        {isFullyDispatched ? (
+                        {isFullyReceived ? (
                           <Badge variant="default" className="gap-1">
                             <CheckCircle className="h-3 w-3" />
                             Complete
+                          </Badge>
+                        ) : hasPendingMaterial ? (
+                          <Badge variant="warning" className="gap-1">
+                            <Package className="h-3 w-3" />
+                            In Transit
                           </Badge>
                         ) : currentStock === 0 ? (
                           <Badge variant="destructive" className="gap-1">

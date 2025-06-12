@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScheduledProduction as ScheduledProductionType, mockScheduledProductions, mockGRNs, mockMaterialRequests, GRNItem, MaterialRequest } from "@/types/store";
@@ -12,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useInventorySync } from "@/hooks/useInventorySync";
 import { useKitManagement } from "@/hooks/useKitManagement";
 import LogBook from "@/components/Store/LogBook";
+import StockReconciliation from "@/components/Store/StockReconciliation";
 
 export default function StoreDashboard() {
   const { toast } = useToast();
@@ -103,12 +103,13 @@ export default function StoreDashboard() {
       />
 
       <Tabs defaultValue="production-vouchers" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="production-vouchers">Production Voucher Management</TabsTrigger>
           <TabsTrigger value="grn">GRN Receiving</TabsTrigger>
           <TabsTrigger value="feedback">Production Feedback</TabsTrigger>
           <TabsTrigger value="inventory">Inventory</TabsTrigger>
           <TabsTrigger value="spare-orders">Spare Orders</TabsTrigger>
+          <TabsTrigger value="stock-reconciliation">Stock Reconciliation</TabsTrigger>
           <TabsTrigger value="log-book">Log Book</TabsTrigger>
         </TabsList>
 
@@ -135,6 +136,10 @@ export default function StoreDashboard() {
 
         <TabsContent value="spare-orders">
           <SpareOrdersPacking />
+        </TabsContent>
+
+        <TabsContent value="stock-reconciliation">
+          <StockReconciliation />
         </TabsContent>
 
         <TabsContent value="log-book">

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Package, AlertTriangle, Settings, TrendingUp } from "lucide-react";
 import ProductionStatusSummary from "./ProductionStatusSummary";
+import ProductionFeedbackDialog from "./ProductionFeedbackDialog";
 
 interface ProductionVoucherDetailViewProps {
   production: any;
@@ -23,6 +23,7 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
   const [receivedQuantities, setReceivedQuantities] = useState<Record<string, number>>({});
   const [lineAssignments, setLineAssignments] = useState<Record<string, string>>({});
   const [showStatusSummary, setShowStatusSummary] = useState(false);
+  const [showProductionFeedback, setShowProductionFeedback] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -349,14 +350,24 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold">Materials Sent by Store</h3>
-              <Button
-                variant="outline"
-                onClick={() => setShowStatusSummary(true)}
-                className="gap-2"
-              >
-                <TrendingUp className="h-4 w-4" />
-                Production Status
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowProductionFeedback(true)}
+                  className="gap-2"
+                >
+                  <TrendingUp className="h-4 w-4" />
+                  Production Feedback
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowStatusSummary(true)}
+                  className="gap-2"
+                >
+                  <TrendingUp className="h-4 w-4" />
+                  Production Status
+                </Button>
+              </div>
             </div>
             
             {renderBOMSection("Sub Assembly", groupedBOM.sub_assembly, "sub_assembly")}
@@ -382,6 +393,16 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
             voucherNumber={production.voucher_number}
             isOpen={showStatusSummary}
             onClose={() => setShowStatusSummary(false)}
+          />
+        )}
+
+        {/* Production Feedback Dialog */}
+        {showProductionFeedback && (
+          <ProductionFeedbackDialog
+            productionOrderId={production.id}
+            voucherNumber={production.voucher_number}
+            isOpen={showProductionFeedback}
+            onClose={() => setShowProductionFeedback(false)}
           />
         )}
       </DialogContent>
