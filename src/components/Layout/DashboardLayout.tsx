@@ -76,10 +76,10 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   };
 
   return (
-    <div className="flex h-screen bg-background">
+    <div className="flex h-screen w-full bg-background overflow-hidden">
       <Sidebar />
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <header className="bg-card border-b h-14 flex items-center px-4 gap-4">
+      <div className="flex-1 flex flex-col w-full overflow-hidden">
+        <header className="bg-card border-b h-14 flex items-center px-4 gap-4 flex-shrink-0">
           <div className="flex items-center">
             <h1 className="font-bold text-lg text-foreground">Grammy Management System</h1>
           </div>
@@ -147,7 +147,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           </div>
         </header>
 
-        <main className="flex-1 overflow-auto p-6">{children}</main>
+        <main className="flex-1 overflow-auto w-full">{children}</main>
       </div>
     </div>
   );

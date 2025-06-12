@@ -11,14 +11,14 @@ import { Factory } from "lucide-react";
 export default function Production() {
   return (
     <DashboardLayout>
-      <div className="min-h-screen bg-gray-50">
-        <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+      <div className="w-full h-full bg-gray-50">
+        <div className="w-full h-full p-4">
           <div className="flex items-center space-x-4 mb-6">
             <Factory className="h-8 w-8 text-primary" />
             <h1 className="text-2xl font-bold text-gray-900">Production Management - Grammy Electronics</h1>
           </div>
 
-          <Tabs defaultValue="production-lines" className="space-y-6">
+          <Tabs defaultValue="production-lines" className="space-y-6 w-full">
             <TabsList className="grid w-full grid-cols-5 bg-white">
               <TabsTrigger value="production-lines">Production Lines</TabsTrigger>
               <TabsTrigger value="scheduled">Scheduled Productions</TabsTrigger>
