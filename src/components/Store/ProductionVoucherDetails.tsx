@@ -98,6 +98,12 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
           actual_quantity,
           verified_by_production,
           created_at,
+          raw_materials!raw_material_id (
+            id,
+            material_code,
+            name,
+            category
+          ),
           kit_preparation!inner(production_order_id)
         `)
         .eq("kit_preparation.production_order_id", voucherId);
