@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -57,18 +58,27 @@ export const useMovementData = (filterType: string) => {
         throw error;
       }
 
-      console.log("📋 Material movements fetched:", data?.length, "entries");
+      console.log("📋 Raw material movements fetched:", data?.length, "entries");
       
-      // Remove any potential duplicates by keeping the latest entry for each unique combination
-      const uniqueMovements = data?.filter((movement, index, arr) => {
-        const firstIndex = arr.findIndex(m => 
-          m.raw_material_id === movement.raw_material_id &&
-          m.movement_type === movement.movement_type &&
-          m.quantity === movement.quantity &&
-          m.reference_type === movement.reference_type &&
-          Math.abs(new Date(m.created_at).getTime() - new Date(movement.created_at).getTime()) < 60000 // Within 1 minute
-        );
-        return firstIndex === index;
+      // Enhanced deduplication - more aggressive approach
+      const seenKeys = new Set<string>();
+      const uniqueMovements = data?.filter((movement) => {
+        // Create a unique key based on critical fields
+        const key = `${movement.raw_material_id}-${movement.movement_type}-${movement.quantity}-${movement.reference_type}-${Math.floor(new Date(movement.created_at).getTime() / 60000)}`; // Group by minute
+        
+        if (seenKeys.has(key)) {
+          console.log("🗑️ Removing duplicate movement:", {
+            id: movement.id,
+            material: movement.raw_materials?.material_code,
+            type: movement.movement_type,
+            quantity: movement.quantity,
+            created_at: movement.created_at
+          });
+          return false;
+        }
+        
+        seenKeys.add(key);
+        return true;
       }) || [];
       
       // Log movement types for debugging
@@ -87,10 +97,12 @@ export const useMovementData = (filterType: string) => {
         })));
       }
       
+      console.log(`📊 Deduplication: ${data?.length || 0} → ${uniqueMovements.length} entries`);
+      
       return uniqueMovements;
     },
-    refetchInterval: 3000, // Real-time updates every 3 seconds
-    staleTime: 1000,
+    refetchInterval: 5000, // Increased interval to reduce load
+    staleTime: 2000,
   });
 
   // Enhanced auto-refresh when new materials are dispatched or received
@@ -130,7 +142,8 @@ export const useMovementData = (filterType: string) => {
         },
         (payload) => {
           console.log('📡 Real-time material movement change:', payload);
-          refetch();
+          // Debounce the refetch to avoid too many calls
+          setTimeout(() => refetch(), 1000);
         }
       )
       .subscribe();

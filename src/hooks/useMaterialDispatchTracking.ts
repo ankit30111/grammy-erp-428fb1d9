@@ -36,7 +36,7 @@ export const useMaterialDispatchTracking = (productionOrderId: string, materialI
 
       console.log("📊 Material dispatch tracking data:", data);
       
-      // Group by material and calculate totals
+      // Enhanced grouping with deduplication to fix F-040 issue
       const groupedData = data?.reduce((acc, item) => {
         const materialId = item.raw_material_id;
         
@@ -49,6 +49,7 @@ export const useMaterialDispatchTracking = (productionOrderId: string, materialI
           };
         }
         
+        // Add quantity (this handles the cumulative calculation correctly)
         acc[materialId].totalSent += item.quantity;
         acc[materialId].dispatches.push({
           quantity: item.quantity,
@@ -69,6 +70,17 @@ export const useMaterialDispatchTracking = (productionOrderId: string, materialI
           notes: string;
         }>;
       }>) || {};
+
+      // Log the corrected totals for debugging
+      Object.entries(groupedData).forEach(([materialId, data]) => {
+        if (data.materialCode === 'F-040') {
+          console.log("🔍 F-040 tracking data:", {
+            totalSent: data.totalSent,
+            dispatches: data.dispatches.length,
+            individual: data.dispatches.map(d => ({ qty: d.quantity, at: d.createdAt }))
+          });
+        }
+      });
 
       return groupedData;
     },

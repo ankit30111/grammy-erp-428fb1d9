@@ -1507,6 +1507,57 @@ export type Database = {
           },
         ]
       }
+      production_material_receipts: {
+        Row: {
+          created_at: string
+          id: string
+          notes: string | null
+          production_order_id: string
+          quantity_received: number
+          raw_material_id: string
+          received_at: string
+          received_by: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          production_order_id: string
+          quantity_received?: number
+          raw_material_id: string
+          received_at?: string
+          received_by?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          production_order_id?: string
+          quantity_received?: number
+          raw_material_id?: string
+          received_at?: string
+          received_by?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_production_order"
+            columns: ["production_order_id"]
+            isOneToOne: false
+            referencedRelation: "production_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_raw_material"
+            columns: ["raw_material_id"]
+            isOneToOne: false
+            referencedRelation: "raw_materials"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       production_orders: {
         Row: {
           created_at: string
@@ -2512,6 +2563,16 @@ export type Database = {
           p_reference_id: string
           p_reference_type: string
           p_reference_number: string
+          p_notes?: string
+        }
+        Returns: undefined
+      }
+      log_production_material_receipt: {
+        Args: {
+          p_production_order_id: string
+          p_raw_material_id: string
+          p_quantity: number
+          p_received_by?: string
           p_notes?: string
         }
         Returns: undefined
