@@ -301,6 +301,14 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
         }
 
         console.log("🎉 ALL MATERIALS DISPATCHED SUCCESSFULLY WITH FULL AUDIT TRAIL");
+        
+        // ENHANCED: Trigger real-time updates across the application
+        localStorage.setItem('material_dispatched', Date.now().toString());
+        window.dispatchEvent(new StorageEvent('storage', {
+          key: 'material_dispatched',
+          newValue: Date.now().toString()
+        }));
+        
         return { 
           success: true, 
           kitPrepId: kitPrep.id, 
@@ -318,7 +326,7 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
       
       toast({
         title: "Materials Dispatched Successfully",
-        description: `${result.results.length} materials dispatched to Production Voucher ${result.voucherNumber}. Inventory updated and movements logged.`,
+        description: `${result.results.length} materials dispatched to Production Voucher ${result.voucherNumber}. Real-time inventory deduction completed.`,
       });
       
       // Clear quantities and force comprehensive refresh

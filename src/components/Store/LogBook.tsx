@@ -1,213 +1,148 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar, Download, Search, TrendingDown, TrendingUp, BookOpen, RefreshCw } from "lucide-react";
-import { format } from "date-fns";
+import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { format } from "date-fns";
+import { Package, ArrowRight, ArrowLeft, Plus, BookOpen, RefreshCw, RotateCcw } from "lucide-react";
 
 interface MaterialMovement {
   id: string;
-  date: string;
-  type: 'IN' | 'OUT';
-  reference_number: string;
-  material_code: string;
-  material_name: string;
+  created_at: string;
+  movement_type: string;
+  raw_material_id: string;
   quantity: number;
-  source_destination: string;
-  handled_by: string;
-  notes?: string;
+  reference_id: string;
+  reference_type: string;
+  reference_number: string;
+  notes: string;
+  raw_materials?: {
+    material_code: string;
+    name: string;
+    category: string;
+  };
 }
 
 const LogBook = () => {
+  const [filterType, setFilterType] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterType, setFilterType] = useState<string>("ALL");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
 
-  // ENHANCED: Fetch material movements with comprehensive real-time tracking
+  // Enhanced query with real-time updates
   const { data: movements = [], isLoading, refetch } = useQuery({
-    queryKey: ["material-movements-logbook"],
+    queryKey: ["material-movements-logbook", filterType, searchTerm],
     queryFn: async () => {
-      console.log("📚 FETCHING COMPREHENSIVE MATERIAL MOVEMENTS FOR ENHANCED LOGBOOK...");
-      const movements: MaterialMovement[] = [];
-
-      // STEP 1: Fetch from material_movements table (includes all dispatches and returns)
-      console.log("📋 Fetching enhanced material movements...");
-      const { data: movementData, error: movementError } = await supabase
+      console.log("🔍 Fetching ENHANCED material movements...", { filterType, searchTerm });
+      
+      let query = supabase
         .from("material_movements")
         .select(`
           *,
-          raw_materials(material_code, name)
+          raw_materials!inner(
+            material_code,
+            name,
+            category
+          )
         `)
         .order("created_at", { ascending: false });
 
-      if (movementError) {
-        console.error("❌ Error fetching material movements:", movementError);
-        throw movementError;
+      // Apply filters
+      if (filterType !== "all") {
+        query = query.eq("movement_type", filterType);
       }
 
-      console.log("📦 Enhanced material movements found:", movementData?.length || 0);
-
-      // Process enhanced material movements (store dispatches, returns, etc.)
-      movementData?.forEach((item) => {
-        let movementType = 'OUT';
-        let sourceDestination = 'Production';
-        
-        switch (item.movement_type) {
-          case 'ISSUED_TO_PRODUCTION':
-            movementType = 'OUT';
-            sourceDestination = 'Production';
-            break;
-          case 'PRODUCTION_RETURN':
-            movementType = 'IN';
-            sourceDestination = 'Production Return';
-            break;
-          case 'RECEIVED_FROM_VENDOR':
-            movementType = 'IN';
-            sourceDestination = item.issued_to || 'Vendor';
-            break;
-          default:
-            movementType = item.movement_type.includes('RETURN') ? 'IN' : 'OUT';
-            sourceDestination = item.issued_to || 'Unknown';
-        }
-
-        movements.push({
-          id: item.id,
-          date: item.created_at,
-          type: movementType as 'IN' | 'OUT',
-          reference_number: item.reference_number || 'N/A',
-          material_code: item.raw_materials?.material_code || "Unknown",
-          material_name: item.raw_materials?.name || "Unknown Material",
-          quantity: item.quantity,
-          source_destination: sourceDestination,
-          handled_by: "Store Team",
-          notes: item.notes || `${item.movement_type} movement`
-        });
-      });
-
-      // STEP 2: Fetch GRN receipts (Material IN) 
-      console.log("📋 Fetching GRN receipts...");
-      const { data: grnData, error: grnError } = await supabase
-        .from("grn_items")
-        .select(`
-          *,
-          grn!inner(
-            grn_number,
-            received_date,
-            purchase_orders(po_number),
-            vendors(name)
-          ),
-          raw_materials(material_code, name)
-        `)
-        .eq("store_confirmed", true)
-        .order("store_confirmed_at", { ascending: false });
-
-      if (grnError) {
-        console.error("❌ Error fetching GRN data:", grnError);
-        throw grnError;
+      if (searchTerm.trim()) {
+        query = query.or(`raw_materials.material_code.ilike.%${searchTerm}%,raw_materials.name.ilike.%${searchTerm}%,reference_number.ilike.%${searchTerm}%`);
       }
 
-      console.log("📦 GRN items found:", grnData?.length || 0);
+      const { data, error } = await query.limit(1000); // Limit for performance
 
-      // Process GRN data
-      grnData?.forEach((item) => {
-        movements.push({
-          id: `grn-${item.id}`,
-          date: item.store_confirmed_at || item.grn.received_date,
-          type: 'IN',
-          reference_number: `${item.grn.grn_number} / ${item.grn.purchase_orders?.po_number || 'N/A'}`,
-          material_code: item.raw_materials?.material_code || "Unknown",
-          material_name: item.raw_materials?.name || "Unknown Material",
-          quantity: item.accepted_quantity || 0,
-          source_destination: item.grn.vendors?.name || "Unknown Vendor",
-          handled_by: "Store Team",
-          notes: `GRN Receipt - Accepted: ${item.accepted_quantity}, Rejected: ${item.rejected_quantity || 0}`
-        });
-      });
+      if (error) {
+        console.error("❌ Error fetching movements:", error);
+        throw error;
+      }
 
-      // Sort by date (newest first)
-      const sortedMovements = movements.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-      
-      console.log("📚 ENHANCED LOGBOOK PROCESSING COMPLETE:", {
-        total: sortedMovements.length,
-        incoming: sortedMovements.filter(m => m.type === 'IN').length,
-        outgoing: sortedMovements.filter(m => m.type === 'OUT').length,
-        dispatches: sortedMovements.filter(m => m.notes?.includes('dispatched')).length,
-        returns: sortedMovements.filter(m => m.notes?.includes('Return')).length
-      });
-
-      return sortedMovements;
+      console.log("📋 ENHANCED movement data:", data?.length, "entries");
+      return data || [];
     },
-    refetchInterval: 2000, // Refresh every 2 seconds for real-time updates
+    refetchInterval: 3000, // Real-time updates every 3 seconds
   });
 
-  const filteredMovements = movements.filter(movement => {
-    const matchesSearch = 
-      movement.material_code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      movement.material_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      movement.reference_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      movement.source_destination.toLowerCase().includes(searchTerm.toLowerCase());
+  // Auto-refresh when new dispatches happen
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'material_dispatched') {
+        console.log("🔄 AUTO-REFRESH: New material dispatch detected");
+        refetch();
+      }
+    };
     
-    const matchesType = filterType === "ALL" || movement.type === filterType;
-    
-    const movementDate = new Date(movement.date);
-    const matchesDateFrom = !dateFrom || movementDate >= new Date(dateFrom);
-    const matchesDateTo = !dateTo || movementDate <= new Date(dateTo);
-    
-    return matchesSearch && matchesType && matchesDateFrom && matchesDateTo;
-  });
-
-  const getMovementTypeColor = (type: string) => {
-    return type === 'IN' ? "default" : "secondary";
-  };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, [refetch]);
 
   const getMovementIcon = (type: string) => {
-    return type === 'IN' ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />;
+    switch (type) {
+      case "ISSUED_TO_PRODUCTION":
+        return <ArrowRight className="h-4 w-4 text-blue-600" />;
+      case "PRODUCTION_RETURN":
+        return <ArrowLeft className="h-4 w-4 text-green-600" />;
+      case "PRODUCTION_FEEDBACK_RETURN":
+        return <RotateCcw className="h-4 w-4 text-purple-600" />;
+      case "GRN_RECEIPT":
+        return <Plus className="h-4 w-4 text-green-600" />;
+      default:
+        return <Package className="h-4 w-4 text-gray-600" />;
+    }
   };
 
-  const handleExport = () => {
-    // Simple CSV export
-    const headers = [
-      "Date", "Type", "Reference", "Material Code", "Material Name", 
-      "Quantity", "Source/Destination", "Handled By", "Notes"
-    ];
-    
-    const csvData = [
-      headers.join(","),
-      ...filteredMovements.map(movement => [
-        format(new Date(movement.date), "yyyy-MM-dd HH:mm:ss"),
-        movement.type,
-        movement.reference_number,
-        movement.material_code,
-        movement.material_name,
-        movement.quantity,
-        movement.source_destination,
-        movement.handled_by,
-        movement.notes || ""
-      ].map(field => `"${field}"`).join(","))
-    ].join("\n");
-
-    const blob = new Blob([csvData], { type: "text/csv" });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `material-movements-${format(new Date(), "yyyy-MM-dd")}.csv`;
-    a.click();
-    window.URL.revokeObjectURL(url);
+  const getMovementBadge = (type: string) => {
+    switch (type) {
+      case "ISSUED_TO_PRODUCTION":
+        return <Badge variant="default">Issued to Production</Badge>;
+      case "PRODUCTION_RETURN":
+        return <Badge variant="secondary">Production Return</Badge>;
+      case "PRODUCTION_FEEDBACK_RETURN":
+        return <Badge variant="outline">Feedback Return</Badge>;
+      case "GRN_RECEIPT":
+        return <Badge className="bg-green-100 text-green-800">GRN Receipt</Badge>;
+      default:
+        return <Badge variant="outline">{type.replace('_', ' ')}</Badge>;
+    }
   };
+
+  const filteredMovements = movements.filter(movement => {
+    if (filterType !== "all" && movement.movement_type !== filterType) return false;
+    if (searchTerm.trim()) {
+      const search = searchTerm.toLowerCase();
+      return (
+        movement.raw_materials?.material_code?.toLowerCase().includes(search) ||
+        movement.raw_materials?.name?.toLowerCase().includes(search) ||
+        movement.reference_number?.toLowerCase().includes(search)
+      );
+    }
+    return true;
+  });
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-8">
         <div className="text-center">
-          <BookOpen className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
+          <Package className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
           <p className="text-muted-foreground">Loading material movements...</p>
         </div>
+      </div>
+    );
+  }
+
+  if (movements.length === 0) {
+    return (
+      <div className="text-center py-8">
+        <Package className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
+        <p className="text-muted-foreground">No material movements found</p>
       </div>
     );
   }
@@ -216,165 +151,109 @@ const LogBook = () => {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <BookOpen className="h-5 w-5" />
-              Enhanced Material Movement Log Book ({filteredMovements.length} entries)
-              <Badge variant="outline" className="ml-2">Real-time</Badge>
-            </div>
-            <div className="flex gap-2">
-              <Button onClick={() => refetch()} variant="outline" size="sm">
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Refresh
-              </Button>
-              <Button onClick={handleExport} className="gap-2">
-                <Download className="h-4 w-4" />
-                Export CSV
-              </Button>
-            </div>
+          <CardTitle className="flex items-center gap-2">
+            <BookOpen className="h-5 w-5" />
+            Material Movement LogBook
+            <Badge variant="outline" className="ml-2">
+              Real-time Tracking
+            </Badge>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => refetch()}
+              className="ml-auto gap-1"
+            >
+              <RefreshCw className="h-3 w-3" />
+              Refresh
+            </Button>
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {/* Filters */}
-          <div className="flex flex-wrap gap-4 mb-6">
-            <div className="relative w-64">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          {/* Enhanced Filters */}
+          <div className="flex flex-col sm:flex-row gap-4 mb-6">
+            <div className="flex-1">
               <Input
-                placeholder="Search materials, reference, source..."
-                className="pl-9"
+                placeholder="Search by material code, name, or reference..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
+                className="max-w-sm"
               />
             </div>
-            
             <Select value={filterType} onValueChange={setFilterType}>
-              <SelectTrigger className="w-32">
-                <SelectValue placeholder="Type" />
+              <SelectTrigger className="w-48">
+                <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="ALL">All</SelectItem>
-                <SelectItem value="IN">Received</SelectItem>
-                <SelectItem value="OUT">Issued</SelectItem>
+                <SelectItem value="all">All Movements</SelectItem>
+                <SelectItem value="ISSUED_TO_PRODUCTION">Issued to Production</SelectItem>
+                <SelectItem value="PRODUCTION_RETURN">Production Returns</SelectItem>
+                <SelectItem value="PRODUCTION_FEEDBACK_RETURN">Feedback Returns</SelectItem>
+                <SelectItem value="GRN_RECEIPT">GRN Receipts</SelectItem>
               </SelectContent>
             </Select>
+          </div>
 
-            <div className="flex items-center gap-2">
-              <Input
-                type="date"
-                placeholder="From Date"
-                value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
-                className="w-36"
-              />
-              <span className="text-muted-foreground">to</span>
-              <Input
-                type="date"
-                placeholder="To Date"
-                value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
-                className="w-36"
-              />
+          {/* Enhanced Movement History */}
+          {filteredMovements.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <Package className="h-12 w-12 mx-auto mb-2 text-muted-foreground/50" />
+              <p>No material movements found</p>
+              <p className="text-sm mt-1">Material movements will appear here as they occur</p>
             </div>
-          </div>
-
-          {/* Enhanced Summary Cards */}
-          <div className="grid grid-cols-3 gap-4 mb-6">
-            <Card>
-              <CardContent className="flex items-center p-4">
-                <TrendingUp className="h-8 w-8 text-green-600" />
-                <div className="ml-4">
-                  <p className="text-sm text-gray-600">Materials Received</p>
-                  <p className="text-2xl font-bold text-green-600">
-                    {movements.filter(m => m.type === 'IN').length}
-                  </p>
-                  <p className="text-xs text-gray-500">Total incoming transactions</p>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardContent className="flex items-center p-4">
-                <TrendingDown className="h-8 w-8 text-blue-600" />
-                <div className="ml-4">
-                  <p className="text-sm text-gray-600">Materials Issued</p>
-                  <p className="text-2xl font-bold text-blue-600">
-                    {movements.filter(m => m.type === 'OUT').length}
-                  </p>
-                  <p className="text-xs text-gray-500">Dispatched to production</p>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardContent className="flex items-center p-4">
-                <Calendar className="h-8 w-8 text-purple-600" />
-                <div className="ml-4">
-                  <p className="text-sm text-gray-600">Total Transactions</p>
-                  <p className="text-2xl font-bold text-purple-600">{movements.length}</p>
-                  <p className="text-xs text-gray-500">All material movements</p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Enhanced Movements Table */}
-          <div className="rounded-md border">
+          ) : (
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Date & Time</TableHead>
                   <TableHead>Type</TableHead>
-                  <TableHead>Reference</TableHead>
                   <TableHead>Material Code</TableHead>
                   <TableHead>Material Name</TableHead>
                   <TableHead>Quantity</TableHead>
-                  <TableHead>Source/Destination</TableHead>
-                  <TableHead>Handled By</TableHead>
+                  <TableHead>Reference</TableHead>
                   <TableHead>Notes</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredMovements.map((movement) => (
                   <TableRow key={movement.id}>
-                    <TableCell className="whitespace-nowrap">
-                      <div className="text-sm">
-                        {format(new Date(movement.date), "MMM dd, yyyy")}
-                        <div className="text-xs text-muted-foreground">
-                          {format(new Date(movement.date), "HH:mm:ss")}
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        {getMovementIcon(movement.movement_type)}
+                        <div>
+                          <p className="font-medium">
+                            {format(new Date(movement.created_at), "MMM dd, yyyy")}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {format(new Date(movement.created_at), "HH:mm:ss")}
+                          </p>
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell>
-                      <Badge variant={getMovementTypeColor(movement.type) as any} className="gap-1">
-                        {getMovementIcon(movement.type)}
-                        {movement.type === 'IN' ? 'Received' : 'Issued'}
-                      </Badge>
+                    <TableCell>{getMovementBadge(movement.movement_type)}</TableCell>
+                    <TableCell className="font-mono font-medium">
+                      {movement.raw_materials?.material_code}
                     </TableCell>
-                    <TableCell className="font-mono text-sm">{movement.reference_number}</TableCell>
-                    <TableCell className="font-mono font-medium">{movement.material_code}</TableCell>
-                    <TableCell>{movement.material_name}</TableCell>
-                    <TableCell className="font-medium">
-                      <span className={movement.type === 'IN' ? "text-green-600" : "text-blue-600"}>
-                        {movement.type === 'IN' ? '+' : '-'}{movement.quantity}
+                    <TableCell>{movement.raw_materials?.name}</TableCell>
+                    <TableCell className="font-semibold">
+                      <span className={movement.movement_type.includes('RETURN') ? 'text-green-600' : 'text-blue-600'}>
+                        {movement.movement_type.includes('RETURN') ? '+' : '-'}{movement.quantity}
                       </span>
                     </TableCell>
-                    <TableCell>{movement.source_destination}</TableCell>
-                    <TableCell>{movement.handled_by}</TableCell>
-                    <TableCell className="max-w-xs truncate text-sm text-muted-foreground">
-                      {movement.notes}
+                    <TableCell>
+                      <div>
+                        <p className="font-medium">{movement.reference_type}</p>
+                        <p className="text-sm text-muted-foreground">{movement.reference_number}</p>
+                      </div>
+                    </TableCell>
+                    <TableCell className="max-w-xs">
+                      <p className="text-sm truncate" title={movement.notes}>
+                        {movement.notes}
+                      </p>
                     </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
-          </div>
-
-          {filteredMovements.length === 0 && (
-            <div className="text-center py-8 text-muted-foreground">
-              <BookOpen className="mx-auto h-12 w-12 opacity-50 mb-4" />
-              <p>No material movements found</p>
-              <p className="text-sm">Try adjusting your search or filter criteria</p>
-            </div>
           )}
         </CardContent>
       </Card>

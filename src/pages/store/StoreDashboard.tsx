@@ -1,151 +1,113 @@
-import { useState, useEffect } from "react";
+
+import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScheduledProduction as ScheduledProductionType, mockScheduledProductions, mockGRNs, mockMaterialRequests, GRNItem, MaterialRequest } from "@/types/store";
-import EnhancedGRNReceiving from "@/components/Store/EnhancedGRNReceiving";
-import ProductionFeedback from "@/components/Store/ProductionFeedback";
-import InventoryManagement from "@/components/Store/InventoryManagement";
-import SpareOrdersPacking from "@/components/Store/SpareOrdersPacking";
-import VoucherKitManagement from "@/components/Store/VoucherKitManagement";
-import StoreDashboardHeader from "@/components/Store/StoreDashboardHeader";
-import { useToast } from "@/hooks/use-toast";
-import { useInventorySync } from "@/hooks/useInventorySync";
-import { useKitManagement } from "@/hooks/useKitManagement";
+import { Badge } from "@/components/ui/badge";
+import { Store, Package, FileText, ArrowLeftRight, AlertTriangle, BookOpen } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+
+// Import existing components
+import ScheduledProductionsTab from "@/components/Store/ScheduledProductionsTab";
+import GRNManagement from "@/components/Store/GRNManagement";
+import MaterialRequestsTab from "@/components/Store/MaterialRequestsTab";
 import LogBook from "@/components/Store/LogBook";
-import StockReconciliation from "@/components/Store/StockReconciliation";
+import InventoryManagement from "@/components/Store/InventoryManagement";
 
-export default function StoreDashboard() {
-  const { toast } = useToast();
-  const { syncRawMaterialsToInventory, isLoading: isSyncing } = useInventorySync();
-  const {
-    kitStatuses,
-    setKitStatuses,
-    sentComponents,
-    setSentComponents,
-    voucherStatuses
-  } = useKitManagement();
-  
-  const [productions, setProductions] = useState<ScheduledProductionType[]>(mockScheduledProductions);
-  const [grns, setGRNs] = useState<GRNItem[]>(mockGRNs);
-  const [materialRequests, setMaterialRequests] = useState<MaterialRequest[]>(mockMaterialRequests);
+// Import new components
+import ProductionFeedbackTab from "@/components/Store/ProductionFeedbackTab";
 
-  // Auto-sync inventory on component mount
-  useEffect(() => {
-    syncRawMaterialsToInventory.mutate();
-  }, []);
-
-  const handleSyncInventory = () => {
-    syncRawMaterialsToInventory.mutate();
-  };
-
-  const handleReceiveGRN = (id: string, quantity: number) => {
-    const grn = grns.find(g => g.id === id);
-    
-    if (!grn) return;
-    
-    const hasDiscrepancy = quantity < grn.expectedQuantity;
-    
-    setGRNs(prev =>
-      prev.map(g =>
-        g.id === id
-          ? {
-              ...g,
-              receivedQuantity: quantity,
-              hasDiscrepancy,
-              status: hasDiscrepancy ? "DISCREPANCY" : "RECEIVED"
-            }
-          : g
-      )
-    );
-  };
-
-  const handleDiscrepancyReport = (grnId: string, expectedQty: number, receivedQty: number, poNumber: string) => {
-    console.log(`Discrepancy reported for GRN ${grnId}:`);
-    console.log(`PO: ${poNumber}, Expected: ${expectedQty}, Received: ${receivedQty}`);
-    console.log(`Purchase team notified. Vendor payment on hold.`);
-    
-    toast({
-      title: "Discrepancy Reported",
-      description: `Purchase team notified about quantity mismatch in PO ${poNumber}`,
-    });
-  };
-
-  const handleApproveMaterialRequest = (id: string) => {
-    setMaterialRequests(prev =>
-      prev.map(request =>
-        request.id === id ? { ...request, status: "APPROVED" } : request
-      )
-    );
-    
-    toast({
-      title: "Material Request Approved",
-      description: "Material request has been approved",
-    });
-  };
-
-  const handleRejectMaterialRequest = (id: string) => {
-    setMaterialRequests(prev =>
-      prev.map(request =>
-        request.id === id ? { ...request, status: "REJECTED" } : request
-      )
-    );
-    
-    toast({
-      title: "Material Request Rejected",
-      description: "Material request has been rejected",
-    });
-  };
+const StoreDashboard = () => {
+  // Get pending feedback count for tab badge
+  const { data: pendingFeedbackCount = 0 } = useQuery({
+    queryKey: ["pending-feedback-count"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("material_requests")
+        .select("id", { count: 'exact' })
+        .eq("status", "PENDING");
+      
+      if (error) return 0;
+      return data?.length || 0;
+    },
+    refetchInterval: 10000, // Check every 10 seconds
+  });
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <StoreDashboardHeader 
-        onSyncInventory={handleSyncInventory}
-        isSyncing={isSyncing}
-      />
+    <div className="container mx-auto py-6">
+      <div className="flex items-center space-x-4 mb-6">
+        <Store className="h-8 w-8 text-primary" />
+        <h1 className="text-2xl font-bold">Store Management - Grammy Electronics</h1>
+      </div>
 
-      <Tabs defaultValue="production-vouchers" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-7">
+      <Tabs defaultValue="production-vouchers" className="space-y-4">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="production-vouchers">Production Voucher Management</TabsTrigger>
-          <TabsTrigger value="grn">GRN Receiving</TabsTrigger>
-          <TabsTrigger value="feedback">Production Feedback</TabsTrigger>
+          <TabsTrigger value="grn-management">GRN Management</TabsTrigger>
+          <TabsTrigger value="material-requests">Material Requests</TabsTrigger>
+          <TabsTrigger value="production-feedback" className="relative">
+            Production Feedback
+            {pendingFeedbackCount > 0 && (
+              <Badge variant="destructive" className="ml-2 h-5 w-5 p-0 text-xs">
+                {pendingFeedbackCount}
+              </Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="logbook">LogBook</TabsTrigger>
           <TabsTrigger value="inventory">Inventory</TabsTrigger>
-          <TabsTrigger value="spare-orders">Spare Orders</TabsTrigger>
-          <TabsTrigger value="stock-reconciliation">Stock Reconciliation</TabsTrigger>
-          <TabsTrigger value="log-book">Log Book</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="production-vouchers">
-          <VoucherKitManagement
-            voucherStatuses={voucherStatuses || []}
-          />
+        <TabsContent value="production-vouchers" className="space-y-4">
+          <div className="flex items-center space-x-2 mb-4">
+            <Package className="h-5 w-5" />
+            <h2 className="text-xl font-semibold">Production Voucher Management</h2>
+            <Badge variant="outline">Real-time Inventory Deduction</Badge>
+          </div>
+          <ScheduledProductionsTab />
         </TabsContent>
 
-        <TabsContent value="grn">
-          <EnhancedGRNReceiving 
-            onReceiveGRN={handleReceiveGRN}
-            onDiscrepancyReport={handleDiscrepancyReport}
-          />
+        <TabsContent value="grn-management" className="space-y-4">
+          <div className="flex items-center space-x-2 mb-4">
+            <FileText className="h-5 w-5" />
+            <h2 className="text-xl font-semibold">GRN Management</h2>
+          </div>
+          <GRNManagement />
         </TabsContent>
 
-        <TabsContent value="feedback">
-          <ProductionFeedback />
+        <TabsContent value="material-requests" className="space-y-4">
+          <div className="flex items-center space-x-2 mb-4">
+            <ArrowLeftRight className="h-5 w-5" />
+            <h2 className="text-xl font-semibold">Material Requests</h2>
+          </div>
+          <MaterialRequestsTab />
         </TabsContent>
 
-        <TabsContent value="inventory">
-          <InventoryManagement />
+        <TabsContent value="production-feedback" className="space-y-4">
+          <div className="flex items-center space-x-2 mb-4">
+            <AlertTriangle className="h-5 w-5" />
+            <h2 className="text-xl font-semibold">Production Feedback & Discrepancies</h2>
+            <Badge variant="outline">Store-Production Reconciliation</Badge>
+          </div>
+          <ProductionFeedbackTab />
         </TabsContent>
 
-        <TabsContent value="spare-orders">
-          <SpareOrdersPacking />
-        </TabsContent>
-
-        <TabsContent value="stock-reconciliation">
-          <StockReconciliation />
-        </TabsContent>
-
-        <TabsContent value="log-book">
+        <TabsContent value="logbook" className="space-y-4">
+          <div className="flex items-center space-x-2 mb-4">
+            <BookOpen className="h-5 w-5" />
+            <h2 className="text-xl font-semibold">Material Movement LogBook</h2>
+          </div>
           <LogBook />
+        </TabsContent>
+
+        <TabsContent value="inventory" className="space-y-4">
+          <div className="flex items-center space-x-2 mb-4">
+            <Package className="h-5 w-5" />
+            <h2 className="text-xl font-semibold">Inventory Management</h2>
+          </div>
+          <InventoryManagement />
         </TabsContent>
       </Tabs>
     </div>
   );
-}
+};
+
+export default StoreDashboard;
