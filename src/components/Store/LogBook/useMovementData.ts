@@ -24,7 +24,7 @@ export const useMovementData = (filterType: string) => {
   const { data: movements = [], isLoading, refetch } = useQuery({
     queryKey: ["material-movements-logbook", filterType],
     queryFn: async () => {
-      console.log("🔍 Fetching ALL material movements for LogBook...", { filterType });
+      console.log("🔍 Fetching ENHANCED material movements for LogBook...", { filterType });
       
       let query = supabase
         .from("material_movements")
@@ -58,29 +58,35 @@ export const useMovementData = (filterType: string) => {
         throw error;
       }
 
-      console.log("📋 Material movements fetched:", data?.length, "entries");
+      console.log("📋 ENHANCED material movements fetched:", data?.length, "entries");
       
       // Log all movement types for debugging
       const movementTypes = data?.map(m => m.movement_type) || [];
       const uniqueTypes = [...new Set(movementTypes)];
       console.log("📊 Movement types found:", uniqueTypes);
       
-      // Log some sample data for debugging
+      // Log recent entries for debugging
       if (data && data.length > 0) {
-        console.log("📋 Sample movements:", data.slice(0, 3));
+        console.log("📋 Recent movements:", data.slice(0, 5).map(m => ({
+          type: m.movement_type,
+          material: m.raw_materials?.material_code,
+          quantity: m.quantity,
+          reference: m.reference_number,
+          created: m.created_at
+        })));
       }
       
       return data || [];
     },
-    refetchInterval: 3000, // Real-time updates every 3 seconds
+    refetchInterval: 2000, // Real-time updates every 2 seconds
     staleTime: 1000,
   });
 
-  // Auto-refresh when new materials are dispatched or received
+  // Enhanced auto-refresh when new materials are dispatched or received
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === 'material_dispatched' || e.key === 'material_received') {
-        console.log("🔄 AUTO-REFRESH: Material movement detected");
+        console.log("🔄 AUTO-REFRESH: Material movement detected, refreshing LogBook");
         refetch();
       }
     };

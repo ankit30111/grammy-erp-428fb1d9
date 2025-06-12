@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -105,101 +104,135 @@ export default function ProductionVoucherDetails({ voucherId, onBack }: Producti
     enabled: bomData.length > 0,
   });
 
-  // Material dispatch mutation
+  // Enhanced material dispatch mutation with better error handling
   const dispatchMutation = useMutation({
     mutationFn: async ({ materialId, dispatchQty }: { materialId: string; dispatchQty: number }) => {
-      console.log("🚀 Starting material dispatch:", { materialId, dispatchQty, voucherId });
+      console.log("🚀 Starting ENHANCED material dispatch:", { materialId, dispatchQty, voucherId });
       
-      // Get current inventory
-      const { data: currentInventory, error: inventoryError } = await supabase
-        .from("inventory")
-        .select("quantity")
-        .eq("raw_material_id", materialId)
-        .single();
+      try {
+        // STEP 1: Get current inventory with detailed validation
+        const { data: currentInventory, error: inventoryError } = await supabase
+          .from("inventory")
+          .select("id, quantity, raw_material_id")
+          .eq("raw_material_id", materialId)
+          .single();
 
-      if (inventoryError) {
-        console.error("❌ Error fetching current inventory:", inventoryError);
-        throw new Error("Failed to fetch current inventory");
-      }
+        if (inventoryError) {
+          console.error("❌ CRITICAL: Error fetching current inventory:", inventoryError);
+          throw new Error(`Failed to fetch inventory: ${inventoryError.message}`);
+        }
 
-      if (!currentInventory || currentInventory.quantity < dispatchQty) {
-        throw new Error("Insufficient inventory for dispatch");
-      }
+        if (!currentInventory) {
+          throw new Error("No inventory record found for this material");
+        }
 
-      // Update inventory (reduce quantity)
-      const newQuantity = currentInventory.quantity - dispatchQty;
-      const { error: updateError } = await supabase
-        .from("inventory")
-        .update({ 
-          quantity: newQuantity,
-          last_updated: new Date().toISOString()
-        })
-        .eq("raw_material_id", materialId);
+        const currentStock = currentInventory.quantity;
+        console.log(`📊 Current stock for material ${materialId}: ${currentStock}`);
+        
+        if (currentStock < dispatchQty) {
+          const errorMsg = `Insufficient stock: Available ${currentStock}, Required ${dispatchQty}`;
+          console.error("❌ INSUFFICIENT STOCK:", errorMsg);
+          throw new Error(errorMsg);
+        }
 
-      if (updateError) {
-        console.error("❌ Error updating inventory:", updateError);
-        throw new Error("Failed to update inventory");
-      }
+        const newStock = currentStock - dispatchQty;
+        console.log(`🔄 Planned stock reduction: ${currentStock} → ${newStock}`);
 
-      // Get material and production order details for logging
-      const { data: materialData, error: materialError } = await supabase
-        .from("raw_materials")
-        .select("material_code, name")
-        .eq("id", materialId)
-        .single();
+        // STEP 2: Get material details for better logging
+        const { data: materialData, error: materialError } = await supabase
+          .from("raw_materials")
+          .select("material_code, name")
+          .eq("id", materialId)
+          .single();
 
-      if (materialError) {
-        console.error("❌ Error fetching material data:", materialError);
-        throw materialError;
-      }
+        if (materialError) {
+          console.error("❌ Error fetching material data:", materialError);
+          throw new Error(`Failed to fetch material details: ${materialError.message}`);
+        }
 
-      // Log the material movement
-      const { error: logError } = await supabase
-        .from("material_movements")
-        .insert({
-          raw_material_id: materialId,
-          movement_type: "ISSUED_TO_PRODUCTION",
-          quantity: dispatchQty,
-          reference_id: voucherId,
-          reference_type: "PRODUCTION_VOUCHER",
-          reference_number: productionOrder?.voucher_number || "N/A",
-          notes: `Material dispatched to production. Stock reduced from ${currentInventory.quantity} to ${newQuantity}. Material: ${materialData.material_code} - ${materialData.name}`,
-          created_at: new Date().toISOString()
+        // STEP 3: Update inventory (this triggers the database trigger for automatic logging)
+        const { data: updatedInventory, error: updateError } = await supabase
+          .from("inventory")
+          .update({
+            quantity: newStock,
+            last_updated: new Date().toISOString()
+          })
+          .eq("raw_material_id", materialId)
+          .select("quantity")
+          .single();
+
+        if (updateError) {
+          console.error("❌ CRITICAL: Inventory update failed:", updateError);
+          throw new Error(`Failed to update inventory: ${updateError.message}`);
+        }
+
+        console.log("✅ INVENTORY UPDATE SUCCESSFUL:", {
+          material: materialData.material_code,
+          previous: currentStock,
+          new: updatedInventory.quantity,
+          deducted: dispatchQty
         });
 
-      if (logError) {
-        console.error("❌ Error logging material movement:", logError);
-        // Don't throw here as the main operation succeeded
-        console.warn("⚠️ Material dispatched but logging failed");
-      }
+        // STEP 4: Additional manual logging for production voucher context with better reference data
+        const { error: movementError } = await supabase
+          .from("material_movements")
+          .insert({
+            raw_material_id: materialId,
+            movement_type: "ISSUED_TO_PRODUCTION",
+            quantity: dispatchQty,
+            reference_id: voucherId,
+            reference_type: "PRODUCTION_VOUCHER",
+            reference_number: productionOrder?.voucher_number || `PV-${voucherId.substring(0, 8)}`,
+            notes: `Material dispatched to production via voucher ${productionOrder?.voucher_number}. Material: ${materialData.material_code} - ${materialData.name}. Stock: ${currentStock} → ${newStock}`,
+            created_at: new Date().toISOString()
+          });
 
-      console.log("✅ Material dispatch completed successfully");
-      return { materialId, dispatchQty, newQuantity };
+        if (movementError) {
+          console.error("❌ Error logging production movement:", movementError);
+          console.warn("⚠️ Material dispatched but additional logging failed");
+        } else {
+          console.log("✅ PRODUCTION MOVEMENT LOGGED SUCCESSFULLY");
+        }
+
+        console.log(`✅ ENHANCED MATERIAL DISPATCH COMPLETE: ${currentStock} → ${newStock}`);
+        return {
+          materialCode: materialData.material_code,
+          materialName: materialData.name,
+          previousStock: currentStock,
+          newStock,
+          quantityDeducted: dispatchQty
+        };
+
+      } catch (error: any) {
+        console.error("❌ DISPATCH ERROR:", error);
+        throw error;
+      }
     },
     onSuccess: (result) => {
       toast({
         title: "Material Dispatched Successfully",
-        description: `${result.dispatchQty} units dispatched. New inventory: ${result.newQuantity}`,
+        description: `${result.quantityDeducted} units of ${result.materialCode} dispatched. New inventory: ${result.newStock}`,
       });
       
       // Clear the dispatch quantity for this material
       setDispatchQuantities(prev => ({
         ...prev,
-        [result.materialId]: 0
+        [result.materialCode]: 0
       }));
       
-      // Refresh data
+      // Refresh all relevant data
       queryClient.invalidateQueries({ queryKey: ["inventory-levels"] });
       queryClient.invalidateQueries({ queryKey: ["material-movements-logbook"] });
       queryClient.invalidateQueries({ queryKey: ["inventory"] });
+      queryClient.invalidateQueries({ queryKey: ["inventory-real-time"] });
       
-      // Trigger storage event for real-time updates
+      // Trigger storage event for real-time updates across tabs
       localStorage.setItem('material_dispatched', Date.now().toString());
       
-      console.log("🔄 Data refreshed after dispatch");
+      console.log("🔄 ALL DATA REFRESHED AFTER SUCCESSFUL DISPATCH");
     },
     onError: (error: any) => {
-      console.error("❌ Material dispatch failed:", error);
+      console.error("❌ MATERIAL DISPATCH FAILED:", error);
       toast({
         title: "Material Dispatch Failed",
         description: error.message || "Failed to dispatch material to production",
