@@ -55,6 +55,38 @@ const ScheduledProductions = () => {
     refetchInterval: 5000, // Real-time updates
   });
 
+  // Fetch BOM data for selected production
+  const { data: bomData = [] } = useQuery({
+    queryKey: ["production-bom-data", selectedProduction?.product_id],
+    queryFn: async () => {
+      if (!selectedProduction?.product_id) return [];
+      
+      console.log("🔍 Fetching BOM data for product:", selectedProduction.product_id);
+      
+      const { data, error } = await supabase
+        .from("bom")
+        .select(`
+          *,
+          raw_materials!raw_material_id (
+            id,
+            material_code,
+            name,
+            category
+          )
+        `)
+        .eq("product_id", selectedProduction.product_id);
+
+      if (error) {
+        console.error("❌ Error fetching BOM data:", error);
+        throw error;
+      }
+
+      console.log("📦 BOM data fetched:", data);
+      return data || [];
+    },
+    enabled: !!selectedProduction?.product_id,
+  });
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'SCHEDULED':
@@ -237,9 +269,9 @@ const ScheduledProductions = () => {
                 </CardHeader>
                 <CardContent>
                   <EnhancedBOMTable
-                    productionOrderId={selectedProduction.id}
-                    productId={selectedProduction.product_id}
+                    bomData={bomData}
                     productionQuantity={selectedProduction.quantity}
+                    productionOrderId={selectedProduction.id}
                   />
                 </CardContent>
               </Card>
