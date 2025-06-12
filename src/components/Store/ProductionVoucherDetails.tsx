@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -104,7 +105,43 @@ export default function ProductionVoucherDetails({ voucherId, onBack }: Producti
     enabled: bomData.length > 0,
   });
 
-  // Enhanced material dispatch mutation with improved error handling
+  // NEW: Fetch sent quantities from material movements
+  const { data: sentQuantities = [] } = useQuery({
+    queryKey: ["sent-quantities", voucherId],
+    queryFn: async () => {
+      if (!bomData || bomData.length === 0) return [];
+      
+      const materialIds = bomData.map((item: any) => item.raw_materials.id);
+      
+      console.log("🔍 Fetching sent quantities for materials:", materialIds);
+      
+      const { data, error } = await supabase
+        .from("material_movements")
+        .select("raw_material_id, quantity")
+        .eq("movement_type", "ISSUED_TO_PRODUCTION")
+        .eq("reference_type", "PRODUCTION_VOUCHER")
+        .in("raw_material_id", materialIds);
+
+      if (error) {
+        console.error("❌ Error fetching sent quantities:", error);
+        throw error;
+      }
+
+      console.log("📦 Sent quantities fetched:", data);
+      
+      // Group by material and sum quantities
+      const groupedSent = data?.reduce((acc, item) => {
+        acc[item.raw_material_id] = (acc[item.raw_material_id] || 0) + item.quantity;
+        return acc;
+      }, {} as Record<string, number>) || {};
+
+      return groupedSent;
+    },
+    enabled: bomData.length > 0,
+    refetchInterval: 3000, // Real-time updates
+  });
+
+  // Enhanced material dispatch mutation with improved error handling and no manual logging
   const dispatchMutation = useMutation({
     mutationFn: async ({ materialId, dispatchQty }: { materialId: string; dispatchQty: number }) => {
       console.log("🚀 Starting material dispatch:", { materialId, dispatchQty, voucherId });
@@ -150,7 +187,7 @@ export default function ProductionVoucherDetails({ voucherId, onBack }: Producti
           throw new Error(`Failed to fetch material details: ${materialError.message}`);
         }
 
-        // STEP 3: Update inventory (this will trigger the database logging function)
+        // STEP 3: Update inventory (this will trigger the database logging function automatically)
         const { data: updatedInventory, error: updateError } = await supabase
           .from("inventory")
           .update({
@@ -173,28 +210,8 @@ export default function ProductionVoucherDetails({ voucherId, onBack }: Producti
           deducted: dispatchQty
         });
 
-        // STEP 4: Additional manual logging for production voucher context
-        const { error: movementError } = await supabase
-          .from("material_movements")
-          .insert({
-            raw_material_id: materialId,
-            movement_type: "ISSUED_TO_PRODUCTION",
-            quantity: dispatchQty,
-            reference_id: voucherId,
-            reference_type: "PRODUCTION_VOUCHER",
-            reference_number: productionOrder?.voucher_number || `PV-${voucherId.substring(0, 8)}`,
-            notes: `Material dispatched to production via voucher ${productionOrder?.voucher_number}. Material: ${materialData.material_code} - ${materialData.name}. Stock: ${currentStock} → ${newStock}`,
-            created_at: new Date().toISOString()
-          });
-
-        if (movementError) {
-          console.error("❌ Error logging production movement:", movementError);
-          // Don't throw here as the inventory was already updated successfully
-          console.warn("⚠️ Material dispatched but movement logging failed - will be logged by trigger");
-        } else {
-          console.log("✅ PRODUCTION MOVEMENT LOGGED SUCCESSFULLY");
-        }
-
+        // NOTE: Manual logging removed - database trigger will handle this automatically
+        
         console.log(`✅ MATERIAL DISPATCH COMPLETE: ${currentStock} → ${newStock}`);
         return {
           materialCode: materialData.material_code,
@@ -223,6 +240,7 @@ export default function ProductionVoucherDetails({ voucherId, onBack }: Producti
       
       // Refresh all relevant data
       queryClient.invalidateQueries({ queryKey: ["inventory-levels"] });
+      queryClient.invalidateQueries({ queryKey: ["sent-quantities"] });
       queryClient.invalidateQueries({ queryKey: ["material-movements-logbook"] });
       queryClient.invalidateQueries({ queryKey: ["inventory"] });
       queryClient.invalidateQueries({ queryKey: ["inventory-real-time"] });
@@ -277,9 +295,27 @@ export default function ProductionVoucherDetails({ voucherId, onBack }: Producti
     return bomItem.quantity * (productionOrder?.quantity || 1);
   };
 
-  const getStatusBadge = (requiredQty: number, availableQty: number) => {
-    if (availableQty >= requiredQty) {
-      return <Badge className="bg-green-100 text-green-800">Sufficient Stock</Badge>;
+  // NEW: Get sent quantity for a material
+  const getSentQuantity = (materialId: string) => {
+    return sentQuantities[materialId] || 0;
+  };
+
+  // NEW: Get balance quantity for a material
+  const getBalanceQuantity = (bomItem: any) => {
+    const required = getRequiredQuantity(bomItem);
+    const sent = getSentQuantity(bomItem.raw_materials.id);
+    return Math.max(0, required - sent);
+  };
+
+  const getStatusBadge = (requiredQty: number, availableQty: number, sentQty: number) => {
+    const balanceQty = Math.max(0, requiredQty - sentQty);
+    
+    if (balanceQty === 0) {
+      return <Badge className="bg-green-100 text-green-800">Fully Dispatched</Badge>;
+    } else if (sentQty > 0) {
+      return <Badge variant="secondary">Partially Dispatched</Badge>;
+    } else if (availableQty >= requiredQty) {
+      return <Badge className="bg-blue-100 text-blue-800">Ready to Dispatch</Badge>;
     } else if (availableQty > 0) {
       return <Badge variant="secondary">Partial Stock</Badge>;
     } else {
@@ -354,12 +390,12 @@ export default function ProductionVoucherDetails({ voucherId, onBack }: Producti
         </CardContent>
       </Card>
 
-      {/* BOM Materials Table */}
+      {/* Enhanced BOM Materials Table with Sent Qty and Balance Qty */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Truck className="h-5 w-5" />
-            Material Requirements & Dispatch
+            Material Requirements & Dispatch Status
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -371,6 +407,8 @@ export default function ProductionVoucherDetails({ voucherId, onBack }: Producti
                   <TableHead>Material Name</TableHead>
                   <TableHead>Required Qty</TableHead>
                   <TableHead>Available Stock</TableHead>
+                  <TableHead>Sent Qty</TableHead>
+                  <TableHead>Balance Qty</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Dispatch Qty</TableHead>
                   <TableHead>Action</TableHead>
@@ -380,7 +418,10 @@ export default function ProductionVoucherDetails({ voucherId, onBack }: Producti
                 {bomData.map((bomItem: any) => {
                   const requiredQty = getRequiredQuantity(bomItem);
                   const availableQty = getInventoryQuantity(bomItem.raw_materials.id);
+                  const sentQty = getSentQuantity(bomItem.raw_materials.id);
+                  const balanceQty = getBalanceQuantity(bomItem);
                   const dispatchQty = dispatchQuantities[bomItem.raw_materials.id] || 0;
+                  const maxDispatchQty = Math.min(availableQty, balanceQty);
                   
                   return (
                     <TableRow key={bomItem.id}>
@@ -397,18 +438,27 @@ export default function ProductionVoucherDetails({ voucherId, onBack }: Producti
                       }`}>
                         {availableQty}
                       </TableCell>
+                      <TableCell className="font-medium text-blue-600">
+                        {sentQty}
+                      </TableCell>
+                      <TableCell className={`font-medium ${
+                        balanceQty === 0 ? "text-green-600" : "text-orange-600"
+                      }`}>
+                        {balanceQty}
+                      </TableCell>
                       <TableCell>
-                        {getStatusBadge(requiredQty, availableQty)}
+                        {getStatusBadge(requiredQty, availableQty, sentQty)}
                       </TableCell>
                       <TableCell>
                         <Input
                           type="number"
                           min="0"
-                          max={Math.min(availableQty, requiredQty)}
+                          max={maxDispatchQty}
                           value={dispatchQty}
                           onChange={(e) => handleDispatchQuantityChange(bomItem.raw_materials.id, e.target.value)}
                           className="w-24"
                           placeholder="0"
+                          disabled={balanceQty === 0}
                         />
                       </TableCell>
                       <TableCell>
@@ -419,12 +469,15 @@ export default function ProductionVoucherDetails({ voucherId, onBack }: Producti
                             dispatchMutation.isPending || 
                             !dispatchQty || 
                             dispatchQty <= 0 || 
-                            dispatchQty > availableQty
+                            dispatchQty > maxDispatchQty ||
+                            balanceQty === 0
                           }
                           className="gap-1"
                         >
                           {dispatchMutation.isPending ? (
                             "Dispatching..."
+                          ) : balanceQty === 0 ? (
+                            "Complete"
                           ) : (
                             <>
                               <CheckCircle className="h-3 w-3" />

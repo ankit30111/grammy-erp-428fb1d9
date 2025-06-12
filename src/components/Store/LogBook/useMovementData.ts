@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -60,14 +59,26 @@ export const useMovementData = (filterType: string) => {
 
       console.log("📋 Material movements fetched:", data?.length, "entries");
       
+      // Remove any potential duplicates by keeping the latest entry for each unique combination
+      const uniqueMovements = data?.filter((movement, index, arr) => {
+        const firstIndex = arr.findIndex(m => 
+          m.raw_material_id === movement.raw_material_id &&
+          m.movement_type === movement.movement_type &&
+          m.quantity === movement.quantity &&
+          m.reference_type === movement.reference_type &&
+          Math.abs(new Date(m.created_at).getTime() - new Date(movement.created_at).getTime()) < 60000 // Within 1 minute
+        );
+        return firstIndex === index;
+      }) || [];
+      
       // Log movement types for debugging
-      const movementTypes = data?.map(m => m.movement_type) || [];
+      const movementTypes = uniqueMovements.map(m => m.movement_type);
       const uniqueTypes = [...new Set(movementTypes)];
       console.log("📊 Movement types found:", uniqueTypes);
       
       // Log recent entries for debugging
-      if (data && data.length > 0) {
-        console.log("📋 Recent movements:", data.slice(0, 5).map(m => ({
+      if (uniqueMovements.length > 0) {
+        console.log("📋 Recent movements (deduplicated):", uniqueMovements.slice(0, 5).map(m => ({
           type: m.movement_type,
           material: m.raw_materials?.material_code,
           quantity: m.quantity,
@@ -76,9 +87,9 @@ export const useMovementData = (filterType: string) => {
         })));
       }
       
-      return data || [];
+      return uniqueMovements;
     },
-    refetchInterval: 2000, // Real-time updates every 2 seconds
+    refetchInterval: 3000, // Real-time updates every 3 seconds
     staleTime: 1000,
   });
 
