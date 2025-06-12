@@ -10,12 +10,6 @@ import { useProjections } from "@/hooks/useProjections";
 import { useCreateProductionSchedule } from "@/hooks/useProductionSchedules";
 import { useToast } from "@/hooks/use-toast";
 
-const productionLines = [
-  { id: "L1", name: "Line 1", capacity: 300 },
-  { id: "L2", name: "Line 2", capacity: 400 },
-  { id: "L3", name: "Line 3", capacity: 250 }
-];
-
 interface ScheduleProductionFormProps {
   date: Date | undefined;
   selectedProjection: string | null;
@@ -45,7 +39,7 @@ const ScheduleProductionForm = ({
   };
 
   const handleScheduleProduction = async () => {
-    if (!date || !selectedProjection || !selectedLine || !quantity) {
+    if (!date || !selectedProjection || !quantity) {
       toast({
         title: "Missing Information",
         description: "Please fill in all required fields",
@@ -58,8 +52,9 @@ const ScheduleProductionForm = ({
       await createSchedule.mutateAsync({
         projection_id: selectedProjection,
         scheduled_date: format(date, 'yyyy-MM-dd'),
-        production_line: selectedLine,
         quantity: parseInt(quantity),
+        // Production line is now optional - can be assigned later
+        production_line: selectedLine || null,
       });
 
       // Reset form
@@ -138,26 +133,18 @@ const ScheduleProductionForm = ({
             
             {/* Right column */}
             <div className="space-y-4">
-              <div>
-                <label htmlFor="line" className="text-sm font-medium mb-1 block">Production Line</label>
-                <Select value={selectedLine} onValueChange={setSelectedLine}>
-                  <SelectTrigger id="line">
-                    <SelectValue placeholder="Select production line" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {productionLines.map((line) => (
-                      <SelectItem key={line.id} value={line.id}>
-                        {line.name} (Capacity: {line.capacity} pcs/day)
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <h4 className="font-medium text-blue-800 mb-2">Production Line Assignment</h4>
+                <p className="text-sm text-blue-700">
+                  Production line assignment is optional during scheduling. 
+                  You can assign production lines later in the production management workflow.
+                </p>
               </div>
               
               <div className="pt-6">
                 <Button 
                   onClick={handleScheduleProduction}
-                  disabled={!date || !selectedProjection || !selectedLine || !quantity || createSchedule.isPending}
+                  disabled={!date || !selectedProjection || !quantity || createSchedule.isPending}
                   className="w-full"
                 >
                   <Check className="mr-2 h-4 w-4" />

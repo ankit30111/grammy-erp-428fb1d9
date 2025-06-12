@@ -1560,7 +1560,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           id: string
-          production_line: string
+          production_line: string | null
           projection_id: string
           quantity: number
           scheduled_date: string
@@ -1571,7 +1571,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
-          production_line: string
+          production_line?: string | null
           projection_id: string
           quantity: number
           scheduled_date: string
@@ -1582,7 +1582,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
-          production_line?: string
+          production_line?: string | null
           projection_id?: string
           quantity?: number
           scheduled_date?: string

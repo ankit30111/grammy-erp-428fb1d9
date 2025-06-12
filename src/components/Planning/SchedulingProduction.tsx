@@ -15,12 +15,9 @@ const SchedulingProduction = () => {
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [selectedProjection, setSelectedProjection] = useState<string>("");
   const [quantity, setQuantity] = useState<string>("");
-  const [productionLine, setProductionLine] = useState<string>("");
 
   const { data: projections } = useProjections();
   const createSchedule = useCreateProductionSchedule();
-
-  const productionLines = ["Line 1", "Line 2", "Sub Assembly 1", "Sub Assembly 2"];
 
   const unscheduledProjections = projections?.filter(projection => {
     // Filter projections that still have remaining quantity to schedule
@@ -32,7 +29,7 @@ const SchedulingProduction = () => {
     selectedProjectionData.quantity - (selectedProjectionData.scheduled_quantity || 0) : 0;
 
   const handleSchedule = async () => {
-    if (!selectedDate || !selectedProjection || !quantity || !productionLine) {
+    if (!selectedDate || !selectedProjection || !quantity) {
       return;
     }
 
@@ -41,14 +38,13 @@ const SchedulingProduction = () => {
         projection_id: selectedProjection,
         scheduled_date: format(selectedDate, 'yyyy-MM-dd'),
         quantity: parseInt(quantity),
-        production_line: productionLine,
+        // Remove production_line requirement - it can be assigned later
       });
 
       // Reset form
       setSelectedDate(undefined);
       setSelectedProjection("");
       setQuantity("");
-      setProductionLine("");
     } catch (error) {
       console.error('Error scheduling production:', error);
     }
@@ -127,30 +123,19 @@ const SchedulingProduction = () => {
             )}
           </div>
 
-          <div>
-            <Label htmlFor="production-line">Production Line</Label>
-            <Select value={productionLine} onValueChange={setProductionLine}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select production line" />
-              </SelectTrigger>
-              <SelectContent>
-                {productionLines.map((line) => (
-                  <SelectItem key={line} value={line}>
-                    {line}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
           <Button 
             onClick={handleSchedule}
-            disabled={!selectedDate || !selectedProjection || !quantity || !productionLine || createSchedule.isPending}
+            disabled={!selectedDate || !selectedProjection || !quantity || createSchedule.isPending}
             className="w-full gap-2"
           >
             <Factory className="h-4 w-4" />
             {createSchedule.isPending ? "Scheduling..." : "Schedule Production"}
           </Button>
+
+          <div className="text-sm text-muted-foreground mt-2 p-3 bg-gray-50 rounded-lg">
+            <p className="font-medium">Note:</p>
+            <p>Production line assignment will be done later in the production management workflow.</p>
+          </div>
 
           {unscheduledProjections.length === 0 && (
             <div className="text-center py-4 text-muted-foreground">

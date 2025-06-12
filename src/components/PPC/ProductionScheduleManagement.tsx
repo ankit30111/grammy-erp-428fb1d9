@@ -156,6 +156,37 @@ const ProductionScheduleManagement = () => {
     }));
   };
 
+  const handleAssignProductionLine = async (scheduleId: string) => {
+    const selectedLine = productionLines[scheduleId];
+    if (!selectedLine) {
+      toast({
+        title: "Production Line Required",
+        description: "Please select a production line to assign",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      updateSchedule.mutate({
+        scheduleId,
+        updates: { production_line: selectedLine }
+      });
+
+      toast({
+        title: "Production Line Assigned",
+        description: `Production line ${selectedLine} assigned successfully`,
+      });
+    } catch (error) {
+      console.error('Error assigning production line:', error);
+      toast({
+        title: "Error",
+        description: "Failed to assign production line",
+        variant: "destructive",
+      });
+    }
+  };
+
   if (isLoading) {
     return (
       <Card>
@@ -207,24 +238,36 @@ const ProductionScheduleManagement = () => {
                   <TableCell>{format(new Date(schedule.scheduled_date), 'MMM dd, yyyy')}</TableCell>
                   <TableCell>{schedule.quantity}</TableCell>
                   <TableCell>
-                    {schedule.status === 'KIT_PREPARED' ? (
-                      <Select
-                        value={productionLines[schedule.id] || ""}
-                        onValueChange={(value) => handleProductionLineChange(schedule.id, value)}
-                      >
-                        <SelectTrigger className="w-[150px]">
-                          <SelectValue placeholder="Select Line" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {productionLineOptions.map((line) => (
-                            <SelectItem key={line} value={line}>
-                              {line}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                    {schedule.production_line ? (
+                      <span className="font-medium">{schedule.production_line}</span>
+                    ) : schedule.status === 'SCHEDULED' ? (
+                      <div className="flex gap-2">
+                        <Select
+                          value={productionLines[schedule.id] || ""}
+                          onValueChange={(value) => handleProductionLineChange(schedule.id, value)}
+                        >
+                          <SelectTrigger className="w-[130px]">
+                            <SelectValue placeholder="Select Line" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {productionLineOptions.map((line) => (
+                              <SelectItem key={line} value={line}>
+                                {line}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleAssignProductionLine(schedule.id)}
+                          disabled={!productionLines[schedule.id]}
+                        >
+                          Assign
+                        </Button>
+                      </div>
                     ) : (
-                      schedule.production_line || '-'
+                      <span className="text-muted-foreground">Not assigned</span>
                     )}
                   </TableCell>
                   <TableCell>
@@ -234,7 +277,7 @@ const ProductionScheduleManagement = () => {
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-2">
-                      {schedule.status === 'SCHEDULED' && (
+                      {schedule.status === 'SCHEDULED' && schedule.production_line && (
                         <Button
                           size="sm"
                           onClick={() => handleBlockMaterials(schedule.id)}
@@ -263,6 +306,7 @@ const ProductionScheduleManagement = () => {
                           size="sm"
                           onClick={() => handleStartProduction(schedule.id)}
                           className="gap-2"
+                          disabled={!schedule.production_line}
                         >
                           <Play className="h-4 w-4" />
                           Start Production

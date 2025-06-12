@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -111,14 +110,14 @@ export const useCreateProductionSchedule = () => {
       const voucherNumber = await generateVoucherNumber(scheduleData.scheduled_date);
       console.log('📋 Generated voucher number:', voucherNumber);
       
-      // First create the production schedule with the selected production line
+      // Create the production schedule without requiring production line
       const { data: schedule, error: scheduleError } = await supabase
         .from('production_schedules')
         .insert({
           projection_id: scheduleData.projection_id,
           scheduled_date: scheduleData.scheduled_date,
           quantity: scheduleData.quantity,
-          production_line: scheduleData.production_line, // This is crucial
+          production_line: scheduleData.production_line || null, // Make production line optional
           status: 'SCHEDULED',
         })
         .select()
@@ -171,6 +170,7 @@ export const useCreateProductionSchedule = () => {
       queryClient.invalidateQueries({ queryKey: ['production_schedules'] });
       queryClient.invalidateQueries({ queryKey: ['projections'] });
       queryClient.invalidateQueries({ queryKey: ['production-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['production-orders-list'] });
       queryClient.invalidateQueries({ queryKey: ['scheduled-productions'] });
       queryClient.invalidateQueries({ queryKey: ['production-lines-overview'] });
       queryClient.invalidateQueries({ queryKey: ['production-queue'] });
@@ -215,6 +215,7 @@ export const useDeleteProductionSchedule = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['production_schedules'] });
       queryClient.invalidateQueries({ queryKey: ['production-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['production-orders-list'] });
       queryClient.invalidateQueries({ queryKey: ['projections'] });
       toast({
         title: "Success",
@@ -257,6 +258,7 @@ export const useUpdateProductionSchedule = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['production_schedules'] });
       queryClient.invalidateQueries({ queryKey: ['production-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['production-orders-list'] });
       queryClient.invalidateQueries({ queryKey: ['projections'] });
       toast({
         title: "Success",
