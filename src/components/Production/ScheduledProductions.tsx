@@ -30,7 +30,7 @@ export default function ScheduledProductions() {
             production_line
           )
         `)
-        .in("status", ["PENDING", "IN_PROGRESS"])
+        .in("status", ["SCHEDULED", "PENDING", "IN_PROGRESS"])
         .order("scheduled_date", { ascending: true });
 
       if (error) {
@@ -89,6 +89,8 @@ export default function ScheduledProductions() {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
+      case 'SCHEDULED':
+        return <Badge className="bg-blue-100 text-blue-800">Scheduled</Badge>;
       case 'PENDING':
         return <Badge variant="secondary">Pending</Badge>;
       case 'IN_PROGRESS':
