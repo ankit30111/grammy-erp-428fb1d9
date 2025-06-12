@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,34 +28,6 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
   const queryClient = useQueryClient();
 
   const productionLines = ["Line 1", "Line 2", "Sub Assembly 1", "Sub Assembly 2"];
-
-  // Initialize line assignments from existing production order data
-  useEffect(() => {
-    if (production?.production_lines) {
-      try {
-        const existingAssignments = typeof production.production_lines === 'string' 
-          ? JSON.parse(production.production_lines) 
-          : production.production_lines;
-        setLineAssignments(existingAssignments || {});
-      } catch (error) {
-        console.log("No existing line assignments found");
-        setLineAssignments({});
-      }
-    }
-  }, [production]);
-
-  // Initialize received quantities from kit items
-  useEffect(() => {
-    if (sentMaterials.length > 0) {
-      const initialQuantities: Record<string, number> = {};
-      sentMaterials.forEach(item => {
-        if (item.verified_by_production) {
-          initialQuantities[item.raw_material_id] = item.actual_quantity || 0;
-        }
-      });
-      setReceivedQuantities(initialQuantities);
-    }
-  }, [sentMaterials]);
 
   // Fetch BOM data for the product
   const { data: bomData = [] } = useQuery({
@@ -118,6 +89,34 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
     enabled: !!production?.id && isOpen,
     refetchInterval: 3000, // Refresh every 3 seconds for real-time updates
   });
+
+  // Initialize line assignments from existing production order data
+  useEffect(() => {
+    if (production?.production_lines) {
+      try {
+        const existingAssignments = typeof production.production_lines === 'string' 
+          ? JSON.parse(production.production_lines) 
+          : production.production_lines;
+        setLineAssignments(existingAssignments || {});
+      } catch (error) {
+        console.log("No existing line assignments found");
+        setLineAssignments({});
+      }
+    }
+  }, [production]);
+
+  // Initialize received quantities from kit items
+  useEffect(() => {
+    if (sentMaterials.length > 0) {
+      const initialQuantities: Record<string, number> = {};
+      sentMaterials.forEach(item => {
+        if (item.verified_by_production) {
+          initialQuantities[item.raw_material_id] = item.actual_quantity || 0;
+        }
+      });
+      setReceivedQuantities(initialQuantities);
+    }
+  }, [sentMaterials]);
 
   // Group BOM items by assembly type
   const groupedBOM = {
