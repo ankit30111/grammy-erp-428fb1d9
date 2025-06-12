@@ -21,7 +21,7 @@ export default function ProductionVoucherDetails({ voucherId, onBack }: Producti
   const queryClient = useQueryClient();
   const [dispatchQuantities, setDispatchQuantities] = useState<Record<string, number>>({});
 
-  // Fetch production order details with BOM
+  // Fetch production order details
   const { data: productionOrder, isLoading } = useQuery({
     queryKey: ["production-order-details", voucherId],
     queryFn: async () => {
@@ -35,18 +35,6 @@ export default function ProductionVoucherDetails({ voucherId, onBack }: Producti
             id,
             name,
             product_code
-          ),
-          bom (
-            id,
-            quantity,
-            bom_type,
-            is_critical,
-            raw_materials (
-              id,
-              material_code,
-              name,
-              category
-            )
           )
         `)
         .eq("id", voucherId)
@@ -62,13 +50,45 @@ export default function ProductionVoucherDetails({ voucherId, onBack }: Producti
     },
   });
 
+  // Fetch BOM data separately to avoid relation issues
+  const { data: bomData = [] } = useQuery({
+    queryKey: ["production-bom", productionOrder?.product_id],
+    queryFn: async () => {
+      if (!productionOrder?.product_id) return [];
+      
+      console.log("🔍 Fetching BOM for product:", productionOrder.product_id);
+      
+      const { data, error } = await supabase
+        .from("bom")
+        .select(`
+          *,
+          raw_materials (
+            id,
+            material_code,
+            name,
+            category
+          )
+        `)
+        .eq("product_id", productionOrder.product_id);
+
+      if (error) {
+        console.error("❌ Error fetching BOM:", error);
+        throw error;
+      }
+
+      console.log("📋 BOM data fetched:", data);
+      return data || [];
+    },
+    enabled: !!productionOrder?.product_id,
+  });
+
   // Fetch current inventory levels
   const { data: inventoryLevels = [] } = useQuery({
     queryKey: ["inventory-levels", voucherId],
     queryFn: async () => {
-      if (!productionOrder?.bom) return [];
+      if (!bomData || bomData.length === 0) return [];
       
-      const materialIds = productionOrder.bom.map((item: any) => item.raw_materials.id);
+      const materialIds = bomData.map((item: any) => item.raw_materials.id);
       
       const { data, error } = await supabase
         .from("inventory")
@@ -82,7 +102,7 @@ export default function ProductionVoucherDetails({ voucherId, onBack }: Producti
 
       return data || [];
     },
-    enabled: !!productionOrder?.bom,
+    enabled: bomData.length > 0,
   });
 
   // Material dispatch mutation
@@ -306,80 +326,87 @@ export default function ProductionVoucherDetails({ voucherId, onBack }: Producti
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Material Code</TableHead>
-                <TableHead>Material Name</TableHead>
-                <TableHead>Required Qty</TableHead>
-                <TableHead>Available Stock</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Dispatch Qty</TableHead>
-                <TableHead>Action</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {productionOrder.bom?.map((bomItem: any) => {
-                const requiredQty = getRequiredQuantity(bomItem);
-                const availableQty = getInventoryQuantity(bomItem.raw_materials.id);
-                const dispatchQty = dispatchQuantities[bomItem.raw_materials.id] || 0;
-                
-                return (
-                  <TableRow key={bomItem.id}>
-                    <TableCell className="font-mono font-medium">
-                      {bomItem.raw_materials.material_code}
-                      {bomItem.is_critical && (
-                        <Badge variant="destructive" className="ml-2 text-xs">Critical</Badge>
-                      )}
-                    </TableCell>
-                    <TableCell>{bomItem.raw_materials.name}</TableCell>
-                    <TableCell className="font-medium">{requiredQty}</TableCell>
-                    <TableCell className={`font-medium ${
-                      availableQty >= requiredQty ? "text-green-600" : "text-red-600"
-                    }`}>
-                      {availableQty}
-                    </TableCell>
-                    <TableCell>
-                      {getStatusBadge(requiredQty, availableQty)}
-                    </TableCell>
-                    <TableCell>
-                      <Input
-                        type="number"
-                        min="0"
-                        max={Math.min(availableQty, requiredQty)}
-                        value={dispatchQty}
-                        onChange={(e) => handleDispatchQuantityChange(bomItem.raw_materials.id, e.target.value)}
-                        className="w-24"
-                        placeholder="0"
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        size="sm"
-                        onClick={() => handleDispatchMaterial(bomItem.raw_materials.id)}
-                        disabled={
-                          dispatchMutation.isPending || 
-                          !dispatchQty || 
-                          dispatchQty <= 0 || 
-                          dispatchQty > availableQty
-                        }
-                        className="gap-1"
-                      >
-                        {dispatchMutation.isPending ? (
-                          "Dispatching..."
-                        ) : (
-                          <>
-                            <CheckCircle className="h-3 w-3" />
-                            Dispatch
-                          </>
+          {bomData.length > 0 ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Material Code</TableHead>
+                  <TableHead>Material Name</TableHead>
+                  <TableHead>Required Qty</TableHead>
+                  <TableHead>Available Stock</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Dispatch Qty</TableHead>
+                  <TableHead>Action</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {bomData.map((bomItem: any) => {
+                  const requiredQty = getRequiredQuantity(bomItem);
+                  const availableQty = getInventoryQuantity(bomItem.raw_materials.id);
+                  const dispatchQty = dispatchQuantities[bomItem.raw_materials.id] || 0;
+                  
+                  return (
+                    <TableRow key={bomItem.id}>
+                      <TableCell className="font-mono font-medium">
+                        {bomItem.raw_materials.material_code}
+                        {bomItem.is_critical && (
+                          <Badge variant="destructive" className="ml-2 text-xs">Critical</Badge>
                         )}
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+                      </TableCell>
+                      <TableCell>{bomItem.raw_materials.name}</TableCell>
+                      <TableCell className="font-medium">{requiredQty}</TableCell>
+                      <TableCell className={`font-medium ${
+                        availableQty >= requiredQty ? "text-green-600" : "text-red-600"
+                      }`}>
+                        {availableQty}
+                      </TableCell>
+                      <TableCell>
+                        {getStatusBadge(requiredQty, availableQty)}
+                      </TableCell>
+                      <TableCell>
+                        <Input
+                          type="number"
+                          min="0"
+                          max={Math.min(availableQty, requiredQty)}
+                          value={dispatchQty}
+                          onChange={(e) => handleDispatchQuantityChange(bomItem.raw_materials.id, e.target.value)}
+                          className="w-24"
+                          placeholder="0"
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          size="sm"
+                          onClick={() => handleDispatchMaterial(bomItem.raw_materials.id)}
+                          disabled={
+                            dispatchMutation.isPending || 
+                            !dispatchQty || 
+                            dispatchQty <= 0 || 
+                            dispatchQty > availableQty
+                          }
+                          className="gap-1"
+                        >
+                          {dispatchMutation.isPending ? (
+                            "Dispatching..."
+                          ) : (
+                            <>
+                              <CheckCircle className="h-3 w-3" />
+                              Dispatch
+                            </>
+                          )}
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              <Package className="h-12 w-12 mx-auto mb-4" />
+              <p>No BOM materials found for this product</p>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
