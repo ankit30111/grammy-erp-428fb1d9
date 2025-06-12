@@ -7,7 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
 // Import existing components
-import ScheduledProductionsTab from "@/components/Store/ScheduledProductionsTab";
+import ProductionVoucherDetails from "@/components/Store/ProductionVoucherDetails";
 import GRNManagement from "@/components/Store/GRNManagement";
 import MaterialRequestsTab from "@/components/Store/MaterialRequestsTab";
 import LogBook from "@/components/Store/LogBook";
@@ -62,7 +62,7 @@ const StoreDashboard = () => {
             <h2 className="text-xl font-semibold">Production Voucher Management</h2>
             <Badge variant="outline">Real-time Inventory Deduction</Badge>
           </div>
-          <ScheduledProductionsTab />
+          <ProductionVoucherDetails />
         </TabsContent>
 
         <TabsContent value="grn-management" className="space-y-4">
