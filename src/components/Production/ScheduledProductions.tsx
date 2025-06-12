@@ -7,12 +7,14 @@ import { Calendar, Package, Factory, Clock, Eye } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
+import { ErrorBoundary } from "@/components/ui/error-boundary";
+import { LoadingState } from "@/components/ui/loading-state";
 import EnhancedMaterialReceiptView from "./EnhancedMaterialReceiptView";
 
 export default function ScheduledProductions() {
   const [selectedProductionOrder, setSelectedProductionOrder] = useState<string | null>(null);
 
-  const { data: productionOrders = [], isLoading } = useQuery({
+  const { data: productionOrders = [], isLoading, error } = useQuery({
     queryKey: ["scheduled-production-orders"],
     queryFn: async () => {
       console.log("🔍 Fetching scheduled production orders...");
@@ -42,6 +44,8 @@ export default function ScheduledProductions() {
       return data || [];
     },
     refetchInterval: 10000,
+    retry: 3,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
 
   // Fetch BOM data for selected production order
@@ -77,6 +81,7 @@ export default function ScheduledProductions() {
       return data || [];
     },
     enabled: !!selectedProductionOrder,
+    retry: 2,
   });
 
   const getRequiredQuantities = (order: any) => {
@@ -115,148 +120,159 @@ export default function ScheduledProductions() {
     }
   };
 
+  if (error) {
+    return (
+      <Card className="border-red-200">
+        <CardContent className="py-6">
+          <div className="text-center text-red-600">
+            <Factory className="h-12 w-12 mx-auto mb-2" />
+            <p className="font-medium">Failed to load production orders</p>
+            <p className="text-sm text-muted-foreground mt-1">{error.message}</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   if (selectedProductionOrder) {
     const selectedOrder = productionOrders.find(po => po.id === selectedProductionOrder);
     
     return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <Button 
-            variant="outline" 
-            onClick={() => setSelectedProductionOrder(null)}
-            className="gap-2"
-          >
-            ← Back to List
-          </Button>
-          <Badge variant="outline">
-            Production Material Receipt
-          </Badge>
+      <ErrorBoundary>
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <Button 
+              variant="outline" 
+              onClick={() => setSelectedProductionOrder(null)}
+              className="gap-2"
+            >
+              ← Back to List
+            </Button>
+            <Badge variant="outline">
+              Production Material Receipt
+            </Badge>
+          </div>
+
+          {selectedOrder && (
+            <>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Factory className="h-5 w-5" />
+                    {selectedOrder.voucher_number} - {selectedOrder.products?.name}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div>
+                      <span className="text-muted-foreground">Product Code:</span>
+                      <p className="font-medium">{selectedOrder.products?.product_code}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Quantity:</span>
+                      <p className="font-medium">{selectedOrder.quantity}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Scheduled Date:</span>
+                      <p className="font-medium">{format(new Date(selectedOrder.scheduled_date), 'MMM dd, yyyy')}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Status:</span>
+                      <div className="mt-1">{getStatusBadge(selectedOrder.status)}</div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <EnhancedMaterialReceiptView
+                productionOrderId={selectedProductionOrder}
+                bomData={bomData}
+                requiredQuantities={getRequiredQuantities(selectedOrder)}
+              />
+            </>
+          )}
         </div>
-
-        {selectedOrder && (
-          <>
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Factory className="h-5 w-5" />
-                  {selectedOrder.voucher_number} - {selectedOrder.products?.name}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div>
-                    <span className="text-muted-foreground">Product Code:</span>
-                    <p className="font-medium">{selectedOrder.products?.product_code}</p>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Quantity:</span>
-                    <p className="font-medium">{selectedOrder.quantity}</p>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Scheduled Date:</span>
-                    <p className="font-medium">{format(new Date(selectedOrder.scheduled_date), 'MMM dd, yyyy')}</p>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Status:</span>
-                    <div className="mt-1">{getStatusBadge(selectedOrder.status)}</div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <EnhancedMaterialReceiptView
-              productionOrderId={selectedProductionOrder}
-              bomData={bomData}
-              requiredQuantities={getRequiredQuantities(selectedOrder)}
-            />
-          </>
-        )}
-      </div>
+      </ErrorBoundary>
     );
   }
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-8">
-        <div className="text-center">
-          <Factory className="h-12 w-12 mx-auto text-muted-foreground mb-2 animate-pulse" />
-          <p className="text-muted-foreground">Loading scheduled productions...</p>
-        </div>
-      </div>
-    );
+    return <LoadingState message="Loading scheduled productions..." lines={5} />;
   }
 
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Calendar className="h-5 w-5" />
-            Scheduled Productions ({productionOrders.length})
-            <Badge variant="outline">Material Receipt Tracking</Badge>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {productionOrders.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <Factory className="h-12 w-12 mx-auto mb-4" />
-              <p>No scheduled productions found</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {productionOrders.map((order) => (
-                <div key={order.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
-                  <div className="flex justify-between items-start mb-3">
-                    <div>
-                      <h3 className="font-medium text-lg">{order.voucher_number}</h3>
-                      <p className="text-muted-foreground">{order.products?.name}</p>
+    <ErrorBoundary>
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5" />
+              Scheduled Productions ({productionOrders.length})
+              <Badge variant="outline">Material Receipt Tracking</Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {productionOrders.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Factory className="h-12 w-12 mx-auto mb-4" />
+                <p>No scheduled productions found</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {productionOrders.map((order) => (
+                  <div key={order.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
+                    <div className="flex justify-between items-start mb-3">
+                      <div>
+                        <h3 className="font-medium text-lg">{order.voucher_number}</h3>
+                        <p className="text-muted-foreground">{order.products?.name}</p>
+                      </div>
+                      <div className="flex gap-2">
+                        {getStatusBadge(order.status)}
+                        {getKitStatusBadge(order.kit_status)}
+                      </div>
                     </div>
-                    <div className="flex gap-2">
-                      {getStatusBadge(order.status)}
-                      {getKitStatusBadge(order.kit_status)}
-                    </div>
-                  </div>
 
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                    <div className="flex items-center gap-2">
-                      <Package className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm">Quantity: {order.quantity}</span>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                      <div className="flex items-center gap-2">
+                        <Package className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm">Quantity: {order.quantity}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm">
+                          {format(new Date(order.scheduled_date), 'MMM dd, yyyy')}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Factory className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm">
+                          Line: {order.production_schedules?.production_line || 'TBD'}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Clock className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm capitalize">{order.status.toLowerCase()}</span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm">
-                        {format(new Date(order.scheduled_date), 'MMM dd, yyyy')}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Factory className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm">
-                        Line: {order.production_schedules?.production_line || 'TBD'}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Clock className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm capitalize">{order.status.toLowerCase()}</span>
-                    </div>
-                  </div>
 
-                  <div className="flex justify-end">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setSelectedProductionOrder(order.id)}
-                      className="gap-2"
-                    >
-                      <Eye className="h-4 w-4" />
-                      View Material Receipt
-                    </Button>
+                    <div className="flex justify-end">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setSelectedProductionOrder(order.id)}
+                        className="gap-2"
+                      >
+                        <Eye className="h-4 w-4" />
+                        View Material Receipt
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </ErrorBoundary>
   );
 }

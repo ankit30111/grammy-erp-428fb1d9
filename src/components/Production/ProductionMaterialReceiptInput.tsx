@@ -1,9 +1,10 @@
+
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { CheckCircle, AlertTriangle, Package } from "lucide-react";
+import { CheckCircle, AlertTriangle, Package, Loader2 } from "lucide-react";
 
 interface ProductionMaterialReceiptInputProps {
   materialCode: string;
@@ -26,18 +27,43 @@ export default function ProductionMaterialReceiptInput({
 }: ProductionMaterialReceiptInputProps) {
   const [inputQuantity, setInputQuantity] = useState<string>("");
   const [notes, setNotes] = useState("");
+  const [inputError, setInputError] = useState<string>("");
 
   const remainingQuantity = Math.max(0, sentQuantity - receivedQuantity);
   const isFullyReceived = receivedQuantity >= sentQuantity;
   const isOverReceived = receivedQuantity > sentQuantity;
   const willCreateDiscrepancy = inputQuantity && parseInt(inputQuantity) !== remainingQuantity;
 
+  const validateInput = (value: string): string => {
+    const quantity = parseInt(value);
+    if (isNaN(quantity) || quantity <= 0) {
+      return "Please enter a valid quantity greater than 0";
+    }
+    if (quantity > sentQuantity + receivedQuantity) {
+      return `Cannot exceed total available quantity (${sentQuantity + receivedQuantity})`;
+    }
+    return "";
+  };
+
+  const handleInputChange = (value: string) => {
+    setInputQuantity(value);
+    setInputError(validateInput(value));
+  };
+
   const handleSubmit = () => {
     const quantity = parseInt(inputQuantity);
+    const error = validateInput(inputQuantity);
+    
+    if (error) {
+      setInputError(error);
+      return;
+    }
+
     if (quantity > 0) {
       onReceiptLog(quantity, notes.trim() || undefined);
       setInputQuantity("");
       setNotes("");
+      setInputError("");
     }
   };
 
@@ -118,23 +144,31 @@ export default function ProductionMaterialReceiptInput({
           {getDiscrepancyWarning()}
           
           <div className="flex gap-2">
-            <Input
-              type="number"
-              placeholder="Enter actual qty received"
-              value={inputQuantity}
-              onChange={(e) => setInputQuantity(e.target.value)}
-              min={1}
-              className="flex-1"
-              disabled={isLogging}
-            />
+            <div className="flex-1">
+              <Input
+                type="number"
+                placeholder="Enter actual qty received"
+                value={inputQuantity}
+                onChange={(e) => handleInputChange(e.target.value)}
+                min={1}
+                disabled={isLogging}
+                className={inputError ? "border-red-300" : ""}
+              />
+              {inputError && (
+                <p className="text-xs text-red-600 mt-1">{inputError}</p>
+              )}
+            </div>
             <Button 
               size="sm" 
               onClick={handleSubmit}
-              disabled={!inputQuantity || parseInt(inputQuantity) <= 0 || isLogging}
+              disabled={!inputQuantity || parseInt(inputQuantity) <= 0 || isLogging || !!inputError}
               className="gap-1"
             >
               {isLogging ? (
-                "Logging..."
+                <>
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Logging...
+                </>
               ) : (
                 <>
                   <CheckCircle className="h-3 w-3" />
