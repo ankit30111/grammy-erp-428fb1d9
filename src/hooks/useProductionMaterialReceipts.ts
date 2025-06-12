@@ -89,8 +89,8 @@ export const useProductionMaterialReceipts = (productionOrderId: string) => {
         }
       }
 
-      // Use safe material movement logging
-      const { error: movementError } = await supabase.rpc("log_material_movement_safe", {
+      // Use the existing log_material_movement function
+      const { error: movementError } = await supabase.rpc("log_material_movement", {
         p_raw_material_id: rawMaterialId,
         p_movement_type: "PRODUCTION_RECEIPT_VERIFIED",
         p_quantity: quantity,
