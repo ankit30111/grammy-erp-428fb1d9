@@ -114,12 +114,22 @@ const ProductionFeedbackTab = () => {
 
         if (updateError) throw updateError;
 
-        // Update inventory using raw SQL to handle the increment
+        // Update inventory using standard Supabase update method
+        const { data: currentInventory, error: fetchError } = await supabase
+          .from("inventory")
+          .select("quantity")
+          .eq("raw_material_id", rawMaterialId)
+          .single();
+
+        if (fetchError) throw fetchError;
+
         const { error: inventoryError } = await supabase
-          .rpc('increment_inventory_quantity', {
-            material_id: rawMaterialId,
-            increment_amount: approvedQuantity
-          });
+          .from("inventory")
+          .update({ 
+            quantity: (currentInventory?.quantity || 0) + approvedQuantity,
+            last_updated: new Date().toISOString()
+          })
+          .eq("raw_material_id", rawMaterialId);
 
         if (inventoryError) throw inventoryError;
 
