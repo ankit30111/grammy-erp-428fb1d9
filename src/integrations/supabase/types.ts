@@ -1579,6 +1579,47 @@ export type Database = {
           },
         ]
       }
+      production_line_assignments: {
+        Row: {
+          assigned_at: string | null
+          assigned_by: string | null
+          bom_category: Database["public"]["Enums"]["bom_type_enum"]
+          created_at: string | null
+          id: string
+          production_line: string
+          production_order_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          assigned_at?: string | null
+          assigned_by?: string | null
+          bom_category: Database["public"]["Enums"]["bom_type_enum"]
+          created_at?: string | null
+          id?: string
+          production_line: string
+          production_order_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          assigned_at?: string | null
+          assigned_by?: string | null
+          bom_category?: Database["public"]["Enums"]["bom_type_enum"]
+          created_at?: string | null
+          id?: string
+          production_line?: string
+          production_order_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "production_line_assignments_production_order_id_fkey"
+            columns: ["production_order_id"]
+            isOneToOne: false
+            referencedRelation: "production_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       production_material_receipts: {
         Row: {
           created_at: string
@@ -2671,6 +2712,7 @@ export type Database = {
     }
     Enums: {
       bom_type: "main_assembly" | "sub_assembly" | "accessory"
+      bom_type_enum: "main_assembly" | "sub_assembly" | "accessory"
       employee_status: "active" | "inactive" | "terminated" | "on_leave"
       performance_rating:
         | "excellent"
@@ -2795,6 +2837,7 @@ export const Constants = {
   public: {
     Enums: {
       bom_type: ["main_assembly", "sub_assembly", "accessory"],
+      bom_type_enum: ["main_assembly", "sub_assembly", "accessory"],
       employee_status: ["active", "inactive", "terminated", "on_leave"],
       performance_rating: [
         "excellent",

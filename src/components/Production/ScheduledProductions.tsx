@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -48,7 +47,7 @@ export default function ScheduledProductions() {
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
 
-  // Fetch BOM data for selected production order
+  // Fetch BOM data for selected production order with new bom_type field
   const { data: bomData = [] } = useQuery({
     queryKey: ["production-bom", selectedProductionOrder],
     queryFn: async () => {
@@ -57,12 +56,17 @@ export default function ScheduledProductions() {
       const order = productionOrders.find(po => po.id === selectedProductionOrder);
       if (!order) return [];
       
-      console.log("🔍 Fetching BOM for production order:", selectedProductionOrder);
+      console.log("🔍 Fetching BOM with categories for production order:", selectedProductionOrder);
       
       const { data, error } = await supabase
         .from("bom")
         .select(`
-          *,
+          id,
+          product_id,
+          raw_material_id,
+          quantity,
+          bom_type,
+          is_critical,
           raw_materials (
             id,
             material_code,
@@ -77,7 +81,7 @@ export default function ScheduledProductions() {
         throw error;
       }
 
-      console.log("📋 BOM data fetched:", data);
+      console.log("📋 BOM data with categories fetched:", data);
       return data || [];
     },
     enabled: !!selectedProductionOrder,
@@ -87,7 +91,7 @@ export default function ScheduledProductions() {
   const getRequiredQuantities = (order: any) => {
     const quantities: Record<string, number> = {};
     bomData.forEach((bomItem: any) => {
-      quantities[bomItem.raw_materials.id] = bomItem.quantity * order.quantity;
+      quantities[bomItem.raw_material_id] = bomItem.quantity * order.quantity;
     });
     return quantities;
   };
@@ -139,7 +143,7 @@ export default function ScheduledProductions() {
     
     return (
       <ErrorBoundary>
-        <div className="space-y-6">
+        <div className="space-y-6 max-w-7xl mx-auto p-4">
           <div className="flex items-center justify-between">
             <Button 
               variant="outline" 
@@ -149,7 +153,7 @@ export default function ScheduledProductions() {
               ← Back to List
             </Button>
             <Badge variant="outline">
-              Production Material Receipt
+              Production Material Receipt - Enhanced
             </Badge>
           </div>
 
@@ -202,13 +206,13 @@ export default function ScheduledProductions() {
 
   return (
     <ErrorBoundary>
-      <div className="space-y-6">
+      <div className="space-y-6 max-w-7xl mx-auto p-4">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Calendar className="h-5 w-5" />
               Scheduled Productions ({productionOrders.length})
-              <Badge variant="outline">Material Receipt Tracking</Badge>
+              <Badge variant="outline">Enhanced Material Receipt Tracking</Badge>
             </CardTitle>
           </CardHeader>
           <CardContent>
