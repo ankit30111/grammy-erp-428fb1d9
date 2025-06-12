@@ -1,14 +1,16 @@
 
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { CheckCircle, Package } from "lucide-react";
+import { MessageSquare, Package, AlertTriangle, CheckCircle, ArrowLeftRight } from "lucide-react";
 
 interface ProductionFeedbackDialogProps {
   productionOrderId: string;
@@ -18,15 +20,41 @@ interface ProductionFeedbackDialogProps {
 }
 
 const ProductionFeedbackDialog = ({ productionOrderId, voucherNumber, isOpen, onClose }: ProductionFeedbackDialogProps) => {
-  const [receivedQuantities, setReceivedQuantities] = useState<Record<string, number>>({});
+  const [feedback, setFeedback] = useState<Record<string, { actualUsed: number; reason: string }>>({});
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch materials sent to this production order
-  const { data: sentMaterials = [] } = useQuery({
-    queryKey: ["production-feedback-materials", productionOrderId],
+  // Fetch production order with BOM and sent materials
+  const { data: productionData, isLoading } = useQuery({
+    queryKey: ["production-feedback", productionOrderId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      console.log("🔍 Fetching production feedback data for:", productionOrderId);
+      
+      // Get production order with BOM
+      const { data: prodOrder, error: prodError } = await supabase
+        .from("production_orders")
+        .select(`
+          *,
+          products!product_id (
+            name,
+            bom!product_id (
+              *,
+              raw_materials!raw_material_id (
+                id,
+                material_code,
+                name,
+                category
+              )
+            )
+          )
+        `)
+        .eq("id", productionOrderId)
+        .single();
+
+      if (prodError) throw prodError;
+
+      // Get materials sent by store
+      const { data: sentMaterials, error: sentError } = await supabase
         .from("kit_items")
         .select(`
           *,
@@ -41,245 +69,312 @@ const ProductionFeedbackDialog = ({ productionOrderId, voucherNumber, isOpen, on
           )
         `)
         .eq("kit_preparation.production_order_id", productionOrderId);
-      
-      if (error) throw error;
-      return data || [];
+
+      if (sentError) throw sentError;
+
+      console.log("📊 Production feedback data:", { prodOrder, sentMaterials });
+      return { productionOrder: prodOrder, sentMaterials };
     },
     enabled: !!productionOrderId && isOpen,
   });
 
-  // Enhanced production feedback mutation with inventory adjustment
-  const saveProductionFeedback = useMutation({
-    mutationFn: async (feedbackData: Array<{ kitItemId: string; actualReceived: number; materialId: string; sentQuantity: number }>) => {
-      console.log("🎯 Processing production feedback with inventory adjustment...");
+  // ENHANCED: Production feedback submission with inventory adjustment
+  const submitFeedbackMutation = useMutation({
+    mutationFn: async (feedbackData: Array<{ materialId: string; sentQuantity: number; actualUsed: number; reason: string }>) => {
+      console.log("🎯 PROCESSING PRODUCTION FEEDBACK WITH INVENTORY ADJUSTMENT...");
       console.log("📋 Feedback data:", feedbackData);
 
-      // Update kit_items with actual received quantities and handle inventory adjustments
       for (const feedback of feedbackData) {
         console.log(`🔄 Processing feedback for material ${feedback.materialId}:`);
         console.log(`   - Sent: ${feedback.sentQuantity}`);
-        console.log(`   - Received: ${feedback.actualReceived}`);
+        console.log(`   - Actually Used: ${feedback.actualUsed}`);
+        console.log(`   - Difference: ${feedback.sentQuantity - feedback.actualUsed}`);
+        console.log(`   - Reason: ${feedback.reason}`);
         
-        const discrepancy = feedback.sentQuantity - feedback.actualReceived;
-        console.log(`   - Discrepancy: ${discrepancy}`);
+        const excessQuantity = feedback.sentQuantity - feedback.actualUsed;
 
-        // Update kit item with actual received quantity
-        const { error: kitItemError } = await supabase
+        // Update kit item with actual used quantity
+        const { error: kitUpdateError } = await supabase
           .from("kit_items")
           .update({
-            actual_quantity: feedback.actualReceived,
+            actual_quantity: feedback.actualUsed,
             verified_by_production: true
           })
-          .eq("id", feedback.kitItemId);
+          .eq("raw_material_id", feedback.materialId)
+          .eq("kit_preparation_id", (await supabase
+            .from("kit_preparation")
+            .select("id")
+            .eq("production_order_id", productionOrderId)
+            .single()).data?.id);
 
-        if (kitItemError) {
-          console.error("❌ Error updating kit item:", kitItemError);
-          throw kitItemError;
+        if (kitUpdateError) {
+          console.error("❌ Error updating kit item:", kitUpdateError);
+          throw new Error(`Failed to update kit item: ${kitUpdateError.message}`);
         }
 
-        // CRITICAL: If there's a discrepancy, adjust inventory
-        if (discrepancy !== 0) {
-          console.log(`🔄 Adjusting inventory for discrepancy: ${discrepancy}`);
+        // CRITICAL: If production used less than sent, return excess to inventory
+        if (excessQuantity > 0) {
+          console.log(`🔄 RETURNING EXCESS TO INVENTORY: ${excessQuantity} units`);
           
-          if (discrepancy > 0) {
-            // Production received less than sent - return excess to inventory
-            console.log(`↩️ Returning ${discrepancy} units to inventory`);
-            
-            const { data: currentInventory, error: invFetchError } = await supabase
-              .from("inventory")
-              .select("quantity")
-              .eq("raw_material_id", feedback.materialId)
-              .single();
+          // Get current inventory
+          const { data: currentInventory, error: invFetchError } = await supabase
+            .from("inventory")
+            .select("quantity")
+            .eq("raw_material_id", feedback.materialId)
+            .single();
 
-            if (invFetchError) {
-              console.error("❌ Error fetching current inventory:", invFetchError);
-              throw new Error(`Failed to fetch inventory for adjustment: ${invFetchError.message}`);
-            }
-
-            const newQuantity = currentInventory.quantity + discrepancy;
-            
-            const { error: invUpdateError } = await supabase
-              .from("inventory")
-              .update({
-                quantity: newQuantity,
-                last_updated: new Date().toISOString()
-              })
-              .eq("raw_material_id", feedback.materialId);
-
-            if (invUpdateError) {
-              console.error("❌ Error updating inventory:", invUpdateError);
-              throw new Error(`Failed to update inventory: ${invUpdateError.message}`);
-            }
-
-            console.log(`✅ Inventory adjusted: +${discrepancy} units returned`);
-
-            // Log the inventory adjustment
-            await supabase
-              .from("material_movements")
-              .insert({
-                raw_material_id: feedback.materialId,
-                movement_type: "PRODUCTION_RETURN",
-                quantity: discrepancy,
-                reference_id: productionOrderId,
-                reference_type: "PRODUCTION_ORDER",
-                reference_number: voucherNumber,
-                notes: `Production Feedback Return: Sent ${feedback.sentQuantity}, Received ${feedback.actualReceived}, Returned ${discrepancy} to inventory`
-              });
-          } else {
-            // Production received more than sent (should not happen normally, but log it)
-            console.log(`⚠️ Production received more than sent: ${Math.abs(discrepancy)} excess`);
+          if (invFetchError) {
+            console.error("❌ Error fetching current inventory:", invFetchError);
+            throw new Error(`Failed to fetch inventory for return: ${invFetchError.message}`);
           }
-        }
 
-        // Log any discrepancies in material movements for audit trail
-        if (discrepancy !== 0) {
-          await supabase
+          const newQuantity = currentInventory.quantity + excessQuantity;
+          
+          // Update inventory with returned quantity
+          const { error: invUpdateError } = await supabase
+            .from("inventory")
+            .update({
+              quantity: newQuantity,
+              last_updated: new Date().toISOString()
+            })
+            .eq("raw_material_id", feedback.materialId);
+
+          if (invUpdateError) {
+            console.error("❌ Error updating inventory:", invUpdateError);
+            throw new Error(`Failed to return excess to inventory: ${invUpdateError.message}`);
+          }
+
+          console.log(`✅ EXCESS RETURNED TO INVENTORY: +${excessQuantity} units`);
+
+          // Log the inventory return movement
+          const { error: movementError } = await supabase
             .from("material_movements")
             .insert({
               raw_material_id: feedback.materialId,
-              movement_type: discrepancy > 0 ? "PRODUCTION_SHORTAGE" : "PRODUCTION_EXCESS",
-              quantity: Math.abs(discrepancy),
+              movement_type: "PRODUCTION_RETURN",
+              quantity: excessQuantity,
               reference_id: productionOrderId,
               reference_type: "PRODUCTION_ORDER",
               reference_number: voucherNumber,
-              notes: `Production Feedback: Sent ${feedback.sentQuantity}, Received ${feedback.actualReceived}, Difference: ${discrepancy}`
+              notes: `Production Feedback Return: Sent ${feedback.sentQuantity}, Used ${feedback.actualUsed}, Returned ${excessQuantity}. Reason: ${feedback.reason}`
+            });
+
+          if (movementError) {
+            console.error("❌ Error logging return movement:", movementError);
+            // Don't fail the transaction for logging errors
+          } else {
+            console.log("✅ RETURN MOVEMENT LOGGED SUCCESSFULLY");
+          }
+        }
+
+        // If production used more than sent, log material request
+        if (excessQuantity < 0) {
+          const shortageQuantity = Math.abs(excessQuantity);
+          console.log(`📝 LOGGING MATERIAL REQUEST FOR SHORTAGE: ${shortageQuantity} units`);
+          
+          await supabase
+            .from("material_requests")
+            .insert({
+              production_order_id: productionOrderId,
+              raw_material_id: feedback.materialId,
+              requested_quantity: shortageQuantity,
+              reason: `Production feedback shortage: ${feedback.reason}`,
+              status: 'PENDING'
             });
         }
       }
 
-      console.log("✅ Production feedback processing completed");
+      console.log("✅ PRODUCTION FEEDBACK PROCESSING COMPLETED");
     },
     onSuccess: () => {
       toast({
-        title: "Production Feedback Saved",
-        description: "Actual received quantities have been updated and inventory adjusted for discrepancies",
+        title: "Production Feedback Submitted",
+        description: "Feedback processed and inventory adjusted accordingly",
       });
-      queryClient.invalidateQueries({ queryKey: ["production-feedback-materials"] });
-      queryClient.invalidateQueries({ queryKey: ["dispatched-materials"] });
+      
+      // Refresh all related queries
+      queryClient.invalidateQueries({ queryKey: ["production-feedback"] });
       queryClient.invalidateQueries({ queryKey: ["inventory"] });
       queryClient.invalidateQueries({ queryKey: ["inventory-real-time"] });
+      queryClient.invalidateQueries({ queryKey: ["material-movements-logbook"] });
+      queryClient.invalidateQueries({ queryKey: ["sent-materials-detail"] });
+      
+      setFeedback({});
       onClose();
     },
     onError: (error: Error) => {
-      console.error("❌ Failed to save production feedback:", error);
+      console.error("❌ Failed to submit production feedback:", error);
       toast({
-        title: "Production Feedback Failed",
+        title: "Feedback Submission Failed",
         description: error.message,
         variant: "destructive",
       });
     },
   });
 
-  const handleQuantityChange = (kitItemId: string, value: string) => {
-    const quantity = parseInt(value) || 0;
-    setReceivedQuantities(prev => ({
+  const handleFeedbackChange = (materialId: string, field: 'actualUsed' | 'reason', value: string | number) => {
+    setFeedback(prev => ({
       ...prev,
-      [kitItemId]: quantity
+      [materialId]: {
+        ...prev[materialId],
+        [field]: value,
+        actualUsed: field === 'actualUsed' ? Number(value) : (prev[materialId]?.actualUsed || 0),
+        reason: field === 'reason' ? String(value) : (prev[materialId]?.reason || '')
+      }
     }));
   };
 
-  const handleSaveFeedback = () => {
-    const feedbackData = sentMaterials
-      .filter(item => receivedQuantities[item.id] !== undefined)
-      .map(item => ({
-        kitItemId: item.id,
-        actualReceived: receivedQuantities[item.id] || 0,
-        materialId: item.raw_material_id,
-        sentQuantity: item.actual_quantity || 0
-      }))
-      .filter(feedback => feedback.actualReceived >= 0);
+  const handleSubmitFeedback = () => {
+    if (!productionData?.sentMaterials) return;
 
-    if (feedbackData.length === 0) {
+    const feedbackToSubmit = productionData.sentMaterials
+      .filter(item => feedback[item.raw_material_id])
+      .map(item => ({
+        materialId: item.raw_material_id,
+        sentQuantity: item.actual_quantity,
+        actualUsed: feedback[item.raw_material_id].actualUsed,
+        reason: feedback[item.raw_material_id].reason
+      }))
+      .filter(f => f.actualUsed !== f.sentQuantity); // Only submit if there's a difference
+
+    if (feedbackToSubmit.length === 0) {
       toast({
-        title: "No Feedback Entered",
-        description: "Please enter actual received quantities",
+        title: "No Changes to Report",
+        description: "Please provide feedback for materials where actual usage differs from sent quantity",
         variant: "destructive",
       });
       return;
     }
 
-    console.log("💾 Saving production feedback:", feedbackData);
-    saveProductionFeedback.mutate(feedbackData);
+    console.log("🚀 Submitting production feedback:", feedbackToSubmit);
+    submitFeedbackMutation.mutate(feedbackToSubmit);
   };
 
-  // Group materials by kit preparation (dispatch batch)
-  const groupedMaterials = sentMaterials.reduce((acc, item) => {
-    const key = item.kit_preparation_id;
-    if (!acc[key]) acc[key] = [];
-    acc[key].push(item);
-    return acc;
-  }, {} as Record<string, typeof sentMaterials>);
+  if (isLoading) {
+    return (
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>Loading Production Feedback...</DialogTitle>
+          </DialogHeader>
+          <div className="flex items-center justify-center py-8">
+            <Package className="h-12 w-12 text-muted-foreground animate-spin" />
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  const { productionOrder, sentMaterials } = productionData || {};
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-6xl max-h-[80vh] overflow-y-auto">
+      <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Package className="h-5 w-5" />
+            <MessageSquare className="h-5 w-5" />
             Production Feedback - {voucherNumber}
           </DialogTitle>
         </DialogHeader>
         
         <div className="space-y-6">
-          <div className="text-sm text-muted-foreground">
-            Enter the actual quantities received by production. Discrepancies will automatically adjust inventory levels.
-          </div>
+          {/* Production Info */}
+          <Card>
+            <CardContent className="pt-6">
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <span className="text-sm text-muted-foreground">Product:</span>
+                  <p className="font-medium">{productionOrder?.products?.name}</p>
+                </div>
+                <div>
+                  <span className="text-sm text-muted-foreground">Production Quantity:</span>
+                  <p className="font-medium">{productionOrder?.quantity}</p>
+                </div>
+                <div>
+                  <span className="text-sm text-muted-foreground">Status:</span>
+                  <Badge variant="outline">{productionOrder?.status}</Badge>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
-          {Object.entries(groupedMaterials).map(([kitPrepId, materials]) => (
-            <div key={kitPrepId} className="space-y-4">
-              <h3 className="font-medium">Dispatch Batch</h3>
+          {/* Material Usage Feedback */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <ArrowLeftRight className="h-5 w-5" />
+                Material Usage Feedback & Inventory Adjustment
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Material Code</TableHead>
                     <TableHead>Material Name</TableHead>
                     <TableHead>Quantity Sent</TableHead>
-                    <TableHead>Actual Received</TableHead>
+                    <TableHead>Actually Used</TableHead>
                     <TableHead>Difference</TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableHead>Reason/Notes</TableHead>
+                    <TableHead>Impact</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {materials.map((item) => {
-                    const actualReceived = receivedQuantities[item.id] !== undefined 
-                      ? receivedQuantities[item.id] 
-                      : item.verified_by_production 
-                        ? item.actual_quantity 
-                        : item.actual_quantity; // Default to sent quantity
-                    const quantitySent = item.actual_quantity || 0;
-                    const difference = quantitySent - actualReceived;
-                    const isVerified = item.verified_by_production;
-
+                  {sentMaterials?.map((item) => {
+                    const sentQty = item.actual_quantity;
+                    const actualUsed = feedback[item.raw_material_id]?.actualUsed ?? sentQty;
+                    const difference = sentQty - actualUsed;
+                    const isAlreadyVerified = item.verified_by_production;
+                    
                     return (
-                      <TableRow key={item.id}>
+                      <TableRow key={item.raw_material_id} className={isAlreadyVerified ? "bg-gray-50" : ""}>
                         <TableCell className="font-mono">{item.raw_materials.material_code}</TableCell>
                         <TableCell>{item.raw_materials.name}</TableCell>
-                        <TableCell className="font-medium">{quantitySent}</TableCell>
+                        <TableCell className="font-medium text-blue-600">{sentQty}</TableCell>
                         <TableCell>
                           <Input
                             type="number"
-                            min="0"
-                            max={quantitySent}
-                            value={actualReceived}
-                            onChange={(e) => handleQuantityChange(item.id, e.target.value)}
+                            value={actualUsed}
+                            onChange={(e) => handleFeedbackChange(item.raw_material_id, 'actualUsed', e.target.value)}
                             className="w-24"
-                            disabled={isVerified}
+                            min="0"
+                            disabled={isAlreadyVerified}
                           />
                         </TableCell>
-                        <TableCell className={`font-medium ${difference > 0 ? 'text-red-600' : difference < 0 ? 'text-orange-600' : 'text-green-600'}`}>
-                          {difference > 0 ? `-${difference}` : difference < 0 ? `+${Math.abs(difference)}` : '0'}
-                          {difference > 0 && (
-                            <div className="text-xs text-muted-foreground">Will return to inventory</div>
-                          )}
+                        <TableCell className={`font-medium ${
+                          difference > 0 ? 'text-green-600' : difference < 0 ? 'text-red-600' : 'text-gray-600'
+                        }`}>
+                          {difference > 0 ? `+${difference}` : difference < 0 ? difference : '0'}
+                          {difference > 0 && <div className="text-xs text-green-600">Return to inventory</div>}
+                          {difference < 0 && <div className="text-xs text-red-600">Request additional</div>}
                         </TableCell>
                         <TableCell>
-                          {isVerified ? (
+                          <Textarea
+                            value={feedback[item.raw_material_id]?.reason || ''}
+                            onChange={(e) => handleFeedbackChange(item.raw_material_id, 'reason', e.target.value)}
+                            placeholder="Reason for difference..."
+                            className="min-h-[60px]"
+                            disabled={isAlreadyVerified}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          {isAlreadyVerified ? (
                             <Badge variant="default" className="gap-1">
                               <CheckCircle className="h-3 w-3" />
                               Verified
                             </Badge>
+                          ) : difference === 0 ? (
+                            <Badge variant="secondary">No Change</Badge>
+                          ) : difference > 0 ? (
+                            <Badge variant="default" className="gap-1">
+                              <ArrowLeftRight className="h-3 w-3" />
+                              Return {difference}
+                            </Badge>
                           ) : (
-                            <Badge variant="secondary">Pending</Badge>
+                            <Badge variant="destructive" className="gap-1">
+                              <AlertTriangle className="h-3 w-3" />
+                              Need {Math.abs(difference)}
+                            </Badge>
                           )}
                         </TableCell>
                       </TableRow>
@@ -287,20 +382,21 @@ const ProductionFeedbackDialog = ({ productionOrderId, voucherNumber, isOpen, on
                   })}
                 </TableBody>
               </Table>
-            </div>
-          ))}
 
-          <div className="flex justify-end gap-4 pt-4 border-t">
-            <Button variant="outline" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleSaveFeedback}
-              disabled={saveProductionFeedback.isPending}
-            >
-              Save Production Feedback
-            </Button>
-          </div>
+              <div className="flex justify-end gap-4 pt-4 border-t">
+                <Button variant="outline" onClick={onClose}>
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={handleSubmitFeedback}
+                  disabled={submitFeedbackMutation.isPending}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  {submitFeedbackMutation.isPending ? "Processing..." : "Submit Feedback & Adjust Inventory"}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </DialogContent>
     </Dialog>

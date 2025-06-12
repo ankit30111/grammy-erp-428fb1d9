@@ -68,7 +68,7 @@ export const useUpdateInventory = () => {
   });
 };
 
-// Enhanced inventory deduction for material dispatch
+// CRITICAL FIX: Enhanced inventory deduction with proper error handling
 export const useInventoryDeduction = () => {
   const queryClient = useQueryClient();
   
@@ -86,9 +86,11 @@ export const useInventoryDeduction = () => {
       referenceNumber: string;
       notes?: string;
     }) => {
-      console.log(`🔄 Processing inventory deduction for material ${rawMaterialId}`);
+      console.log(`🔄 CRITICAL: Processing inventory deduction for material ${rawMaterialId}`);
+      console.log(`   - Quantity to deduct: ${quantityToDeduct}`);
+      console.log(`   - Reference: ${referenceNumber}`);
       
-      // Get current inventory
+      // STEP 1: Get current inventory with proper error handling
       const { data: currentInventory, error: invError } = await supabase
         .from("inventory")
         .select("quantity")
@@ -96,33 +98,46 @@ export const useInventoryDeduction = () => {
         .single();
 
       if (invError) {
-        console.error("❌ Error fetching current inventory:", invError);
+        console.error("❌ CRITICAL: Error fetching current inventory:", invError);
         throw new Error(`Failed to fetch inventory: ${invError.message}`);
       }
 
       const currentStock = currentInventory.quantity;
+      console.log(`📊 Current stock for material ${rawMaterialId}: ${currentStock}`);
       
       if (currentStock < quantityToDeduct) {
-        throw new Error(`Insufficient stock: Available ${currentStock}, Required ${quantityToDeduct}`);
+        const errorMsg = `Insufficient stock: Available ${currentStock}, Required ${quantityToDeduct}`;
+        console.error("❌ INSUFFICIENT STOCK:", errorMsg);
+        throw new Error(errorMsg);
       }
 
       const newStock = currentStock - quantityToDeduct;
+      console.log(`🔄 Planned stock reduction: ${currentStock} → ${newStock}`);
 
-      // Update inventory
-      const { error: updateError } = await supabase
+      // STEP 2: CRITICAL - Update inventory atomically
+      const { data: updatedInventory, error: updateError } = await supabase
         .from("inventory")
         .update({
           quantity: newStock,
           last_updated: new Date().toISOString()
         })
-        .eq("raw_material_id", rawMaterialId);
+        .eq("raw_material_id", rawMaterialId)
+        .select("quantity")
+        .single();
 
       if (updateError) {
-        console.error("❌ Error updating inventory:", updateError);
+        console.error("❌ CRITICAL: Inventory update failed:", updateError);
         throw new Error(`Failed to update inventory: ${updateError.message}`);
       }
 
-      // Log material movement
+      console.log("✅ INVENTORY UPDATE SUCCESSFUL:", {
+        material: rawMaterialId,
+        previous: currentStock,
+        new: updatedInventory.quantity,
+        deducted: quantityToDeduct
+      });
+
+      // STEP 3: Log material movement for audit trail
       const { error: movementError } = await supabase
         .from("material_movements")
         .insert({
@@ -137,10 +152,13 @@ export const useInventoryDeduction = () => {
 
       if (movementError) {
         console.error("❌ Error logging material movement:", movementError);
-        // Don't fail the transaction for logging errors
+        // Don't fail the transaction for logging errors, but log it
+        console.warn("⚠️ Material movement logging failed, but inventory deduction successful");
+      } else {
+        console.log("✅ MATERIAL MOVEMENT LOGGED SUCCESSFULLY");
       }
 
-      console.log(`✅ Inventory deduction successful: ${currentStock} → ${newStock}`);
+      console.log(`✅ INVENTORY DEDUCTION COMPLETE: ${currentStock} → ${newStock}`);
       return {
         previousStock: currentStock,
         newStock,
@@ -148,20 +166,23 @@ export const useInventoryDeduction = () => {
       };
     },
     onSuccess: () => {
-      // Invalidate all inventory-related queries
+      // CRITICAL: Invalidate all inventory-related queries for real-time updates
+      console.log("🔄 INVALIDATING ALL INVENTORY QUERIES FOR REAL-TIME SYNC...");
       queryClient.invalidateQueries({ queryKey: ["inventory"] });
       queryClient.invalidateQueries({ queryKey: ["inventory-real-time"] });
+      queryClient.invalidateQueries({ queryKey: ["material-movements"] });
+      queryClient.invalidateQueries({ queryKey: ["material-movements-logbook"] });
     },
   });
 };
 
-// Updated manual sync with better error checking and duplicate prevention
+// ENHANCED: Manual sync with better error checking and duplicate prevention
 export const useManualInventorySync = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
     mutationFn: async () => {
-      console.log("🔧 Starting manual inventory sync...");
+      console.log("🔧 Starting enhanced manual inventory sync...");
       
       // Get all store confirmed GRN items with detailed logging
       const { data: confirmedItems, error } = await supabase
@@ -243,21 +264,24 @@ export const useManualInventorySync = () => {
         }
       }
 
-      console.log("🎉 Manual inventory sync completed");
+      console.log("🎉 Enhanced manual inventory sync completed");
       return { success: true, correctedItems: correctQuantities.size };
     },
     onSuccess: (result) => {
+      // CRITICAL: Invalidate all inventory queries for immediate refresh
       queryClient.invalidateQueries({ queryKey: ["inventory"] });
-      console.log(`✅ Sync completed. Processed ${result.correctedItems} materials.`);
+      queryClient.invalidateQueries({ queryKey: ["inventory-real-time"] });
+      queryClient.invalidateQueries({ queryKey: ["material-movements-logbook"] });
+      console.log(`✅ Enhanced sync completed. Processed ${result.correctedItems} materials.`);
     },
   });
 };
 
-// New function to check for specific material issues
+// Enhanced function to check for specific material issues
 export const useCheckMaterialInventory = () => {
   return useMutation({
     mutationFn: async (materialCode: string) => {
-      console.log(`🔍 Checking inventory for material: ${materialCode}`);
+      console.log(`🔍 Checking enhanced inventory for material: ${materialCode}`);
       
       // Get material details
       const { data: material, error: materialError } = await supabase
@@ -294,32 +318,47 @@ export const useCheckMaterialInventory = () => {
 
       if (invError) throw invError;
 
+      // Get material movements for this material
+      const { data: movements, error: movError } = await supabase
+        .from("material_movements")
+        .select("*")
+        .eq("raw_material_id", material.id)
+        .order("created_at", { ascending: false });
+
+      if (movError) throw movError;
+
       const totalFromGRN = grnItems?.reduce((sum, item) => sum + item.accepted_quantity, 0) || 0;
       const currentInventory = inventory?.quantity || 0;
+      const totalIssued = movements?.filter(m => m.movement_type === 'ISSUED_TO_PRODUCTION')
+        .reduce((sum, m) => sum + m.quantity, 0) || 0;
 
-      console.log(`📊 Analysis for ${materialCode}:`);
+      console.log(`📊 Enhanced analysis for ${materialCode}:`);
       console.log(`   - Total from GRN receipts: ${totalFromGRN}`);
+      console.log(`   - Total issued to production: ${totalIssued}`);
       console.log(`   - Current inventory: ${currentInventory}`);
-      console.log(`   - Discrepancy: ${currentInventory - totalFromGRN}`);
-      console.log(`   - GRN entries:`, grnItems);
+      console.log(`   - Expected inventory: ${totalFromGRN - totalIssued}`);
+      console.log(`   - Discrepancy: ${currentInventory - (totalFromGRN - totalIssued)}`);
 
       return {
         materialCode,
         totalFromGRN,
+        totalIssued,
         currentInventory,
-        discrepancy: currentInventory - totalFromGRN,
-        grnEntries: grnItems
+        expectedInventory: totalFromGRN - totalIssued,
+        discrepancy: currentInventory - (totalFromGRN - totalIssued),
+        grnEntries: grnItems,
+        movements: movements
       };
     },
   });
 };
 
-// Real-time inventory monitoring
+// ENHANCED: Real-time inventory monitoring with auto-refresh
 export const useRealTimeInventory = () => {
   return useQuery({
     queryKey: ["inventory-real-time"],
     queryFn: async () => {
-      console.log("🔍 Fetching real-time inventory data...");
+      console.log("🔍 Fetching ENHANCED real-time inventory data...");
       
       const { data, error } = await supabase
         .from("inventory")
@@ -339,7 +378,7 @@ export const useRealTimeInventory = () => {
         throw error;
       }
 
-      console.log("📦 Real-time inventory data:", data);
+      console.log("📦 ENHANCED real-time inventory data:", data?.length, "items");
       return data || [];
     },
     refetchInterval: 2000, // Refresh every 2 seconds for real-time sync

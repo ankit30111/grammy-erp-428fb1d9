@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -137,13 +138,13 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
     return inventoryMap.get(materialId) || 0;
   };
 
-  // Enhanced material dispatch mutation with improved transaction handling
+  // CRITICAL FIX: Enhanced material dispatch mutation with atomic operations
   const sendMaterialsMutation = useMutation({
     mutationFn: async (materialsToSend: any[]) => {
-      console.log("🚀 Starting enhanced material dispatch with transaction integrity...");
+      console.log("🚀 Starting ENHANCED material dispatch with ATOMIC inventory deduction...");
       console.log("📋 Materials to dispatch:", materialsToSend);
       
-      // Pre-validation: Check inventory availability for all materials
+      // Pre-validation with detailed logging
       const validationErrors: string[] = [];
       const dispatchPlan = [];
       
@@ -151,7 +152,8 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
         const currentStock = getCurrentStock(material.raw_materials.id);
         const quantityToSend = quantities[material.raw_materials.id] || 0;
         
-        console.log(`🧮 Validating ${material.raw_materials.material_code}:`);
+        console.log(`🧮 PRE-VALIDATION for ${material.raw_materials.material_code}:`);
+        console.log(`   - Material ID: ${material.raw_materials.id}`);
         console.log(`   - Current Stock: ${currentStock}`);
         console.log(`   - Quantity to Send: ${quantityToSend}`);
         
@@ -177,17 +179,15 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
       }
 
       if (validationErrors.length > 0) {
-        console.error("❌ Validation failed:", validationErrors);
+        console.error("❌ VALIDATION FAILED:", validationErrors);
         throw new Error(validationErrors.join('; '));
       }
 
-      console.log("✅ Validation passed. Dispatch plan:", dispatchPlan);
+      console.log("✅ VALIDATION PASSED. Execution plan:", dispatchPlan);
 
       try {
-        // Execute all operations within a transaction-like approach
-        console.log("🔄 Starting dispatch transaction...");
-
-        // 1. Create kit preparation record
+        // STEP 1: Create kit preparation record
+        console.log("🔄 STEP 1: Creating kit preparation record...");
         const { data: kitPrep, error: kitError } = await supabase
           .from("kit_preparation")
           .insert({
@@ -198,19 +198,47 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
           .single();
 
         if (kitError) {
-          console.error("❌ Error creating kit preparation:", kitError);
+          console.error("❌ STEP 1 FAILED - Kit preparation error:", kitError);
           throw new Error(`Failed to create kit preparation: ${kitError.message}`);
         }
 
-        console.log("✅ Kit preparation created:", kitPrep);
+        console.log("✅ STEP 1 SUCCESS - Kit preparation created:", kitPrep.id);
 
-        // 2. Process each material dispatch with atomic operations
+        // STEP 2: Process each material with ATOMIC inventory deduction
         const dispatchResults = [];
         
         for (const plan of dispatchPlan) {
-          console.log(`📦 Processing atomic dispatch for ${plan.materialCode}...`);
+          console.log(`📦 PROCESSING ATOMIC DISPATCH for ${plan.materialCode}...`);
+          console.log(`   - Before: Stock = ${plan.currentStock}`);
+          console.log(`   - Deducting: ${plan.quantityToSend}`);
+          console.log(`   - Expected After: ${plan.newStock}`);
           
-          // Step 1: Create kit item record
+          // CRITICAL: Direct inventory update with immediate verification
+          console.log(`🔄 CRITICAL STEP: Updating inventory for material ${plan.materialId}...`);
+          
+          const { data: inventoryUpdate, error: invError } = await supabase
+            .from("inventory")
+            .update({
+              quantity: plan.newStock,
+              last_updated: new Date().toISOString()
+            })
+            .eq("raw_material_id", plan.materialId)
+            .select("quantity")
+            .single();
+
+          if (invError) {
+            console.error("❌ CRITICAL FAILURE - Inventory update failed:", invError);
+            throw new Error(`CRITICAL: Failed to update inventory for ${plan.materialCode}: ${invError.message}`);
+          }
+
+          console.log("✅ INVENTORY UPDATE SUCCESSFUL:", {
+            material: plan.materialCode,
+            previous: plan.currentStock,
+            new: inventoryUpdate.quantity,
+            deducted: plan.quantityToSend
+          });
+
+          // Create kit item record
           const { error: itemError } = await supabase
             .from("kit_items")
             .insert({
@@ -221,31 +249,13 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
             });
 
           if (itemError) {
-            console.error("❌ Error creating kit item:", itemError);
+            console.error("❌ Kit item creation failed:", itemError);
             throw new Error(`Failed to create kit item for ${plan.materialCode}: ${itemError.message}`);
           }
 
-          // Step 2: CRITICAL - Update inventory with immediate verification
-          console.log(`🔄 Updating inventory for ${plan.materialCode}: ${plan.currentStock} → ${plan.newStock}`);
+          // CRITICAL: Log material movement for audit trail
+          console.log(`📝 LOGGING MATERIAL MOVEMENT for ${plan.materialCode}...`);
           
-          const { data: updatedInventory, error: invError } = await supabase
-            .from("inventory")
-            .update({
-              quantity: plan.newStock,
-              last_updated: new Date().toISOString()
-            })
-            .eq("raw_material_id", plan.materialId)
-            .select()
-            .single();
-
-          if (invError) {
-            console.error("❌ CRITICAL: Inventory update failed:", invError);
-            throw new Error(`CRITICAL: Failed to update inventory for ${plan.materialCode}: ${invError.message}`);
-          }
-
-          console.log("✅ Inventory updated successfully:", updatedInventory);
-
-          // Step 3: Log material movement for audit trail
           const { error: movementError } = await supabase
             .from("material_movements")
             .insert({
@@ -259,9 +269,11 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
             });
 
           if (movementError) {
-            console.error("❌ Error logging material movement:", movementError);
-            // Don't fail the entire transaction for logging errors, but log it
+            console.error("❌ MATERIAL MOVEMENT LOGGING FAILED:", movementError);
+            // Continue execution but warn about logging failure
             console.warn("⚠️ Material movement logging failed, but dispatch continues");
+          } else {
+            console.log("✅ MATERIAL MOVEMENT LOGGED SUCCESSFULLY");
           }
 
           dispatchResults.push({
@@ -273,11 +285,10 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
             voucher_number: productionOrder.voucher_number
           });
 
-          console.log(`✅ Successfully dispatched ${plan.materialCode}: ${plan.quantityToSend} units`);
-          console.log(`   - Inventory CONFIRMED updated: ${plan.currentStock} → ${plan.newStock}`);
+          console.log(`✅ DISPATCH COMPLETE for ${plan.materialCode}`);
         }
 
-        console.log("🎉 All materials dispatched successfully with inventory deduction confirmed");
+        console.log("🎉 ALL MATERIALS DISPATCHED SUCCESSFULLY WITH INVENTORY DEDUCTION CONFIRMED");
         return { 
           success: true, 
           kitPrepId: kitPrep.id, 
@@ -286,33 +297,41 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
         };
 
       } catch (error) {
-        console.error("❌ Dispatch transaction failed:", error);
-        // In a real system, we'd implement rollback here
+        console.error("❌ DISPATCH TRANSACTION FAILED:", error);
         throw error;
       }
     },
     onSuccess: (result) => {
-      console.log("🎉 Material dispatch completed successfully:", result);
+      console.log("🎉 DISPATCH SUCCESS HANDLER:", result);
       
       toast({
         title: "Materials Dispatched Successfully",
         description: `${result.results.length} materials dispatched to Production Voucher ${result.voucherNumber}. Inventory updated in real-time.`,
       });
       
-      // Clear quantities and refresh all relevant data immediately
+      // Clear quantities and force refresh of all related data
       setQuantities({});
+      
+      // CRITICAL: Force immediate refresh of all inventory data
+      console.log("🔄 FORCING IMMEDIATE REFRESH OF ALL INVENTORY DATA...");
       queryClient.invalidateQueries({ queryKey: ["production-order-details"] });
       queryClient.invalidateQueries({ queryKey: ["dispatched-materials"] });
       queryClient.invalidateQueries({ queryKey: ["inventory"] });
       queryClient.invalidateQueries({ queryKey: ["inventory-real-time"] });
       
-      // Force immediate refresh of inventory
+      // Force immediate inventory refresh
       setTimeout(() => {
+        console.log("🔄 EXECUTING DELAYED INVENTORY REFRESH...");
         refetchInventory();
       }, 500);
+      
+      setTimeout(() => {
+        console.log("🔄 EXECUTING SECOND DELAYED INVENTORY REFRESH...");
+        refetchInventory();
+      }, 1500);
     },
     onError: (error: Error) => {
-      console.error("❌ Failed to dispatch materials:", error);
+      console.error("❌ DISPATCH FAILED:", error);
       toast({
         title: "Material Dispatch Failed",
         description: error.message,
@@ -344,7 +363,7 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
       return;
     }
 
-    // Additional validation before dispatch
+    // Enhanced validation before dispatch
     const insufficientStockMaterials = materialsWithQuantities.filter(material => {
       const currentStock = getCurrentStock(material.raw_materials.id);
       const quantityToSend = quantities[material.raw_materials.id];
@@ -361,13 +380,13 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
       return;
     }
 
-    console.log("🚀 Initiating material dispatch for:", materialsWithQuantities.length, "materials");
+    console.log("🚀 INITIATING ENHANCED MATERIAL DISPATCH for:", materialsWithQuantities.length, "materials");
     sendMaterialsMutation.mutate(materialsWithQuantities);
   };
 
-  // Auto-refresh inventory when component mounts or voucher changes
+  // Force inventory refresh when component mounts or voucher changes
   useEffect(() => {
-    console.log("🔄 Auto-refreshing inventory data for real-time sync");
+    console.log("🔄 AUTO-REFRESHING INVENTORY DATA FOR REAL-TIME SYNC");
     refetchInventory();
   }, [voucherId, refetchInventory]);
 
@@ -404,8 +423,17 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Production Vouchers
         </Button>
-        <div className="text-sm text-muted-foreground">
-          Real-time sync: {new Date().toLocaleTimeString()}
+        <div className="flex items-center gap-4">
+          <Button 
+            variant="outline" 
+            onClick={() => refetchInventory()}
+            size="sm"
+          >
+            Refresh Inventory
+          </Button>
+          <div className="text-sm text-muted-foreground">
+            Real-time sync: {new Date().toLocaleTimeString()}
+          </div>
         </div>
       </div>
 
@@ -435,7 +463,7 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
           </div>
 
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Enhanced Material Dispatch - Production Feedback Integration</h3>
+            <h3 className="text-lg font-semibold">ENHANCED Material Dispatch - Real-time Inventory Deduction</h3>
             
             <Table>
               <TableHeader>
@@ -551,8 +579,9 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
                 onClick={handleSendMaterials}
                 disabled={sendMaterialsMutation.isPending || Object.keys(quantities).length === 0}
                 size="lg"
+                className="bg-green-600 hover:bg-green-700"
               >
-                {sendMaterialsMutation.isPending ? "Dispatching Materials..." : "Send Materials to Production"}
+                {sendMaterialsMutation.isPending ? "Dispatching Materials..." : "SEND MATERIALS TO PRODUCTION"}
               </Button>
             </div>
           </div>

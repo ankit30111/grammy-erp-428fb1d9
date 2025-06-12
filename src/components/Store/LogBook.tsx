@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar, Download, Search, TrendingDown, TrendingUp, BookOpen } from "lucide-react";
+import { Calendar, Download, Search, TrendingDown, TrendingUp, BookOpen, RefreshCw } from "lucide-react";
 import { format } from "date-fns";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -30,13 +30,48 @@ const LogBook = () => {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
 
-  // Fetch material movements from multiple sources
-  const { data: movements = [], isLoading } = useQuery({
-    queryKey: ["material-movements"],
+  // ENHANCED: Fetch material movements from multiple sources with real-time updates
+  const { data: movements = [], isLoading, refetch } = useQuery({
+    queryKey: ["material-movements-logbook"],
     queryFn: async () => {
+      console.log("📚 FETCHING COMPREHENSIVE MATERIAL MOVEMENTS FOR LOGBOOK...");
       const movements: MaterialMovement[] = [];
 
+      // CRITICAL: Fetch from material_movements table (includes dispatches)
+      console.log("📋 Fetching from material_movements table...");
+      const { data: movementData, error: movementError } = await supabase
+        .from("material_movements")
+        .select(`
+          *,
+          raw_materials(material_code, name)
+        `)
+        .order("created_at", { ascending: false });
+
+      if (movementError) {
+        console.error("❌ Error fetching material movements:", movementError);
+        throw movementError;
+      }
+
+      console.log("📦 Material movements found:", movementData?.length || 0);
+
+      // Process material movements (store dispatches and other movements)
+      movementData?.forEach((item) => {
+        movements.push({
+          id: item.id,
+          date: item.created_at,
+          type: item.movement_type === 'ISSUED_TO_PRODUCTION' ? 'OUT' : 'IN',
+          reference_number: item.reference_number || 'N/A',
+          material_code: item.raw_materials?.material_code || "Unknown",
+          material_name: item.raw_materials?.name || "Unknown Material",
+          quantity: item.quantity,
+          source_destination: item.movement_type === 'ISSUED_TO_PRODUCTION' ? 'Production' : (item.issued_to || "Unknown"),
+          handled_by: "Store Team",
+          notes: item.notes || `${item.movement_type} movement`
+        });
+      });
+
       // Fetch GRN receipts (Material IN)
+      console.log("📋 Fetching GRN receipts...");
       const { data: grnData, error: grnError } = await supabase
         .from("grn_items")
         .select(`
@@ -49,56 +84,45 @@ const LogBook = () => {
           ),
           raw_materials(material_code, name)
         `)
-        .eq("store_confirmed", true);
+        .eq("store_confirmed", true)
+        .order("store_confirmed_at", { ascending: false });
 
-      if (grnError) throw grnError;
+      if (grnError) {
+        console.error("❌ Error fetching GRN data:", grnError);
+        throw grnError;
+      }
+
+      console.log("📦 GRN items found:", grnData?.length || 0);
 
       // Process GRN data
       grnData?.forEach((item) => {
         movements.push({
-          id: item.id,
-          date: item.grn.received_date,
+          id: `grn-${item.id}`,
+          date: item.store_confirmed_at || item.grn.received_date,
           type: 'IN',
-          reference_number: `${item.grn.grn_number} / ${item.grn.purchase_orders?.po_number}`,
-          material_code: item.raw_materials?.material_code || "",
-          material_name: item.raw_materials?.name || "",
+          reference_number: `${item.grn.grn_number} / ${item.grn.purchase_orders?.po_number || 'N/A'}`,
+          material_code: item.raw_materials?.material_code || "Unknown",
+          material_name: item.raw_materials?.name || "Unknown Material",
           quantity: item.accepted_quantity || 0,
           source_destination: item.grn.vendors?.name || "Unknown Vendor",
-          handled_by: "Store Team", // TODO: Get actual user from store_confirmed_by
+          handled_by: "Store Team",
           notes: `GRN Receipt - Accepted: ${item.accepted_quantity}, Rejected: ${item.rejected_quantity || 0}`
         });
       });
 
-      // Fetch material issues (Material OUT)
-      const { data: issueData, error: issueError } = await supabase
-        .from("material_movements")
-        .select(`
-          *,
-          raw_materials(material_code, name)
-        `)
-        .eq("movement_type", "ISSUE");
-
-      if (issueError) throw issueError;
-
-      // Process issue data
-      issueData?.forEach((item) => {
-        movements.push({
-          id: item.id,
-          date: item.created_at,
-          type: 'OUT',
-          reference_number: item.reference_number,
-          material_code: item.raw_materials?.material_code || "",
-          material_name: item.raw_materials?.name || "",
-          quantity: item.quantity,
-          source_destination: item.issued_to || "Production",
-          handled_by: "Store Team", // TODO: Get actual user from created_by
-          notes: item.notes || ""
-        });
+      // Sort by date (newest first)
+      const sortedMovements = movements.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      
+      console.log("📚 TOTAL MOVEMENTS PROCESSED:", sortedMovements.length);
+      console.log("📊 MOVEMENT BREAKDOWN:", {
+        total: sortedMovements.length,
+        incoming: sortedMovements.filter(m => m.type === 'IN').length,
+        outgoing: sortedMovements.filter(m => m.type === 'OUT').length
       });
 
-      // Sort by date (newest first)
-      return movements.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      return sortedMovements;
     },
+    refetchInterval: 5000, // Refresh every 5 seconds for real-time updates
   });
 
   const filteredMovements = movements.filter(movement => {
@@ -135,7 +159,7 @@ const LogBook = () => {
     const csvData = [
       headers.join(","),
       ...filteredMovements.map(movement => [
-        format(new Date(movement.date), "yyyy-MM-dd"),
+        format(new Date(movement.date), "yyyy-MM-dd HH:mm:ss"),
         movement.type,
         movement.reference_number,
         movement.material_code,
@@ -176,10 +200,16 @@ const LogBook = () => {
               <BookOpen className="h-5 w-5" />
               Material Movement Log Book ({filteredMovements.length} entries)
             </div>
-            <Button onClick={handleExport} className="gap-2">
-              <Download className="h-4 w-4" />
-              Export CSV
-            </Button>
+            <div className="flex gap-2">
+              <Button onClick={() => refetch()} variant="outline" size="sm">
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Refresh
+              </Button>
+              <Button onClick={handleExport} className="gap-2">
+                <Download className="h-4 w-4" />
+                Export CSV
+              </Button>
+            </div>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -225,7 +255,7 @@ const LogBook = () => {
             </div>
           </div>
 
-          {/* Summary Cards */}
+          {/* Enhanced Summary Cards */}
           <div className="grid grid-cols-3 gap-4 mb-6">
             <Card>
               <CardContent className="flex items-center p-4">
@@ -235,6 +265,7 @@ const LogBook = () => {
                   <p className="text-2xl font-bold text-green-600">
                     {movements.filter(m => m.type === 'IN').length}
                   </p>
+                  <p className="text-xs text-gray-500">Total incoming transactions</p>
                 </div>
               </CardContent>
             </Card>
@@ -247,6 +278,7 @@ const LogBook = () => {
                   <p className="text-2xl font-bold text-blue-600">
                     {movements.filter(m => m.type === 'OUT').length}
                   </p>
+                  <p className="text-xs text-gray-500">Dispatched to production</p>
                 </div>
               </CardContent>
             </Card>
@@ -257,17 +289,18 @@ const LogBook = () => {
                 <div className="ml-4">
                   <p className="text-sm text-gray-600">Total Transactions</p>
                   <p className="text-2xl font-bold text-purple-600">{movements.length}</p>
+                  <p className="text-xs text-gray-500">All material movements</p>
                 </div>
               </CardContent>
             </Card>
           </div>
 
-          {/* Movements Table */}
+          {/* Enhanced Movements Table */}
           <div className="rounded-md border">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Date</TableHead>
+                  <TableHead>Date & Time</TableHead>
                   <TableHead>Type</TableHead>
                   <TableHead>Reference</TableHead>
                   <TableHead>Material Code</TableHead>
@@ -281,7 +314,14 @@ const LogBook = () => {
               <TableBody>
                 {filteredMovements.map((movement) => (
                   <TableRow key={movement.id}>
-                    <TableCell>{format(new Date(movement.date), "MMM dd, yyyy")}</TableCell>
+                    <TableCell className="whitespace-nowrap">
+                      <div className="text-sm">
+                        {format(new Date(movement.date), "MMM dd, yyyy")}
+                        <div className="text-xs text-muted-foreground">
+                          {format(new Date(movement.date), "HH:mm:ss")}
+                        </div>
+                      </div>
+                    </TableCell>
                     <TableCell>
                       <Badge variant={getMovementTypeColor(movement.type) as any} className="gap-1">
                         {getMovementIcon(movement.type)}
@@ -289,7 +329,7 @@ const LogBook = () => {
                       </Badge>
                     </TableCell>
                     <TableCell className="font-mono text-sm">{movement.reference_number}</TableCell>
-                    <TableCell className="font-mono">{movement.material_code}</TableCell>
+                    <TableCell className="font-mono font-medium">{movement.material_code}</TableCell>
                     <TableCell>{movement.material_name}</TableCell>
                     <TableCell className="font-medium">
                       <span className={movement.type === 'IN' ? "text-green-600" : "text-blue-600"}>
