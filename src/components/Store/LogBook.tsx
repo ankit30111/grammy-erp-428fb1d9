@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -30,15 +29,15 @@ const LogBook = () => {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
 
-  // ENHANCED: Fetch material movements from multiple sources with real-time updates
+  // ENHANCED: Fetch material movements with comprehensive real-time tracking
   const { data: movements = [], isLoading, refetch } = useQuery({
     queryKey: ["material-movements-logbook"],
     queryFn: async () => {
-      console.log("📚 FETCHING COMPREHENSIVE MATERIAL MOVEMENTS FOR LOGBOOK...");
+      console.log("📚 FETCHING COMPREHENSIVE MATERIAL MOVEMENTS FOR ENHANCED LOGBOOK...");
       const movements: MaterialMovement[] = [];
 
-      // CRITICAL: Fetch from material_movements table (includes dispatches)
-      console.log("📋 Fetching from material_movements table...");
+      // STEP 1: Fetch from material_movements table (includes all dispatches and returns)
+      console.log("📋 Fetching enhanced material movements...");
       const { data: movementData, error: movementError } = await supabase
         .from("material_movements")
         .select(`
@@ -52,25 +51,46 @@ const LogBook = () => {
         throw movementError;
       }
 
-      console.log("📦 Material movements found:", movementData?.length || 0);
+      console.log("📦 Enhanced material movements found:", movementData?.length || 0);
 
-      // Process material movements (store dispatches and other movements)
+      // Process enhanced material movements (store dispatches, returns, etc.)
       movementData?.forEach((item) => {
+        let movementType = 'OUT';
+        let sourceDestination = 'Production';
+        
+        switch (item.movement_type) {
+          case 'ISSUED_TO_PRODUCTION':
+            movementType = 'OUT';
+            sourceDestination = 'Production';
+            break;
+          case 'PRODUCTION_RETURN':
+            movementType = 'IN';
+            sourceDestination = 'Production Return';
+            break;
+          case 'RECEIVED_FROM_VENDOR':
+            movementType = 'IN';
+            sourceDestination = item.issued_to || 'Vendor';
+            break;
+          default:
+            movementType = item.movement_type.includes('RETURN') ? 'IN' : 'OUT';
+            sourceDestination = item.issued_to || 'Unknown';
+        }
+
         movements.push({
           id: item.id,
           date: item.created_at,
-          type: item.movement_type === 'ISSUED_TO_PRODUCTION' ? 'OUT' : 'IN',
+          type: movementType as 'IN' | 'OUT',
           reference_number: item.reference_number || 'N/A',
           material_code: item.raw_materials?.material_code || "Unknown",
           material_name: item.raw_materials?.name || "Unknown Material",
           quantity: item.quantity,
-          source_destination: item.movement_type === 'ISSUED_TO_PRODUCTION' ? 'Production' : (item.issued_to || "Unknown"),
+          source_destination: sourceDestination,
           handled_by: "Store Team",
           notes: item.notes || `${item.movement_type} movement`
         });
       });
 
-      // Fetch GRN receipts (Material IN)
+      // STEP 2: Fetch GRN receipts (Material IN) 
       console.log("📋 Fetching GRN receipts...");
       const { data: grnData, error: grnError } = await supabase
         .from("grn_items")
@@ -113,16 +133,17 @@ const LogBook = () => {
       // Sort by date (newest first)
       const sortedMovements = movements.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
       
-      console.log("📚 TOTAL MOVEMENTS PROCESSED:", sortedMovements.length);
-      console.log("📊 MOVEMENT BREAKDOWN:", {
+      console.log("📚 ENHANCED LOGBOOK PROCESSING COMPLETE:", {
         total: sortedMovements.length,
         incoming: sortedMovements.filter(m => m.type === 'IN').length,
-        outgoing: sortedMovements.filter(m => m.type === 'OUT').length
+        outgoing: sortedMovements.filter(m => m.type === 'OUT').length,
+        dispatches: sortedMovements.filter(m => m.notes?.includes('dispatched')).length,
+        returns: sortedMovements.filter(m => m.notes?.includes('Return')).length
       });
 
       return sortedMovements;
     },
-    refetchInterval: 5000, // Refresh every 5 seconds for real-time updates
+    refetchInterval: 2000, // Refresh every 2 seconds for real-time updates
   });
 
   const filteredMovements = movements.filter(movement => {
@@ -198,7 +219,8 @@ const LogBook = () => {
           <CardTitle className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <BookOpen className="h-5 w-5" />
-              Material Movement Log Book ({filteredMovements.length} entries)
+              Enhanced Material Movement Log Book ({filteredMovements.length} entries)
+              <Badge variant="outline" className="ml-2">Real-time</Badge>
             </div>
             <div className="flex gap-2">
               <Button onClick={() => refetch()} variant="outline" size="sm">
