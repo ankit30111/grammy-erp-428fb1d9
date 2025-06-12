@@ -51,7 +51,7 @@ export const useMovementData = (filterType: string) => {
         query = query.eq("movement_type", filterType);
       }
 
-      const { data, error } = await query.limit(500); // Increased limit for complete view
+      const { data, error } = await query.limit(1000); // Increased limit for complete view
 
       if (error) {
         console.error("❌ Error fetching movements:", error);
@@ -60,15 +60,20 @@ export const useMovementData = (filterType: string) => {
 
       console.log("📋 Material movements fetched:", data?.length, "entries");
       
-      // Ensure we're getting all types of movements
+      // Log all movement types for debugging
       const movementTypes = data?.map(m => m.movement_type) || [];
       const uniqueTypes = [...new Set(movementTypes)];
       console.log("📊 Movement types found:", uniqueTypes);
       
+      // Log some sample data for debugging
+      if (data && data.length > 0) {
+        console.log("📋 Sample movements:", data.slice(0, 3));
+      }
+      
       return data || [];
     },
-    refetchInterval: 5000, // Real-time updates
-    staleTime: 2000,
+    refetchInterval: 3000, // Real-time updates every 3 seconds
+    staleTime: 1000,
   });
 
   // Auto-refresh when new materials are dispatched or received
@@ -82,6 +87,17 @@ export const useMovementData = (filterType: string) => {
     
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
+  }, [refetch]);
+
+  // Also listen for custom events
+  useEffect(() => {
+    const handleCustomRefresh = () => {
+      console.log("🔄 CUSTOM-REFRESH: LogBook refresh requested");
+      refetch();
+    };
+
+    window.addEventListener('refreshLogBook', handleCustomRefresh);
+    return () => window.removeEventListener('refreshLogBook', handleCustomRefresh);
   }, [refetch]);
 
   return {
