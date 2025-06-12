@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -44,6 +45,19 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
     }
   }, [production]);
 
+  // Initialize received quantities from kit items
+  useEffect(() => {
+    if (sentMaterials.length > 0) {
+      const initialQuantities: Record<string, number> = {};
+      sentMaterials.forEach(item => {
+        if (item.verified_by_production) {
+          initialQuantities[item.raw_material_id] = item.actual_quantity || 0;
+        }
+      });
+      setReceivedQuantities(initialQuantities);
+    }
+  }, [sentMaterials]);
+
   // Fetch BOM data for the product
   const { data: bomData = [] } = useQuery({
     queryKey: ["production-bom", production?.id],
@@ -69,11 +83,13 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
     enabled: !!production?.product_id && isOpen,
   });
 
-  // Fetch materials actually sent by store
+  // Fetch materials actually sent by store with real-time updates
   const { data: sentMaterials = [] } = useQuery({
     queryKey: ["sent-materials-detail", production?.id],
     queryFn: async () => {
       if (!production?.id) return [];
+      
+      console.log("🔍 Fetching sent materials for production:", production.id);
       
       const { data, error } = await supabase
         .from("kit_items")
@@ -91,10 +107,16 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
         `)
         .eq("kit_preparation.production_order_id", production.id);
       
-      if (error) throw error;
+      if (error) {
+        console.error("❌ Error fetching sent materials:", error);
+        throw error;
+      }
+      
+      console.log("📦 Sent materials data:", data);
       return data || [];
     },
     enabled: !!production?.id && isOpen,
+    refetchInterval: 3000, // Refresh every 3 seconds for real-time updates
   });
 
   // Group BOM items by assembly type
@@ -108,6 +130,13 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
   const getQuantitySent = (materialId: string) => {
     return sentMaterials
       .filter(item => item.raw_material_id === materialId)
+      .reduce((sum, item) => sum + item.actual_quantity, 0);
+  };
+
+  // Get quantity actually received and verified by production
+  const getQuantityReceived = (materialId: string) => {
+    return sentMaterials
+      .filter(item => item.raw_material_id === materialId && item.verified_by_production)
       .reduce((sum, item) => sum + item.actual_quantity, 0);
   };
 
@@ -128,25 +157,127 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
     }));
   };
 
-  // Save discrepancy mutation
-  const saveDiscrepancyMutation = useMutation({
-    mutationFn: async (discrepancy: any) => {
-      const { error } = await supabase
-        .from("material_requests")
-        .insert({
-          production_order_id: production.id,
-          raw_material_id: discrepancy.materialId,
-          requested_quantity: Math.abs(discrepancy.difference),
-          reason: `Discrepancy: Sent ${discrepancy.quantitySent}, Received ${discrepancy.quantityReceived}. Section: ${discrepancy.section}`,
-          status: 'PENDING'
-        });
-      
-      if (error) throw error;
+  // Enhanced save verification mutation with inventory adjustment
+  const saveVerificationMutation = useMutation({
+    mutationFn: async (verificationData: Array<{ materialId: string; quantitySent: number; quantityReceived: number }>) => {
+      console.log("🎯 Processing production verification with inventory adjustment...");
+      console.log("📋 Verification data:", verificationData);
+
+      for (const verification of verificationData) {
+        console.log(`🔄 Processing verification for material ${verification.materialId}:`);
+        console.log(`   - Sent: ${verification.quantitySent}`);
+        console.log(`   - Received: ${verification.quantityReceived}`);
+        
+        const discrepancy = verification.quantitySent - verification.quantityReceived;
+        console.log(`   - Discrepancy: ${discrepancy}`);
+
+        // Find the kit items for this material and update them
+        const materialKitItems = sentMaterials.filter(item => 
+          item.raw_material_id === verification.materialId && 
+          !item.verified_by_production
+        );
+
+        for (const kitItem of materialKitItems) {
+          const { error: kitItemError } = await supabase
+            .from("kit_items")
+            .update({
+              actual_quantity: verification.quantityReceived,
+              verified_by_production: true
+            })
+            .eq("id", kitItem.id);
+
+          if (kitItemError) {
+            console.error("❌ Error updating kit item:", kitItemError);
+            throw kitItemError;
+          }
+        }
+
+        // CRITICAL: If there's a discrepancy, adjust inventory
+        if (discrepancy !== 0) {
+          console.log(`🔄 Adjusting inventory for discrepancy: ${discrepancy}`);
+          
+          if (discrepancy > 0) {
+            // Production received less than sent - return excess to inventory
+            console.log(`↩️ Returning ${discrepancy} units to inventory`);
+            
+            const { data: currentInventory, error: invFetchError } = await supabase
+              .from("inventory")
+              .select("quantity")
+              .eq("raw_material_id", verification.materialId)
+              .single();
+
+            if (invFetchError) {
+              console.error("❌ Error fetching current inventory:", invFetchError);
+              throw new Error(`Failed to fetch inventory for adjustment: ${invFetchError.message}`);
+            }
+
+            const newQuantity = currentInventory.quantity + discrepancy;
+            
+            const { error: invUpdateError } = await supabase
+              .from("inventory")
+              .update({
+                quantity: newQuantity,
+                last_updated: new Date().toISOString()
+              })
+              .eq("raw_material_id", verification.materialId);
+
+            if (invUpdateError) {
+              console.error("❌ Error updating inventory:", invUpdateError);
+              throw new Error(`Failed to update inventory: ${invUpdateError.message}`);
+            }
+
+            console.log(`✅ Inventory adjusted: +${discrepancy} units returned`);
+
+            // Log the inventory adjustment
+            await supabase
+              .from("material_movements")
+              .insert({
+                raw_material_id: verification.materialId,
+                movement_type: "PRODUCTION_RETURN",
+                quantity: discrepancy,
+                reference_id: production.id,
+                reference_type: "PRODUCTION_ORDER",
+                reference_number: production.voucher_number,
+                notes: `Production Verification Return: Sent ${verification.quantitySent}, Received ${verification.quantityReceived}, Returned ${discrepancy} to inventory`
+              });
+          }
+        }
+
+        // Log material request for any shortages
+        const bomItem = bomData.find(item => item.raw_material_id === verification.materialId);
+        const requiredQty = bomItem ? bomItem.quantity * production.quantity : 0;
+        const shortfall = requiredQty - verification.quantityReceived;
+        
+        if (shortfall > 0) {
+          await supabase
+            .from("material_requests")
+            .insert({
+              production_order_id: production.id,
+              raw_material_id: verification.materialId,
+              requested_quantity: shortfall,
+              reason: `Verification shortage: Required ${requiredQty}, Received ${verification.quantityReceived}`,
+              status: 'PENDING'
+            });
+        }
+      }
+
+      console.log("✅ Production verification processing completed");
     },
     onSuccess: () => {
       toast({
-        title: "Discrepancy Logged",
-        description: "Material discrepancy has been logged for Store review",
+        title: "Verification Completed",
+        description: "Production verification saved and inventory adjusted for discrepancies",
+      });
+      queryClient.invalidateQueries({ queryKey: ["sent-materials-detail"] });
+      queryClient.invalidateQueries({ queryKey: ["inventory"] });
+      queryClient.invalidateQueries({ queryKey: ["inventory-real-time"] });
+    },
+    onError: (error: Error) => {
+      console.error("❌ Failed to save verification:", error);
+      toast({
+        title: "Verification Failed",
+        description: error.message,
+        variant: "destructive",
       });
     },
   });
@@ -187,26 +318,24 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
     },
   });
 
-  // Handle save all quantities and assignments
-  const handleSaveQuantities = () => {
-    // Log discrepancies
-    Object.entries(receivedQuantities).forEach(([materialId, quantityReceived]) => {
-      const quantitySent = getQuantitySent(materialId);
-      const difference = quantityReceived - quantitySent;
-      
-      if (difference !== 0) {
-        const bomItem = bomData.find(item => item.raw_material_id === materialId);
-        const section = bomItem?.bom_type?.replace('_', ' ') || 'Unknown';
-        
-        saveDiscrepancyMutation.mutate({
+  // Handle save verification and assignments
+  const handleSaveVerification = () => {
+    // Create verification data for materials with quantity changes
+    const verificationData = Object.entries(receivedQuantities)
+      .map(([materialId, quantityReceived]) => {
+        const quantitySent = getQuantitySent(materialId);
+        return {
           materialId,
           quantitySent,
-          quantityReceived,
-          difference,
-          section
-        });
-      }
-    });
+          quantityReceived
+        };
+      })
+      .filter(v => v.quantitySent > 0); // Only process materials that were actually sent
+
+    if (verificationData.length > 0) {
+      console.log("💾 Saving production verification:", verificationData);
+      saveVerificationMutation.mutate(verificationData);
+    }
 
     // Save line assignments if any
     if (Object.keys(lineAssignments).length > 0) {
@@ -263,9 +392,14 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
             {items.map((item) => {
               const requiredQty = item.quantity * production.quantity;
               const quantitySent = getQuantitySent(item.raw_material_id);
-              const quantityReceived = receivedQuantities[item.raw_material_id] || quantitySent;
+              const quantityReceived = receivedQuantities[item.raw_material_id] !== undefined 
+                ? receivedQuantities[item.raw_material_id] 
+                : getQuantityReceived(item.raw_material_id);
               const remainingQty = requiredQty - quantityReceived;
-              const difference = quantityReceived - quantitySent;
+              const difference = quantitySent - quantityReceived;
+              const isVerified = sentMaterials.some(m => 
+                m.raw_material_id === item.raw_material_id && m.verified_by_production
+              );
               
               return (
                 <TableRow key={item.id}>
@@ -279,23 +413,33 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
                       value={quantityReceived}
                       onChange={(e) => handleReceivedQuantityChange(item.raw_material_id, e.target.value)}
                       className="w-24"
+                      disabled={isVerified}
+                      max={quantitySent}
+                      min="0"
                     />
+                    {difference > 0 && !isVerified && (
+                      <div className="text-xs text-muted-foreground mt-1">
+                        {difference} will return to inventory
+                      </div>
+                    )}
                   </TableCell>
                   <TableCell className={remainingQty > 0 ? "text-orange-600 font-medium" : "text-green-600 font-medium"}>
                     {remainingQty}
                   </TableCell>
                   <TableCell>
-                    {difference === 0 ? (
+                    {isVerified ? (
+                      <Badge variant="default">Verified</Badge>
+                    ) : difference === 0 ? (
                       <Badge variant="default">Matched</Badge>
                     ) : difference > 0 ? (
-                      <Badge variant="destructive" className="gap-1">
+                      <Badge variant="warning" className="gap-1">
                         <AlertTriangle className="h-3 w-3" />
-                        Over +{difference}
+                        Return +{difference}
                       </Badge>
                     ) : (
                       <Badge variant="destructive" className="gap-1">
                         <AlertTriangle className="h-3 w-3" />
-                        Short {difference}
+                        Short {Math.abs(difference)}
                       </Badge>
                     )}
                   </TableCell>
@@ -349,7 +493,7 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
           {/* Materials Sent by Store - Grouped by Assembly Type */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold">Materials Sent by Store</h3>
+              <h3 className="text-lg font-semibold">Materials Sent by Store - Production Verification</h3>
               <div className="flex gap-2">
                 <Button
                   variant="outline"
@@ -378,10 +522,10 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
           {/* Action Buttons */}
           <div className="flex justify-end gap-4 pt-4 border-t">
             <Button
-              onClick={handleSaveQuantities}
-              disabled={saveDiscrepancyMutation.isPending || saveLineAssignments.isPending}
+              onClick={handleSaveVerification}
+              disabled={saveVerificationMutation.isPending || saveLineAssignments.isPending}
             >
-              Save Quantities & Line Assignments
+              Save Verification & Line Assignments
             </Button>
           </div>
         </div>

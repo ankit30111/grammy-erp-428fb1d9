@@ -48,12 +48,23 @@ const ProductionFeedbackDialog = ({ productionOrderId, voucherNumber, isOpen, on
     enabled: !!productionOrderId && isOpen,
   });
 
-  // Save production feedback mutation
+  // Enhanced production feedback mutation with inventory adjustment
   const saveProductionFeedback = useMutation({
-    mutationFn: async (feedbackData: Array<{ kitItemId: string; actualReceived: number; materialId: string }>) => {
-      // Update kit_items with actual received quantities
+    mutationFn: async (feedbackData: Array<{ kitItemId: string; actualReceived: number; materialId: string; sentQuantity: number }>) => {
+      console.log("🎯 Processing production feedback with inventory adjustment...");
+      console.log("📋 Feedback data:", feedbackData);
+
+      // Update kit_items with actual received quantities and handle inventory adjustments
       for (const feedback of feedbackData) {
-        const { error } = await supabase
+        console.log(`🔄 Processing feedback for material ${feedback.materialId}:`);
+        console.log(`   - Sent: ${feedback.sentQuantity}`);
+        console.log(`   - Received: ${feedback.actualReceived}`);
+        
+        const discrepancy = feedback.sentQuantity - feedback.actualReceived;
+        console.log(`   - Discrepancy: ${discrepancy}`);
+
+        // Update kit item with actual received quantity
+        const { error: kitItemError } = await supabase
           .from("kit_items")
           .update({
             actual_quantity: feedback.actualReceived,
@@ -61,12 +72,66 @@ const ProductionFeedbackDialog = ({ productionOrderId, voucherNumber, isOpen, on
           })
           .eq("id", feedback.kitItemId);
 
-        if (error) throw error;
+        if (kitItemError) {
+          console.error("❌ Error updating kit item:", kitItemError);
+          throw kitItemError;
+        }
 
-        // Log any discrepancies in material movements
-        const originalSent = sentMaterials.find(item => item.id === feedback.kitItemId)?.actual_quantity || 0;
-        const discrepancy = originalSent - feedback.actualReceived;
-        
+        // CRITICAL: If there's a discrepancy, adjust inventory
+        if (discrepancy !== 0) {
+          console.log(`🔄 Adjusting inventory for discrepancy: ${discrepancy}`);
+          
+          if (discrepancy > 0) {
+            // Production received less than sent - return excess to inventory
+            console.log(`↩️ Returning ${discrepancy} units to inventory`);
+            
+            const { data: currentInventory, error: invFetchError } = await supabase
+              .from("inventory")
+              .select("quantity")
+              .eq("raw_material_id", feedback.materialId)
+              .single();
+
+            if (invFetchError) {
+              console.error("❌ Error fetching current inventory:", invFetchError);
+              throw new Error(`Failed to fetch inventory for adjustment: ${invFetchError.message}`);
+            }
+
+            const newQuantity = currentInventory.quantity + discrepancy;
+            
+            const { error: invUpdateError } = await supabase
+              .from("inventory")
+              .update({
+                quantity: newQuantity,
+                last_updated: new Date().toISOString()
+              })
+              .eq("raw_material_id", feedback.materialId);
+
+            if (invUpdateError) {
+              console.error("❌ Error updating inventory:", invUpdateError);
+              throw new Error(`Failed to update inventory: ${invUpdateError.message}`);
+            }
+
+            console.log(`✅ Inventory adjusted: +${discrepancy} units returned`);
+
+            // Log the inventory adjustment
+            await supabase
+              .from("material_movements")
+              .insert({
+                raw_material_id: feedback.materialId,
+                movement_type: "PRODUCTION_RETURN",
+                quantity: discrepancy,
+                reference_id: productionOrderId,
+                reference_type: "PRODUCTION_ORDER",
+                reference_number: voucherNumber,
+                notes: `Production Feedback Return: Sent ${feedback.sentQuantity}, Received ${feedback.actualReceived}, Returned ${discrepancy} to inventory`
+              });
+          } else {
+            // Production received more than sent (should not happen normally, but log it)
+            console.log(`⚠️ Production received more than sent: ${Math.abs(discrepancy)} excess`);
+          }
+        }
+
+        // Log any discrepancies in material movements for audit trail
         if (discrepancy !== 0) {
           await supabase
             .from("material_movements")
@@ -77,19 +142,31 @@ const ProductionFeedbackDialog = ({ productionOrderId, voucherNumber, isOpen, on
               reference_id: productionOrderId,
               reference_type: "PRODUCTION_ORDER",
               reference_number: voucherNumber,
-              notes: `Production Feedback: Sent ${originalSent}, Received ${feedback.actualReceived}, Difference: ${discrepancy}`
+              notes: `Production Feedback: Sent ${feedback.sentQuantity}, Received ${feedback.actualReceived}, Difference: ${discrepancy}`
             });
         }
       }
+
+      console.log("✅ Production feedback processing completed");
     },
     onSuccess: () => {
       toast({
         title: "Production Feedback Saved",
-        description: "Actual received quantities have been updated",
+        description: "Actual received quantities have been updated and inventory adjusted for discrepancies",
       });
       queryClient.invalidateQueries({ queryKey: ["production-feedback-materials"] });
       queryClient.invalidateQueries({ queryKey: ["dispatched-materials"] });
+      queryClient.invalidateQueries({ queryKey: ["inventory"] });
+      queryClient.invalidateQueries({ queryKey: ["inventory-real-time"] });
       onClose();
+    },
+    onError: (error: Error) => {
+      console.error("❌ Failed to save production feedback:", error);
+      toast({
+        title: "Production Feedback Failed",
+        description: error.message,
+        variant: "destructive",
+      });
     },
   });
 
@@ -102,16 +179,15 @@ const ProductionFeedbackDialog = ({ productionOrderId, voucherNumber, isOpen, on
   };
 
   const handleSaveFeedback = () => {
-    const feedbackData = Object.entries(receivedQuantities)
-      .filter(([_, quantity]) => quantity > 0)
-      .map(([kitItemId, actualReceived]) => {
-        const item = sentMaterials.find(m => m.id === kitItemId);
-        return {
-          kitItemId,
-          actualReceived,
-          materialId: item?.raw_material_id || ""
-        };
-      });
+    const feedbackData = sentMaterials
+      .filter(item => receivedQuantities[item.id] !== undefined)
+      .map(item => ({
+        kitItemId: item.id,
+        actualReceived: receivedQuantities[item.id] || 0,
+        materialId: item.raw_material_id,
+        sentQuantity: item.actual_quantity || 0
+      }))
+      .filter(feedback => feedback.actualReceived >= 0);
 
     if (feedbackData.length === 0) {
       toast({
@@ -122,6 +198,7 @@ const ProductionFeedbackDialog = ({ productionOrderId, voucherNumber, isOpen, on
       return;
     }
 
+    console.log("💾 Saving production feedback:", feedbackData);
     saveProductionFeedback.mutate(feedbackData);
   };
 
@@ -145,7 +222,7 @@ const ProductionFeedbackDialog = ({ productionOrderId, voucherNumber, isOpen, on
         
         <div className="space-y-6">
           <div className="text-sm text-muted-foreground">
-            Enter the actual quantities received by production. This helps track material losses and calculate remaining requirements accurately.
+            Enter the actual quantities received by production. Discrepancies will automatically adjust inventory levels.
           </div>
 
           {Object.entries(groupedMaterials).map(([kitPrepId, materials]) => (
@@ -164,7 +241,11 @@ const ProductionFeedbackDialog = ({ productionOrderId, voucherNumber, isOpen, on
                 </TableHeader>
                 <TableBody>
                   {materials.map((item) => {
-                    const actualReceived = receivedQuantities[item.id] || item.actual_quantity || 0;
+                    const actualReceived = receivedQuantities[item.id] !== undefined 
+                      ? receivedQuantities[item.id] 
+                      : item.verified_by_production 
+                        ? item.actual_quantity 
+                        : item.actual_quantity; // Default to sent quantity
                     const quantitySent = item.actual_quantity || 0;
                     const difference = quantitySent - actualReceived;
                     const isVerified = item.verified_by_production;
@@ -187,6 +268,9 @@ const ProductionFeedbackDialog = ({ productionOrderId, voucherNumber, isOpen, on
                         </TableCell>
                         <TableCell className={`font-medium ${difference > 0 ? 'text-red-600' : difference < 0 ? 'text-orange-600' : 'text-green-600'}`}>
                           {difference > 0 ? `-${difference}` : difference < 0 ? `+${Math.abs(difference)}` : '0'}
+                          {difference > 0 && (
+                            <div className="text-xs text-muted-foreground">Will return to inventory</div>
+                          )}
                         </TableCell>
                         <TableCell>
                           {isVerified ? (
