@@ -13,7 +13,7 @@ const GRNReceiving = lazy(() => import("@/components/Store/GRNReceiving"));
 const MaterialRequestsTab = lazy(() => import("@/components/Store/MaterialRequestsTab"));
 const LogBook = lazy(() => import("@/components/Store/LogBook"));
 const InventoryManagement = lazy(() => import("@/components/Store/InventoryManagement"));
-const ProductionFeedbackTab = lazy(() => import("@/components/Store/ProductionFeedbackTab"));
+const EnhancedProductionFeedback = lazy(() => import("@/components/Store/EnhancedProductionFeedback"));
 const StockReconciliation = lazy(() => import("@/components/Store/StockReconciliation"));
 
 // Loading component for tab content
@@ -29,20 +29,21 @@ const TabLoader = () => (
 const StoreDashboard = () => {
   const [selectedVoucherId, setSelectedVoucherId] = useState<string | null>(null);
 
-  // Get pending feedback count for tab badge with optimized query
-  const { data: pendingFeedbackCount = 0 } = useQuery({
-    queryKey: ["pending-feedback-count"],
+  // Get pending discrepancy count for tab badge
+  const { data: pendingDiscrepancyCount = 0 } = useQuery({
+    queryKey: ["pending-discrepancy-count"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("material_requests")
+        .from("production_material_receipts")
         .select("id", { count: 'exact' })
-        .eq("status", "PENDING");
+        .eq("discrepancy_status", "PENDING")
+        .not("discrepancy_quantity", "is", null);
       
       if (error) return 0;
       return data?.length || 0;
     },
-    refetchInterval: 30000, // Reduced frequency for better performance
-    staleTime: 20000, // Cache for 20 seconds
+    refetchInterval: 30000,
+    staleTime: 20000,
   });
 
   return (
@@ -58,9 +59,9 @@ const StoreDashboard = () => {
           <TabsTrigger value="grn-receiving">GRN Receiving</TabsTrigger>
           <TabsTrigger value="production-feedback" className="relative">
             Production Feedback
-            {pendingFeedbackCount > 0 && (
+            {pendingDiscrepancyCount > 0 && (
               <Badge variant="destructive" className="ml-2 h-5 w-5 p-0 text-xs">
-                {pendingFeedbackCount}
+                {pendingDiscrepancyCount}
               </Badge>
             )}
           </TabsTrigger>
@@ -74,7 +75,7 @@ const StoreDashboard = () => {
           <div className="flex items-center space-x-2 mb-4">
             <Package className="h-5 w-5" />
             <h2 className="text-xl font-semibold">Production Voucher Management</h2>
-            <Badge variant="outline">Real-time Inventory Deduction</Badge>
+            <Badge variant="outline">Enhanced Material Controls</Badge>
           </div>
           
           <Suspense fallback={<TabLoader />}>
@@ -105,11 +106,11 @@ const StoreDashboard = () => {
         <TabsContent value="production-feedback" className="space-y-4">
           <div className="flex items-center space-x-2 mb-4">
             <AlertTriangle className="h-5 w-5" />
-            <h2 className="text-xl font-semibold">Production Feedback & Discrepancies</h2>
-            <Badge variant="outline">Store-Production Reconciliation</Badge>
+            <h2 className="text-xl font-semibold">Production Feedback & Discrepancy Resolution</h2>
+            <Badge variant="outline">Enhanced Quantity Mismatch Handling</Badge>
           </div>
           <Suspense fallback={<TabLoader />}>
-            <ProductionFeedbackTab />
+            <EnhancedProductionFeedback />
           </Suspense>
         </TabsContent>
 
