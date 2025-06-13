@@ -1179,7 +1179,6 @@ export type Database = {
         Row: {
           created_at: string | null
           created_by: string | null
-          discrepancy_id: string | null
           id: string
           issued_to: string | null
           movement_type: string
@@ -1193,7 +1192,6 @@ export type Database = {
         Insert: {
           created_at?: string | null
           created_by?: string | null
-          discrepancy_id?: string | null
           id?: string
           issued_to?: string | null
           movement_type: string
@@ -1207,7 +1205,6 @@ export type Database = {
         Update: {
           created_at?: string | null
           created_by?: string | null
-          discrepancy_id?: string | null
           id?: string
           issued_to?: string | null
           movement_type?: string
@@ -1626,9 +1623,6 @@ export type Database = {
       production_material_receipts: {
         Row: {
           created_at: string
-          discrepancy_quantity: number | null
-          discrepancy_status: string | null
-          discrepancy_type: string | null
           id: string
           notes: string | null
           production_order_id: string
@@ -1636,17 +1630,10 @@ export type Database = {
           raw_material_id: string
           received_at: string
           received_by: string | null
-          resolution_notes: string | null
-          resolved_at: string | null
-          resolved_by: string | null
-          sent_quantity: number | null
           updated_at: string
         }
         Insert: {
           created_at?: string
-          discrepancy_quantity?: number | null
-          discrepancy_status?: string | null
-          discrepancy_type?: string | null
           id?: string
           notes?: string | null
           production_order_id: string
@@ -1654,17 +1641,10 @@ export type Database = {
           raw_material_id: string
           received_at?: string
           received_by?: string | null
-          resolution_notes?: string | null
-          resolved_at?: string | null
-          resolved_by?: string | null
-          sent_quantity?: number | null
           updated_at?: string
         }
         Update: {
           created_at?: string
-          discrepancy_quantity?: number | null
-          discrepancy_status?: string | null
-          discrepancy_type?: string | null
           id?: string
           notes?: string | null
           production_order_id?: string
@@ -1672,10 +1652,6 @@ export type Database = {
           raw_material_id?: string
           received_at?: string
           received_by?: string | null
-          resolution_notes?: string | null
-          resolved_at?: string | null
-          resolved_by?: string | null
-          sent_quantity?: number | null
           updated_at?: string
         }
         Relationships: [
@@ -2724,31 +2700,11 @@ export type Database = {
         }
         Returns: undefined
       }
-      log_production_receipt_with_discrepancy: {
-        Args: {
-          p_production_order_id: string
-          p_raw_material_id: string
-          p_sent_quantity: number
-          p_received_quantity: number
-          p_received_by?: string
-          p_notes?: string
-        }
-        Returns: string
-      }
       resolve_production_discrepancy: {
         Args: {
           p_discrepancy_id: string
           p_action: string
           p_reviewed_by: string
-          p_resolution_notes?: string
-        }
-        Returns: undefined
-      }
-      resolve_production_receipt_discrepancy: {
-        Args: {
-          p_receipt_id: string
-          p_action: string
-          p_resolved_by: string
           p_resolution_notes?: string
         }
         Returns: undefined
