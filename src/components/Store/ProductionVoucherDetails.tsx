@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -440,9 +439,9 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
 
   // Group BOM items by category
   const groupedBOM = {
-    'Sub Assembly': bom.filter(item => item.bom_type === 'Sub Assembly'),
-    'Main Assembly': bom.filter(item => item.bom_type === 'Main Assembly'),
-    'Accessory': bom.filter(item => item.bom_type === 'Accessory')
+    'Sub Assembly': bom.filter(item => item.bom_type === 'sub_assembly'),
+    'Main Assembly': bom.filter(item => item.bom_type === 'main_assembly'),
+    'Accessory': bom.filter(item => item.bom_type === 'accessory')
   };
 
   // Helper function to render material rows for a category
