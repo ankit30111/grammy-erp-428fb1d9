@@ -45,6 +45,7 @@ export const useBOMByProduct = (productId: string) => {
             id,
             name,
             material_code,
+            category,
             vendor_id,
             vendors (
               id,

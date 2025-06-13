@@ -4,12 +4,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Calendar, Package, Settings, Eye } from "lucide-react";
+import { Calendar, Package, Eye } from "lucide-react";
 import { format } from "date-fns";
-import EnhancedBOMTable from "./EnhancedBOMTable";
+import ProductionVoucherDetailView from "./ProductionVoucherDetailView";
 
 const ScheduledProductions = () => {
   const [selectedProduction, setSelectedProduction] = useState<any>(null);
@@ -189,63 +188,13 @@ const ScheduledProductions = () => {
         </CardContent>
       </Card>
 
-      {/* Enhanced Production Detail Dialog */}
+      {/* Production Voucher Detail View with Material Categorization */}
       {selectedProduction && (
-        <Dialog open={!!selectedProduction} onOpenChange={() => setSelectedProduction(null)}>
-          <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <Settings className="h-5 w-5" />
-                Production Details - {selectedProduction.voucher_number}
-              </DialogTitle>
-            </DialogHeader>
-            
-            <div className="space-y-6">
-              {/* Production Info */}
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="grid grid-cols-4 gap-4">
-                    <div>
-                      <span className="text-sm text-muted-foreground">Product:</span>
-                      <p className="font-medium">{selectedProduction.products?.name}</p>
-                    </div>
-                    <div>
-                      <span className="text-sm text-muted-foreground">Production Quantity:</span>
-                      <p className="font-medium">{selectedProduction.quantity}</p>
-                    </div>
-                    <div>
-                      <span className="text-sm text-muted-foreground">Scheduled Date:</span>
-                      <p className="font-medium">
-                        {selectedProduction.scheduled_date ? format(new Date(selectedProduction.scheduled_date), "MMM dd, yyyy") : 'N/A'}
-                      </p>
-                    </div>
-                    <div>
-                      <span className="text-sm text-muted-foreground">Status:</span>
-                      {getStatusBadge(selectedProduction.status)}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Enhanced BOM Table */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Package className="h-5 w-5" />
-                    Bill of Materials - Cumulative Tracking
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <EnhancedBOMTable
-                    productionOrderId={selectedProduction.id}
-                    productId={selectedProduction.product_id}
-                    productionQuantity={selectedProduction.quantity}
-                  />
-                </CardContent>
-              </Card>
-            </div>
-          </DialogContent>
-        </Dialog>
+        <ProductionVoucherDetailView
+          production={selectedProduction}
+          isOpen={!!selectedProduction}
+          onClose={() => setSelectedProduction(null)}
+        />
       )}
     </>
   );
