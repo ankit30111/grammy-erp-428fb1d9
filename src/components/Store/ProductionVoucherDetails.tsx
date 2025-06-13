@@ -438,6 +438,112 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
   const bom = productionOrder.products?.bom || [];
   const orderQuantity = productionOrder.quantity;
 
+  // Group BOM items by category
+  const groupedBOM = {
+    'Sub Assembly': bom.filter(item => item.bom_type === 'Sub Assembly'),
+    'Main Assembly': bom.filter(item => item.bom_type === 'Main Assembly'),
+    'Accessory': bom.filter(item => item.bom_type === 'Accessory')
+  };
+
+  // Helper function to render material rows for a category
+  const renderMaterialRows = (items: any[]) => {
+    return items.map((item) => {
+      const requiredQty = item.quantity * orderQuantity;
+      const currentStock = getCurrentStock(item.raw_materials.id);
+      const totalDispatched = getDispatchedQuantity(item.raw_materials.id);
+      const actualReceived = getActualReceivedQuantity(item.raw_materials.id);
+      const qtyToDispatch = quantities[item.raw_materials.id] || 0;
+      
+      // Enhanced balance calculation: Required - Actual Received by Production
+      const balanceNeeded = Math.max(0, requiredQty - actualReceived - qtyToDispatch);
+      
+      const hasInsufficientStock = qtyToDispatch > currentStock;
+      const isFullyReceived = actualReceived >= requiredQty;
+      const hasPendingMaterial = totalDispatched > actualReceived; // Material in transit
+
+      return (
+        <TableRow key={item.raw_materials.id} className={hasInsufficientStock ? "bg-red-50" : ""}>
+          <TableCell className="font-mono">{item.raw_materials.material_code}</TableCell>
+          <TableCell>{item.raw_materials.name}</TableCell>
+          <TableCell>
+            <Badge variant="outline">{item.raw_materials.category}</Badge>
+          </TableCell>
+          <TableCell className="font-semibold">{requiredQty}</TableCell>
+          <TableCell className={`font-medium ${currentStock > 0 ? 'text-green-600' : 'text-red-600'}`}>
+            {currentStock}
+            <div className="text-xs text-muted-foreground">Live Stock</div>
+          </TableCell>
+          <TableCell className="text-blue-600 font-medium">
+            {totalDispatched}
+            <div className="text-xs text-muted-foreground">Total Sent</div>
+          </TableCell>
+          <TableCell className="text-green-600 font-medium">
+            {actualReceived}
+            <div className="text-xs text-muted-foreground">
+              {hasPendingMaterial ? `(+${totalDispatched - actualReceived} pending)` : 'Confirmed'}
+            </div>
+          </TableCell>
+          <TableCell>
+            <Input
+              type="number"
+              min="0"
+              max={Math.min(currentStock, balanceNeeded)}
+              value={quantities[item.raw_materials.id] || ""}
+              onChange={(e) => handleQuantityChange(item.raw_materials.id, e.target.value)}
+              className={`w-24 ${hasInsufficientStock ? 'border-red-500' : ''}`}
+              placeholder="0"
+              disabled={isFullyReceived}
+            />
+            {hasInsufficientStock && (
+              <p className="text-xs text-red-500 mt-1">
+                Insufficient stock ({currentStock} available)
+              </p>
+            )}
+          </TableCell>
+          <TableCell className="font-medium">
+            {balanceNeeded > 0 ? (
+              <span className="text-orange-600">{balanceNeeded}</span>
+            ) : (
+              <span className="text-green-600">Complete</span>
+            )}
+          </TableCell>
+          <TableCell>
+            {isFullyReceived ? (
+              <Badge variant="default">Complete</Badge>
+            ) : currentStock === 0 ? (
+              <Badge variant="destructive">Out of Stock</Badge>
+            ) : hasInsufficientStock ? (
+              <Badge variant="destructive" className="gap-1">
+                <AlertTriangle className="h-3 w-3" />
+                Insufficient Stock
+              </Badge>
+            ) : qtyToDispatch > 0 ? (
+              <Badge variant="secondary">Ready to Dispatch</Badge>
+            ) : (
+              <Badge variant="outline">Available</Badge>
+            )}
+          </TableCell>
+        </TableRow>
+      );
+    });
+  };
+
+  // Helper function to render category header
+  const renderCategoryHeader = (categoryName: string, itemCount: number) => {
+    if (itemCount === 0) return null;
+    
+    return (
+      <TableRow className="bg-muted/30 hover:bg-muted/30">
+        <TableCell colSpan={10} className="font-semibold text-primary py-3">
+          <div className="flex items-center gap-2">
+            <Package className="h-4 w-4" />
+            {categoryName} ({itemCount} materials)
+          </div>
+        </TableCell>
+      </TableRow>
+    );
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -517,85 +623,17 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {bom.map((item) => {
-                  const requiredQty = item.quantity * orderQuantity;
-                  const currentStock = getCurrentStock(item.raw_materials.id);
-                  const totalDispatched = getDispatchedQuantity(item.raw_materials.id);
-                  const actualReceived = getActualReceivedQuantity(item.raw_materials.id);
-                  const qtyToDispatch = quantities[item.raw_materials.id] || 0;
-                  
-                  // Enhanced balance calculation: Required - Actual Received by Production
-                  const balanceNeeded = Math.max(0, requiredQty - actualReceived - qtyToDispatch);
-                  
-                  const hasInsufficientStock = qtyToDispatch > currentStock;
-                  const isFullyReceived = actualReceived >= requiredQty;
-                  const hasPendingMaterial = totalDispatched > actualReceived; // Material in transit
-
-                  return (
-                    <TableRow key={item.raw_materials.id} className={hasInsufficientStock ? "bg-red-50" : ""}>
-                      <TableCell className="font-mono">{item.raw_materials.material_code}</TableCell>
-                      <TableCell>{item.raw_materials.name}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{item.raw_materials.category}</Badge>
-                      </TableCell>
-                      <TableCell className="font-semibold">{requiredQty}</TableCell>
-                      <TableCell className={`font-medium ${currentStock > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {currentStock}
-                        <div className="text-xs text-muted-foreground">Live Stock</div>
-                      </TableCell>
-                      <TableCell className="text-blue-600 font-medium">
-                        {totalDispatched}
-                        <div className="text-xs text-muted-foreground">Total Sent</div>
-                      </TableCell>
-                      <TableCell className="text-green-600 font-medium">
-                        {actualReceived}
-                        <div className="text-xs text-muted-foreground">
-                          {hasPendingMaterial ? `(+${totalDispatched - actualReceived} pending)` : 'Confirmed'}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Input
-                          type="number"
-                          min="0"
-                          max={Math.min(currentStock, balanceNeeded)}
-                          value={quantities[item.raw_materials.id] || ""}
-                          onChange={(e) => handleQuantityChange(item.raw_materials.id, e.target.value)}
-                          className={`w-24 ${hasInsufficientStock ? 'border-red-500' : ''}`}
-                          placeholder="0"
-                          disabled={isFullyReceived}
-                        />
-                        {hasInsufficientStock && (
-                          <p className="text-xs text-red-500 mt-1">
-                            Insufficient stock ({currentStock} available)
-                          </p>
-                        )}
-                      </TableCell>
-                      <TableCell className="font-medium">
-                        {balanceNeeded > 0 ? (
-                          <span className="text-orange-600">{balanceNeeded}</span>
-                        ) : (
-                          <span className="text-green-600">Complete</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {isFullyReceived ? (
-                          <Badge variant="default">Complete</Badge>
-                        ) : currentStock === 0 ? (
-                          <Badge variant="destructive">Out of Stock</Badge>
-                        ) : hasInsufficientStock ? (
-                          <Badge variant="destructive" className="gap-1">
-                            <AlertTriangle className="h-3 w-3" />
-                            Insufficient Stock
-                          </Badge>
-                        ) : qtyToDispatch > 0 ? (
-                          <Badge variant="secondary">Ready to Dispatch</Badge>
-                        ) : (
-                          <Badge variant="outline">Available</Badge>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
+                {/* Sub Assembly Section */}
+                {renderCategoryHeader("Sub Assembly", groupedBOM['Sub Assembly'].length)}
+                {renderMaterialRows(groupedBOM['Sub Assembly'])}
+                
+                {/* Main Assembly Section */}
+                {renderCategoryHeader("Main Assembly", groupedBOM['Main Assembly'].length)}
+                {renderMaterialRows(groupedBOM['Main Assembly'])}
+                
+                {/* Accessory Section */}
+                {renderCategoryHeader("Accessory", groupedBOM['Accessory'].length)}
+                {renderMaterialRows(groupedBOM['Accessory'])}
               </TableBody>
             </Table>
 
