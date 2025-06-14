@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -81,11 +80,11 @@ export function PerformanceReviews() {
     }
   });
 
-  // Fetch user mishandling cases for performance tracking
+  // Fetch user mishandling cases for performance tracking with manual employee lookup
   const { data: mishandlingCases } = useQuery({
     queryKey: ['employee-mishandling-cases'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data: rejections, error } = await supabase
         .from('line_rejections')
         .select(`
           id,
@@ -94,13 +93,7 @@ export function PerformanceReviews() {
           remarks,
           rejection_date,
           production_order_id,
-          employees!rejected_by (
-            id,
-            first_name,
-            last_name,
-            employee_code,
-            position
-          ),
+          rejected_by,
           raw_materials!raw_material_id (
             material_code,
             name
@@ -114,7 +107,30 @@ export function PerformanceReviews() {
         .order('rejection_date', { ascending: false });
       
       if (error) throw error;
-      return data || [];
+
+      // Manually fetch employee data for each rejection
+      const rejectionsWithEmployees = await Promise.all(
+        (rejections || []).map(async (rejection) => {
+          if (rejection.rejected_by) {
+            const { data: employee } = await supabase
+              .from("employees")
+              .select("id, first_name, last_name, employee_code, position")
+              .eq("id", rejection.rejected_by)
+              .single();
+            
+            return {
+              ...rejection,
+              employee: employee
+            };
+          }
+          return {
+            ...rejection,
+            employee: null
+          };
+        })
+      );
+
+      return rejectionsWithEmployees;
     }
   });
 
@@ -516,13 +532,13 @@ export function PerformanceReviews() {
                           {new Date(mishandling.rejection_date).toLocaleDateString()}
                         </TableCell>
                         <TableCell>
-                          {mishandling.employees ? (
+                          {mishandling.employee ? (
                             <div>
                               <div className="font-medium">
-                                {mishandling.employees.employee_code} - {mishandling.employees.first_name} {mishandling.employees.last_name}
+                                {mishandling.employee.employee_code} - {mishandling.employee.first_name} {mishandling.employee.last_name}
                               </div>
                               <div className="text-sm text-muted-foreground">
-                                {mishandling.employees.position}
+                                {mishandling.employee.position}
                               </div>
                             </div>
                           ) : (

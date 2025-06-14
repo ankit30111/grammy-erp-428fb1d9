@@ -65,22 +65,44 @@ const LineRejectionForm = ({ productionOrderId }: LineRejectionFormProps) => {
     },
   });
 
-  // Fetch existing line rejections for this production order
+  // Fetch existing line rejections for this production order with employee data
   const { data: lineRejections = [] } = useQuery({
     queryKey: ["line-rejections", productionOrderId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data: rejections, error } = await supabase
         .from("line_rejections")
         .select(`
           *,
-          raw_materials!inner(material_code, name),
-          employees(first_name, last_name, employee_code)
+          raw_materials!inner(material_code, name)
         `)
         .eq("production_order_id", productionOrderId)
         .order("rejection_date", { ascending: false });
       
       if (error) throw error;
-      return data || [];
+
+      // Manually fetch employee data for rejections with rejected_by
+      const rejectionsWithEmployees = await Promise.all(
+        (rejections || []).map(async (rejection) => {
+          if (rejection.rejected_by && rejection.reason === "User Mishandling") {
+            const { data: employee } = await supabase
+              .from("employees")
+              .select("id, first_name, last_name, employee_code, position")
+              .eq("id", rejection.rejected_by)
+              .single();
+            
+            return {
+              ...rejection,
+              employee: employee
+            };
+          }
+          return {
+            ...rejection,
+            employee: null
+          };
+        })
+      );
+
+      return rejectionsWithEmployees;
     },
   });
 
@@ -302,9 +324,9 @@ const LineRejectionForm = ({ productionOrderId }: LineRejectionFormProps) => {
                     </TableCell>
                     <TableCell>{rejection.quantity_rejected}</TableCell>
                     <TableCell>
-                      {rejection.reason === "User Mishandling" && rejection.employees ? (
+                      {rejection.reason === "User Mishandling" && rejection.employee ? (
                         <span className="text-sm">
-                          {rejection.employees.employee_code} - {rejection.employees.first_name} {rejection.employees.last_name}
+                          {rejection.employee.employee_code} - {rejection.employee.first_name} {rejection.employee.last_name}
                         </span>
                       ) : (
                         <span className="text-muted-foreground">-</span>
