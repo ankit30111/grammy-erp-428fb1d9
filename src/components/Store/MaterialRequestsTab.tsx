@@ -164,16 +164,24 @@ const MaterialRequestsTab = memo(() => {
         notes: `Material sent to production for request: ${requestData.reason}`
       });
 
-      // Log the material movement
-      await supabase.rpc('log_material_movement', {
+      // Log the material movement with correct parameters for logbook visibility
+      const { error: logError } = await supabase.rpc('log_material_movement', {
         p_raw_material_id: requestData.raw_material_id,
-        p_movement_type: 'DISPATCH',
+        p_movement_type: 'ISSUED_TO_PRODUCTION',
         p_quantity: sendQuantity,
         p_reference_id: requestData.production_order_id,
-        p_reference_type: 'production_order',
+        p_reference_type: 'PRODUCTION_VOUCHER',
         p_reference_number: requestData.production_orders.voucher_number,
-        p_notes: `Material sent to production for request: ${requestData.reason}`
+        p_notes: `Material sent to production for approved request: ${requestData.reason}`
       });
+
+      if (logError) {
+        console.error("❌ Error logging material movement:", logError);
+        // Don't throw error here as the main operation succeeded
+        toast.error("Material sent but logging failed. Please check logbook manually.");
+      } else {
+        console.log("✅ Material movement logged successfully in logbook");
+      }
 
       // Update the material request status to indicate it's been sent
       const { error: updateError } = await supabase
