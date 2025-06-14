@@ -58,43 +58,25 @@ export const useMovementData = (filterType: string) => {
         throw error;
       }
 
-      // Client-side deduplication based on reference and time proximity
-      const deduplicatedData = data?.filter((movement, index, arr) => {
-        const duplicate = arr.find((other, otherIndex) => {
-          if (otherIndex >= index) return false;
-          
-          const timeDiff = Math.abs(
-            new Date(movement.created_at).getTime() - new Date(other.created_at).getTime()
-          );
-          
-          return (
-            movement.raw_material_id === other.raw_material_id &&
-            movement.movement_type === other.movement_type &&
-            movement.quantity === other.quantity &&
-            movement.reference_number === other.reference_number &&
-            timeDiff < 60000 // Within 1 minute
-          );
-        });
-        
-        return !duplicate;
-      }) || [];
+      // Since we've cleaned up duplicates in the database, minimal client-side filtering is needed
+      const cleanData = data || [];
 
-      console.log("📋 Material movements fetched:", deduplicatedData.length, "entries (after deduplication)");
+      console.log("📋 Material movements fetched:", cleanData.length, "entries (post-cleanup)");
       
-      const movementTypes = deduplicatedData.map(m => m.movement_type);
+      const movementTypes = cleanData.map(m => m.movement_type);
       const uniqueTypes = [...new Set(movementTypes)];
       console.log("📊 Movement types found:", uniqueTypes);
       
-      return deduplicatedData;
+      return cleanData;
     },
-    refetchInterval: 5000,
-    staleTime: 2000,
+    refetchInterval: 10000, // Increased interval since we have better deduplication
+    staleTime: 5000, // Cache for 5 seconds
   });
 
   // Auto-refresh when new materials are dispatched or received
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'material_dispatched' || e.key === 'material_received') {
+      if (e.key === 'material_dispatched' || e.key === 'material_received' || e.key === 'material_request_created') {
         console.log("🔄 AUTO-REFRESH: Material movement detected");
         refetch();
       }
@@ -102,6 +84,29 @@ export const useMovementData = (filterType: string) => {
     
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
+  }, [refetch]);
+
+  // Real-time subscription for immediate updates
+  useEffect(() => {
+    const channel = supabase
+      .channel('material-movements-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Listen to all changes
+          schema: 'public',
+          table: 'material_movements'
+        },
+        (payload) => {
+          console.log('📡 Real-time update detected:', payload);
+          refetch();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [refetch]);
 
   return {

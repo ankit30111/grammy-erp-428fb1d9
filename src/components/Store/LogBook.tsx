@@ -2,7 +2,7 @@
 import { useState, memo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { BookOpen } from "lucide-react";
+import { BookOpen, CheckCircle } from "lucide-react";
 import { MovementFilters } from "./LogBook/MovementFilters";
 import { MovementTable } from "./LogBook/MovementTable";
 import { EmptyState } from "./LogBook/EmptyState";
@@ -15,7 +15,7 @@ const LogBook = memo(() => {
 
   const { movements, isLoading, refetch } = useMovementData(filterType);
 
-  // Client-side filtering for better performance
+  // Client-side filtering for search functionality
   const filteredMovements = movements.filter(movement => {
     if (searchTerm.trim()) {
       const search = searchTerm.toLowerCase();
@@ -23,7 +23,8 @@ const LogBook = memo(() => {
         movement.raw_materials?.material_code?.toLowerCase().includes(search) ||
         movement.raw_materials?.name?.toLowerCase().includes(search) ||
         movement.reference_number?.toLowerCase().includes(search) ||
-        movement.notes?.toLowerCase().includes(search)
+        movement.notes?.toLowerCase().includes(search) ||
+        movement.movement_type?.toLowerCase().includes(search)
       );
     }
     return true;
@@ -40,7 +41,11 @@ const LogBook = memo(() => {
           <CardTitle className="flex items-center gap-2">
             <BookOpen className="h-5 w-5" />
             Material Movement LogBook ({filteredMovements.length})
-            <Badge variant="outline">Real-time Tracking</Badge>
+            <Badge variant="outline" className="gap-1">
+              <CheckCircle className="h-3 w-3" />
+              Cleaned & Deduplicated
+            </Badge>
+            <Badge variant="secondary">Real-time Tracking</Badge>
           </CardTitle>
         </CardHeader>
         <CardContent>
