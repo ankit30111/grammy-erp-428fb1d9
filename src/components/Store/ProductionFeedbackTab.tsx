@@ -54,10 +54,10 @@ const ProductionFeedbackTab = () => {
       console.log("📋 Production discrepancies:", data);
       return data || [];
     },
-    refetchInterval: 5000, // Real-time updates
+    refetchInterval: 5000,
   });
 
-  // Resolve discrepancy mutation
+  // Resolve discrepancy mutation with PROPER LOGGING
   const resolveDiscrepancyMutation = useMutation({
     mutationFn: async ({ discrepancyId, action, notes }: { discrepancyId: string; action: 'ACCEPT' | 'REJECT'; notes: string }) => {
       console.log(`🎯 RESOLVING DISCREPANCY: ${action}`, { discrepancyId, notes });
@@ -126,19 +126,21 @@ const ProductionFeedbackTab = () => {
             throw new Error(`Failed to update inventory: ${invUpdateError.message}`);
           }
 
-          // Auto-log the return movement with proper reference
+          // PROPER LOGGING: Only log when store accepts production feedback with correct voucher number
           const { error: logError } = await supabase.rpc('log_material_movement', {
             p_raw_material_id: discrepancy.raw_material_id,
             p_movement_type: 'PRODUCTION_FEEDBACK_RETURN',
             p_quantity: returnQuantity,
             p_reference_id: discrepancy.production_order_id,
-            p_reference_type: 'PRODUCTION_DISCREPANCY',
-            p_reference_number: discrepancy.production_orders.voucher_number,
+            p_reference_type: 'PRODUCTION_VOUCHER',
+            p_reference_number: discrepancy.production_orders.voucher_number, // Use actual voucher number
             p_notes: `Store accepted production shortage discrepancy. Returned ${returnQuantity} units to inventory. ${notes}`
           });
 
           if (logError) {
             console.error("❌ Error logging discrepancy return:", logError);
+          } else {
+            console.log(`📋 LOGGED: Production feedback return for voucher ${discrepancy.production_orders.voucher_number}`);
           }
 
           console.log(`📦 RETURNED ${returnQuantity} UNITS TO INVENTORY`);
@@ -161,19 +163,21 @@ const ProductionFeedbackTab = () => {
           throw new Error(`Failed to update kit item: ${kitError.message}`);
         }
 
-        // Auto-log the rejection with proper reference
+        // Log the rejection with proper voucher number (no random references)
         const { error: logError } = await supabase.rpc('log_material_movement', {
           p_raw_material_id: discrepancy.raw_material_id,
           p_movement_type: 'PRODUCTION_DISCREPANCY_REJECTED',
           p_quantity: discrepancy.discrepancy_quantity,
           p_reference_id: discrepancy.production_order_id,
-          p_reference_type: 'PRODUCTION_DISCREPANCY',
-          p_reference_number: discrepancy.production_orders.voucher_number,
+          p_reference_type: 'PRODUCTION_VOUCHER',
+          p_reference_number: discrepancy.production_orders.voucher_number, // Use actual voucher number
           p_notes: `Store rejected production discrepancy. Maintained store sent quantity of ${discrepancy.sent_quantity}. ${notes}`
         });
 
         if (logError) {
           console.error("❌ Error logging discrepancy rejection:", logError);
+        } else {
+          console.log(`📋 LOGGED: Production discrepancy rejection for voucher ${discrepancy.production_orders.voucher_number}`);
         }
       }
 

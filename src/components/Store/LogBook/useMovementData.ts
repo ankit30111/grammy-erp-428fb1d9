@@ -24,7 +24,7 @@ export const useMovementData = (filterType: string) => {
   const { data: movements = [], isLoading, refetch } = useQuery({
     queryKey: ["material-movements-logbook", filterType],
     queryFn: async () => {
-      console.log("🔍 Fetching material movements for LogBook...", { filterType });
+      console.log("🔍 Fetching CLEAN material movements for LogBook...", { filterType });
       
       let query = supabase
         .from("material_movements")
@@ -58,10 +58,11 @@ export const useMovementData = (filterType: string) => {
         throw error;
       }
 
-      // Since we've cleaned up duplicates in the database, minimal client-side filtering is needed
+      // Data should now be clean after the migration
       const cleanData = data || [];
 
-      console.log("📋 Material movements fetched:", cleanData.length, "entries (post-cleanup)");
+      console.log("📋 CLEAN Material movements fetched:", cleanData.length, "entries");
+      console.log("🎯 Reference number samples:", cleanData.slice(0, 5).map(m => m.reference_number));
       
       const movementTypes = cleanData.map(m => m.movement_type);
       const uniqueTypes = [...new Set(movementTypes)];
@@ -69,8 +70,8 @@ export const useMovementData = (filterType: string) => {
       
       return cleanData;
     },
-    refetchInterval: 10000, // Increased interval since we have better deduplication
-    staleTime: 5000, // Cache for 5 seconds
+    refetchInterval: 10000, // Check for new entries every 10 seconds
+    staleTime: 5000,
   });
 
   // Auto-refresh when new materials are dispatched or received
@@ -93,7 +94,7 @@ export const useMovementData = (filterType: string) => {
       .on(
         'postgres_changes',
         {
-          event: '*', // Listen to all changes
+          event: '*',
           schema: 'public',
           table: 'material_movements'
         },

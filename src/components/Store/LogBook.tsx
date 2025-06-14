@@ -2,7 +2,7 @@
 import { useState, memo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { BookOpen, CheckCircle } from "lucide-react";
+import { BookOpen, CheckCircle, Zap } from "lucide-react";
 import { MovementFilters } from "./LogBook/MovementFilters";
 import { MovementTable } from "./LogBook/MovementTable";
 import { EmptyState } from "./LogBook/EmptyState";
@@ -43,9 +43,12 @@ const LogBook = memo(() => {
             Material Movement LogBook ({filteredMovements.length})
             <Badge variant="outline" className="gap-1">
               <CheckCircle className="h-3 w-3" />
-              Cleaned & Deduplicated
+              Fully Cleaned
             </Badge>
-            <Badge variant="secondary">Real-time Tracking</Badge>
+            <Badge variant="secondary" className="gap-1">
+              <Zap className="h-3 w-3" />
+              Single-Source Logging
+            </Badge>
           </CardTitle>
         </CardHeader>
         <CardContent>
