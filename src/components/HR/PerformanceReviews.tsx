@@ -9,10 +9,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Star, TrendingUp, Award } from "lucide-react";
+import { Plus, Star, TrendingUp, Award, AlertTriangle } from "lucide-react";
 
 export function PerformanceReviews() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -74,6 +75,43 @@ export function PerformanceReviews() {
           )
         `)
         .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      return data || [];
+    }
+  });
+
+  // Fetch user mishandling cases for performance tracking
+  const { data: mishandlingCases } = useQuery({
+    queryKey: ['employee-mishandling-cases'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('line_rejections')
+        .select(`
+          id,
+          reason,
+          quantity_rejected,
+          remarks,
+          rejection_date,
+          production_order_id,
+          employees!rejected_by (
+            id,
+            first_name,
+            last_name,
+            employee_code,
+            position
+          ),
+          raw_materials!raw_material_id (
+            material_code,
+            name
+          ),
+          production_orders!production_order_id (
+            voucher_number
+          )
+        `)
+        .eq('reason', 'User Mishandling')
+        .not('rejected_by', 'is', null)
+        .order('rejection_date', { ascending: false });
       
       if (error) throw error;
       return data || [];
@@ -365,77 +403,151 @@ export function PerformanceReviews() {
         </Card>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Performance Review History</CardTitle>
-          <CardDescription>Employee performance evaluations and feedback</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div>Loading performance reviews...</div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Employee</TableHead>
-                  <TableHead>Position</TableHead>
-                  <TableHead>Review Period</TableHead>
-                  <TableHead>Overall Rating</TableHead>
-                  <TableHead>Technical</TableHead>
-                  <TableHead>Communication</TableHead>
-                  <TableHead>Teamwork</TableHead>
-                  <TableHead>Created</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {reviews?.map((review) => (
-                  <TableRow key={review.id}>
-                    <TableCell>
-                      {review.employees?.employee_code} - {review.employees?.first_name} {review.employees?.last_name}
-                    </TableCell>
-                    <TableCell>{review.employees?.position}</TableCell>
-                    <TableCell>
-                      {new Date(review.review_period_start).toLocaleDateString()} - {' '}
-                      {new Date(review.review_period_end).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell>
-                      {review.overall_rating && (
-                        <Badge className={getRatingColor(review.overall_rating)}>
-                          {review.overall_rating.replace('_', ' ')}
-                        </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {review.technical_skills_rating && (
-                        <Badge className={getRatingColor(review.technical_skills_rating)} variant="outline">
-                          {review.technical_skills_rating.replace('_', ' ')}
-                        </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {review.communication_rating && (
-                        <Badge className={getRatingColor(review.communication_rating)} variant="outline">
-                          {review.communication_rating.replace('_', ' ')}
-                        </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {review.teamwork_rating && (
-                        <Badge className={getRatingColor(review.teamwork_rating)} variant="outline">
-                          {review.teamwork_rating.replace('_', ' ')}
-                        </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {review.created_at && new Date(review.created_at).toLocaleDateString()}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+      <Tabs defaultValue="reviews" className="w-full">
+        <TabsList>
+          <TabsTrigger value="reviews">Performance Reviews</TabsTrigger>
+          <TabsTrigger value="mishandling">Quality Issues</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="reviews">
+          <Card>
+            <CardHeader>
+              <CardTitle>Performance Review History</CardTitle>
+              <CardDescription>Employee performance evaluations and feedback</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <div>Loading performance reviews...</div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Employee</TableHead>
+                      <TableHead>Position</TableHead>
+                      <TableHead>Review Period</TableHead>
+                      <TableHead>Overall Rating</TableHead>
+                      <TableHead>Technical</TableHead>
+                      <TableHead>Communication</TableHead>
+                      <TableHead>Teamwork</TableHead>
+                      <TableHead>Created</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {reviews?.map((review) => (
+                      <TableRow key={review.id}>
+                        <TableCell>
+                          {review.employees?.employee_code} - {review.employees?.first_name} {review.employees?.last_name}
+                        </TableCell>
+                        <TableCell>{review.employees?.position}</TableCell>
+                        <TableCell>
+                          {new Date(review.review_period_start).toLocaleDateString()} - {' '}
+                          {new Date(review.review_period_end).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell>
+                          {review.overall_rating && (
+                            <Badge className={getRatingColor(review.overall_rating)}>
+                              {review.overall_rating.replace('_', ' ')}
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {review.technical_skills_rating && (
+                            <Badge className={getRatingColor(review.technical_skills_rating)} variant="outline">
+                              {review.technical_skills_rating.replace('_', ' ')}
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {review.communication_rating && (
+                            <Badge className={getRatingColor(review.communication_rating)} variant="outline">
+                              {review.communication_rating.replace('_', ' ')}
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {review.teamwork_rating && (
+                            <Badge className={getRatingColor(review.teamwork_rating)} variant="outline">
+                              {review.teamwork_rating.replace('_', ' ')}
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {review.created_at && new Date(review.created_at).toLocaleDateString()}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="mishandling">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-orange-500" />
+                User Mishandling Cases
+              </CardTitle>
+              <CardDescription>Quality control issues attributed to employee mishandling</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {mishandlingCases && mishandlingCases.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  No user mishandling cases recorded
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Employee</TableHead>
+                      <TableHead>Voucher</TableHead>
+                      <TableHead>Material</TableHead>
+                      <TableHead>Quantity</TableHead>
+                      <TableHead>Remarks</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {mishandlingCases?.map((mishandling) => (
+                      <TableRow key={mishandling.id}>
+                        <TableCell>
+                          {new Date(mishandling.rejection_date).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell>
+                          {mishandling.employees ? (
+                            <div>
+                              <div className="font-medium">
+                                {mishandling.employees.employee_code} - {mishandling.employees.first_name} {mishandling.employees.last_name}
+                              </div>
+                              <div className="text-sm text-muted-foreground">
+                                {mishandling.employees.position}
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground">Unknown</span>
+                          )}
+                        </TableCell>
+                        <TableCell>{mishandling.production_orders?.voucher_number}</TableCell>
+                        <TableCell>
+                          {mishandling.raw_materials?.material_code} - {mishandling.raw_materials?.name}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="destructive">{mishandling.quantity_rejected}</Badge>
+                        </TableCell>
+                        <TableCell className="max-w-xs truncate">
+                          {mishandling.remarks}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

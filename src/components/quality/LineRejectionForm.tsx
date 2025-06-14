@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -21,6 +22,7 @@ const LineRejectionForm = ({ productionOrderId }: LineRejectionFormProps) => {
   const [reason, setReason] = useState("");
   const [quantityRejected, setQuantityRejected] = useState("");
   const [remarks, setRemarks] = useState("");
+  const [selectedEmployee, setSelectedEmployee] = useState("");
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -48,6 +50,21 @@ const LineRejectionForm = ({ productionOrderId }: LineRejectionFormProps) => {
     },
   });
 
+  // Fetch active employees for user mishandling selection
+  const { data: employees = [] } = useQuery({
+    queryKey: ["active-employees"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("employees")
+        .select("id, first_name, last_name, employee_code, position")
+        .eq("status", "active")
+        .order("first_name");
+      
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
   // Fetch existing line rejections for this production order
   const { data: lineRejections = [] } = useQuery({
     queryKey: ["line-rejections", productionOrderId],
@@ -56,7 +73,8 @@ const LineRejectionForm = ({ productionOrderId }: LineRejectionFormProps) => {
         .from("line_rejections")
         .select(`
           *,
-          raw_materials!inner(material_code, name)
+          raw_materials!inner(material_code, name),
+          employees(first_name, last_name, employee_code)
         `)
         .eq("production_order_id", productionOrderId)
         .order("rejection_date", { ascending: false });
@@ -87,6 +105,7 @@ const LineRejectionForm = ({ productionOrderId }: LineRejectionFormProps) => {
       setReason("");
       setQuantityRejected("");
       setRemarks("");
+      setSelectedEmployee("");
       queryClient.invalidateQueries({ queryKey: ["line-rejections"] });
     },
     onError: (error: any) => {
@@ -110,6 +129,15 @@ const LineRejectionForm = ({ productionOrderId }: LineRejectionFormProps) => {
       return;
     }
 
+    if (reason === "User Mishandling" && !selectedEmployee) {
+      toast({
+        title: "Validation Error",
+        description: "Please select the employee responsible for the mishandling",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const quantity = parseInt(quantityRejected);
     if (isNaN(quantity) || quantity <= 0) {
       toast({
@@ -126,6 +154,7 @@ const LineRejectionForm = ({ productionOrderId }: LineRejectionFormProps) => {
       reason,
       quantity_rejected: quantity,
       remarks,
+      rejected_by: reason === "User Mishandling" ? selectedEmployee : null,
     };
 
     createRejectionMutation.mutate(rejectionData);
@@ -181,6 +210,24 @@ const LineRejectionForm = ({ productionOrderId }: LineRejectionFormProps) => {
               </div>
             </div>
 
+            {reason === "User Mishandling" && (
+              <div>
+                <Label htmlFor="employee">Responsible Employee</Label>
+                <Select value={selectedEmployee} onValueChange={setSelectedEmployee}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select employee" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {employees.map((employee) => (
+                      <SelectItem key={employee.id} value={employee.id}>
+                        {employee.employee_code} - {employee.first_name} {employee.last_name} ({employee.position})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             <div>
               <Label htmlFor="quantity">Quantity Rejected</Label>
               <Input
@@ -235,6 +282,7 @@ const LineRejectionForm = ({ productionOrderId }: LineRejectionFormProps) => {
                   <TableHead>Part Code</TableHead>
                   <TableHead>Reason</TableHead>
                   <TableHead>Quantity</TableHead>
+                  <TableHead>Employee</TableHead>
                   <TableHead>Remarks</TableHead>
                 </TableRow>
               </TableHeader>
@@ -253,6 +301,15 @@ const LineRejectionForm = ({ productionOrderId }: LineRejectionFormProps) => {
                       </Badge>
                     </TableCell>
                     <TableCell>{rejection.quantity_rejected}</TableCell>
+                    <TableCell>
+                      {rejection.reason === "User Mishandling" && rejection.employees ? (
+                        <span className="text-sm">
+                          {rejection.employees.employee_code} - {rejection.employees.first_name} {rejection.employees.last_name}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
+                      )}
+                    </TableCell>
                     <TableCell className="max-w-xs truncate">{rejection.remarks}</TableCell>
                   </TableRow>
                 ))}

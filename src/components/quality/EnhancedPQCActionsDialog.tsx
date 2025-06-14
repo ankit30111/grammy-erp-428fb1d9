@@ -28,6 +28,7 @@ const EnhancedPQCActionsDialog = ({ productionOrderId, isOpen, onClose }: Enhanc
   const [rejectionReason, setRejectionReason] = useState("");
   const [rejectionQuantity, setRejectionQuantity] = useState("");
   const [rejectionRemarks, setRejectionRemarks] = useState("");
+  const [selectedEmployee, setSelectedEmployee] = useState("");
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -68,6 +69,21 @@ const EnhancedPQCActionsDialog = ({ productionOrderId, isOpen, onClose }: Enhanc
         .eq("product_id", productionOrder.product_id);
 
       return bom || [];
+    },
+  });
+
+  // Fetch active employees for user mishandling selection
+  const { data: employees = [] } = useQuery({
+    queryKey: ["active-employees"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("employees")
+        .select("id, first_name, last_name, employee_code, position")
+        .eq("status", "active")
+        .order("first_name");
+      
+      if (error) throw error;
+      return data || [];
     },
   });
 
@@ -118,7 +134,7 @@ const EnhancedPQCActionsDialog = ({ productionOrderId, isOpen, onClose }: Enhanc
         .insert([{
           ...rejectionData,
           created_by: user.data.user.id,
-          rejected_by: user.data.user.id
+          rejected_by: rejectionData.reason === "User Mishandling" ? rejectionData.employee_id : user.data.user.id
         }])
         .select()
         .single();
@@ -135,6 +151,7 @@ const EnhancedPQCActionsDialog = ({ productionOrderId, isOpen, onClose }: Enhanc
       setRejectionReason("");
       setRejectionQuantity("");
       setRejectionRemarks("");
+      setSelectedEmployee("");
       queryClient.invalidateQueries({ queryKey: ["line-rejections"] });
     },
     onError: (error: any) => {
@@ -187,6 +204,15 @@ const EnhancedPQCActionsDialog = ({ productionOrderId, isOpen, onClose }: Enhanc
       return;
     }
 
+    if (rejectionReason === "User Mishandling" && !selectedEmployee) {
+      toast({
+        title: "Validation Error",
+        description: "Please select the employee responsible for the mishandling",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const quantity = parseInt(rejectionQuantity);
     if (isNaN(quantity) || quantity <= 0) {
       toast({
@@ -203,6 +229,7 @@ const EnhancedPQCActionsDialog = ({ productionOrderId, isOpen, onClose }: Enhanc
       reason: rejectionReason,
       quantity_rejected: quantity,
       remarks: rejectionRemarks,
+      employee_id: selectedEmployee,
     };
 
     createLineRejectionMutation.mutate(rejectionData);
@@ -318,6 +345,24 @@ const EnhancedPQCActionsDialog = ({ productionOrderId, isOpen, onClose }: Enhanc
                     </SelectContent>
                   </Select>
                 </div>
+
+                {rejectionReason === "User Mishandling" && (
+                  <div>
+                    <Label htmlFor="employee">Responsible Employee</Label>
+                    <Select value={selectedEmployee} onValueChange={setSelectedEmployee}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select employee" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {employees.map((employee) => (
+                          <SelectItem key={employee.id} value={employee.id}>
+                            {employee.employee_code} - {employee.first_name} {employee.last_name} ({employee.position})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
 
                 <div>
                   <Label htmlFor="quantity">Quantity</Label>
