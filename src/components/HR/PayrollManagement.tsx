@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -28,7 +27,12 @@ export function PayrollManagement() {
         .from('payroll')
         .select(`
           *,
-          employees:employee_id (first_name, last_name, employee_code, salary)
+          employees:employee_id (
+            employee_code,
+            first_name,
+            last_name,
+            salary
+          )
         `)
         .order('year', { ascending: false })
         .order('month', { ascending: false });
@@ -48,7 +52,11 @@ export function PayrollManagement() {
           date,
           status,
           overtime_hours,
-          employees:employee_id (first_name, last_name, employee_code)
+          employees:employee_id (
+            first_name,
+            last_name,
+            employee_code
+          )
         `)
         .gte('date', new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0]);
       

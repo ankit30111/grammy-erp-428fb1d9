@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -45,7 +44,30 @@ export function EmployeeManagement() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('employees')
-        .select('*')
+        .select(`
+          id,
+          employee_code,
+          first_name,
+          last_name,
+          email,
+          phone_number,
+          date_of_birth,
+          position,
+          department,
+          salary,
+          aadhar_number,
+          pan_number,
+          esic_number,
+          bank_name,
+          bank_account_number,
+          ifsc_code,
+          address,
+          city,
+          state,
+          pincode,
+          status,
+          created_at
+        `)
         .order('created_at', { ascending: false });
       
       if (error) throw error;

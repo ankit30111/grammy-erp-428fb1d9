@@ -27,7 +27,12 @@ export function SkillMatrix() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('employees')
-        .select('id, first_name, last_name, employee_code')
+        .select(`
+          id,
+          first_name,
+          last_name,
+          employee_code
+        `)
         .eq('status', 'active');
       
       if (error) throw error;
@@ -55,8 +60,15 @@ export function SkillMatrix() {
         .from('employee_skills')
         .select(`
           *,
-          employees:employee_id (first_name, last_name, employee_code),
-          skills:skill_id (skill_name, category)
+          employees:employee_id (
+            first_name,
+            last_name,
+            employee_code
+          ),
+          skills:skill_id (
+            skill_name,
+            category
+          )
         `)
         .order('acquired_date', { ascending: false });
       

@@ -36,7 +36,13 @@ export function PerformanceReviews() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('employees')
-        .select('id, first_name, last_name, employee_code, position')
+        .select(`
+          id,
+          first_name,
+          last_name,
+          employee_code,
+          position
+        `)
         .eq('status', 'active');
       
       if (error) throw error;
@@ -59,7 +65,7 @@ export function PerformanceReviews() {
           teamwork_rating,
           punctuality_rating,
           created_at,
-          employees!employee_id (
+          employees:employee_id (
             id,
             first_name,
             last_name,

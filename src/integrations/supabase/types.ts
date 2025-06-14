@@ -650,6 +650,7 @@ export type Database = {
           hire_date: string
           id: string
           ifsc_code: string | null
+          last_name: string | null
           pan_number: string | null
           phone_number: string
           pincode: string | null
@@ -676,6 +677,7 @@ export type Database = {
           hire_date?: string
           id?: string
           ifsc_code?: string | null
+          last_name?: string | null
           pan_number?: string | null
           phone_number: string
           pincode?: string | null
@@ -702,6 +704,7 @@ export type Database = {
           hire_date?: string
           id?: string
           ifsc_code?: string | null
+          last_name?: string | null
           pan_number?: string | null
           phone_number?: string
           pincode?: string | null

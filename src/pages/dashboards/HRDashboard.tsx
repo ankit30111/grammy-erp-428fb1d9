@@ -16,7 +16,16 @@ const HRDashboard = () => {
     queryKey: ['hr-dashboard'],
     queryFn: async () => {
       const [employeesData, attendanceData, trainingData] = await Promise.all([
-        supabase.from('employees').select('*').eq('status', 'active'),
+        supabase.from('employees').select(`
+          id,
+          first_name,
+          last_name,
+          employee_code,
+          position,
+          department,
+          state,
+          status
+        `).eq('status', 'active'),
         supabase.from('attendance').select('*').gte('date', new Date().toISOString().split('T')[0]),
         supabase.from('employee_training').select('*')
       ]);
