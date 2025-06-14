@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -138,7 +137,7 @@ const MaterialRequests = () => {
           raw_material_id: requestData.rawMaterialId,
           requested_quantity: requestData.requestedQuantity,
           reason: requestData.reason,
-          requested_by: (await supabase.auth.getUser()).data.user?.id
+          requested_by: null
         })
         .select()
         .single();
