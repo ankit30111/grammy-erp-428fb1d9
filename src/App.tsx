@@ -6,7 +6,6 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 
-import Auth from "./pages/Auth";
 import Index from "./pages/Index";
 import Quality from "./pages/Quality";
 import IQC from "./pages/quality/IQC";
@@ -37,7 +36,7 @@ import HRDashboard from "@/pages/dashboards/HRDashboard";
 import GRN from "./pages/GRN";
 import Approvals from "./pages/Approvals";
 import PurchaseDiscrepancies from "./pages/PurchaseDiscrepancies";
-import { AuthGuard } from "@/components/Auth/AuthGuard";
+import UserManagement from "./pages/UserManagement";
 
 const queryClient = new QueryClient();
 
@@ -49,40 +48,41 @@ function App() {
         <Sonner />
         <BrowserRouter>
           <Routes>
-            {/* Authentication Routes */}
-            <Route path="/" element={<Auth />} />
+            {/* Default route now goes directly to dashboard */}
+            <Route path="/" element={<Index />} />
 
-            {/* Protected Routes */}
-            <Route path="/dashboard" element={<AuthGuard><Index /></AuthGuard>} />
-            <Route path="/dashboard/ppc" element={<AuthGuard><PPCDashboard /></AuthGuard>} />
-            <Route path="/quality" element={<AuthGuard><Quality /></AuthGuard>} />
-            <Route path="/quality/iqc" element={<AuthGuard><IQC /></AuthGuard>} />
-            <Route path="/quality/pqc" element={<AuthGuard><PQC /></AuthGuard>} />
-            <Route path="/quality/oqc" element={<AuthGuard><OQC /></AuthGuard>} />
-            <Route path="/production" element={<AuthGuard><Production /></AuthGuard>} />
-            <Route path="/planning" element={<AuthGuard><PlanningEnhanced /></AuthGuard>} />
-            <Route path="/store" element={<AuthGuard><Store /></AuthGuard>} />
-            <Route path="/grn" element={<AuthGuard><GRN /></AuthGuard>} />
-            <Route path="/approvals" element={<AuthGuard><Approvals /></AuthGuard>} />
-            <Route path="/purchase-discrepancies" element={<AuthGuard><PurchaseDiscrepancies /></AuthGuard>} />
-            <Route path="/sales" element={<AuthGuard><Sales /></AuthGuard>} />
-            <Route path="/purchase" element={<AuthGuard><Purchase /></AuthGuard>} />
-            <Route path="/projection" element={<AuthGuard><Projection /></AuthGuard>} />
-            <Route path="/finished-goods" element={<AuthGuard><FinishedGoods /></AuthGuard>} />
-            <Route path="/customer-complaints" element={<AuthGuard><CustomerComplaints /></AuthGuard>} />
-            <Route path="/spare-orders" element={<AuthGuard><SpareOrders /></AuthGuard>} />
-            <Route path="/management/hr" element={<AuthGuard><HRManagement /></AuthGuard>} />
-            <Route path="/management/customers" element={<AuthGuard><CustomersManagement /></AuthGuard>} />
-            <Route path="/vendors" element={<AuthGuard><Vendors /></AuthGuard>} />
-            <Route path="/management/products" element={<AuthGuard><ProductsManagement /></AuthGuard>} />
-            <Route path="/management/raw-materials" element={<AuthGuard><RawMaterialsManagement /></AuthGuard>} />
-            <Route path="/settings" element={<AuthGuard><Settings /></AuthGuard>} />
+            {/* All routes are now accessible without authentication */}
+            <Route path="/dashboard" element={<Index />} />
+            <Route path="/dashboard/ppc" element={<PPCDashboard />} />
+            <Route path="/quality" element={<Quality />} />
+            <Route path="/quality/iqc" element={<IQC />} />
+            <Route path="/quality/pqc" element={<PQC />} />
+            <Route path="/quality/oqc" element={<OQC />} />
+            <Route path="/production" element={<Production />} />
+            <Route path="/planning" element={<PlanningEnhanced />} />
+            <Route path="/store" element={<Store />} />
+            <Route path="/grn" element={<GRN />} />
+            <Route path="/approvals" element={<Approvals />} />
+            <Route path="/purchase-discrepancies" element={<PurchaseDiscrepancies />} />
+            <Route path="/sales" element={<Sales />} />
+            <Route path="/purchase" element={<Purchase />} />
+            <Route path="/projection" element={<Projection />} />
+            <Route path="/finished-goods" element={<FinishedGoods />} />
+            <Route path="/customer-complaints" element={<CustomerComplaints />} />
+            <Route path="/spare-orders" element={<SpareOrders />} />
+            <Route path="/management/hr" element={<HRManagement />} />
+            <Route path="/management/customers" element={<CustomersManagement />} />
+            <Route path="/vendors" element={<Vendors />} />
+            <Route path="/management/products" element={<ProductsManagement />} />
+            <Route path="/management/raw-materials" element={<RawMaterialsManagement />} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="/user-management" element={<UserManagement />} />
             
             {/* Dashboard Routes */}
-            <Route path="/dashboards/store" element={<AuthGuard><StoreDashboard /></AuthGuard>} />
-            <Route path="/dashboards/production" element={<AuthGuard><ProductionMainDashboard /></AuthGuard>} />
-            <Route path="/dashboards/sales" element={<AuthGuard><SalesDashboard /></AuthGuard>} />
-            <Route path="/dashboards/hr" element={<AuthGuard><HRDashboard /></AuthGuard>} />
+            <Route path="/dashboards/store" element={<StoreDashboard />} />
+            <Route path="/dashboards/production" element={<ProductionMainDashboard />} />
+            <Route path="/dashboards/sales" element={<SalesDashboard />} />
+            <Route path="/dashboards/hr" element={<HRDashboard />} />
             
             {/* 404 Route */}
             <Route path="*" element={<NotFound />} />

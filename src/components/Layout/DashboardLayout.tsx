@@ -1,80 +1,16 @@
 
-import { ReactNode, useState, useEffect } from "react";
+import { ReactNode } from "react";
 import { Sidebar } from "@/components/Navigation/Sidebar";
-import { Bell, User, Search, LogOut } from "lucide-react";
+import { Bell, User, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
-import { useNavigate } from "react-router-dom";
 
 interface DashboardLayoutProps {
   children: ReactNode;
 }
 
-interface UserProfile {
-  full_name: string;
-  email: string;
-}
-
 export function DashboardLayout({ children }: DashboardLayoutProps) {
-  const [userId, setUserId] = useState<string | null>(null);
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const navigate = useNavigate();
-
-  // Get current user ID
-  useEffect(() => {
-    const getCurrentUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setUserId(user?.id || null);
-      
-      if (user) {
-        // Fetch user profile from user_accounts table without department restrictions
-        const { data: profile, error } = await supabase
-          .from("user_accounts")
-          .select(`
-            full_name,
-            email
-          `)
-          .eq("id", user.id)
-          .single();
-          
-        if (error) {
-          console.error("Error fetching user profile:", error);
-        } else if (profile) {
-          setUserProfile({
-            full_name: profile.full_name || "User",
-            email: profile.email || "",
-          });
-        }
-      }
-    };
-    
-    getCurrentUser();
-    
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      setUserId(session?.user?.id || null);
-    });
-    
-    return () => subscription.unsubscribe();
-  }, []);
-
-  const handleSignOut = async () => {
-    try {
-      const { error } = await supabase.auth.signOut();
-      if (error) {
-        toast.error("Error signing out");
-        return;
-      }
-      toast.success("Signed out successfully");
-      navigate("/");
-    } catch (error) {
-      console.error("Sign out error:", error);
-      toast.error("An unexpected error occurred");
-    }
-  };
-
   return (
     <div className="flex h-screen bg-background">
       <Sidebar />
@@ -133,14 +69,14 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="sm" className="gap-2">
                   <User className="h-5 w-5" />
-                  <span>{userProfile?.full_name || "User"}</span>
+                  <span>System User</span>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-64">
+                <DropdownMenuLabel>System Access</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer text-destructive focus:text-destructive">
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Logout
+                <DropdownMenuItem className="cursor-pointer">
+                  <span className="text-sm text-muted-foreground">Universal access enabled</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

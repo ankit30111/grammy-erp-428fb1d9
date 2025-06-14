@@ -650,7 +650,6 @@ export type Database = {
           hire_date: string
           id: string
           ifsc_code: string | null
-          last_name: string
           pan_number: string | null
           phone_number: string
           pincode: string | null
@@ -677,7 +676,6 @@ export type Database = {
           hire_date?: string
           id?: string
           ifsc_code?: string | null
-          last_name: string
           pan_number?: string | null
           phone_number: string
           pincode?: string | null
@@ -704,7 +702,6 @@ export type Database = {
           hire_date?: string
           id?: string
           ifsc_code?: string | null
-          last_name?: string
           pan_number?: string | null
           phone_number?: string
           pincode?: string | null
@@ -1267,13 +1264,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "material_requests_approved_by_fkey"
-            columns: ["approved_by"]
-            isOneToOne: false
-            referencedRelation: "user_accounts"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "material_requests_production_order_id_fkey"
             columns: ["production_order_id"]
             isOneToOne: false
@@ -1285,13 +1275,6 @@ export type Database = {
             columns: ["raw_material_id"]
             isOneToOne: false
             referencedRelation: "raw_materials"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "material_requests_requested_by_fkey"
-            columns: ["requested_by"]
-            isOneToOne: false
-            referencedRelation: "user_accounts"
             referencedColumns: ["id"]
           },
         ]
@@ -1864,13 +1847,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "production_schedules_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "user_accounts"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "production_schedules_projection_id_fkey"
             columns: ["projection_id"]
             isOneToOne: false
@@ -1981,13 +1957,6 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "projections_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "user_accounts"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "projections_customer_id_fkey"
             columns: ["customer_id"]

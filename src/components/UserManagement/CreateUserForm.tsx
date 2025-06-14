@@ -63,8 +63,8 @@ export function CreateUserForm() {
     setIsLoading(true);
 
     try {
-      // Hash the password (in production, this should be done server-side)
-      const passwordHash = btoa(data.password); // Simple base64 encoding for demo
+      // Simple password hash for demo (in production, use proper hashing)
+      const passwordHash = btoa(data.password);
 
       const { data: result, error } = await supabase
         .from("user_accounts")

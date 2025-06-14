@@ -17,24 +17,13 @@ interface SendingQuantities {
   [requestId: string]: number;
 }
 
+const SYSTEM_USER_ID = '00000000-0000-0000-0000-000000000001';
+
 const MaterialRequestsTab = memo(() => {
   const queryClient = useQueryClient();
   const { updateInventoryQuantity } = useInventoryMutations();
   const [sendingQuantities, setSendingQuantities] = useState<SendingQuantities>({});
   const [activeTab, setActiveTab] = useState("all");
-
-  // Get current user for proper authentication
-  const { data: currentUser } = useQuery({
-    queryKey: ["current-user"],
-    queryFn: async () => {
-      const { data: { user }, error } = await supabase.auth.getUser();
-      if (error) {
-        console.error("❌ Error getting current user:", error);
-        throw error;
-      }
-      return user;
-    },
-  });
 
   const { data: materialRequests = [], isLoading, refetch } = useQuery({
     queryKey: ["material-requests"],
@@ -109,15 +98,11 @@ const MaterialRequestsTab = memo(() => {
       approvedQuantity?: number;
     }) => {
       console.log(`🔄 Processing material request ${action}:`, { requestId, approvedQuantity });
-      
-      if (!currentUser) {
-        throw new Error("User not authenticated");
-      }
 
       const updateData = {
         status: action === 'APPROVE' ? 'APPROVED' : 'REJECTED',
         approved_quantity: action === 'APPROVE' ? approvedQuantity : 0,
-        approved_by: currentUser.id
+        approved_by: SYSTEM_USER_ID
       };
 
       console.log("📝 Updating request with data:", updateData);
@@ -152,7 +137,6 @@ const MaterialRequestsTab = memo(() => {
     },
   });
 
-  
   const sendMaterialMutation = useMutation({
     mutationFn: async ({ requestId, sendQuantity }: { requestId: string; sendQuantity: number }) => {
       console.log(`📦 SENDING MATERIAL TO PRODUCTION:`, { requestId, sendQuantity });
@@ -232,11 +216,6 @@ const MaterialRequestsTab = memo(() => {
   });
 
   const handleApprove = (request: any) => {
-    if (!currentUser) {
-      toast.error("Please log in to approve requests");
-      return;
-    }
-
     handleRequestMutation.mutate({
       requestId: request.id,
       action: 'APPROVE',
@@ -245,11 +224,6 @@ const MaterialRequestsTab = memo(() => {
   };
 
   const handleReject = (request: any) => {
-    if (!currentUser) {
-      toast.error("Please log in to reject requests");
-      return;
-    }
-
     handleRequestMutation.mutate({
       requestId: request.id,
       action: 'REJECT'

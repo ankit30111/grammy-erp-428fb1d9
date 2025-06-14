@@ -24,9 +24,6 @@ interface UserAccount {
   role: string;
   is_active: boolean;
   created_at: string;
-  departments?: {
-    name: string;
-  };
 }
 
 export function UsersList() {
@@ -41,12 +38,7 @@ export function UsersList() {
     try {
       const { data, error } = await supabase
         .from("user_accounts")
-        .select(`
-          *,
-          departments!department_id (
-            name
-          )
-        `)
+        .select("*")
         .order("created_at", { ascending: false });
 
       if (error) {
@@ -144,7 +136,6 @@ export function UsersList() {
                 <TableHead>Username</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Full Name</TableHead>
-                <TableHead>Department</TableHead>
                 <TableHead>Role</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Created</TableHead>
@@ -157,11 +148,6 @@ export function UsersList() {
                   <TableCell className="font-medium">{user.username}</TableCell>
                   <TableCell>{user.email}</TableCell>
                   <TableCell>{user.full_name || "-"}</TableCell>
-                  <TableCell>
-                    <Badge variant="outline">
-                      {user.departments?.name || "No Department"}
-                    </Badge>
-                  </TableCell>
                   <TableCell>
                     <Badge variant={getRoleBadgeVariant(user.role)}>
                       {user.role}
