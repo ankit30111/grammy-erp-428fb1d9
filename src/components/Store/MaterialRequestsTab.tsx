@@ -5,10 +5,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
-import { CheckCircle, XCircle, ArrowLeftRight, Package, RefreshCw, Send } from "lucide-react";
+import { CheckCircle, XCircle, ArrowLeftRight, Package, RefreshCw, Send, Clock, ThumbsUp, ThumbsDown } from "lucide-react";
 import { toast } from "sonner";
 import { useInventoryMutations } from "@/hooks/inventory";
 
@@ -20,6 +21,20 @@ const MaterialRequestsTab = memo(() => {
   const queryClient = useQueryClient();
   const { updateInventoryQuantity } = useInventoryMutations();
   const [sendingQuantities, setSendingQuantities] = useState<SendingQuantities>({});
+  const [activeTab, setActiveTab] = useState("all");
+
+  // Get current user for proper authentication
+  const { data: currentUser } = useQuery({
+    queryKey: ["current-user"],
+    queryFn: async () => {
+      const { data: { user }, error } = await supabase.auth.getUser();
+      if (error) {
+        console.error("❌ Error getting current user:", error);
+        throw error;
+      }
+      return user;
+    },
+  });
 
   const { data: materialRequests = [], isLoading, refetch } = useQuery({
     queryKey: ["material-requests"],
@@ -52,8 +67,7 @@ const MaterialRequestsTab = memo(() => {
             )
           )
         `)
-        .order('created_at', { ascending: false })
-        .limit(100);
+        .order('created_at', { ascending: false });
 
       if (error) {
         console.error("❌ Error fetching material requests:", error);
@@ -96,29 +110,45 @@ const MaterialRequestsTab = memo(() => {
     }) => {
       console.log(`🔄 Processing material request ${action}:`, { requestId, approvedQuantity });
       
-      const { error } = await supabase
-        .from("material_requests")
-        .update({ 
-          status: action === 'APPROVE' ? 'APPROVED' : 'REJECTED',
-          approved_quantity: action === 'APPROVE' ? approvedQuantity : 0,
-          approved_by: (await supabase.auth.getUser()).data.user?.id
-        })
-        .eq("id", requestId);
+      if (!currentUser) {
+        throw new Error("User not authenticated");
+      }
 
-      if (error) throw error;
+      const updateData = {
+        status: action === 'APPROVE' ? 'APPROVED' : 'REJECTED',
+        approved_quantity: action === 'APPROVE' ? approvedQuantity : 0,
+        approved_by: currentUser.id
+      };
+
+      console.log("📝 Updating request with data:", updateData);
+
+      const { data, error } = await supabase
+        .from("material_requests")
+        .update(updateData)
+        .eq("id", requestId)
+        .select()
+        .single();
+
+      if (error) {
+        console.error("❌ Database error:", error);
+        throw new Error(`Database error: ${error.message}`);
+      }
+
+      console.log("✅ Request updated successfully:", data);
+      return data;
     },
-    onSuccess: (_, variables) => {
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["material-requests"] });
       
       toast.success(
         variables.action === 'APPROVE' 
-          ? "Material request approved" 
+          ? `Material request approved - ${variables.approvedQuantity} units` 
           : "Material request rejected"
       );
     },
-    onError: (error) => {
+    onError: (error: Error) => {
       console.error("❌ Error processing material request:", error);
-      toast.error("Failed to process material request");
+      toast.error(`Failed to process material request: ${error.message}`);
     },
   });
 
@@ -201,6 +231,11 @@ const MaterialRequestsTab = memo(() => {
   });
 
   const handleApprove = (request: any) => {
+    if (!currentUser) {
+      toast.error("Please log in to approve requests");
+      return;
+    }
+
     handleRequestMutation.mutate({
       requestId: request.id,
       action: 'APPROVE',
@@ -209,6 +244,11 @@ const MaterialRequestsTab = memo(() => {
   };
 
   const handleReject = (request: any) => {
+    if (!currentUser) {
+      toast.error("Please log in to reject requests");
+      return;
+    }
+
     handleRequestMutation.mutate({
       requestId: request.id,
       action: 'REJECT'
@@ -236,13 +276,13 @@ const MaterialRequestsTab = memo(() => {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'PENDING':
-        return <Badge variant="secondary">Pending Review</Badge>;
+        return <Badge variant="secondary" className="gap-1"><Clock className="h-3 w-3" />Pending Review</Badge>;
       case 'APPROVED':
-        return <Badge variant="default">Approved</Badge>;
+        return <Badge variant="default" className="gap-1"><ThumbsUp className="h-3 w-3" />Approved</Badge>;
       case 'REJECTED':
-        return <Badge variant="destructive">Rejected</Badge>;
+        return <Badge variant="destructive" className="gap-1"><ThumbsDown className="h-3 w-3" />Rejected</Badge>;
       case 'SENT':
-        return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">Material Sent</Badge>;
+        return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 gap-1"><Send className="h-3 w-3" />Material Sent</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
@@ -253,6 +293,21 @@ const MaterialRequestsTab = memo(() => {
     
     const lines = Object.values(productionLines).filter(Boolean);
     return lines.length > 0 ? lines.join(', ') : 'Not Assigned';
+  };
+
+  // Filter requests based on active tab
+  const filteredRequests = materialRequests.filter(request => {
+    if (activeTab === "all") return true;
+    return request.status.toLowerCase() === activeTab.toLowerCase();
+  });
+
+  // Get counts for each status
+  const statusCounts = {
+    all: materialRequests.length,
+    pending: materialRequests.filter(r => r.status === 'PENDING').length,
+    approved: materialRequests.filter(r => r.status === 'APPROVED').length,
+    rejected: materialRequests.filter(r => r.status === 'REJECTED').length,
+    sent: materialRequests.filter(r => r.status === 'SENT').length,
   };
 
   if (isLoading) {
@@ -272,7 +327,7 @@ const MaterialRequestsTab = memo(() => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <ArrowLeftRight className="h-5 w-5" />
-            Material Requests from Production ({materialRequests.length})
+            Material Requests from Production
             <Badge variant="outline">Real-time Updates</Badge>
             <Button
               variant="outline"
@@ -286,128 +341,165 @@ const MaterialRequestsTab = memo(() => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {materialRequests.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <ArrowLeftRight className="h-12 w-12 mx-auto mb-2 text-muted-foreground/50" />
-              <p>No material requests found</p>
-              <p className="text-sm mt-1">Additional material requests from production will appear here</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Voucher No.</TableHead>
-                    <TableHead>Product</TableHead>
-                    <TableHead>Production Lines</TableHead>
-                    <TableHead>Material</TableHead>
-                    <TableHead>Requested Qty</TableHead>
-                    <TableHead>Available Qty</TableHead>
-                    <TableHead>Reason</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {materialRequests.map((request) => {
-                    const availableQty = getAvailableQuantity(request.raw_material_id);
-                    const sendingQty = sendingQuantities[request.id] || 0;
-                    
-                    return (
-                      <TableRow key={request.id}>
-                        <TableCell>
-                          {format(new Date(request.created_at), "MMM dd, yyyy HH:mm")}
-                        </TableCell>
-                        <TableCell className="font-mono">
-                          {request.production_orders?.voucher_number}
-                        </TableCell>
-                        <TableCell>
-                          {request.production_orders?.products?.name}
-                        </TableCell>
-                        <TableCell>
-                          <span className="text-sm">
-                            {getProductionLineDisplay(request.production_orders?.production_lines)}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          <div>
-                            <p className="font-medium">{request.raw_materials?.material_code}</p>
-                            <p className="text-sm text-muted-foreground">{request.raw_materials?.name}</p>
-                          </div>
-                        </TableCell>
-                        <TableCell className="font-medium">
-                          {request.requested_quantity} units
-                        </TableCell>
-                        <TableCell>
-                          <span className={`font-medium ${availableQty < request.requested_quantity ? 'text-red-600' : 'text-green-600'}`}>
-                            {availableQty} units
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          <span className="text-sm text-muted-foreground">
-                            {request.reason || 'No reason provided'}
-                          </span>
-                        </TableCell>
-                        <TableCell>{getStatusBadge(request.status)}</TableCell>
-                        <TableCell>
-                          {request.status === 'PENDING' && (
-                            <div className="flex gap-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleApprove(request)}
-                                className="gap-1"
-                                disabled={handleRequestMutation.isPending}
-                              >
-                                <CheckCircle className="h-3 w-3" />
-                                Approve
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleReject(request)}
-                                className="gap-1"
-                                disabled={handleRequestMutation.isPending}
-                              >
-                                <XCircle className="h-3 w-3" />
-                                Reject
-                              </Button>
-                            </div>
-                          )}
-                          {request.status === 'APPROVED' && (
-                            <div className="flex gap-2 items-center">
-                              <Input
-                                type="number"
-                                min="1"
-                                max={availableQty}
-                                placeholder="Qty to send"
-                                className="w-24"
-                                value={sendingQuantities[request.id] || ''}
-                                onChange={(e) => setSendingQuantities(prev => ({
-                                  ...prev,
-                                  [request.id]: parseInt(e.target.value) || 0
-                                }))}
-                              />
-                              <Button
-                                size="sm"
-                                onClick={() => handleSendMaterial(request)}
-                                disabled={sendMaterialMutation.isPending || sendingQty <= 0 || sendingQty > availableQty}
-                                className="gap-1"
-                              >
-                                <Send className="h-3 w-3" />
-                                Send
-                              </Button>
-                            </div>
-                          )}
-                        </TableCell>
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+            <TabsList className="grid w-full grid-cols-5">
+              <TabsTrigger value="all" className="relative">
+                All ({statusCounts.all})
+              </TabsTrigger>
+              <TabsTrigger value="pending" className="relative">
+                Pending ({statusCounts.pending})
+                {statusCounts.pending > 0 && (
+                  <Badge variant="destructive" className="ml-1 h-5 w-5 p-0 text-xs">
+                    {statusCounts.pending}
+                  </Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="approved" className="relative">
+                Approved ({statusCounts.approved})
+              </TabsTrigger>
+              <TabsTrigger value="rejected" className="relative">
+                Rejected ({statusCounts.rejected})
+              </TabsTrigger>
+              <TabsTrigger value="sent" className="relative">
+                Sent ({statusCounts.sent})
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value={activeTab} className="space-y-4">
+              {filteredRequests.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <ArrowLeftRight className="h-12 w-12 mx-auto mb-2 text-muted-foreground/50" />
+                  <p>No {activeTab === 'all' ? '' : activeTab.toLowerCase()} material requests found</p>
+                  <p className="text-sm mt-1">
+                    {activeTab === 'pending' 
+                      ? 'New material requests from production will appear here' 
+                      : `${activeTab === 'all' ? 'Material requests' : activeTab + ' requests'} will be shown here`
+                    }
+                  </p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Voucher No.</TableHead>
+                        <TableHead>Product</TableHead>
+                        <TableHead>Production Lines</TableHead>
+                        <TableHead>Material</TableHead>
+                        <TableHead>Requested Qty</TableHead>
+                        <TableHead>Available Qty</TableHead>
+                        <TableHead>Reason</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Actions</TableHead>
                       </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-          )}
+                    </TableHeader>
+                    <TableBody>
+                      {filteredRequests.map((request) => {
+                        const availableQty = getAvailableQuantity(request.raw_material_id);
+                        const sendingQty = sendingQuantities[request.id] || 0;
+                        
+                        return (
+                          <TableRow key={request.id}>
+                            <TableCell>
+                              {format(new Date(request.created_at), "MMM dd, yyyy HH:mm")}
+                            </TableCell>
+                            <TableCell className="font-mono">
+                              {request.production_orders?.voucher_number}
+                            </TableCell>
+                            <TableCell>
+                              {request.production_orders?.products?.name}
+                            </TableCell>
+                            <TableCell>
+                              <span className="text-sm">
+                                {getProductionLineDisplay(request.production_orders?.production_lines)}
+                              </span>
+                            </TableCell>
+                            <TableCell>
+                              <div>
+                                <p className="font-medium">{request.raw_materials?.material_code}</p>
+                                <p className="text-sm text-muted-foreground">{request.raw_materials?.name}</p>
+                              </div>
+                            </TableCell>
+                            <TableCell className="font-medium">
+                              {request.requested_quantity} units
+                            </TableCell>
+                            <TableCell>
+                              <span className={`font-medium ${availableQty < request.requested_quantity ? 'text-red-600' : 'text-green-600'}`}>
+                                {availableQty} units
+                              </span>
+                            </TableCell>
+                            <TableCell>
+                              <span className="text-sm text-muted-foreground">
+                                {request.reason || 'No reason provided'}
+                              </span>
+                            </TableCell>
+                            <TableCell>{getStatusBadge(request.status)}</TableCell>
+                            <TableCell>
+                              {request.status === 'PENDING' && (
+                                <div className="flex gap-2">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleApprove(request)}
+                                    className="gap-1"
+                                    disabled={handleRequestMutation.isPending}
+                                  >
+                                    <CheckCircle className="h-3 w-3" />
+                                    {handleRequestMutation.isPending ? 'Processing...' : 'Approve'}
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleReject(request)}
+                                    className="gap-1"
+                                    disabled={handleRequestMutation.isPending}
+                                  >
+                                    <XCircle className="h-3 w-3" />
+                                    {handleRequestMutation.isPending ? 'Processing...' : 'Reject'}
+                                  </Button>
+                                </div>
+                              )}
+                              {request.status === 'APPROVED' && (
+                                <div className="flex gap-2 items-center">
+                                  <Input
+                                    type="number"
+                                    min="1"
+                                    max={availableQty}
+                                    placeholder="Qty to send"
+                                    className="w-24"
+                                    value={sendingQuantities[request.id] || ''}
+                                    onChange={(e) => setSendingQuantities(prev => ({
+                                      ...prev,
+                                      [request.id]: parseInt(e.target.value) || 0
+                                    }))}
+                                  />
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleSendMaterial(request)}
+                                    disabled={sendMaterialMutation.isPending || sendingQty <= 0 || sendingQty > availableQty}
+                                    className="gap-1"
+                                  >
+                                    <Send className="h-3 w-3" />
+                                    {sendMaterialMutation.isPending ? 'Sending...' : 'Send'}
+                                  </Button>
+                                </div>
+                              )}
+                              {(request.status === 'REJECTED' || request.status === 'SENT') && (
+                                <div className="text-sm text-muted-foreground">
+                                  {request.status === 'REJECTED' ? 'Request was rejected' : `${request.approved_quantity} units sent`}
+                                </div>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
         </CardContent>
       </Card>
     </div>
