@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,10 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Package, Settings, TrendingUp } from "lucide-react";
-import ProductionStatusSummary from "./ProductionStatusSummary";
-import ProductionFeedbackDialog from "./ProductionFeedbackDialog";
-import DispatchVerificationRow from "./DispatchVerificationRow";
+import { Package, Settings } from "lucide-react";
+import EnhancedDispatchVerificationRow from "./EnhancedDispatchVerificationRow";
 
 interface ProductionVoucherDetailViewProps {
   production: any;
@@ -21,8 +20,6 @@ interface ProductionVoucherDetailViewProps {
 
 const ProductionVoucherDetailView = ({ production, isOpen, onClose }: ProductionVoucherDetailViewProps) => {
   const [lineAssignments, setLineAssignments] = useState<Record<string, string>>({});
-  const [showStatusSummary, setShowStatusSummary] = useState(false);
-  const [showProductionFeedback, setShowProductionFeedback] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -271,7 +268,7 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
     },
   });
 
-  // Group sent materials by raw material ID and assembly type
+  // Group sent materials by raw material ID and assembly type with enhanced tracking
   const groupedMaterials = sentMaterials.reduce((acc, item) => {
     const bomItem = bomData.find(b => b.raw_material_id === item.raw_material_id);
     const bomType = bomItem?.bom_type || 'main_assembly';
@@ -284,7 +281,8 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
       acc[bomType][item.raw_material_id] = {
         rawMaterial: item.raw_materials,
         bomItem: bomItem,
-        dispatches: []
+        dispatches: [],
+        requiredQuantity: bomItem ? bomItem.quantity * production.quantity : 0
       };
     }
     
@@ -293,44 +291,8 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
   }, {} as any);
 
   const renderMaterialSection = (sectionName: string, sectionKey: string, materials: any) => {
-    if (!materials || Object.keys(materials).length === 0) {
-      return (
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Package className="h-5 w-5" />
-                {sectionName}
-                <Badge variant="outline">0 materials</Badge>
-              </div>
-              
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">Assign to Line:</span>
-                <Select
-                  value={lineAssignments[sectionKey] || ""}
-                  onValueChange={(value) => setLineAssignments(prev => ({ ...prev, [sectionKey]: value }))}
-                >
-                  <SelectTrigger className="w-40">
-                    <SelectValue placeholder="Select Line" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {productionLines.map((line) => (
-                      <SelectItem key={line} value={line}>
-                        {line}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground text-center py-4">No materials sent for this assembly type</p>
-          </CardContent>
-        </Card>
-      );
-    }
-
+    const materialEntries = materials ? Object.values(materials) : [];
+    
     return (
       <Card className="mb-6">
         <CardHeader>
@@ -338,7 +300,7 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
             <div className="flex items-center gap-2">
               <Package className="h-5 w-5" />
               {sectionName}
-              <Badge variant="outline">{Object.keys(materials).length} materials</Badge>
+              <Badge variant="outline">{materialEntries.length} materials</Badge>
             </div>
             
             <div className="flex items-center gap-2">
@@ -363,39 +325,35 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
         </CardHeader>
         
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Material Code</TableHead>
-                <TableHead>Raw Material Name</TableHead>
-                <TableHead>Required Qty</TableHead>
-                <TableHead>Qty Sent</TableHead>
-                <TableHead>Qty Received</TableHead>
-                <TableHead>Difference</TableHead>
-                <TableHead>Action</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {Object.values(materials).map((materialGroup: any) => {
-                const requiredQty = materialGroup.bomItem 
-                  ? materialGroup.bomItem.quantity * production.quantity 
-                  : 0;
-
-                return materialGroup.dispatches.map((kitItem: any) => (
-                  <DispatchVerificationRow
-                    key={kitItem.id}
-                    kitItem={kitItem}
-                    rawMaterial={materialGroup.rawMaterial}
-                    requiredQuantity={requiredQty}
+          {materialEntries.length === 0 ? (
+            <p className="text-muted-foreground text-center py-4">No materials sent for this assembly type</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Material Code</TableHead>
+                  <TableHead>Raw Material Name</TableHead>
+                  <TableHead>Required Qty</TableHead>
+                  <TableHead>Total Sent</TableHead>
+                  <TableHead>Total Received</TableHead>
+                  <TableHead>Pending</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {materialEntries.map((materialData: any) => (
+                  <EnhancedDispatchVerificationRow
+                    key={materialData.rawMaterial.id}
+                    materialData={materialData}
                     onVerify={(kitItemId, receivedQuantity, notes) => 
                       verifyDispatchMutation.mutate({ kitItemId, receivedQuantity, notes })
                     }
                     isProcessing={verifyDispatchMutation.isPending}
                   />
-                ));
-              })}
-            </TableBody>
-          </Table>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
     );
@@ -435,25 +393,7 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
           {/* Enhanced Individual Dispatch Verification */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold">Individual Dispatch Verification - Enhanced Tracking</h3>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() => setShowProductionFeedback(true)}
-                  className="gap-2"
-                >
-                  <TrendingUp className="h-4 w-4" />
-                  Production Feedback
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => setShowStatusSummary(true)}
-                  className="gap-2"
-                >
-                  <TrendingUp className="h-4 w-4" />
-                  Production Status
-                </Button>
-              </div>
+              <h3 className="text-lg font-semibold">Enhanced Material Tracking - Multi-Dispatch Support</h3>
             </div>
             
             {renderMaterialSection("Sub Assembly", "sub_assembly", groupedMaterials.sub_assembly)}
@@ -475,26 +415,6 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
             </Button>
           </div>
         </div>
-
-        {/* Production Status Summary Dialog */}
-        {showStatusSummary && (
-          <ProductionStatusSummary
-            productionId={production.id}
-            voucherNumber={production.voucher_number}
-            isOpen={showStatusSummary}
-            onClose={() => setShowStatusSummary(false)}
-          />
-        )}
-
-        {/* Production Feedback Dialog */}
-        {showProductionFeedback && (
-          <ProductionFeedbackDialog
-            productionOrderId={production.id}
-            voucherNumber={production.voucher_number}
-            isOpen={showProductionFeedback}
-            onClose={() => setShowProductionFeedback(false)}
-          />
-        )}
       </DialogContent>
     </Dialog>
   );

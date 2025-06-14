@@ -70,17 +70,28 @@ const ScheduledProductions = () => {
     }
   };
 
-  const getKitStatusBadge = (kitStatus: string) => {
-    switch (kitStatus) {
-      case 'NOT_PREPARED':
-        return <Badge variant="destructive">Not Prepared</Badge>;
-      case 'MATERIALS_SENT':
-        return <Badge variant="default">Materials Sent</Badge>;
-      case 'VERIFIED':
-        return <Badge variant="default">Verified</Badge>;
-      default:
-        return <Badge variant="secondary">{kitStatus}</Badge>;
+  // Enhanced function to display production line assignments by category
+  const getProductionLineDisplay = (production: any) => {
+    if (!production.production_lines || Object.keys(production.production_lines).length === 0) {
+      return "Not Assigned";
     }
+
+    const assignments = production.production_lines;
+    const categoryDisplayNames = {
+      'sub_assembly': 'Sub Assembly',
+      'main_assembly': 'Main Assembly',
+      'accessory': 'Accessory'
+    };
+
+    const assignmentParts = [];
+    
+    Object.entries(assignments).forEach(([category, line]) => {
+      if (line && categoryDisplayNames[category as keyof typeof categoryDisplayNames]) {
+        assignmentParts.push(`${categoryDisplayNames[category as keyof typeof categoryDisplayNames]}: ${line}`);
+      }
+    });
+
+    return assignmentParts.length > 0 ? assignmentParts.join(', ') : "Not Assigned";
   };
 
   if (isLoading) {
@@ -139,9 +150,8 @@ const ScheduledProductions = () => {
                   <TableHead>Customer</TableHead>
                   <TableHead>Scheduled Date</TableHead>
                   <TableHead>Quantity</TableHead>
-                  <TableHead>Production Line</TableHead>
+                  <TableHead>Production Line Assignments</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Kit Status</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -162,11 +172,12 @@ const ScheduledProductions = () => {
                       {production.scheduled_date ? format(new Date(production.scheduled_date), "MMM dd, yyyy") : 'N/A'}
                     </TableCell>
                     <TableCell className="font-medium">{production.quantity}</TableCell>
-                    <TableCell>
-                      {production.production_schedules?.production_line || "Not Assigned"}
+                    <TableCell className="max-w-xs">
+                      <div className="text-sm">
+                        {getProductionLineDisplay(production)}
+                      </div>
                     </TableCell>
                     <TableCell>{getStatusBadge(production.status)}</TableCell>
-                    <TableCell>{getKitStatusBadge(production.kit_status)}</TableCell>
                     <TableCell>
                       <div className="flex gap-2">
                         <Button
@@ -188,7 +199,7 @@ const ScheduledProductions = () => {
         </CardContent>
       </Card>
 
-      {/* Production Voucher Detail View with Material Categorization */}
+      {/* Enhanced Production Voucher Detail View */}
       {selectedProduction && (
         <ProductionVoucherDetailView
           production={selectedProduction}
