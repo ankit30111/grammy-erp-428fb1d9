@@ -508,7 +508,7 @@ const MaterialRequestsTab = memo(() => {
                               <span className="text-sm text-muted-foreground">
                                 {request.reason || 'No reason provided'}
                               </span>
-                            TableCell>
+                            </TableCell>
                             <TableCell>{getStatusBadge(request.status)}</TableCell>
                             <TableCell>
                               {request.status === 'PENDING' && (
