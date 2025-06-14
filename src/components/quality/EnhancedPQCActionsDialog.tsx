@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -134,7 +133,7 @@ const EnhancedPQCActionsDialog = ({ productionOrderId, isOpen, onClose }: Enhanc
         .insert([{
           ...rejectionData,
           created_by: user.data.user.id,
-          rejected_by: rejectionData.reason === "User Mishandling" ? rejectionData.employee_id : user.data.user.id
+          rejected_by: rejectionData.reason === "User Mishandling" ? rejectionData.rejected_by : user.data.user.id
         }])
         .select()
         .single();
@@ -229,7 +228,7 @@ const EnhancedPQCActionsDialog = ({ productionOrderId, isOpen, onClose }: Enhanc
       reason: rejectionReason,
       quantity_rejected: quantity,
       remarks: rejectionRemarks,
-      employee_id: selectedEmployee,
+      rejected_by: rejectionReason === "User Mishandling" ? selectedEmployee : null,
     };
 
     createLineRejectionMutation.mutate(rejectionData);
