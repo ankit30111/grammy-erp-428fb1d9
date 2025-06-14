@@ -23,16 +23,7 @@ export const navigationItems: NavigationItem[] = [
   { to: "/production", icon: <BarChart2 size={20} />, label: "Production" },
   { to: "/finished-goods", icon: <Layers size={20} />, label: "Finished Goods" },
   { to: "/approvals", icon: <CheckSquare size={20} />, label: "Approvals" },
-  {
-    to: "/quality",
-    icon: <ClipboardCheck size={20} />,
-    label: "Quality Control",
-    subItems: [
-      { to: "/quality/iqc", label: "IQC", badge: 3 },
-      { to: "/quality/pqc", label: "PQC", badge: 2 },
-      { to: "/quality/oqc", label: "OQC", badge: 1 }
-    ]
-  },
+  { to: "/quality", icon: <ClipboardCheck size={20} />, label: "Quality Control" },
   {
     to: "/sales",
     icon: <DollarSign size={20} />,
