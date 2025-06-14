@@ -106,10 +106,10 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
     }
   }, [production]);
 
-  // ENHANCED: Individual dispatch verification mutation with inventory adjustment
+  // ENHANCED: Individual dispatch verification mutation with discrepancy handling
   const verifyDispatchMutation = useMutation({
     mutationFn: async ({ kitItemId, receivedQuantity, notes }: { kitItemId: string; receivedQuantity: number; notes: string }) => {
-      console.log("🎯 PROCESSING INDIVIDUAL DISPATCH VERIFICATION...");
+      console.log("🎯 PROCESSING INDIVIDUAL DISPATCH VERIFICATION WITH DISCREPANCY HANDLING...");
       
       // Get the kit item details
       const kitItem = sentMaterials.find(item => item.id === kitItemId);
@@ -127,84 +127,62 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
       console.log(`   - Received: ${receivedQuantity}`);
       console.log(`   - Difference: ${difference}`);
 
-      // Update kit item with verification
-      const { error: kitUpdateError } = await supabase
-        .from("kit_items")
-        .update({
-          actual_quantity: receivedQuantity,
-          verified_by_production: true
-        })
-        .eq("id", kitItemId);
-
-      if (kitUpdateError) {
-        console.error("❌ Error updating kit item:", kitUpdateError);
-        throw new Error(`Failed to verify dispatch: ${kitUpdateError.message}`);
-      }
-
-      // Handle inventory adjustment if there's a difference
+      // If there's a discrepancy, create a discrepancy record instead of immediate adjustment
       if (difference !== 0) {
-        console.log(`🔄 HANDLING INVENTORY ADJUSTMENT: ${difference}`);
+        console.log(`🚨 DISCREPANCY DETECTED: Creating discrepancy record for store review`);
         
-        if (difference > 0) {
-          // Production received less than sent - return excess to inventory
-          console.log(`↩️ Returning ${difference} units to inventory`);
-          
-          const { data: currentInventory, error: invFetchError } = await supabase
-            .from("inventory")
-            .select("quantity")
-            .eq("raw_material_id", kitItem.raw_material_id)
-            .single();
+        const discrepancyType = difference > 0 ? 'SHORTAGE' : 'EXCESS';
+        
+        // Create discrepancy record
+        const { error: discrepancyError } = await supabase
+          .from("production_material_discrepancies")
+          .insert({
+            production_order_id: production.id,
+            raw_material_id: kitItem.raw_material_id,
+            kit_item_id: kitItemId,
+            sent_quantity: sentQuantity,
+            received_quantity: receivedQuantity,
+            discrepancy_quantity: Math.abs(difference),
+            discrepancy_type: discrepancyType,
+            reason: notes || `Production verified ${receivedQuantity} but store sent ${sentQuantity}`,
+            status: 'PENDING'
+          });
 
-          if (invFetchError) {
-            console.error("❌ Error fetching current inventory:", invFetchError);
-            throw new Error(`Failed to fetch inventory: ${invFetchError.message}`);
-          }
-
-          const newQuantity = currentInventory.quantity + difference;
-          
-          const { error: invUpdateError } = await supabase
-            .from("inventory")
-            .update({
-              quantity: newQuantity,
-              last_updated: new Date().toISOString()
-            })
-            .eq("raw_material_id", kitItem.raw_material_id);
-
-          if (invUpdateError) {
-            console.error("❌ Error updating inventory:", invUpdateError);
-            throw new Error(`Failed to return excess to inventory: ${invUpdateError.message}`);
-          }
-
-          console.log(`✅ EXCESS RETURNED TO INVENTORY: +${difference} units`);
-
-          // Log the inventory return movement
-          await supabase
-            .from("material_movements")
-            .insert({
-              raw_material_id: kitItem.raw_material_id,
-              movement_type: "PRODUCTION_RETURN",
-              quantity: difference,
-              reference_id: production.id,
-              reference_type: "PRODUCTION_ORDER",
-              reference_number: production.voucher_number,
-              notes: `Individual Dispatch Verification Return: ${kitItem.raw_materials.material_code} - Sent ${sentQuantity}, Received ${receivedQuantity}, Returned ${difference}. Notes: ${notes}`
-            });
+        if (discrepancyError) {
+          console.error("❌ Error creating discrepancy record:", discrepancyError);
+          throw new Error(`Failed to create discrepancy record: ${discrepancyError.message}`);
         }
 
-        // If shortage, log material request
-        if (difference < 0) {
-          const shortageQuantity = Math.abs(difference);
-          console.log(`📝 LOGGING MATERIAL REQUEST FOR SHORTAGE: ${shortageQuantity} units`);
-          
-          await supabase
-            .from("material_requests")
-            .insert({
-              production_order_id: production.id,
-              raw_material_id: kitItem.raw_material_id,
-              requested_quantity: shortageQuantity,
-              reason: `Dispatch verification shortage: ${notes}`,
-              status: 'PENDING'
-            });
+        console.log(`✅ DISCREPANCY RECORD CREATED - Pending store review`);
+        
+        // Mark kit item as verified but don't adjust inventory yet
+        const { error: kitUpdateError } = await supabase
+          .from("kit_items")
+          .update({
+            verified_by_production: true
+          })
+          .eq("id", kitItemId);
+
+        if (kitUpdateError) {
+          console.error("❌ Error updating kit item:", kitUpdateError);
+          throw new Error(`Failed to verify dispatch: ${kitUpdateError.message}`);
+        }
+
+      } else {
+        // No discrepancy - proceed with normal verification
+        console.log(`✅ NO DISCREPANCY - Processing normal verification`);
+        
+        const { error: kitUpdateError } = await supabase
+          .from("kit_items")
+          .update({
+            actual_quantity: receivedQuantity,
+            verified_by_production: true
+          })
+          .eq("id", kitItemId);
+
+        if (kitUpdateError) {
+          console.error("❌ Error updating kit item:", kitUpdateError);
+          throw new Error(`Failed to verify dispatch: ${kitUpdateError.message}`);
         }
       }
 
@@ -213,7 +191,7 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
     onSuccess: () => {
       toast({
         title: "Dispatch Verified",
-        description: "Individual dispatch verified and inventory adjusted if needed",
+        description: "Dispatch verified successfully. Any discrepancies sent to store for review.",
       });
       
       // Refresh all related queries
@@ -400,7 +378,7 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
           {/* Enhanced Complete BOM Display with Multi-Dispatch Support */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold">Complete BOM - Enhanced Material Tracking</h3>
+              <h3 className="text-lg font-semibold">Complete BOM - Enhanced Material Tracking with Discrepancy Management</h3>
             </div>
             
             {renderMaterialSection("Sub Assembly", "sub_assembly", groupedMaterials.sub_assembly)}

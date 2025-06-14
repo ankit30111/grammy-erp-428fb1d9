@@ -1623,6 +1623,82 @@ export type Database = {
           },
         ]
       }
+      production_material_discrepancies: {
+        Row: {
+          created_at: string
+          discrepancy_quantity: number
+          discrepancy_type: string
+          id: string
+          kit_item_id: string
+          production_order_id: string
+          raw_material_id: string
+          reason: string | null
+          received_quantity: number
+          resolution_notes: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          sent_quantity: number
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          discrepancy_quantity: number
+          discrepancy_type: string
+          id?: string
+          kit_item_id: string
+          production_order_id: string
+          raw_material_id: string
+          reason?: string | null
+          received_quantity: number
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          sent_quantity: number
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          discrepancy_quantity?: number
+          discrepancy_type?: string
+          id?: string
+          kit_item_id?: string
+          production_order_id?: string
+          raw_material_id?: string
+          reason?: string | null
+          received_quantity?: number
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          sent_quantity?: number
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_kit_item"
+            columns: ["kit_item_id"]
+            isOneToOne: true
+            referencedRelation: "kit_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_production_order"
+            columns: ["production_order_id"]
+            isOneToOne: false
+            referencedRelation: "production_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_raw_material"
+            columns: ["raw_material_id"]
+            isOneToOne: false
+            referencedRelation: "raw_materials"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       production_material_receipts: {
         Row: {
           created_at: string
