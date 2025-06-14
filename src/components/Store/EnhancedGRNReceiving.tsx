@@ -150,12 +150,31 @@ const EnhancedGRNReceiving = ({
           .update({
             store_confirmed: true,
             store_confirmed_at: new Date().toISOString(),
-            store_confirmed_by: null, // Would be set from auth in real app
-            accepted_quantity: quantity, // This is the physically verified quantity
+            store_confirmed_by: null,
+            accepted_quantity: quantity,
           })
           .eq("id", itemId);
         
         if (error) throw error;
+
+        // Get material info for logging
+        const grnItem = selectedGRN.grn_items.find((item: any) => item.id === itemId);
+        if (grnItem) {
+          // Auto-log GRN receipt with proper reference
+          const { error: logError } = await supabase.rpc('log_material_movement', {
+            p_raw_material_id: grnItem.raw_material_id,
+            p_movement_type: 'GRN_RECEIPT',
+            p_quantity: quantity,
+            p_reference_id: selectedGRN.id,
+            p_reference_type: 'GRN',
+            p_reference_number: selectedGRN.grn_number,
+            p_notes: `GRN material received to store. PO: ${selectedGRN.purchase_orders?.po_number || 'N/A'}, Vendor: ${selectedGRN.vendors?.name || 'N/A'}`
+          });
+
+          if (logError) {
+            console.error("❌ Error logging GRN receipt:", logError);
+          }
+        }
       });
       
       await Promise.all(updatePromises);

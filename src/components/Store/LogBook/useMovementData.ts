@@ -24,7 +24,7 @@ export const useMovementData = (filterType: string) => {
   const { data: movements = [], isLoading, refetch } = useQuery({
     queryKey: ["material-movements-logbook", filterType],
     queryFn: async () => {
-      console.log("🔍 Fetching ALL material movements for LogBook...", { filterType });
+      console.log("🔍 Fetching material movements for LogBook...", { filterType });
       
       let query = supabase
         .from("material_movements")
@@ -51,23 +51,43 @@ export const useMovementData = (filterType: string) => {
         query = query.eq("movement_type", filterType);
       }
 
-      const { data, error } = await query.limit(500); // Increased limit for complete view
+      const { data, error } = await query.limit(500);
 
       if (error) {
         console.error("❌ Error fetching movements:", error);
         throw error;
       }
 
-      console.log("📋 Material movements fetched:", data?.length, "entries");
+      // Client-side deduplication based on reference and time proximity
+      const deduplicatedData = data?.filter((movement, index, arr) => {
+        const duplicate = arr.find((other, otherIndex) => {
+          if (otherIndex >= index) return false;
+          
+          const timeDiff = Math.abs(
+            new Date(movement.created_at).getTime() - new Date(other.created_at).getTime()
+          );
+          
+          return (
+            movement.raw_material_id === other.raw_material_id &&
+            movement.movement_type === other.movement_type &&
+            movement.quantity === other.quantity &&
+            movement.reference_number === other.reference_number &&
+            timeDiff < 60000 // Within 1 minute
+          );
+        });
+        
+        return !duplicate;
+      }) || [];
+
+      console.log("📋 Material movements fetched:", deduplicatedData.length, "entries (after deduplication)");
       
-      // Ensure we're getting all types of movements
-      const movementTypes = data?.map(m => m.movement_type) || [];
+      const movementTypes = deduplicatedData.map(m => m.movement_type);
       const uniqueTypes = [...new Set(movementTypes)];
       console.log("📊 Movement types found:", uniqueTypes);
       
-      return data || [];
+      return deduplicatedData;
     },
-    refetchInterval: 5000, // Real-time updates
+    refetchInterval: 5000,
     staleTime: 2000,
   });
 

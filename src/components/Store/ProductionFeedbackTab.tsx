@@ -126,18 +126,20 @@ const ProductionFeedbackTab = () => {
             throw new Error(`Failed to update inventory: ${invUpdateError.message}`);
           }
 
-          // Log the return movement
-          await supabase
-            .from("material_movements")
-            .insert({
-              raw_material_id: discrepancy.raw_material_id,
-              movement_type: "DISCREPANCY_RETURN",
-              quantity: returnQuantity,
-              reference_id: discrepancy.production_order_id,
-              reference_type: "PRODUCTION_DISCREPANCY",
-              reference_number: `DISC-${discrepancy.id.slice(0, 8)}`,
-              notes: `Store accepted production shortage discrepancy. Returned ${returnQuantity} units to inventory. ${notes}`
-            });
+          // Auto-log the return movement with proper reference
+          const { error: logError } = await supabase.rpc('log_material_movement', {
+            p_raw_material_id: discrepancy.raw_material_id,
+            p_movement_type: 'PRODUCTION_FEEDBACK_RETURN',
+            p_quantity: returnQuantity,
+            p_reference_id: discrepancy.production_order_id,
+            p_reference_type: 'PRODUCTION_DISCREPANCY',
+            p_reference_number: discrepancy.production_orders.voucher_number,
+            p_notes: `Store accepted production shortage discrepancy. Returned ${returnQuantity} units to inventory. ${notes}`
+          });
+
+          if (logError) {
+            console.error("❌ Error logging discrepancy return:", logError);
+          }
 
           console.log(`📦 RETURNED ${returnQuantity} UNITS TO INVENTORY`);
         }
@@ -159,18 +161,20 @@ const ProductionFeedbackTab = () => {
           throw new Error(`Failed to update kit item: ${kitError.message}`);
         }
 
-        // Log the rejection
-        await supabase
-          .from("material_movements")
-          .insert({
-            raw_material_id: discrepancy.raw_material_id,
-            movement_type: "DISCREPANCY_REJECTED",
-            quantity: discrepancy.discrepancy_quantity,
-            reference_id: discrepancy.production_order_id,
-            reference_type: "PRODUCTION_DISCREPANCY",
-            reference_number: `DISC-REJ-${discrepancy.id.slice(0, 8)}`,
-            notes: `Store rejected production discrepancy. Maintained store sent quantity of ${discrepancy.sent_quantity}. ${notes}`
-          });
+        // Auto-log the rejection with proper reference
+        const { error: logError } = await supabase.rpc('log_material_movement', {
+          p_raw_material_id: discrepancy.raw_material_id,
+          p_movement_type: 'PRODUCTION_DISCREPANCY_REJECTED',
+          p_quantity: discrepancy.discrepancy_quantity,
+          p_reference_id: discrepancy.production_order_id,
+          p_reference_type: 'PRODUCTION_DISCREPANCY',
+          p_reference_number: discrepancy.production_orders.voucher_number,
+          p_notes: `Store rejected production discrepancy. Maintained store sent quantity of ${discrepancy.sent_quantity}. ${notes}`
+        });
+
+        if (logError) {
+          console.error("❌ Error logging discrepancy rejection:", logError);
+        }
       }
 
       console.log(`✅ DISCREPANCY ${action} COMPLETED`);

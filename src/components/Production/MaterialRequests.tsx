@@ -146,8 +146,23 @@ const MaterialRequests = () => {
         console.error("❌ Error creating material request:", error);
         throw error;
       }
+
+      // Auto-log material request creation
+      const { error: logError } = await supabase.rpc('log_material_movement', {
+        p_raw_material_id: requestData.rawMaterialId,
+        p_movement_type: 'MATERIAL_REQUEST_CREATED',
+        p_quantity: requestData.requestedQuantity,
+        p_reference_id: data.id,
+        p_reference_type: 'MATERIAL_REQUEST',
+        p_reference_number: `REQ-${data.id.slice(0, 8)}`,
+        p_notes: `Material request created for production. Reason: ${requestData.reason}`
+      });
+
+      if (logError) {
+        console.error("❌ Error logging material request:", logError);
+      }
       
-      console.log("✅ Material request created:", data);
+      console.log("✅ Material request created and logged:", data);
       return data;
     },
     onSuccess: () => {
