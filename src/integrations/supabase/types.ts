@@ -9,6 +9,54 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      approval_workflows: {
+        Row: {
+          comments: string | null
+          created_at: string
+          document_url: string | null
+          id: string
+          reference_id: string
+          rejection_reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          submitted_at: string
+          submitted_by: string | null
+          updated_at: string
+          workflow_type: string
+        }
+        Insert: {
+          comments?: string | null
+          created_at?: string
+          document_url?: string | null
+          id?: string
+          reference_id: string
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          submitted_at?: string
+          submitted_by?: string | null
+          updated_at?: string
+          workflow_type: string
+        }
+        Update: {
+          comments?: string | null
+          created_at?: string
+          document_url?: string | null
+          id?: string
+          reference_id?: string
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          submitted_at?: string
+          submitted_by?: string | null
+          updated_at?: string
+          workflow_type?: string
+        }
+        Relationships: []
+      }
       attendance: {
         Row: {
           break_hours: number | null
@@ -842,6 +890,9 @@ export type Database = {
           store_confirmed_at: string | null
           store_confirmed_by: string | null
           store_physical_quantity: number | null
+          vendor_capa_file_url: string | null
+          vendor_capa_required: boolean | null
+          vendor_capa_status: string | null
         }
         Insert: {
           accepted_quantity?: number | null
@@ -863,6 +914,9 @@ export type Database = {
           store_confirmed_at?: string | null
           store_confirmed_by?: string | null
           store_physical_quantity?: number | null
+          vendor_capa_file_url?: string | null
+          vendor_capa_required?: boolean | null
+          vendor_capa_status?: string | null
         }
         Update: {
           accepted_quantity?: number | null
@@ -884,6 +938,9 @@ export type Database = {
           store_confirmed_at?: string | null
           store_confirmed_by?: string | null
           store_physical_quantity?: number | null
+          vendor_capa_file_url?: string | null
+          vendor_capa_required?: boolean | null
+          vendor_capa_status?: string | null
         }
         Relationships: [
           {
@@ -2207,27 +2264,39 @@ export type Database = {
       }
       rca_reports: {
         Row: {
+          approval_status: string | null
+          approved_at: string | null
+          approved_by: string | null
           created_at: string
           id: string
           line_rejection_id: string
           rca_file_url: string | null
           received_quantity: number
+          rejection_reason: string | null
           uploaded_by: string | null
         }
         Insert: {
+          approval_status?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
           created_at?: string
           id?: string
           line_rejection_id: string
           rca_file_url?: string | null
           received_quantity: number
+          rejection_reason?: string | null
           uploaded_by?: string | null
         }
         Update: {
+          approval_status?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
           created_at?: string
           id?: string
           line_rejection_id?: string
           rca_file_url?: string | null
           received_quantity?: number
+          rejection_reason?: string | null
           uploaded_by?: string | null
         }
         Relationships: [
