@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { CheckCircle, AlertTriangle, Eye } from "lucide-react";
+import { CheckCircle, AlertTriangle, Eye, Package } from "lucide-react";
 import { format } from "date-fns";
 
 interface EnhancedDispatchVerificationRowProps {
@@ -115,13 +115,13 @@ const EnhancedDispatchVerificationRow = ({
               <DialogTrigger asChild>
                 <Button variant="outline" size="sm" className="gap-1">
                   <Eye className="h-3 w-3" />
-                  View Dispatches
+                  {dispatches.length > 0 ? 'View Dispatches' : 'View Details'}
                 </Button>
               </DialogTrigger>
               <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>
-                    Dispatch History - {rawMaterial.material_code}
+                    Material Details - {rawMaterial.material_code}
                   </DialogTitle>
                 </DialogHeader>
                 
@@ -145,6 +145,38 @@ const EnhancedDispatchVerificationRow = ({
                       <p className="text-lg font-semibold text-orange-600">{pendingQuantity}</p>
                     </div>
                   </div>
+
+                  {/* Material Information */}
+                  <div className="p-4 bg-blue-50 rounded-lg">
+                    <h4 className="font-semibold text-blue-800 mb-2">Material Information</h4>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="font-medium">Material Code:</span> {rawMaterial.material_code}
+                      </div>
+                      <div>
+                        <span className="font-medium">Material Name:</span> {rawMaterial.name}
+                      </div>
+                      <div>
+                        <span className="font-medium">Category:</span> {rawMaterial.category}
+                      </div>
+                      <div>
+                        <span className="font-medium">BOM Type:</span> {bomItem.bom_type?.replace('_', ' ').toUpperCase()}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* No Dispatches State */}
+                  {dispatches.length === 0 && (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <Package className="h-12 w-12 mx-auto mb-2 text-muted-foreground/50" />
+                      <p className="font-medium">No dispatches yet</p>
+                      <p className="text-sm mt-1">This material hasn't been sent by the store yet</p>
+                      <div className="mt-4 p-3 bg-orange-50 rounded-lg">
+                        <p className="text-orange-700 font-medium">Required Quantity: {requiredQuantity}</p>
+                        <p className="text-orange-600 text-sm">Waiting for store to dispatch materials</p>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Unverified Dispatches */}
                   {unverifiedDispatches.length > 0 && (
@@ -229,13 +261,6 @@ const EnhancedDispatchVerificationRow = ({
                           </div>
                         ))}
                       </div>
-                    </div>
-                  )}
-
-                  {dispatches.length === 0 && (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <AlertTriangle className="h-12 w-12 mx-auto mb-2" />
-                      <p>No dispatches found for this material</p>
                     </div>
                   )}
                 </div>

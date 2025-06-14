@@ -268,27 +268,34 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
     },
   });
 
-  // Group sent materials by raw material ID and assembly type with enhanced tracking
-  const groupedMaterials = sentMaterials.reduce((acc, item) => {
-    const bomItem = bomData.find(b => b.raw_material_id === item.raw_material_id);
-    const bomType = bomItem?.bom_type || 'main_assembly';
+  // ENHANCED: Group ALL BOM materials by category first, then merge dispatch data
+  const groupedMaterials = bomData.reduce((acc, bomItem) => {
+    const bomType = bomItem.bom_type || 'main_assembly';
     
     if (!acc[bomType]) {
       acc[bomType] = {};
     }
     
-    if (!acc[bomType][item.raw_material_id]) {
-      acc[bomType][item.raw_material_id] = {
-        rawMaterial: item.raw_materials,
-        bomItem: bomItem,
-        dispatches: [],
-        requiredQuantity: bomItem ? bomItem.quantity * production.quantity : 0
-      };
-    }
+    // Initialize with BOM data and empty dispatches
+    acc[bomType][bomItem.raw_material_id] = {
+      rawMaterial: bomItem.raw_materials,
+      bomItem: bomItem,
+      dispatches: [],
+      requiredQuantity: bomItem.quantity * production.quantity
+    };
     
-    acc[bomType][item.raw_material_id].dispatches.push(item);
     return acc;
   }, {} as any);
+
+  // Now merge dispatch data for materials that have been sent
+  sentMaterials.forEach(item => {
+    const bomItem = bomData.find(b => b.raw_material_id === item.raw_material_id);
+    const bomType = bomItem?.bom_type || 'main_assembly';
+    
+    if (groupedMaterials[bomType] && groupedMaterials[bomType][item.raw_material_id]) {
+      groupedMaterials[bomType][item.raw_material_id].dispatches.push(item);
+    }
+  });
 
   const renderMaterialSection = (sectionName: string, sectionKey: string, materials: any) => {
     const materialEntries = materials ? Object.values(materials) : [];
@@ -326,7 +333,7 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
         
         <CardContent>
           {materialEntries.length === 0 ? (
-            <p className="text-muted-foreground text-center py-4">No materials sent for this assembly type</p>
+            <p className="text-muted-foreground text-center py-4">No materials found for this assembly type</p>
           ) : (
             <Table>
               <TableHeader>
@@ -390,10 +397,10 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
             </CardContent>
           </Card>
 
-          {/* Enhanced Individual Dispatch Verification */}
+          {/* Enhanced Complete BOM Display with Multi-Dispatch Support */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold">Enhanced Material Tracking - Multi-Dispatch Support</h3>
+              <h3 className="text-lg font-semibold">Complete BOM - Enhanced Material Tracking</h3>
             </div>
             
             {renderMaterialSection("Sub Assembly", "sub_assembly", groupedMaterials.sub_assembly)}
