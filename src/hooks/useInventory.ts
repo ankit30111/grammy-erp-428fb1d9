@@ -3,8 +3,7 @@
 export { 
   useInventory, 
   useRealTimeInventory,
-  useUpdateInventory,
-  useInventoryDeduction,
+  useInventoryMutations,
   useManualInventorySync,
   useCheckMaterialInventory
 } from './inventory';

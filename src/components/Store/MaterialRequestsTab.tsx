@@ -10,7 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { CheckCircle, XCircle, ArrowLeftRight, Package, RefreshCw, Send } from "lucide-react";
 import { toast } from "sonner";
-import { useInventoryDeduction } from "@/hooks/inventory";
+import { useInventoryMutations } from "@/hooks/inventory";
 
 interface SendingQuantities {
   [requestId: string]: number;
@@ -18,7 +18,7 @@ interface SendingQuantities {
 
 const MaterialRequestsTab = memo(() => {
   const queryClient = useQueryClient();
-  const inventoryDeduction = useInventoryDeduction();
+  const { updateInventoryQuantity } = useInventoryMutations();
   const [sendingQuantities, setSendingQuantities] = useState<SendingQuantities>({});
 
   const { data: materialRequests = [], isLoading, refetch } = useQuery({
@@ -137,13 +137,27 @@ const MaterialRequestsTab = memo(() => {
         throw new Error(`Insufficient inventory. Available: ${inventoryItem?.quantity || 0}, Requested: ${sendQuantity}`);
       }
 
-      // Deduct from inventory using the existing hook
-      await inventoryDeduction.mutateAsync({
-        rawMaterialId: requestData.raw_material_id,
-        quantityToDeduct: sendQuantity,
-        referenceId: requestData.production_order_id,
+      // Calculate new quantity after deduction
+      const newQuantity = inventoryItem.quantity - sendQuantity;
+
+      // Update inventory using the mutations hook
+      await updateInventoryQuantity.mutateAsync({
+        materialId: requestData.raw_material_id,
+        newQuantity,
+        operation: 'dispatch',
         referenceNumber: requestData.production_orders.voucher_number,
         notes: `Material sent to production for request: ${requestData.reason}`
+      });
+
+      // Log the material movement
+      await supabase.rpc('log_material_movement', {
+        p_raw_material_id: requestData.raw_material_id,
+        p_movement_type: 'DISPATCH',
+        p_quantity: sendQuantity,
+        p_reference_id: requestData.production_order_id,
+        p_reference_type: 'production_order',
+        p_reference_number: requestData.production_orders.voucher_number,
+        p_notes: `Material sent to production for request: ${requestData.reason}`
       });
 
       // Update the material request status to indicate it's been sent
