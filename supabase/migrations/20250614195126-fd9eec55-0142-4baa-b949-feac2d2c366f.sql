@@ -47,3 +47,11 @@ CREATE TRIGGER update_production_discrepancies_updated_at
   BEFORE UPDATE ON production_material_discrepancies
   FOR EACH ROW
   EXECUTE FUNCTION update_production_discrepancies_updated_at();
+
+-- Update material_requests table to include SENT status
+ALTER TABLE material_requests 
+DROP CONSTRAINT IF EXISTS material_requests_status_check;
+
+ALTER TABLE material_requests 
+ADD CONSTRAINT material_requests_status_check 
+CHECK (status IN ('PENDING', 'APPROVED', 'REJECTED', 'SENT'));
