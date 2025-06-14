@@ -36,6 +36,64 @@ const MaterialRequestsTab = memo(() => {
     },
   });
 
+  // Check if user has a user_accounts record
+  const { data: userAccount } = useQuery({
+    queryKey: ["user-account", currentUser?.id],
+    queryFn: async () => {
+      if (!currentUser?.id) return null;
+      
+      const { data, error } = await supabase
+        .from("user_accounts")
+        .select("*")
+        .eq("id", currentUser.id)
+        .single();
+      
+      if (error && error.code !== 'PGRST116') { // PGRST116 = not found
+        console.error("❌ Error getting user account:", error);
+        throw error;
+      }
+      
+      return data;
+    },
+    enabled: !!currentUser?.id,
+  });
+
+  // Create user account if it doesn't exist
+  const createUserAccountMutation = useMutation({
+    mutationFn: async () => {
+      if (!currentUser) throw new Error("No current user");
+      
+      const { data, error } = await supabase
+        .from("user_accounts")
+        .insert({
+          id: currentUser.id,
+          full_name: currentUser.user_metadata?.full_name || currentUser.user_metadata?.name || 'Unknown User',
+          email: currentUser.email || 'no-email@example.com',
+          username: currentUser.user_metadata?.username || currentUser.email?.split('@')[0] || `user_${currentUser.id.substring(0, 8)}`,
+        })
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["user-account"] });
+      toast.success("User account created successfully");
+    },
+    onError: (error: Error) => {
+      console.error("❌ Error creating user account:", error);
+      toast.error(`Failed to create user account: ${error.message}`);
+    },
+  });
+
+  // Auto-create user account if missing
+  useState(() => {
+    if (currentUser && userAccount === null && !createUserAccountMutation.isPending) {
+      createUserAccountMutation.mutate();
+    }
+  });
+
   const { data: materialRequests = [], isLoading, refetch } = useQuery({
     queryKey: ["material-requests"],
     queryFn: async () => {
@@ -114,6 +172,10 @@ const MaterialRequestsTab = memo(() => {
         throw new Error("User not authenticated");
       }
 
+      if (!userAccount) {
+        throw new Error("User account not found. Please refresh the page.");
+      }
+
       const updateData = {
         status: action === 'APPROVE' ? 'APPROVED' : 'REJECTED',
         approved_quantity: action === 'APPROVE' ? approvedQuantity : 0,
@@ -131,6 +193,9 @@ const MaterialRequestsTab = memo(() => {
 
       if (error) {
         console.error("❌ Database error:", error);
+        if (error.code === '23503') {
+          throw new Error("User account validation failed. Please refresh the page and try again.");
+        }
         throw new Error(`Database error: ${error.message}`);
       }
 
@@ -236,6 +301,11 @@ const MaterialRequestsTab = memo(() => {
       return;
     }
 
+    if (!userAccount) {
+      toast.error("User account not found. Please refresh the page.");
+      return;
+    }
+
     handleRequestMutation.mutate({
       requestId: request.id,
       action: 'APPROVE',
@@ -246,6 +316,11 @@ const MaterialRequestsTab = memo(() => {
   const handleReject = (request: any) => {
     if (!currentUser) {
       toast.error("Please log in to reject requests");
+      return;
+    }
+
+    if (!userAccount) {
+      toast.error("User account not found. Please refresh the page.");
       return;
     }
 
