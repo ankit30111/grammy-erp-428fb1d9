@@ -1,4 +1,3 @@
-
 import { memo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -217,6 +216,7 @@ const MaterialRequestsTab = memo(() => {
     },
   });
 
+  
   const sendMaterialMutation = useMutation({
     mutationFn: async ({ requestId, sendQuantity }: { requestId: string; sendQuantity: number }) => {
       console.log(`📦 SENDING MATERIAL TO PRODUCTION:`, { requestId, sendQuantity });
@@ -508,7 +508,7 @@ const MaterialRequestsTab = memo(() => {
                               <span className="text-sm text-muted-foreground">
                                 {request.reason || 'No reason provided'}
                               </span>
-                            </TableCell>
+                            TableCell>
                             <TableCell>{getStatusBadge(request.status)}</TableCell>
                             <TableCell>
                               {request.status === 'PENDING' && (
