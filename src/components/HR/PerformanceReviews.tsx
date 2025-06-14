@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -64,7 +65,7 @@ export function PerformanceReviews() {
           teamwork_rating,
           punctuality_rating,
           created_at,
-          employee:employee_id (
+          employees!employee_id (
             id,
             first_name,
             last_name,
@@ -390,9 +391,9 @@ export function PerformanceReviews() {
                 {reviews?.map((review) => (
                   <TableRow key={review.id}>
                     <TableCell>
-                      {review.employee?.employee_code} - {review.employee?.first_name} {review.employee?.last_name}
+                      {review.employees?.employee_code} - {review.employees?.first_name} {review.employees?.last_name}
                     </TableCell>
-                    <TableCell>{review.employee?.position}</TableCell>
+                    <TableCell>{review.employees?.position}</TableCell>
                     <TableCell>
                       {new Date(review.review_period_start).toLocaleDateString()} - {' '}
                       {new Date(review.review_period_end).toLocaleDateString()}
