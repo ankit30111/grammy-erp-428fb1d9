@@ -65,7 +65,7 @@ const VendorCAPAManagement = () => {
             production_orders!inner(voucher_number)
           )
         `)
-        .order("initiated_at", { ascending: false });
+        .order("created_at", { ascending: false });
       
       if (error) throw error;
       return data || [];
@@ -350,7 +350,7 @@ const VendorCAPAManagement = () => {
                     {vendorCAPAs.map((capa) => (
                       <TableRow key={capa.id}>
                         <TableCell>
-                          {new Date(capa.initiated_at).toLocaleDateString()}
+                          {new Date(capa.created_at).toLocaleDateString()}
                         </TableCell>
                         <TableCell>{capa.vendors?.name}</TableCell>
                         <TableCell>
@@ -391,7 +391,7 @@ const VendorCAPAManagement = () => {
                                     <div className="grid grid-cols-2 gap-2 text-sm">
                                       <div><strong>Vendor:</strong> {capa.vendors?.name}</div>
                                       <div><strong>Part:</strong> {capa.line_rejections?.raw_materials?.material_code}</div>
-                                      <div><strong>Initiated:</strong> {new Date(capa.initiated_at).toLocaleDateString()}</div>
+                                      <div><strong>Initiated:</strong> {new Date(capa.created_at).toLocaleDateString()}</div>
                                       <div><strong>Status:</strong> {capa.status}</div>
                                     </div>
                                   </div>
