@@ -24,15 +24,7 @@ export const navigationItems: NavigationItem[] = [
   { to: "/finished-goods", icon: <Layers size={20} />, label: "Finished Goods" },
   { to: "/approvals", icon: <CheckSquare size={20} />, label: "Approvals" },
   { to: "/quality", icon: <ClipboardCheck size={20} />, label: "Quality Control" },
-  {
-    to: "/sales",
-    icon: <DollarSign size={20} />,
-    label: "Sales",
-    subItems: [
-      { to: "/sales/spare-dispatch", label: "Spare Dispatch" },
-      { to: "/dispatch", label: "Regular Dispatch" }
-    ]
-  },
+  { to: "/sales", icon: <DollarSign size={20} />, label: "Sales" },
   { to: "/customer-complaints", icon: <MessageSquare size={20} />, label: "Customer Complaints" },
   { to: "/management/hr", icon: <Users size={20} />, label: "Human Resources" }
 ];
