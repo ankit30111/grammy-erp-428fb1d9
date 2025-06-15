@@ -18,9 +18,11 @@ interface GanttData {
 }
 
 const ProjectGanttChart = () => {
-  const { data: ganttData, isLoading } = useQuery({
+  const { data: ganttData, isLoading, error } = useQuery({
     queryKey: ['project-gantt-data'],
     queryFn: async () => {
+      console.log('Fetching project gantt data...');
+      
       const [npdData, preExistingData] = await Promise.all([
         supabase
           .from('npd_projects')
@@ -41,6 +43,9 @@ const ProjectGanttChart = () => {
       if (npdData.error) throw npdData.error;
       if (preExistingData.error) throw preExistingData.error;
 
+      console.log('NPD Data:', npdData.data);
+      console.log('Pre-existing Data:', preExistingData.data);
+
       const processedData: GanttData[] = [];
 
       // Helper function to safely calculate progress
@@ -49,6 +54,7 @@ const ProjectGanttChart = () => {
         
         // Validate dates
         if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+          console.warn('Invalid dates detected:', { startDate, endDate });
           return 0;
         }
         
@@ -63,7 +69,8 @@ const ProjectGanttChart = () => {
         const progress = (elapsedDays / totalDays) * 100;
         
         // Ensure progress is a valid number between 0 and 100
-        if (isNaN(progress)) {
+        if (isNaN(progress) || !isFinite(progress)) {
+          console.warn('Invalid progress calculated:', { progress, elapsedDays, totalDays });
           return 0;
         }
         
@@ -75,15 +82,38 @@ const ProjectGanttChart = () => {
         const now = new Date();
         
         if (isNaN(endDate.getTime())) {
+          console.warn('Invalid end date:', endDate);
           return 0;
         }
         
         const daysRemaining = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-        return isNaN(daysRemaining) ? 0 : daysRemaining;
+        
+        if (isNaN(daysRemaining) || !isFinite(daysRemaining)) {
+          console.warn('Invalid days remaining calculated:', daysRemaining);
+          return 0;
+        }
+        
+        return daysRemaining;
+      };
+
+      // Helper function to validate project data
+      const isValidProject = (projectData: any): boolean => {
+        return (
+          projectData.project_name && 
+          typeof projectData.project_name === 'string' &&
+          projectData.project_name.trim() !== '' &&
+          projectData.created_at &&
+          !isNaN(new Date(projectData.created_at).getTime())
+        );
       };
 
       // Process NPD projects
       npdData.data?.forEach(project => {
+        if (!isValidProject(project)) {
+          console.warn('Skipping invalid NPD project:', project);
+          return;
+        }
+
         const startDate = new Date(project.created_at);
         const endDate = project.estimated_completion_date ? 
           new Date(project.estimated_completion_date) : 
@@ -91,6 +121,16 @@ const ProjectGanttChart = () => {
 
         const progress = calculateProgress(startDate, endDate);
         const daysRemaining = calculateDaysRemaining(endDate);
+
+        // Additional validation before adding to processed data
+        if (isNaN(progress) || isNaN(daysRemaining) || !isFinite(progress) || !isFinite(daysRemaining)) {
+          console.warn('Skipping NPD project due to invalid calculations:', {
+            project: project.project_name,
+            progress,
+            daysRemaining
+          });
+          return;
+        }
 
         let color = '#3b82f6'; // blue
         if (project.status === 'CONCEPT') color = '#f59e0b'; // amber
@@ -112,6 +152,11 @@ const ProjectGanttChart = () => {
 
       // Process Pre-Existing projects
       preExistingData.data?.forEach(project => {
+        if (!isValidProject(project)) {
+          console.warn('Skipping invalid pre-existing project:', project);
+          return;
+        }
+
         const startDate = new Date(project.created_at);
         const endDate = project.estimated_completion_date ? 
           new Date(project.estimated_completion_date) : 
@@ -119,6 +164,16 @@ const ProjectGanttChart = () => {
 
         const progress = calculateProgress(startDate, endDate);
         const daysRemaining = calculateDaysRemaining(endDate);
+
+        // Additional validation before adding to processed data
+        if (isNaN(progress) || isNaN(daysRemaining) || !isFinite(progress) || !isFinite(daysRemaining)) {
+          console.warn('Skipping pre-existing project due to invalid calculations:', {
+            project: project.project_name,
+            progress,
+            daysRemaining
+          });
+          return;
+        }
 
         let color = '#10b981'; // green
         if (project.status === 'CUSTOMIZATION') color = '#f59e0b'; // amber
@@ -137,15 +192,28 @@ const ProjectGanttChart = () => {
         });
       });
 
-      // Filter out any projects with invalid data before returning
-      return processedData
-        .filter(project => 
+      // Final validation and filtering
+      const validProcessedData = processedData.filter(project => {
+        const isValid = (
           !isNaN(project.progress) && 
           !isNaN(project.daysRemaining) &&
+          isFinite(project.progress) &&
+          isFinite(project.daysRemaining) &&
           project.projectName && 
-          project.projectName.trim() !== ''
-        )
-        .sort((a, b) => a.projectName.localeCompare(b.projectName));
+          project.projectName.trim() !== '' &&
+          project.progress >= 0 &&
+          project.progress <= 100
+        );
+        
+        if (!isValid) {
+          console.warn('Filtering out invalid project:', project);
+        }
+        
+        return isValid;
+      });
+
+      console.log('Final processed data:', validProcessedData);
+      return validProcessedData.sort((a, b) => a.projectName.localeCompare(b.projectName));
     }
   });
 
@@ -182,6 +250,22 @@ const ProjectGanttChart = () => {
     );
   }
 
+  if (error) {
+    console.error('Error loading gantt data:', error);
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Project Timeline</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-center h-64">
+            <div className="text-red-500">Error loading project data. Please try again.</div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -191,7 +275,7 @@ const ProjectGanttChart = () => {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        {ganttData?.length === 0 ? (
+        {!ganttData || ganttData.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
             <Clock className="h-12 w-12 mx-auto mb-4" />
             <p>No active projects to display</p>
