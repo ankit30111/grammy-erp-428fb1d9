@@ -1,10 +1,9 @@
-
 import { useState } from "react";
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Clock, FileCheck, Upload, Search, AlertTriangle, Phone } from "lucide-react";
+import { Clock, FileCheck, Upload, Search, AlertTriangle, Phone, FileText } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -14,11 +13,21 @@ import { format } from "date-fns";
 import LineRejectionManager from "@/components/quality/LineRejectionManager";
 import IQCInspectionDialog from "@/components/quality/IQCInspectionDialog";
 import PartAnalysis from "@/components/quality/PartAnalysis";
+import CAPAUploadDialog from "@/components/quality/CAPAUploadDialog";
 
 const IQC = () => {
   const [selectedTab, setSelectedTab] = useState("pending");
   const [selectedGRN, setSelectedGRN] = useState<any>(null);
   const [showInspectionDialog, setShowInspectionDialog] = useState(false);
+  const [capaUploadDialog, setCAPAUploadDialog] = useState<{
+    isOpen: boolean;
+    capaId: string;
+    itemDetails: any;
+  }>({
+    isOpen: false,
+    capaId: "",
+    itemDetails: {}
+  });
 
   // Fetch pending GRNs for IQC - only those with pending or null IQC status
   const { data: pendingGRNs = [] } = useQuery({
@@ -49,7 +58,7 @@ const IQC = () => {
     },
   });
 
-  // Fetch completed IQC items - individual grn_items with completed IQC status
+  // Enhanced completed IQC items query with CAPA information
   const { data: completedIQCItems = [] } = useQuery({
     queryKey: ["completed-iqc-items"],
     queryFn: async () => {
@@ -62,7 +71,16 @@ const IQC = () => {
             vendors!inner(name, vendor_code),
             purchase_orders!inner(po_number)
           ),
-          raw_materials!inner(name, material_code)
+          raw_materials!inner(name, material_code),
+          iqc_vendor_capa!left(
+            id,
+            capa_status,
+            capa_document_url,
+            initiated_at,
+            received_at,
+            approved_at,
+            implemented_at
+          )
         `)
         .not("iqc_status", "is", null)
         .neq("iqc_status", "PENDING")
@@ -106,6 +124,31 @@ const IQC = () => {
     }
   };
 
+  const getCAPAStatusBadge = (capaData: any) => {
+    if (!capaData) return <Badge variant="secondary">No CAPA</Badge>;
+    
+    switch (capaData.capa_status) {
+      case 'AWAITED':
+        return <Badge variant="secondary">CAPA Awaited</Badge>;
+      case 'RECEIVED':
+        return <Badge variant="outline">CAPA Received</Badge>;
+      case 'APPROVED':
+        return <Badge variant="default">CAPA Approved</Badge>;
+      case 'IMPLEMENTED':
+        return <Badge variant="default" className="bg-green-600">CAPA Implemented</Badge>;
+      default:
+        return <Badge variant="secondary">{capaData.capa_status}</Badge>;
+    }
+  };
+
+  const getDaysOpen = (initiatedAt: string) => {
+    const initiated = new Date(initiatedAt);
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - initiated.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
+  };
+
   const getNotifyVendorButton = (grn: any) => {
     const hasRejectedOrSegregated = grn.grn_items.some((item: any) => 
       item.iqc_status === 'REJECTED' || item.iqc_status === 'SEGREGATED'
@@ -120,6 +163,21 @@ const IQC = () => {
       );
     }
     return null;
+  };
+
+  const handleCAPAUpload = (item: any) => {
+    const capaData = item.iqc_vendor_capa?.[0];
+    if (capaData) {
+      setCAPAUploadDialog({
+        isOpen: true,
+        capaId: capaData.id,
+        itemDetails: {
+          materialName: item.raw_materials?.name,
+          vendorName: item.grn?.vendors?.name,
+          grnNumber: item.grn?.grn_number
+        }
+      });
+    }
   };
 
   return (
@@ -221,36 +279,77 @@ const IQC = () => {
                         <TableHead>Accepted Qty</TableHead>
                         <TableHead>Rejected Qty</TableHead>
                         <TableHead>IQC Status</TableHead>
+                        <TableHead>CAPA Status</TableHead>
                         <TableHead>Completed Date</TableHead>
                         <TableHead>Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {completedIQCItems.map((item) => (
-                        <TableRow key={item.id}>
-                          <TableCell className="font-medium">{item.grn?.grn_number}</TableCell>
-                          <TableCell className="font-medium text-blue-600">{item.grn?.purchase_orders?.po_number}</TableCell>
-                          <TableCell className="font-mono">{item.raw_materials?.material_code}</TableCell>
-                          <TableCell>{item.raw_materials?.name}</TableCell>
-                          <TableCell>{item.grn?.vendors?.name}</TableCell>
-                          <TableCell>{item.received_quantity}</TableCell>
-                          <TableCell>{item.accepted_quantity}</TableCell>
-                          <TableCell>{item.rejected_quantity || 0}</TableCell>
-                          <TableCell>{getItemStatusBadge(item.iqc_status)}</TableCell>
-                          <TableCell>
-                            {item.iqc_completed_at 
-                              ? new Date(item.iqc_completed_at).toLocaleDateString()
-                              : '-'
-                            }
-                          </TableCell>
-                          <TableCell>
-                            <Button variant="outline" size="sm">
-                              <FileCheck className="h-3 w-3 mr-1" />
-                              Report
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                      {completedIQCItems.map((item) => {
+                        const capaData = item.iqc_vendor_capa?.[0];
+                        const needsCAPA = item.iqc_status === 'REJECTED' || item.iqc_status === 'SEGREGATED';
+                        
+                        return (
+                          <TableRow key={item.id}>
+                            <TableCell className="font-medium">{item.grn?.grn_number}</TableCell>
+                            <TableCell className="font-medium text-blue-600">{item.grn?.purchase_orders?.po_number}</TableCell>
+                            <TableCell className="font-mono">{item.raw_materials?.material_code}</TableCell>
+                            <TableCell>{item.raw_materials?.name}</TableCell>
+                            <TableCell>{item.grn?.vendors?.name}</TableCell>
+                            <TableCell>{item.received_quantity}</TableCell>
+                            <TableCell>{item.accepted_quantity}</TableCell>
+                            <TableCell>{item.rejected_quantity || 0}</TableCell>
+                            <TableCell>{getItemStatusBadge(item.iqc_status)}</TableCell>
+                            <TableCell>
+                              {needsCAPA ? getCAPAStatusBadge(capaData) : <Badge variant="secondary">Not Required</Badge>}
+                              {capaData && capaData.capa_status === 'AWAITED' && (
+                                <div className="text-xs text-red-600 mt-1">
+                                  {getDaysOpen(capaData.initiated_at)} days open
+                                </div>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {item.iqc_completed_at 
+                                ? format(new Date(item.iqc_completed_at), "dd/MM/yyyy")
+                                : '-'
+                              }
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex gap-1">
+                                <Button variant="outline" size="sm">
+                                  <FileCheck className="h-3 w-3 mr-1" />
+                                  Report
+                                </Button>
+                                {needsCAPA && capaData && capaData.capa_status === 'AWAITED' && (
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm"
+                                    onClick={() => handleCAPAUpload(item)}
+                                    className="gap-1"
+                                  >
+                                    <Upload className="h-3 w-3" />
+                                    Upload CAPA
+                                  </Button>
+                                )}
+                                {capaData && capaData.capa_document_url && (
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm"
+                                    onClick={() => window.open(
+                                      `https://oacdhvmpkuadlyvvvbpq.supabase.co/storage/v1/object/public/capa-documents/${capaData.capa_document_url}`, 
+                                      '_blank'
+                                    )}
+                                    className="gap-1"
+                                  >
+                                    <FileText className="h-3 w-3" />
+                                    View CAPA
+                                  </Button>
+                                )}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
                     </TableBody>
                   </Table>
                 )}
@@ -291,6 +390,15 @@ const IQC = () => {
             }}
           />
         )}
+
+        {/* CAPA Upload Dialog */}
+        <CAPAUploadDialog
+          isOpen={capaUploadDialog.isOpen}
+          onClose={() => setCAPAUploadDialog({ isOpen: false, capaId: "", itemDetails: {} })}
+          capaId={capaUploadDialog.capaId}
+          capaType="vendor"
+          itemDetails={capaUploadDialog.itemDetails}
+        />
       </div>
     </DashboardLayout>
   );

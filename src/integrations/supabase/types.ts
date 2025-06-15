@@ -1056,6 +1056,8 @@ export type Database = {
           created_at: string
           grn_item_id: string
           id: string
+          implemented_at: string | null
+          implemented_by: string | null
           initiated_at: string
           initiated_by: string | null
           received_at: string | null
@@ -1072,6 +1074,8 @@ export type Database = {
           created_at?: string
           grn_item_id: string
           id?: string
+          implemented_at?: string | null
+          implemented_by?: string | null
           initiated_at?: string
           initiated_by?: string | null
           received_at?: string | null
@@ -1088,6 +1092,8 @@ export type Database = {
           created_at?: string
           grn_item_id?: string
           id?: string
+          implemented_at?: string | null
+          implemented_by?: string | null
           initiated_at?: string
           initiated_by?: string | null
           received_at?: string | null
@@ -1612,6 +1618,68 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "pqc_reports_production_order_id_fkey"
+            columns: ["production_order_id"]
+            isOneToOne: false
+            referencedRelation: "production_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      production_capa: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          capa_document_url: string | null
+          capa_status: string | null
+          created_at: string | null
+          id: string
+          implemented_at: string | null
+          implemented_by: string | null
+          initiated_at: string | null
+          initiated_by: string | null
+          production_order_id: string | null
+          received_at: string | null
+          rejection_reason: string | null
+          remarks: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          capa_document_url?: string | null
+          capa_status?: string | null
+          created_at?: string | null
+          id?: string
+          implemented_at?: string | null
+          implemented_by?: string | null
+          initiated_at?: string | null
+          initiated_by?: string | null
+          production_order_id?: string | null
+          received_at?: string | null
+          rejection_reason?: string | null
+          remarks?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          capa_document_url?: string | null
+          capa_status?: string | null
+          created_at?: string | null
+          id?: string
+          implemented_at?: string | null
+          implemented_by?: string | null
+          initiated_at?: string | null
+          initiated_by?: string | null
+          production_order_id?: string | null
+          received_at?: string | null
+          rejection_reason?: string | null
+          remarks?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "production_capa_production_order_id_fkey"
             columns: ["production_order_id"]
             isOneToOne: false
             referencedRelation: "production_orders"

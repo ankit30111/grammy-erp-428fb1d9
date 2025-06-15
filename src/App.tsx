@@ -59,6 +59,7 @@ function App() {
             <Route path="/quality/iqc" element={<IQC />} />
             <Route path="/quality/pqc" element={<PQC />} />
             <Route path="/quality/oqc" element={<OQC />} />
+            <Route path="/quality/capa" element={<CAPA />} />
             <Route path="/production" element={<Production />} />
             <Route path="/planning" element={<PlanningEnhanced />} />
             <Route path="/store" element={<Store />} />
