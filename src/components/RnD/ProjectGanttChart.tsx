@@ -82,8 +82,8 @@ const ProjectGanttChart = () => {
         
         const progress = Math.max(0, Math.min(100, (elapsedDays / totalDays) * 100));
         
-        // Final validation
-        if (!isFinite(progress) || isNaN(progress)) {
+        // Final validation - ensure we return a valid number
+        if (!Number.isFinite(progress) || Number.isNaN(progress)) {
           console.warn('Invalid progress calculated, defaulting to 0');
           return 0;
         }
@@ -96,12 +96,12 @@ const ProjectGanttChart = () => {
         const now = new Date();
         const daysRemaining = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
         
-        if (!isFinite(daysRemaining) || isNaN(daysRemaining)) {
+        if (!Number.isFinite(daysRemaining) || Number.isNaN(daysRemaining)) {
           console.warn('Invalid days remaining calculated, defaulting to 0');
           return 0;
         }
         
-        return daysRemaining;
+        return Math.max(0, daysRemaining); // Ensure non-negative
       };
 
       // Helper function to validate complete project data
@@ -153,8 +153,13 @@ const ProjectGanttChart = () => {
             color
           };
 
-          // Final validation before adding
-          if (isFinite(projectItem.progress) && isFinite(projectItem.daysRemaining)) {
+          // Final validation before adding - ensure all numeric values are valid
+          if (Number.isFinite(projectItem.progress) && 
+              Number.isFinite(projectItem.daysRemaining) &&
+              !Number.isNaN(projectItem.progress) &&
+              !Number.isNaN(projectItem.daysRemaining) &&
+              projectItem.progress >= 0 && 
+              projectItem.progress <= 100) {
             processedData.push(projectItem);
             console.log('Added NPD project:', projectItem.projectName, 'Progress:', projectItem.progress, 'Days remaining:', projectItem.daysRemaining);
           } else {
@@ -203,8 +208,13 @@ const ProjectGanttChart = () => {
             color
           };
 
-          // Final validation before adding
-          if (isFinite(projectItem.progress) && isFinite(projectItem.daysRemaining)) {
+          // Final validation before adding - ensure all numeric values are valid
+          if (Number.isFinite(projectItem.progress) && 
+              Number.isFinite(projectItem.daysRemaining) &&
+              !Number.isNaN(projectItem.progress) &&
+              !Number.isNaN(projectItem.daysRemaining) &&
+              projectItem.progress >= 0 && 
+              projectItem.progress <= 100) {
             processedData.push(projectItem);
             console.log('Added pre-existing project:', projectItem.projectName, 'Progress:', projectItem.progress, 'Days remaining:', projectItem.daysRemaining);
           } else {
@@ -220,10 +230,10 @@ const ProjectGanttChart = () => {
         const isValid = (
           typeof project.progress === 'number' &&
           typeof project.daysRemaining === 'number' &&
-          isFinite(project.progress) &&
-          isFinite(project.daysRemaining) &&
-          !isNaN(project.progress) &&
-          !isNaN(project.daysRemaining) &&
+          Number.isFinite(project.progress) &&
+          Number.isFinite(project.daysRemaining) &&
+          !Number.isNaN(project.progress) &&
+          !Number.isNaN(project.daysRemaining) &&
           project.progress >= 0 &&
           project.progress <= 100 &&
           project.projectName &&
@@ -293,6 +303,16 @@ const ProjectGanttChart = () => {
     );
   }
 
+  // Additional safety check before rendering chart
+  const safeGanttData = ganttData?.filter(item => 
+    Number.isFinite(item.progress) && 
+    !Number.isNaN(item.progress) &&
+    item.progress >= 0 && 
+    item.progress <= 100
+  ) || [];
+
+  console.log('Safe gantt data for chart:', safeGanttData);
+
   return (
     <Card>
       <CardHeader>
@@ -302,7 +322,7 @@ const ProjectGanttChart = () => {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        {!ganttData || ganttData.length === 0 ? (
+        {!safeGanttData || safeGanttData.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
             <Clock className="h-12 w-12 mx-auto mb-4" />
             <p>No active projects to display</p>
@@ -312,19 +332,19 @@ const ProjectGanttChart = () => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
               <div className="text-center p-4 bg-blue-50 rounded-lg">
                 <div className="text-2xl font-bold text-blue-600">
-                  {ganttData?.filter(p => p.type === 'NPD').length || 0}
+                  {safeGanttData?.filter(p => p.type === 'NPD').length || 0}
                 </div>
                 <div className="text-sm text-blue-700">NPD Projects</div>
               </div>
               <div className="text-center p-4 bg-green-50 rounded-lg">
                 <div className="text-2xl font-bold text-green-600">
-                  {ganttData?.filter(p => p.type === 'Pre-Existing').length || 0}
+                  {safeGanttData?.filter(p => p.type === 'Pre-Existing').length || 0}
                 </div>
                 <div className="text-sm text-green-700">Customization Projects</div>
               </div>
               <div className="text-center p-4 bg-orange-50 rounded-lg">
                 <div className="text-2xl font-bold text-orange-600">
-                  {ganttData?.filter(p => p.daysRemaining < 30).length || 0}
+                  {safeGanttData?.filter(p => p.daysRemaining < 30).length || 0}
                 </div>
                 <div className="text-sm text-orange-700">Due in 30 Days</div>
               </div>
@@ -332,15 +352,15 @@ const ProjectGanttChart = () => {
             
             <ResponsiveContainer width="100%" height={400}>
               <BarChart
-                data={ganttData}
+                data={safeGanttData}
                 layout="horizontal"
                 margin={{ top: 20, right: 30, left: 100, bottom: 5 }}
               >
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis 
                   type="number" 
-                  domain={[0, 100]}
-                  tickFormatter={(value) => `${value}%`}
+                  domain={[0, 'dataMax']}
+                  tickFormatter={(value) => `${Number(value).toFixed(1)}%`}
                 />
                 <YAxis 
                   type="category" 
@@ -350,7 +370,7 @@ const ProjectGanttChart = () => {
                 />
                 <Tooltip content={<CustomTooltip />} />
                 <Bar dataKey="progress" radius={4}>
-                  {ganttData?.map((entry, index) => (
+                  {safeGanttData?.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Bar>
