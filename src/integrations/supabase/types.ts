@@ -1429,6 +1429,56 @@ export type Database = {
           },
         ]
       }
+      npd_projects: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          customer_id: string | null
+          estimated_completion_date: string | null
+          id: string
+          priority: string | null
+          project_description: string | null
+          project_name: string
+          requirements: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          estimated_completion_date?: string | null
+          id?: string
+          priority?: string | null
+          project_description?: string | null
+          project_name: string
+          requirements?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          estimated_completion_date?: string | null
+          id?: string
+          priority?: string | null
+          project_description?: string | null
+          project_name?: string
+          requirements?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "npd_projects_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payroll: {
         Row: {
           allowances: number | null
@@ -1639,6 +1689,69 @@ export type Database = {
             columns: ["production_order_id"]
             isOneToOne: false
             referencedRelation: "production_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pre_existing_projects: {
+        Row: {
+          base_product_id: string | null
+          brand_requirements: string | null
+          created_at: string
+          created_by: string | null
+          customer_id: string | null
+          customization_details: string | null
+          customization_type: string
+          estimated_completion_date: string | null
+          id: string
+          priority: string | null
+          project_name: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          base_product_id?: string | null
+          brand_requirements?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          customization_details?: string | null
+          customization_type: string
+          estimated_completion_date?: string | null
+          id?: string
+          priority?: string | null
+          project_name: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          base_product_id?: string | null
+          brand_requirements?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          customization_details?: string | null
+          customization_type?: string
+          estimated_completion_date?: string | null
+          id?: string
+          priority?: string | null
+          project_name?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pre_existing_projects_base_product_id_fkey"
+            columns: ["base_product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pre_existing_projects_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
             referencedColumns: ["id"]
           },
         ]

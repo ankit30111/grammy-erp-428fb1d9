@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -40,10 +39,15 @@ import Approvals from "./pages/Approvals";
 import PurchaseDiscrepancies from "./pages/PurchaseDiscrepancies";
 import UserManagement from "./pages/UserManagement";
 import { AuthGuard } from "@/components/Auth/AuthGuard";
+import RnD from "./pages/RnD";
+import NPD from "./pages/rnd/NPD";
+import PreExisting from "./pages/rnd/PreExisting";
 
 const queryClient = new QueryClient();
 
 function App() {
+  const [queryClient] = useState(() => new QueryClient());
+
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
@@ -238,6 +242,10 @@ function App() {
             
             {/* 404 Route */}
             <Route path="*" element={<NotFound />} />
+            
+            <Route path="/rnd" element={<RnD />} />
+            <Route path="/rnd/npd" element={<NPD />} />
+            <Route path="/rnd/pre-existing" element={<PreExisting />} />
           </Routes>
         </BrowserRouter>
       </TooltipProvider>
