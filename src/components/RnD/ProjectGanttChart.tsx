@@ -48,43 +48,51 @@ const ProjectGanttChart = () => {
 
       const processedData: GanttData[] = [];
 
-      // Helper function to safely parse and validate dates
-      const parseAndValidateDate = (dateString: string, fallbackDays: number = 90): Date => {
-        if (!dateString) {
-          return new Date(Date.now() + fallbackDays * 24 * 60 * 60 * 1000);
+      // Helper function to safely parse dates with better validation
+      const parseDate = (dateString: string): Date => {
+        if (!dateString || typeof dateString !== 'string') {
+          return new Date();
         }
         
         const parsed = new Date(dateString);
         if (isNaN(parsed.getTime())) {
-          console.warn('Invalid date string:', dateString, 'using fallback');
-          return new Date(Date.now() + fallbackDays * 24 * 60 * 60 * 1000);
+          console.warn('Invalid date string:', dateString);
+          return new Date();
         }
         
         return parsed;
       };
 
-      // Helper function to safely calculate progress with proper validation
+      // Helper function to safely calculate progress with comprehensive validation
       const calculateProgress = (startDate: Date, endDate: Date): number => {
         const now = new Date();
         
-        // Ensure end date is after start date, if not, set a reasonable end date
-        if (endDate <= startDate) {
-          console.warn('End date is before or equal to start date, adjusting end date');
-          endDate = new Date(startDate.getTime() + 90 * 24 * 60 * 60 * 1000); // 90 days from start
-        }
-        
-        const totalDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
-        const elapsedDays = Math.ceil((now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
-        
-        if (totalDays <= 0) {
+        // Validate all dates are valid
+        if (isNaN(startDate.getTime()) || isNaN(endDate.getTime()) || isNaN(now.getTime())) {
+          console.warn('Invalid date encountered in progress calculation');
           return 0;
         }
         
-        const progress = Math.max(0, Math.min(100, (elapsedDays / totalDays) * 100));
+        // Ensure end date is after start date
+        if (endDate <= startDate) {
+          console.warn('End date is before or equal to start date');
+          return 0;
+        }
         
-        // Final validation - ensure we return a valid number
+        const totalDuration = endDate.getTime() - startDate.getTime();
+        const elapsed = now.getTime() - startDate.getTime();
+        
+        // Validate calculations
+        if (totalDuration <= 0) {
+          return 0;
+        }
+        
+        const progressRatio = elapsed / totalDuration;
+        const progress = Math.max(0, Math.min(100, progressRatio * 100));
+        
+        // Final validation to ensure we never return NaN
         if (!Number.isFinite(progress) || Number.isNaN(progress)) {
-          console.warn('Invalid progress calculated, defaulting to 0');
+          console.warn('Progress calculation resulted in invalid number, returning 0');
           return 0;
         }
         
@@ -94,27 +102,37 @@ const ProjectGanttChart = () => {
       // Helper function to safely calculate days remaining
       const calculateDaysRemaining = (endDate: Date): number => {
         const now = new Date();
-        const daysRemaining = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
         
-        if (!Number.isFinite(daysRemaining) || Number.isNaN(daysRemaining)) {
-          console.warn('Invalid days remaining calculated, defaulting to 0');
+        if (isNaN(endDate.getTime()) || isNaN(now.getTime())) {
+          console.warn('Invalid date in days remaining calculation');
           return 0;
         }
         
-        return Math.max(0, daysRemaining); // Ensure non-negative
+        const timeDiff = endDate.getTime() - now.getTime();
+        const daysRemaining = Math.ceil(timeDiff / (1000 * 60 * 60 * 24));
+        
+        const result = Math.max(0, daysRemaining);
+        
+        // Ensure we never return NaN
+        if (!Number.isFinite(result) || Number.isNaN(result)) {
+          console.warn('Days remaining calculation resulted in invalid number, returning 0');
+          return 0;
+        }
+        
+        return result;
       };
 
       // Helper function to validate complete project data
       const isValidProject = (projectData: any): boolean => {
         return (
-          projectData?.project_name && 
+          projectData &&
+          projectData.project_name && 
           typeof projectData.project_name === 'string' &&
-          projectData.project_name.trim() !== '' &&
-          projectData.created_at
+          projectData.project_name.trim() !== ''
         );
       };
 
-      // Process NPD projects
+      // Process NPD projects with enhanced validation
       npdData.data?.forEach(project => {
         if (!isValidProject(project)) {
           console.warn('Skipping invalid NPD project:', project);
@@ -122,55 +140,53 @@ const ProjectGanttChart = () => {
         }
 
         try {
-          const startDate = parseAndValidateDate(project.created_at);
-          const endDate = parseAndValidateDate(
-            project.estimated_completion_date, 
-            90 // 90 days fallback
-          );
+          const startDate = parseDate(project.created_at);
+          let endDate = parseDate(project.estimated_completion_date);
+          
+          // If no completion date or invalid, set to 90 days from start
+          if (!project.estimated_completion_date || isNaN(endDate.getTime())) {
+            endDate = new Date(startDate.getTime() + 90 * 24 * 60 * 60 * 1000);
+          }
+          
+          // Ensure end date is after start date
+          if (endDate <= startDate) {
+            endDate = new Date(startDate.getTime() + 90 * 24 * 60 * 60 * 1000);
+          }
 
-          // Ensure dates are valid and logical
-          const adjustedEndDate = endDate <= startDate ? 
-            new Date(startDate.getTime() + 90 * 24 * 60 * 60 * 1000) : 
-            endDate;
+          const progress = calculateProgress(startDate, endDate);
+          const daysRemaining = calculateDaysRemaining(endDate);
 
-          const progress = calculateProgress(startDate, adjustedEndDate);
-          const daysRemaining = calculateDaysRemaining(adjustedEndDate);
+          // Validate final values before adding to data
+          if (!Number.isFinite(progress) || Number.isNaN(progress) ||
+              !Number.isFinite(daysRemaining) || Number.isNaN(daysRemaining)) {
+            console.warn('Skipping NPD project due to invalid calculations:', project.project_name);
+            return;
+          }
 
           let color = '#3b82f6'; // blue
           if (project.status === 'CONCEPT') color = '#f59e0b'; // amber
           else if (project.status === 'PROTOTYPE') color = '#8b5cf6'; // purple
           else if (project.status === 'TESTING') color = '#06b6d4'; // cyan
 
-          const projectItem: GanttData = {
+          processedData.push({
             projectName: project.project_name,
             type: 'NPD',
             status: project.status,
             startDate: startDate.toISOString().split('T')[0],
-            endDate: adjustedEndDate.toISOString().split('T')[0],
-            progress: progress || 0, // Ensure never undefined/null
+            endDate: endDate.toISOString().split('T')[0],
+            progress: progress,
             customer: project.customers?.name || 'N/A',
-            daysRemaining: daysRemaining || 0, // Ensure never undefined/null
+            daysRemaining: daysRemaining,
             color
-          };
+          });
 
-          // Final validation before adding - ensure all numeric values are valid
-          if (Number.isFinite(projectItem.progress) && 
-              Number.isFinite(projectItem.daysRemaining) &&
-              !Number.isNaN(projectItem.progress) &&
-              !Number.isNaN(projectItem.daysRemaining) &&
-              projectItem.progress >= 0 && 
-              projectItem.progress <= 100) {
-            processedData.push(projectItem);
-            console.log('Added NPD project:', projectItem.projectName, 'Progress:', projectItem.progress, 'Days remaining:', projectItem.daysRemaining);
-          } else {
-            console.warn('Skipping NPD project due to invalid calculations:', projectItem);
-          }
+          console.log('Added NPD project:', project.project_name, 'Progress:', progress, 'Days remaining:', daysRemaining);
         } catch (error) {
           console.error('Error processing NPD project:', project.project_name, error);
         }
       });
 
-      // Process Pre-Existing projects
+      // Process Pre-Existing projects with enhanced validation
       preExistingData.data?.forEach(project => {
         if (!isValidProject(project)) {
           console.warn('Skipping invalid pre-existing project:', project);
@@ -178,101 +194,56 @@ const ProjectGanttChart = () => {
         }
 
         try {
-          const startDate = parseAndValidateDate(project.created_at);
-          const endDate = parseAndValidateDate(
-            project.estimated_completion_date,
-            60 // 60 days fallback
-          );
+          const startDate = parseDate(project.created_at);
+          let endDate = parseDate(project.estimated_completion_date);
+          
+          // If no completion date or invalid, set to 60 days from start
+          if (!project.estimated_completion_date || isNaN(endDate.getTime())) {
+            endDate = new Date(startDate.getTime() + 60 * 24 * 60 * 60 * 1000);
+          }
+          
+          // Ensure end date is after start date
+          if (endDate <= startDate) {
+            endDate = new Date(startDate.getTime() + 60 * 24 * 60 * 60 * 1000);
+          }
 
-          // Ensure dates are valid and logical
-          const adjustedEndDate = endDate <= startDate ? 
-            new Date(startDate.getTime() + 60 * 24 * 60 * 60 * 1000) : 
-            endDate;
+          const progress = calculateProgress(startDate, endDate);
+          const daysRemaining = calculateDaysRemaining(endDate);
 
-          const progress = calculateProgress(startDate, adjustedEndDate);
-          const daysRemaining = calculateDaysRemaining(adjustedEndDate);
+          // Validate final values before adding to data
+          if (!Number.isFinite(progress) || Number.isNaN(progress) ||
+              !Number.isFinite(daysRemaining) || Number.isNaN(daysRemaining)) {
+            console.warn('Skipping pre-existing project due to invalid calculations:', project.project_name);
+            return;
+          }
 
           let color = '#10b981'; // green
           if (project.status === 'CUSTOMIZATION') color = '#f59e0b'; // amber
           else if (project.status === 'CUSTOMER_APPROVAL') color = '#8b5cf6'; // purple
 
-          const projectItem: GanttData = {
+          processedData.push({
             projectName: project.project_name,
             type: 'Pre-Existing',
             status: project.status.replace('_', ' '),
             startDate: startDate.toISOString().split('T')[0],
-            endDate: adjustedEndDate.toISOString().split('T')[0],
-            progress: progress || 0, // Ensure never undefined/null
+            endDate: endDate.toISOString().split('T')[0],
+            progress: progress,
             customer: project.customers?.name || 'N/A',
-            daysRemaining: daysRemaining || 0, // Ensure never undefined/null
+            daysRemaining: daysRemaining,
             color
-          };
+          });
 
-          // Final validation before adding - ensure all numeric values are valid
-          if (Number.isFinite(projectItem.progress) && 
-              Number.isFinite(projectItem.daysRemaining) &&
-              !Number.isNaN(projectItem.progress) &&
-              !Number.isNaN(projectItem.daysRemaining) &&
-              projectItem.progress >= 0 && 
-              projectItem.progress <= 100) {
-            processedData.push(projectItem);
-            console.log('Added pre-existing project:', projectItem.projectName, 'Progress:', projectItem.progress, 'Days remaining:', projectItem.daysRemaining);
-          } else {
-            console.warn('Skipping pre-existing project due to invalid calculations:', projectItem);
-          }
+          console.log('Added pre-existing project:', project.project_name, 'Progress:', progress, 'Days remaining:', daysRemaining);
         } catch (error) {
           console.error('Error processing pre-existing project:', project.project_name, error);
         }
       });
 
-      // Sort and return only valid projects
-      const validProjects = processedData.filter(project => {
-        const isValid = (
-          typeof project.progress === 'number' &&
-          typeof project.daysRemaining === 'number' &&
-          Number.isFinite(project.progress) &&
-          Number.isFinite(project.daysRemaining) &&
-          !Number.isNaN(project.progress) &&
-          !Number.isNaN(project.daysRemaining) &&
-          project.progress >= 0 &&
-          project.progress <= 100 &&
-          project.projectName &&
-          project.projectName.trim() !== ''
-        );
-        
-        if (!isValid) {
-          console.error('Filtering out invalid project:', project);
-        }
-        
-        return isValid;
-      });
-
-      console.log('Final valid projects count:', validProjects.length);
-      console.log('Final processed data:', validProjects);
+      console.log('Final processed data:', processedData);
       
-      return validProjects.sort((a, b) => a.projectName.localeCompare(b.projectName));
+      return processedData.sort((a, b) => a.projectName.localeCompare(b.projectName));
     }
   });
-
-  // Helper function to sanitize data specifically for Recharts
-  const sanitizeDataForChart = (data: GanttData[]): GanttData[] => {
-    return data.map(item => {
-      // Ensure all numeric values are safe for Recharts
-      const sanitizedProgress = Number.isFinite(item.progress) && !Number.isNaN(item.progress) 
-        ? Math.max(0, Math.min(100, item.progress)) 
-        : 0;
-      
-      const sanitizedDaysRemaining = Number.isFinite(item.daysRemaining) && !Number.isNaN(item.daysRemaining) 
-        ? Math.max(0, item.daysRemaining) 
-        : 0;
-
-      return {
-        ...item,
-        progress: sanitizedProgress,
-        daysRemaining: sanitizedDaysRemaining
-      };
-    });
-  };
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
@@ -283,8 +254,8 @@ const ProjectGanttChart = () => {
           <p className="text-sm text-muted-foreground">{data.type} Project</p>
           <p className="text-sm">Status: {data.status}</p>
           <p className="text-sm">Customer: {data.customer}</p>
-          <p className="text-sm">Progress: {Number.isFinite(data.progress) ? data.progress.toFixed(1) : 0}%</p>
-          <p className="text-sm">Days Remaining: {Number.isFinite(data.daysRemaining) ? data.daysRemaining : 0}</p>
+          <p className="text-sm">Progress: {data.progress.toFixed(1)}%</p>
+          <p className="text-sm">Days Remaining: {data.daysRemaining}</p>
           <p className="text-sm">End Date: {data.endDate}</p>
         </div>
       );
@@ -323,11 +294,6 @@ const ProjectGanttChart = () => {
     );
   }
 
-  // Apply final sanitization for chart rendering
-  const chartReadyData = sanitizeDataForChart(ganttData || []);
-
-  console.log('Chart ready data after sanitization:', chartReadyData);
-
   return (
     <Card>
       <CardHeader>
@@ -337,7 +303,7 @@ const ProjectGanttChart = () => {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        {!chartReadyData || chartReadyData.length === 0 ? (
+        {!ganttData || ganttData.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
             <Clock className="h-12 w-12 mx-auto mb-4" />
             <p>No active projects to display</p>
@@ -347,19 +313,19 @@ const ProjectGanttChart = () => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
               <div className="text-center p-4 bg-blue-50 rounded-lg">
                 <div className="text-2xl font-bold text-blue-600">
-                  {chartReadyData?.filter(p => p.type === 'NPD').length || 0}
+                  {ganttData?.filter(p => p.type === 'NPD').length || 0}
                 </div>
                 <div className="text-sm text-blue-700">NPD Projects</div>
               </div>
               <div className="text-center p-4 bg-green-50 rounded-lg">
                 <div className="text-2xl font-bold text-green-600">
-                  {chartReadyData?.filter(p => p.type === 'Pre-Existing').length || 0}
+                  {ganttData?.filter(p => p.type === 'Pre-Existing').length || 0}
                 </div>
                 <div className="text-sm text-green-700">Customization Projects</div>
               </div>
               <div className="text-center p-4 bg-orange-50 rounded-lg">
                 <div className="text-2xl font-bold text-orange-600">
-                  {chartReadyData?.filter(p => (p.daysRemaining || 0) < 30).length || 0}
+                  {ganttData?.filter(p => p.daysRemaining < 30).length || 0}
                 </div>
                 <div className="text-sm text-orange-700">Due in 30 Days</div>
               </div>
@@ -367,7 +333,7 @@ const ProjectGanttChart = () => {
             
             <ResponsiveContainer width="100%" height={400}>
               <BarChart
-                data={chartReadyData}
+                data={ganttData}
                 layout="horizontal"
                 margin={{ top: 20, right: 30, left: 100, bottom: 5 }}
               >
@@ -385,7 +351,7 @@ const ProjectGanttChart = () => {
                 />
                 <Tooltip content={<CustomTooltip />} />
                 <Bar dataKey="progress" radius={4}>
-                  {chartReadyData?.map((entry, index) => (
+                  {ganttData?.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Bar>
