@@ -72,6 +72,12 @@ function App() {
               </AuthGuard>
             } />
             
+            <Route path="/dashboard/ppc/serial-numbers" element={
+              <AuthGuard>
+                <SerialNumberManagement />
+              </AuthGuard>
+            } />
+            
             <Route path="/quality" element={
               <AuthGuard>
                 <Quality />
@@ -241,9 +247,6 @@ function App() {
               </AuthGuard>
             } />
             
-            {/* 404 Route */}
-            <Route path="*" element={<NotFound />} />
-            
             {/* R&D Routes - now properly wrapped with AuthGuard */}
             <Route path="/rnd" element={
               <AuthGuard>
@@ -260,6 +263,9 @@ function App() {
                 <PreExisting />
               </AuthGuard>
             } />
+            
+            {/* 404 Route */}
+            <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
       </TooltipProvider>
