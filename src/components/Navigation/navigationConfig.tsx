@@ -24,17 +24,7 @@ export const navigationItems: NavigationItem[] = [
   { to: "/production", icon: <BarChart2 size={20} />, label: "Production" },
   { to: "/finished-goods", icon: <Layers size={20} />, label: "Finished Goods" },
   { to: "/approvals", icon: <CheckSquare size={20} />, label: "Approvals" },
-  {
-    to: "/quality",
-    icon: <ClipboardCheck size={20} />,
-    label: "Quality Control",
-    subItems: [
-      { to: "/quality/iqc", label: "IQC" },
-      { to: "/quality/pqc", label: "PQC" },
-      { to: "/quality/oqc", label: "OQC" },
-      { to: "/quality/vendor-capa", label: "Vendor CAPA" }
-    ]
-  },
+  { to: "/quality", icon: <ClipboardCheck size={20} />, label: "Quality Control" },
   {
     to: "/sales",
     icon: <DollarSign size={20} />,
