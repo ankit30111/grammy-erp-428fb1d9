@@ -243,9 +243,22 @@ function App() {
             {/* 404 Route */}
             <Route path="*" element={<NotFound />} />
             
-            <Route path="/rnd" element={<RnD />} />
-            <Route path="/rnd/npd" element={<NPD />} />
-            <Route path="/rnd/pre-existing" element={<PreExisting />} />
+            {/* R&D Routes - now properly wrapped with AuthGuard */}
+            <Route path="/rnd" element={
+              <AuthGuard>
+                <RnD />
+              </AuthGuard>
+            } />
+            <Route path="/rnd/npd" element={
+              <AuthGuard>
+                <NPD />
+              </AuthGuard>
+            } />
+            <Route path="/rnd/pre-existing" element={
+              <AuthGuard>
+                <PreExisting />
+              </AuthGuard>
+            } />
           </Routes>
         </BrowserRouter>
       </TooltipProvider>
