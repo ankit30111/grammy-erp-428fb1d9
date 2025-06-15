@@ -1056,6 +1056,12 @@ export type Database = {
           created_at: string
           grn_item_id: string
           id: string
+          implementation_assigned_to: string | null
+          implementation_completed_at: string | null
+          implementation_completed_by: string | null
+          implementation_deadline: string | null
+          implementation_remarks: string | null
+          implementation_status: string | null
           implemented_at: string | null
           implemented_by: string | null
           initiated_at: string
@@ -1074,6 +1080,12 @@ export type Database = {
           created_at?: string
           grn_item_id: string
           id?: string
+          implementation_assigned_to?: string | null
+          implementation_completed_at?: string | null
+          implementation_completed_by?: string | null
+          implementation_deadline?: string | null
+          implementation_remarks?: string | null
+          implementation_status?: string | null
           implemented_at?: string | null
           implemented_by?: string | null
           initiated_at?: string
@@ -1092,6 +1104,12 @@ export type Database = {
           created_at?: string
           grn_item_id?: string
           id?: string
+          implementation_assigned_to?: string | null
+          implementation_completed_at?: string | null
+          implementation_completed_by?: string | null
+          implementation_deadline?: string | null
+          implementation_remarks?: string | null
+          implementation_status?: string | null
           implemented_at?: string | null
           implemented_by?: string | null
           initiated_at?: string
@@ -1633,6 +1651,12 @@ export type Database = {
           capa_status: string | null
           created_at: string | null
           id: string
+          implementation_assigned_to: string | null
+          implementation_completed_at: string | null
+          implementation_completed_by: string | null
+          implementation_deadline: string | null
+          implementation_remarks: string | null
+          implementation_status: string | null
           implemented_at: string | null
           implemented_by: string | null
           initiated_at: string | null
@@ -1650,6 +1674,12 @@ export type Database = {
           capa_status?: string | null
           created_at?: string | null
           id?: string
+          implementation_assigned_to?: string | null
+          implementation_completed_at?: string | null
+          implementation_completed_by?: string | null
+          implementation_deadline?: string | null
+          implementation_remarks?: string | null
+          implementation_status?: string | null
           implemented_at?: string | null
           implemented_by?: string | null
           initiated_at?: string | null
@@ -1667,6 +1697,12 @@ export type Database = {
           capa_status?: string | null
           created_at?: string | null
           id?: string
+          implementation_assigned_to?: string | null
+          implementation_completed_at?: string | null
+          implementation_completed_by?: string | null
+          implementation_deadline?: string | null
+          implementation_remarks?: string | null
+          implementation_status?: string | null
           implemented_at?: string | null
           implemented_by?: string | null
           initiated_at?: string | null
@@ -2837,6 +2873,30 @@ export type Database = {
       }
     }
     Views: {
+      capa_approvals_view: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          capa_category: string | null
+          capa_document_url: string | null
+          created_at: string | null
+          id: string | null
+          implementation_assigned_to: string | null
+          implementation_completed_at: string | null
+          implementation_completed_by: string | null
+          implementation_deadline: string | null
+          implementation_remarks: string | null
+          implementation_status: string | null
+          part_or_process: string | null
+          reference_id: string | null
+          remarks: string | null
+          status: string | null
+          submitted_at: string | null
+          submitted_by: string | null
+          vendor_name: string | null
+        }
+        Relationships: []
+      }
       material_requirements_view: {
         Row: {
           available_quantity: number | null
