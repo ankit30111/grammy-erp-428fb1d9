@@ -43,15 +43,54 @@ const ProjectGanttChart = () => {
 
       const processedData: GanttData[] = [];
 
+      // Helper function to safely calculate progress
+      const calculateProgress = (startDate: Date, endDate: Date): number => {
+        const now = new Date();
+        
+        // Validate dates
+        if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+          return 0;
+        }
+        
+        const totalDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+        const elapsedDays = Math.ceil((now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+        
+        // Prevent division by zero and ensure valid calculation
+        if (totalDays <= 0) {
+          return 100; // If end date is same as or before start date, consider it complete
+        }
+        
+        const progress = (elapsedDays / totalDays) * 100;
+        
+        // Ensure progress is a valid number between 0 and 100
+        if (isNaN(progress)) {
+          return 0;
+        }
+        
+        return Math.min(Math.max(progress, 0), 100);
+      };
+
+      // Helper function to safely calculate days remaining
+      const calculateDaysRemaining = (endDate: Date): number => {
+        const now = new Date();
+        
+        if (isNaN(endDate.getTime())) {
+          return 0;
+        }
+        
+        const daysRemaining = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        return isNaN(daysRemaining) ? 0 : daysRemaining;
+      };
+
       // Process NPD projects
       npdData.data?.forEach(project => {
         const startDate = new Date(project.created_at);
-        const endDate = project.estimated_completion_date ? new Date(project.estimated_completion_date) : new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
-        const now = new Date();
-        const totalDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
-        const elapsedDays = Math.ceil((now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
-        const progress = Math.min(Math.max((elapsedDays / totalDays) * 100, 0), 100);
-        const daysRemaining = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        const endDate = project.estimated_completion_date ? 
+          new Date(project.estimated_completion_date) : 
+          new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
+
+        const progress = calculateProgress(startDate, endDate);
+        const daysRemaining = calculateDaysRemaining(endDate);
 
         let color = '#3b82f6'; // blue
         if (project.status === 'CONCEPT') color = '#f59e0b'; // amber
@@ -74,12 +113,12 @@ const ProjectGanttChart = () => {
       // Process Pre-Existing projects
       preExistingData.data?.forEach(project => {
         const startDate = new Date(project.created_at);
-        const endDate = project.estimated_completion_date ? new Date(project.estimated_completion_date) : new Date(Date.now() + 60 * 24 * 60 * 60 * 1000);
-        const now = new Date();
-        const totalDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
-        const elapsedDays = Math.ceil((now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
-        const progress = Math.min(Math.max((elapsedDays / totalDays) * 100, 0), 100);
-        const daysRemaining = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        const endDate = project.estimated_completion_date ? 
+          new Date(project.estimated_completion_date) : 
+          new Date(Date.now() + 60 * 24 * 60 * 60 * 1000);
+
+        const progress = calculateProgress(startDate, endDate);
+        const daysRemaining = calculateDaysRemaining(endDate);
 
         let color = '#10b981'; // green
         if (project.status === 'CUSTOMIZATION') color = '#f59e0b'; // amber
@@ -98,7 +137,15 @@ const ProjectGanttChart = () => {
         });
       });
 
-      return processedData.sort((a, b) => a.projectName.localeCompare(b.projectName));
+      // Filter out any projects with invalid data before returning
+      return processedData
+        .filter(project => 
+          !isNaN(project.progress) && 
+          !isNaN(project.daysRemaining) &&
+          project.projectName && 
+          project.projectName.trim() !== ''
+        )
+        .sort((a, b) => a.projectName.localeCompare(b.projectName));
     }
   });
 
