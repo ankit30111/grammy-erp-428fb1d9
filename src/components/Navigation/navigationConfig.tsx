@@ -16,7 +16,7 @@ interface NavigationItem {
 }
 
 export const navigationItems: NavigationItem[] = [
-  { to: "/", icon: <Home size={20} />, label: "Dashboard" },
+  { to: "/dashboard", icon: <Home size={20} />, label: "Dashboard" },
   { to: "/projection", icon: <Plus size={20} />, label: "Add Projection" },
   { to: "/spare-orders", icon: <Wrench size={20} />, label: "Spare Orders" },
   { to: "/dashboard/ppc", icon: <Calendar size={20} />, label: "PPC" },

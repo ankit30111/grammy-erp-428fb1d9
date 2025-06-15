@@ -7,7 +7,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthGuard } from "@/components/Auth/AuthGuard";
 
 // Import all pages
-import Index from "./pages/Index";
+import Dashboard from "./pages/Dashboard";
 import Auth from "./pages/Auth";
 import Projection from "./pages/Projection";
 import SpareOrders from "./pages/SpareOrders";
@@ -44,8 +44,9 @@ function App() {
         <Sonner />
         <BrowserRouter>
           <Routes>
+            <Route path="/" element={<Auth />} />
             <Route path="/auth" element={<Auth />} />
-            <Route path="/" element={<AuthGuard><Index /></AuthGuard>} />
+            <Route path="/dashboard" element={<AuthGuard><Dashboard /></AuthGuard>} />
             <Route path="/projection" element={<AuthGuard><Projection /></AuthGuard>} />
             <Route path="/spare-orders" element={<AuthGuard><SpareOrders /></AuthGuard>} />
             <Route path="/dashboard/ppc" element={<AuthGuard><PPCDashboard /></AuthGuard>} />
