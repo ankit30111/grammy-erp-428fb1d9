@@ -2,7 +2,6 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
 import {
   Form,
   FormControl,
@@ -11,27 +10,17 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useForm } from "react-hook-form";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, UserPlus, Mail } from "lucide-react";
 
 interface CreateUserFormData {
-  username: string;
   email: string;
   password: string;
   confirmPassword: string;
-  fullName: string;
-  role: "admin" | "manager" | "user";
-  isActive: boolean;
+  fullName?: string;
 }
 
 export function CreateUserForm() {
@@ -39,13 +28,10 @@ export function CreateUserForm() {
   
   const form = useForm<CreateUserFormData>({
     defaultValues: {
-      username: "",
       email: "",
       password: "",
       confirmPassword: "",
       fullName: "",
-      role: "user",
-      isActive: true,
     },
   });
 
@@ -63,36 +49,32 @@ export function CreateUserForm() {
     setIsLoading(true);
 
     try {
-      // Simple password hash for demo (in production, use proper hashing)
-      const passwordHash = btoa(data.password);
-
-      const { data: result, error } = await supabase
-        .from("user_accounts")
-        .insert({
-          username: data.username,
-          email: data.email,
-          password_hash: passwordHash,
-          full_name: data.fullName,
-          role: data.role,
-          is_active: data.isActive,
-        })
-        .select()
-        .single();
+      // Use Supabase Auth Admin API to create user
+      const { data: authData, error } = await supabase.auth.admin.createUser({
+        email: data.email,
+        password: data.password,
+        email_confirm: true, // Auto-confirm email for admin created users
+        user_metadata: {
+          full_name: data.fullName || ''
+        }
+      });
 
       if (error) {
-        if (error.code === "23505") {
-          toast.error("Username or email already exists");
+        console.error("Auth creation error:", error);
+        if (error.message.includes("already registered")) {
+          toast.error("A user with this email already exists");
         } else {
           toast.error("Failed to create user: " + error.message);
         }
         return;
       }
 
-      toast.success("User created successfully!");
+      console.log("User created successfully:", authData.user);
+      toast.success(`User created successfully! Email: ${data.email}`);
       form.reset();
     } catch (error) {
       console.error("Error creating user:", error);
-      toast.error("An unexpected error occurred");
+      toast.error("An unexpected error occurred while creating the user");
     } finally {
       setIsLoading(false);
     }
@@ -101,55 +83,51 @@ export function CreateUserForm() {
   return (
     <Card className="w-full max-w-2xl">
       <CardHeader>
-        <CardTitle>Create New User</CardTitle>
+        <CardTitle className="flex items-center gap-2">
+          <UserPlus className="h-5 w-5" />
+          Create New Authentication User
+        </CardTitle>
+        <p className="text-sm text-muted-foreground">
+          Create a new user in Supabase Authentication
+        </p>
       </CardHeader>
       <CardContent>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="username"
-                rules={{ required: "Username is required" }}
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Username</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Enter username" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="email"
-                rules={{ 
-                  required: "Email is required",
-                  pattern: {
-                    value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                    message: "Invalid email address"
-                  }
-                }}
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email</FormLabel>
-                    <FormControl>
-                      <Input type="email" placeholder="Enter email" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+            <FormField
+              control={form.control}
+              name="email"
+              rules={{ 
+                required: "Email is required",
+                pattern: {
+                  value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                  message: "Invalid email address"
+                }
+              }}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="flex items-center gap-2">
+                    <Mail className="h-4 w-4" />
+                    Email Address
+                  </FormLabel>
+                  <FormControl>
+                    <Input 
+                      type="email" 
+                      placeholder="user@company.com" 
+                      {...field} 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <FormField
               control={form.control}
               name="fullName"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Full Name</FormLabel>
+                  <FormLabel>Full Name (Optional)</FormLabel>
                   <FormControl>
                     <Input placeholder="Enter full name" {...field} />
                   </FormControl>
@@ -196,53 +174,20 @@ export function CreateUserForm() {
               />
             </div>
 
-            <FormField
-              control={form.control}
-              name="role"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Role</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a role" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="user">User</SelectItem>
-                      <SelectItem value="manager">Manager</SelectItem>
-                      <SelectItem value="admin">Admin</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="isActive"
-              render={({ field }) => (
-                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                  <div className="space-y-0.5">
-                    <FormLabel className="text-base">Active User</FormLabel>
-                    <div className="text-sm text-muted-foreground">
-                      User can access the system
-                    </div>
-                  </div>
-                  <FormControl>
-                    <Switch
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <h4 className="font-medium text-blue-900 mb-2">Important Notes:</h4>
+              <ul className="text-sm text-blue-800 space-y-1">
+                <li>• Users created here will be able to sign in to the system</li>
+                <li>• Email will be automatically confirmed for admin-created users</li>
+                <li>• All users currently have universal access to all features</li>
+                <li>• The new user will appear in the "Manage Users" tab after creation</li>
+              </ul>
+            </div>
 
             <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Create User
+              <UserPlus className="mr-2 h-4 w-4" />
+              Create Authentication User
             </Button>
           </form>
         </Form>

@@ -12,109 +12,86 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { Loader2, Edit, Trash2 } from "lucide-react";
+import { Loader2, Mail, Calendar, CheckCircle, XCircle } from "lucide-react";
 
-interface UserAccount {
+interface AuthUser {
   id: string;
-  username: string;
   email: string;
-  full_name: string;
-  role: string;
-  is_active: boolean;
   created_at: string;
+  last_sign_in_at: string | null;
+  email_confirmed_at: string | null;
+  phone: string | null;
+  user_metadata: {
+    full_name?: string;
+  };
 }
 
 export function UsersList() {
-  const [users, setUsers] = useState<UserAccount[]>([]);
+  const [users, setUsers] = useState<AuthUser[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchUsers();
+    fetchAuthUsers();
   }, []);
 
-  const fetchUsers = async () => {
+  const fetchAuthUsers = async () => {
     try {
-      const { data, error } = await supabase
-        .from("user_accounts")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (error) {
-        toast.error("Failed to fetch users: " + error.message);
+      setLoading(true);
+      
+      // First try to get current session to check if user has admin access
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        toast.error("Authentication required");
         return;
       }
 
-      setUsers(data || []);
+      // Use the admin API to list all users
+      const { data, error } = await supabase.auth.admin.listUsers();
+
+      if (error) {
+        console.error("Error fetching auth users:", error);
+        toast.error("Failed to fetch users. Admin access may be required.");
+        return;
+      }
+
+      console.log("Fetched auth users:", data.users);
+      setUsers(data.users || []);
     } catch (error) {
-      console.error("Error fetching users:", error);
-      toast.error("An unexpected error occurred");
+      console.error("Error fetching auth users:", error);
+      toast.error("An unexpected error occurred while fetching users");
     } finally {
       setLoading(false);
     }
   };
 
-  const toggleUserStatus = async (userId: string, currentStatus: boolean) => {
-    try {
-      const { error } = await supabase
-        .from("user_accounts")
-        .update({ is_active: !currentStatus })
-        .eq("id", userId);
-
-      if (error) {
-        toast.error("Failed to update user status");
-        return;
-      }
-
-      toast.success("User status updated successfully");
-      fetchUsers(); // Refresh the list
-    } catch (error) {
-      console.error("Error updating user status:", error);
-      toast.error("An unexpected error occurred");
+  const getStatusBadge = (user: AuthUser) => {
+    if (!user.email_confirmed_at) {
+      return <Badge variant="secondary">Unconfirmed</Badge>;
     }
+    if (user.last_sign_in_at) {
+      return <Badge variant="default">Active</Badge>;
+    }
+    return <Badge variant="outline">Registered</Badge>;
   };
 
-  const deleteUser = async (userId: string) => {
-    if (!confirm("Are you sure you want to delete this user?")) {
-      return;
-    }
-
-    try {
-      const { error } = await supabase
-        .from("user_accounts")
-        .delete()
-        .eq("id", userId);
-
-      if (error) {
-        toast.error("Failed to delete user");
-        return;
-      }
-
-      toast.success("User deleted successfully");
-      fetchUsers(); // Refresh the list
-    } catch (error) {
-      console.error("Error deleting user:", error);
-      toast.error("An unexpected error occurred");
-    }
-  };
-
-  const getRoleBadgeVariant = (role: string) => {
-    switch (role) {
-      case "admin":
-        return "destructive";
-      case "manager":
-        return "default";
-      default:
-        return "secondary";
-    }
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return "-";
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center py-8">
         <Loader2 className="h-6 w-6 animate-spin" />
-        <span className="ml-2">Loading users...</span>
+        <span className="ml-2">Loading users from Authentication...</span>
       </div>
     );
   }
@@ -122,69 +99,99 @@ export function UsersList() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>All Users ({users.length})</CardTitle>
+        <CardTitle className="flex items-center gap-2">
+          <Mail className="h-5 w-5" />
+          Authenticated Users ({users.length})
+        </CardTitle>
+        <p className="text-sm text-muted-foreground">
+          Users registered in Supabase Authentication
+        </p>
       </CardHeader>
       <CardContent>
         {users.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
-            No users found. Create your first user using the "Create User" tab.
+            <Mail className="h-12 w-12 mx-auto mb-4 opacity-50" />
+            <p>No authenticated users found.</p>
+            <p className="text-sm">Users need to be created through Supabase Auth.</p>
           </div>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Username</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Full Name</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Created</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {users.map((user) => (
-                <TableRow key={user.id}>
-                  <TableCell className="font-medium">{user.username}</TableCell>
-                  <TableCell>{user.email}</TableCell>
-                  <TableCell>{user.full_name || "-"}</TableCell>
-                  <TableCell>
-                    <Badge variant={getRoleBadgeVariant(user.role)}>
-                      {user.role}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center space-x-2">
-                      <Switch
-                        checked={user.is_active}
-                        onCheckedChange={() => toggleUserStatus(user.id, user.is_active)}
-                      />
-                      <span className="text-sm">
-                        {user.is_active ? "Active" : "Inactive"}
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    {new Date(user.created_at).toLocaleDateString()}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex space-x-2">
-                      <Button variant="outline" size="sm">
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => deleteUser(user.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={fetchAuthUsers}
+                className="flex items-center gap-2"
+              >
+                <Mail className="h-4 w-4" />
+                Refresh Users
+              </Button>
+            </div>
+            
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Created</TableHead>
+                  <TableHead>Last Sign In</TableHead>
+                  <TableHead>Email Confirmed</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {users.map((user) => (
+                  <TableRow key={user.id}>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        <Mail className="h-4 w-4 text-muted-foreground" />
+                        {user.email}
+                      </div>
+                      {user.user_metadata?.full_name && (
+                        <div className="text-sm text-muted-foreground">
+                          {user.user_metadata.full_name}
+                        </div>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {getStatusBadge(user)}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                        {formatDate(user.created_at)}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {user.last_sign_in_at ? (
+                        <div className="flex items-center gap-2">
+                          <CheckCircle className="h-4 w-4 text-green-500" />
+                          {formatDate(user.last_sign_in_at)}
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <XCircle className="h-4 w-4 text-gray-400" />
+                          Never
+                        </div>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {user.email_confirmed_at ? (
+                        <div className="flex items-center gap-2">
+                          <CheckCircle className="h-4 w-4 text-green-500" />
+                          Confirmed
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <XCircle className="h-4 w-4 text-orange-500" />
+                          Pending
+                        </div>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         )}
       </CardContent>
     </Card>
