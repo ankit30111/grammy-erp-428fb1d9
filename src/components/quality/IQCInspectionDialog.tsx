@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -77,8 +78,7 @@ const IQCInspectionDialog = ({ grn, isOpen, onClose }: IQCInspectionDialogProps)
       acceptedQty = 0;
       rejectedQty = item.received_quantity;
     } else if (status === 'SEGREGATED') {
-      // For segregated, we'll let the user input the quantities
-      acceptedQty = Math.floor(item.received_quantity / 2); // Default half-half
+      acceptedQty = Math.floor(item.received_quantity / 2);
       rejectedQty = item.received_quantity - acceptedQty;
     }
 
@@ -116,6 +116,24 @@ const IQCInspectionDialog = ({ grn, isOpen, onClose }: IQCInspectionDialogProps)
     }));
   };
 
+  // Create CAPA record for rejected/segregated items
+  const createCapaRecord = async (itemId: string, vendorId: string) => {
+    const { error } = await supabase
+      .from("iqc_vendor_capa")
+      .insert({
+        grn_item_id: itemId,
+        vendor_id: vendorId,
+        capa_status: 'AWAITED',
+        initiated_by: null, // Would be set from auth in real app
+        remarks: `CAPA initiated due to IQC ${inspectionResults[itemId]?.status.toLowerCase()}`
+      });
+
+    if (error) {
+      console.error("Error creating CAPA record:", error);
+      throw error;
+    }
+  };
+
   // Submit IQC inspection results
   const submitInspection = useMutation({
     mutationFn: async () => {
@@ -144,7 +162,7 @@ const IQCInspectionDialog = ({ grn, isOpen, onClose }: IQCInspectionDialogProps)
         return map;
       }, {} as Record<string, string>);
 
-      // Update IQC status for each item
+      // Update IQC status for each item and create CAPA records if needed
       const updatePromises = itemIds.map(async (itemId) => {
         const result = inspectionResults[itemId];
         
@@ -167,6 +185,11 @@ const IQCInspectionDialog = ({ grn, isOpen, onClose }: IQCInspectionDialogProps)
           .eq("id", itemId);
 
         if (error) throw error;
+
+        // Create CAPA record if item is rejected or segregated
+        if (result.status === 'REJECTED' || result.status === 'SEGREGATED') {
+          await createCapaRecord(itemId, grn.vendor_id);
+        }
       });
 
       await Promise.all(updatePromises);
@@ -186,9 +209,10 @@ const IQCInspectionDialog = ({ grn, isOpen, onClose }: IQCInspectionDialogProps)
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pending-grns'] });
       queryClient.invalidateQueries({ queryKey: ['completed-grns'] });
+      queryClient.invalidateQueries({ queryKey: ['iqc-vendor-capas'] });
       toast({
         title: "Inspection Completed",
-        description: "GRN items have been inspected successfully",
+        description: "GRN items have been inspected successfully. CAPAs have been initiated for rejected/segregated items.",
       });
       onClose();
     },
@@ -273,6 +297,12 @@ const IQCInspectionDialog = ({ grn, isOpen, onClose }: IQCInspectionDialogProps)
                         <Label htmlFor={`fail-${item.id}`} className="text-red-600">Fail</Label>
                       </div>
                     </RadioGroup>
+                    
+                    {(inspectionResults[item.id]?.status === 'REJECTED' || inspectionResults[item.id]?.status === 'SEGREGATED') && (
+                      <div className="mt-2 p-2 bg-orange-50 border border-orange-200 rounded text-sm text-orange-800">
+                        ⚠️ A CAPA (Corrective and Preventive Action) will be automatically initiated for this item and sent to the vendor.
+                      </div>
+                    )}
                   </div>
                   
                   {inspectionResults[item.id]?.status === 'SEGREGATED' && (

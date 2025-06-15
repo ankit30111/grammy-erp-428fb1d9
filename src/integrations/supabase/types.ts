@@ -1047,6 +1047,72 @@ export type Database = {
           },
         ]
       }
+      iqc_vendor_capa: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          capa_document_url: string | null
+          capa_status: string
+          created_at: string
+          grn_item_id: string
+          id: string
+          initiated_at: string
+          initiated_by: string | null
+          received_at: string | null
+          rejection_reason: string | null
+          remarks: string | null
+          updated_at: string
+          vendor_id: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          capa_document_url?: string | null
+          capa_status?: string
+          created_at?: string
+          grn_item_id: string
+          id?: string
+          initiated_at?: string
+          initiated_by?: string | null
+          received_at?: string | null
+          rejection_reason?: string | null
+          remarks?: string | null
+          updated_at?: string
+          vendor_id: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          capa_document_url?: string | null
+          capa_status?: string
+          created_at?: string
+          grn_item_id?: string
+          id?: string
+          initiated_at?: string
+          initiated_by?: string | null
+          received_at?: string | null
+          rejection_reason?: string | null
+          remarks?: string | null
+          updated_at?: string
+          vendor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "iqc_vendor_capa_grn_item_id_fkey"
+            columns: ["grn_item_id"]
+            isOneToOne: false
+            referencedRelation: "grn_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "iqc_vendor_capa_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       kit_items: {
         Row: {
           actual_quantity: number | null
