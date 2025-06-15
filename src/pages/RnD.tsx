@@ -6,6 +6,7 @@ import { Lightbulb, Package, ArrowRight, Users, Clock, CheckCircle } from "lucid
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import ProjectGanttChart from "@/components/RnD/ProjectGanttChart";
 
 const RnD = () => {
   const navigate = useNavigate();
@@ -59,6 +60,9 @@ const RnD = () => {
             <Lightbulb className="h-8 w-8 text-primary" />
           </div>
         </div>
+
+        {/* Gantt Chart */}
+        <ProjectGanttChart />
 
         <div className="grid gap-6 md:grid-cols-2">
           {/* NPD Widget */}

@@ -1429,6 +1429,201 @@ export type Database = {
           },
         ]
       }
+      npd_benchmarks: {
+        Row: {
+          achieved_date: string | null
+          actual_value: string | null
+          benchmark_title: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          measurement_unit: string | null
+          notes: string | null
+          npd_project_id: string
+          priority: string | null
+          status: string | null
+          target_date: string | null
+          target_value: string | null
+          updated_at: string
+        }
+        Insert: {
+          achieved_date?: string | null
+          actual_value?: string | null
+          benchmark_title: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          measurement_unit?: string | null
+          notes?: string | null
+          npd_project_id: string
+          priority?: string | null
+          status?: string | null
+          target_date?: string | null
+          target_value?: string | null
+          updated_at?: string
+        }
+        Update: {
+          achieved_date?: string | null
+          actual_value?: string | null
+          benchmark_title?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          measurement_unit?: string | null
+          notes?: string | null
+          npd_project_id?: string
+          priority?: string | null
+          status?: string | null
+          target_date?: string | null
+          target_value?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "npd_benchmarks_npd_project_id_fkey"
+            columns: ["npd_project_id"]
+            isOneToOne: false
+            referencedRelation: "npd_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      npd_bom_materials: {
+        Row: {
+          alternative_options: string | null
+          cost_estimate: number | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          expected_due_date: string | null
+          id: string
+          is_critical: boolean | null
+          last_updated_by: string | null
+          lead_time_days: number | null
+          material_code: string | null
+          material_name: string
+          material_status: string | null
+          notes: string | null
+          npd_project_bom_id: string
+          quantity: number
+          specification_sheet_url: string | null
+          specifications: string | null
+          unit: string | null
+          updated_at: string
+          vendor_contact: string | null
+          vendor_name: string | null
+        }
+        Insert: {
+          alternative_options?: string | null
+          cost_estimate?: number | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          expected_due_date?: string | null
+          id?: string
+          is_critical?: boolean | null
+          last_updated_by?: string | null
+          lead_time_days?: number | null
+          material_code?: string | null
+          material_name: string
+          material_status?: string | null
+          notes?: string | null
+          npd_project_bom_id: string
+          quantity?: number
+          specification_sheet_url?: string | null
+          specifications?: string | null
+          unit?: string | null
+          updated_at?: string
+          vendor_contact?: string | null
+          vendor_name?: string | null
+        }
+        Update: {
+          alternative_options?: string | null
+          cost_estimate?: number | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          expected_due_date?: string | null
+          id?: string
+          is_critical?: boolean | null
+          last_updated_by?: string | null
+          lead_time_days?: number | null
+          material_code?: string | null
+          material_name?: string
+          material_status?: string | null
+          notes?: string | null
+          npd_project_bom_id?: string
+          quantity?: number
+          specification_sheet_url?: string | null
+          specifications?: string | null
+          unit?: string | null
+          updated_at?: string
+          vendor_contact?: string | null
+          vendor_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "npd_bom_materials_npd_project_bom_id_fkey"
+            columns: ["npd_project_bom_id"]
+            isOneToOne: false
+            referencedRelation: "npd_project_bom"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      npd_project_bom: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          bom_name: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          npd_project_id: string
+          status: string | null
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          bom_name?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          npd_project_id: string
+          status?: string | null
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          bom_name?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          npd_project_id?: string
+          status?: string | null
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "npd_project_bom_npd_project_id_fkey"
+            columns: ["npd_project_id"]
+            isOneToOne: false
+            referencedRelation: "npd_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       npd_projects: {
         Row: {
           created_at: string

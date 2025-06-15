@@ -10,10 +10,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Lightbulb, Plus, Calendar, Users, TrendingUp } from "lucide-react";
+import { Lightbulb, Plus, Calendar, Users, TrendingUp, Target, Package } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import BenchmarkDialog from "@/components/RnD/BenchmarkDialog";
+import ProjectBOMDialog from "@/components/RnD/ProjectBOMDialog";
 
 interface NPDProject {
   id: string;
@@ -47,6 +49,9 @@ const NPD = () => {
     priority: 'MEDIUM',
     estimated_completion_date: ''
   });
+  const [selectedProjectForBenchmark, setSelectedProjectForBenchmark] = useState<string | null>(null);
+  const [selectedProjectForBOM, setSelectedProjectForBOM] = useState<string | null>(null);
+  const [selectedProjectName, setSelectedProjectName] = useState<string>('');
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -94,7 +99,7 @@ const NPD = () => {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['npd-projects'] });
       setIsCreateOpen(false);
       setNewProject({
@@ -105,9 +110,14 @@ const NPD = () => {
         priority: 'MEDIUM',
         estimated_completion_date: ''
       });
+      
+      // Auto-open benchmark dialog after project creation
+      setSelectedProjectForBenchmark(data.id);
+      setSelectedProjectName(data.project_name);
+      
       toast({
         title: "Success",
-        description: "NPD project created successfully"
+        description: "NPD project created successfully. Now set up benchmarks."
       });
     },
     onError: (error) => {
@@ -148,6 +158,14 @@ const NPD = () => {
       return;
     }
     createProjectMutation.mutate(newProject);
+  };
+
+  const handleBenchmarkCreated = () => {
+    setSelectedProjectForBenchmark(null);
+    // Auto-open BOM dialog after benchmark creation
+    if (selectedProjectForBenchmark) {
+      setSelectedProjectForBOM(selectedProjectForBenchmark);
+    }
   };
 
   return (
@@ -287,7 +305,7 @@ const NPD = () => {
                     <TableHead>Status</TableHead>
                     <TableHead>Priority</TableHead>
                     <TableHead>Estimated Completion</TableHead>
-                    <TableHead>Created</TableHead>
+                    <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -311,7 +329,32 @@ const NPD = () => {
                           'Not set'
                         }
                       </TableCell>
-                      <TableCell>{new Date(project.created_at).toLocaleDateString()}</TableCell>
+                      <TableCell>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedProjectForBenchmark(project.id);
+                              setSelectedProjectName(project.project_name);
+                            }}
+                          >
+                            <Target className="h-4 w-4 mr-1" />
+                            Benchmarks
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedProjectForBOM(project.id);
+                              setSelectedProjectName(project.project_name);
+                            }}
+                          >
+                            <Package className="h-4 w-4 mr-1" />
+                            BOM
+                          </Button>
+                        </div>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -319,6 +362,23 @@ const NPD = () => {
             )}
           </CardContent>
         </Card>
+
+        {/* Benchmark Dialog */}
+        <BenchmarkDialog
+          isOpen={!!selectedProjectForBenchmark}
+          onClose={() => setSelectedProjectForBenchmark(null)}
+          projectId={selectedProjectForBenchmark || ''}
+          projectName={selectedProjectName}
+          onBenchmarkCreated={handleBenchmarkCreated}
+        />
+
+        {/* Project BOM Dialog */}
+        <ProjectBOMDialog
+          isOpen={!!selectedProjectForBOM}
+          onClose={() => setSelectedProjectForBOM(null)}
+          projectId={selectedProjectForBOM || ''}
+          projectName={selectedProjectName}
+        />
       </div>
     </DashboardLayout>
   );
