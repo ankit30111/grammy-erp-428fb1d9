@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { Calendar, Clock, Users } from "lucide-react";
+import { Calendar, Clock } from "lucide-react";
 
 interface GanttData {
   projectName: string;
@@ -48,62 +48,69 @@ const ProjectGanttChart = () => {
 
       const processedData: GanttData[] = [];
 
-      // Helper function to safely calculate progress
+      // Helper function to safely parse and validate dates
+      const parseAndValidateDate = (dateString: string, fallbackDays: number = 90): Date => {
+        if (!dateString) {
+          return new Date(Date.now() + fallbackDays * 24 * 60 * 60 * 1000);
+        }
+        
+        const parsed = new Date(dateString);
+        if (isNaN(parsed.getTime())) {
+          console.warn('Invalid date string:', dateString, 'using fallback');
+          return new Date(Date.now() + fallbackDays * 24 * 60 * 60 * 1000);
+        }
+        
+        return parsed;
+      };
+
+      // Helper function to safely calculate progress with proper validation
       const calculateProgress = (startDate: Date, endDate: Date): number => {
         const now = new Date();
         
-        // Validate dates
-        if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
-          console.warn('Invalid dates detected:', { startDate, endDate });
-          return 0;
+        // Ensure end date is after start date, if not, set a reasonable end date
+        if (endDate <= startDate) {
+          console.warn('End date is before or equal to start date, adjusting end date');
+          endDate = new Date(startDate.getTime() + 90 * 24 * 60 * 60 * 1000); // 90 days from start
         }
         
         const totalDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
         const elapsedDays = Math.ceil((now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
         
-        // Prevent division by zero and ensure valid calculation
         if (totalDays <= 0) {
-          return 100; // If end date is same as or before start date, consider it complete
-        }
-        
-        const progress = (elapsedDays / totalDays) * 100;
-        
-        // Ensure progress is a valid number between 0 and 100
-        if (isNaN(progress) || !isFinite(progress)) {
-          console.warn('Invalid progress calculated:', { progress, elapsedDays, totalDays });
           return 0;
         }
         
-        return Math.min(Math.max(progress, 0), 100);
+        const progress = Math.max(0, Math.min(100, (elapsedDays / totalDays) * 100));
+        
+        // Final validation
+        if (!isFinite(progress) || isNaN(progress)) {
+          console.warn('Invalid progress calculated, defaulting to 0');
+          return 0;
+        }
+        
+        return Math.round(progress * 10) / 10; // Round to 1 decimal place
       };
 
       // Helper function to safely calculate days remaining
       const calculateDaysRemaining = (endDate: Date): number => {
         const now = new Date();
-        
-        if (isNaN(endDate.getTime())) {
-          console.warn('Invalid end date:', endDate);
-          return 0;
-        }
-        
         const daysRemaining = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
         
-        if (isNaN(daysRemaining) || !isFinite(daysRemaining)) {
-          console.warn('Invalid days remaining calculated:', daysRemaining);
+        if (!isFinite(daysRemaining) || isNaN(daysRemaining)) {
+          console.warn('Invalid days remaining calculated, defaulting to 0');
           return 0;
         }
         
         return daysRemaining;
       };
 
-      // Helper function to validate project data
+      // Helper function to validate complete project data
       const isValidProject = (projectData: any): boolean => {
         return (
-          projectData.project_name && 
+          projectData?.project_name && 
           typeof projectData.project_name === 'string' &&
           projectData.project_name.trim() !== '' &&
-          projectData.created_at &&
-          !isNaN(new Date(projectData.created_at).getTime())
+          projectData.created_at
         );
       };
 
@@ -114,40 +121,48 @@ const ProjectGanttChart = () => {
           return;
         }
 
-        const startDate = new Date(project.created_at);
-        const endDate = project.estimated_completion_date ? 
-          new Date(project.estimated_completion_date) : 
-          new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
+        try {
+          const startDate = parseAndValidateDate(project.created_at);
+          const endDate = parseAndValidateDate(
+            project.estimated_completion_date, 
+            90 // 90 days fallback
+          );
 
-        const progress = calculateProgress(startDate, endDate);
-        const daysRemaining = calculateDaysRemaining(endDate);
+          // Ensure dates are valid and logical
+          const adjustedEndDate = endDate <= startDate ? 
+            new Date(startDate.getTime() + 90 * 24 * 60 * 60 * 1000) : 
+            endDate;
 
-        // Additional validation before adding to processed data
-        if (isNaN(progress) || isNaN(daysRemaining) || !isFinite(progress) || !isFinite(daysRemaining)) {
-          console.warn('Skipping NPD project due to invalid calculations:', {
-            project: project.project_name,
+          const progress = calculateProgress(startDate, adjustedEndDate);
+          const daysRemaining = calculateDaysRemaining(adjustedEndDate);
+
+          let color = '#3b82f6'; // blue
+          if (project.status === 'CONCEPT') color = '#f59e0b'; // amber
+          else if (project.status === 'PROTOTYPE') color = '#8b5cf6'; // purple
+          else if (project.status === 'TESTING') color = '#06b6d4'; // cyan
+
+          const projectItem: GanttData = {
+            projectName: project.project_name,
+            type: 'NPD',
+            status: project.status,
+            startDate: startDate.toISOString().split('T')[0],
+            endDate: adjustedEndDate.toISOString().split('T')[0],
             progress,
-            daysRemaining
-          });
-          return;
+            customer: project.customers?.name || 'N/A',
+            daysRemaining,
+            color
+          };
+
+          // Final validation before adding
+          if (isFinite(projectItem.progress) && isFinite(projectItem.daysRemaining)) {
+            processedData.push(projectItem);
+            console.log('Added NPD project:', projectItem.projectName, 'Progress:', projectItem.progress, 'Days remaining:', projectItem.daysRemaining);
+          } else {
+            console.warn('Skipping NPD project due to invalid calculations:', projectItem);
+          }
+        } catch (error) {
+          console.error('Error processing NPD project:', project.project_name, error);
         }
-
-        let color = '#3b82f6'; // blue
-        if (project.status === 'CONCEPT') color = '#f59e0b'; // amber
-        else if (project.status === 'PROTOTYPE') color = '#8b5cf6'; // purple
-        else if (project.status === 'TESTING') color = '#06b6d4'; // cyan
-
-        processedData.push({
-          projectName: project.project_name,
-          type: 'NPD',
-          status: project.status,
-          startDate: startDate.toISOString().split('T')[0],
-          endDate: endDate.toISOString().split('T')[0],
-          progress,
-          customer: project.customers?.name || 'N/A',
-          daysRemaining,
-          color
-        });
       });
 
       // Process Pre-Existing projects
@@ -157,63 +172,75 @@ const ProjectGanttChart = () => {
           return;
         }
 
-        const startDate = new Date(project.created_at);
-        const endDate = project.estimated_completion_date ? 
-          new Date(project.estimated_completion_date) : 
-          new Date(Date.now() + 60 * 24 * 60 * 60 * 1000);
+        try {
+          const startDate = parseAndValidateDate(project.created_at);
+          const endDate = parseAndValidateDate(
+            project.estimated_completion_date,
+            60 // 60 days fallback
+          );
 
-        const progress = calculateProgress(startDate, endDate);
-        const daysRemaining = calculateDaysRemaining(endDate);
+          // Ensure dates are valid and logical
+          const adjustedEndDate = endDate <= startDate ? 
+            new Date(startDate.getTime() + 60 * 24 * 60 * 60 * 1000) : 
+            endDate;
 
-        // Additional validation before adding to processed data
-        if (isNaN(progress) || isNaN(daysRemaining) || !isFinite(progress) || !isFinite(daysRemaining)) {
-          console.warn('Skipping pre-existing project due to invalid calculations:', {
-            project: project.project_name,
+          const progress = calculateProgress(startDate, adjustedEndDate);
+          const daysRemaining = calculateDaysRemaining(adjustedEndDate);
+
+          let color = '#10b981'; // green
+          if (project.status === 'CUSTOMIZATION') color = '#f59e0b'; // amber
+          else if (project.status === 'CUSTOMER_APPROVAL') color = '#8b5cf6'; // purple
+
+          const projectItem: GanttData = {
+            projectName: project.project_name,
+            type: 'Pre-Existing',
+            status: project.status.replace('_', ' '),
+            startDate: startDate.toISOString().split('T')[0],
+            endDate: adjustedEndDate.toISOString().split('T')[0],
             progress,
-            daysRemaining
-          });
-          return;
+            customer: project.customers?.name || 'N/A',
+            daysRemaining,
+            color
+          };
+
+          // Final validation before adding
+          if (isFinite(projectItem.progress) && isFinite(projectItem.daysRemaining)) {
+            processedData.push(projectItem);
+            console.log('Added pre-existing project:', projectItem.projectName, 'Progress:', projectItem.progress, 'Days remaining:', projectItem.daysRemaining);
+          } else {
+            console.warn('Skipping pre-existing project due to invalid calculations:', projectItem);
+          }
+        } catch (error) {
+          console.error('Error processing pre-existing project:', project.project_name, error);
         }
-
-        let color = '#10b981'; // green
-        if (project.status === 'CUSTOMIZATION') color = '#f59e0b'; // amber
-        else if (project.status === 'CUSTOMER_APPROVAL') color = '#8b5cf6'; // purple
-
-        processedData.push({
-          projectName: project.project_name,
-          type: 'Pre-Existing',
-          status: project.status.replace('_', ' '),
-          startDate: startDate.toISOString().split('T')[0],
-          endDate: endDate.toISOString().split('T')[0],
-          progress,
-          customer: project.customers?.name || 'N/A',
-          daysRemaining,
-          color
-        });
       });
 
-      // Final validation and filtering
-      const validProcessedData = processedData.filter(project => {
+      // Sort and return only valid projects
+      const validProjects = processedData.filter(project => {
         const isValid = (
-          !isNaN(project.progress) && 
-          !isNaN(project.daysRemaining) &&
+          typeof project.progress === 'number' &&
+          typeof project.daysRemaining === 'number' &&
           isFinite(project.progress) &&
           isFinite(project.daysRemaining) &&
-          project.projectName && 
-          project.projectName.trim() !== '' &&
+          !isNaN(project.progress) &&
+          !isNaN(project.daysRemaining) &&
           project.progress >= 0 &&
-          project.progress <= 100
+          project.progress <= 100 &&
+          project.projectName &&
+          project.projectName.trim() !== ''
         );
         
         if (!isValid) {
-          console.warn('Filtering out invalid project:', project);
+          console.error('Filtering out invalid project:', project);
         }
         
         return isValid;
       });
 
-      console.log('Final processed data:', validProcessedData);
-      return validProcessedData.sort((a, b) => a.projectName.localeCompare(b.projectName));
+      console.log('Final valid projects count:', validProjects.length);
+      console.log('Final processed data:', validProjects);
+      
+      return validProjects.sort((a, b) => a.projectName.localeCompare(b.projectName));
     }
   });
 
