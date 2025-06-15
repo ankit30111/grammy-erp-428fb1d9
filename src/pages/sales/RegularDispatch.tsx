@@ -40,14 +40,14 @@ interface DispatchOrder {
   dispatch_date: string;
   status: string;
   notes?: string;
-  customers: Customer;
-  customer_warehouses: CustomerWarehouse;
+  customers: Customer | null;
+  customer_warehouses: CustomerWarehouse | null;
   dispatch_order_items: Array<{
     id: string;
     product_id: string;
     quantity: number;
     lot_number?: string;
-    products: Product;
+    products: Product | null;
   }>;
 }
 
@@ -543,8 +543,8 @@ const RegularDispatch = () => {
               {dispatchOrders.map((order) => (
                 <TableRow key={order.id}>
                   <TableCell className="font-mono">{order.dispatch_order_number}</TableCell>
-                  <TableCell>{order.customers.name}</TableCell>
-                  <TableCell>{order.customer_warehouses.warehouse_name}</TableCell>
+                  <TableCell>{order.customers?.name || 'Unknown Customer'}</TableCell>
+                  <TableCell>{order.customer_warehouses?.warehouse_name || 'Unknown Warehouse'}</TableCell>
                   <TableCell>{new Date(order.dispatch_date).toLocaleDateString()}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1">
