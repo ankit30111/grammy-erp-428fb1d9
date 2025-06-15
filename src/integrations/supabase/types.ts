@@ -9,6 +9,54 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      approval_workflows: {
+        Row: {
+          comments: string | null
+          created_at: string
+          document_url: string | null
+          id: string
+          reference_id: string
+          rejection_reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          submitted_at: string
+          submitted_by: string | null
+          updated_at: string
+          workflow_type: string
+        }
+        Insert: {
+          comments?: string | null
+          created_at?: string
+          document_url?: string | null
+          id?: string
+          reference_id: string
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          submitted_at?: string
+          submitted_by?: string | null
+          updated_at?: string
+          workflow_type: string
+        }
+        Update: {
+          comments?: string | null
+          created_at?: string
+          document_url?: string | null
+          id?: string
+          reference_id?: string
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          submitted_at?: string
+          submitted_by?: string | null
+          updated_at?: string
+          workflow_type?: string
+        }
+        Relationships: []
+      }
       attendance: {
         Row: {
           break_hours: number | null
@@ -842,6 +890,9 @@ export type Database = {
           store_confirmed_at: string | null
           store_confirmed_by: string | null
           store_physical_quantity: number | null
+          vendor_capa_file_url: string | null
+          vendor_capa_required: boolean | null
+          vendor_capa_status: string | null
         }
         Insert: {
           accepted_quantity?: number | null
@@ -863,6 +914,9 @@ export type Database = {
           store_confirmed_at?: string | null
           store_confirmed_by?: string | null
           store_physical_quantity?: number | null
+          vendor_capa_file_url?: string | null
+          vendor_capa_required?: boolean | null
+          vendor_capa_status?: string | null
         }
         Update: {
           accepted_quantity?: number | null
@@ -884,6 +938,9 @@ export type Database = {
           store_confirmed_at?: string | null
           store_confirmed_by?: string | null
           store_physical_quantity?: number | null
+          vendor_capa_file_url?: string | null
+          vendor_capa_required?: boolean | null
+          vendor_capa_status?: string | null
         }
         Relationships: [
           {
@@ -986,6 +1043,72 @@ export type Database = {
             columns: ["raw_material_id"]
             isOneToOne: true
             referencedRelation: "raw_materials"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      iqc_vendor_capa: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          capa_document_url: string | null
+          capa_status: string
+          created_at: string
+          grn_item_id: string
+          id: string
+          initiated_at: string
+          initiated_by: string | null
+          received_at: string | null
+          rejection_reason: string | null
+          remarks: string | null
+          updated_at: string
+          vendor_id: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          capa_document_url?: string | null
+          capa_status?: string
+          created_at?: string
+          grn_item_id: string
+          id?: string
+          initiated_at?: string
+          initiated_by?: string | null
+          received_at?: string | null
+          rejection_reason?: string | null
+          remarks?: string | null
+          updated_at?: string
+          vendor_id: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          capa_document_url?: string | null
+          capa_status?: string
+          created_at?: string
+          grn_item_id?: string
+          id?: string
+          initiated_at?: string
+          initiated_by?: string | null
+          received_at?: string | null
+          rejection_reason?: string | null
+          remarks?: string | null
+          updated_at?: string
+          vendor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "iqc_vendor_capa_grn_item_id_fkey"
+            columns: ["grn_item_id"]
+            isOneToOne: false
+            referencedRelation: "grn_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "iqc_vendor_capa_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
             referencedColumns: ["id"]
           },
         ]
@@ -2207,27 +2330,39 @@ export type Database = {
       }
       rca_reports: {
         Row: {
+          approval_status: string | null
+          approved_at: string | null
+          approved_by: string | null
           created_at: string
           id: string
           line_rejection_id: string
           rca_file_url: string | null
           received_quantity: number
+          rejection_reason: string | null
           uploaded_by: string | null
         }
         Insert: {
+          approval_status?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
           created_at?: string
           id?: string
           line_rejection_id: string
           rca_file_url?: string | null
           received_quantity: number
+          rejection_reason?: string | null
           uploaded_by?: string | null
         }
         Update: {
+          approval_status?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
           created_at?: string
           id?: string
           line_rejection_id?: string
           rca_file_url?: string | null
           received_quantity?: number
+          rejection_reason?: string | null
           uploaded_by?: string | null
         }
         Relationships: [

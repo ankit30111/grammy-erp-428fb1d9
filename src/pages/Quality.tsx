@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { CAPAWidget } from "@/components/Quality/CAPAWidget";
 
 const Quality = () => {
   const navigate = useNavigate();
@@ -65,7 +66,7 @@ const Quality = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card className="relative overflow-hidden">
             <CardHeader className="pb-2">
               <CardTitle>Incoming Quality Control</CardTitle>
@@ -149,6 +150,8 @@ const Quality = () => {
               </div>
             </CardContent>
           </Card>
+
+          <CAPAWidget />
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
