@@ -14,10 +14,20 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Loader2, Mail, Calendar, CheckCircle, XCircle } from "lucide-react";
-import type { User } from "@supabase/supabase-js";
+
+interface AuthUser {
+  id: string;
+  email?: string;
+  email_confirmed_at?: string;
+  last_sign_in_at?: string;
+  created_at: string;
+  user_metadata?: {
+    full_name?: string;
+  };
+}
 
 export function UsersList() {
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<AuthUser[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -47,7 +57,7 @@ export function UsersList() {
 
       console.log("Fetched auth users:", data.users);
       // Filter users to only include those with valid email addresses
-      const validUsers = data.users.filter((user): user is User => 
+      const validUsers = data.users.filter((user): user is AuthUser => 
         user.email !== undefined && user.email !== null
       );
       setUsers(validUsers);
@@ -59,7 +69,7 @@ export function UsersList() {
     }
   };
 
-  const getStatusBadge = (user: User) => {
+  const getStatusBadge = (user: AuthUser) => {
     if (!user.email_confirmed_at) {
       return <Badge variant="secondary">Unconfirmed</Badge>;
     }

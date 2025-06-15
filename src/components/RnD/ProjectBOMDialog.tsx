@@ -222,6 +222,14 @@ const ProjectBOMDialog = ({ isOpen, onClose, projectId, projectName }: ProjectBO
     }
   };
 
+  const convertDatabaseItemToBOMItem = (dbItem: any): BOMItem => {
+    return {
+      ...dbItem,
+      cost_estimate: dbItem.cost_estimate ? dbItem.cost_estimate.toString() : '',
+      lead_time_days: dbItem.lead_time_days ? dbItem.lead_time_days.toString() : ''
+    };
+  };
+
   const renderMaterialForm = (material: BOMItem, isEdit: boolean = false) => (
     <div className="space-y-4 border rounded-lg p-4">
       <div className="grid grid-cols-2 gap-4">
@@ -506,7 +514,7 @@ const ProjectBOMDialog = ({ isOpen, onClose, projectId, projectName }: ProjectBO
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => setEditingItem(material)}
+                              onClick={() => setEditingItem(convertDatabaseItemToBOMItem(material))}
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
