@@ -2400,6 +2400,56 @@ export type Database = {
           },
         ]
       }
+      production_serial_numbers: {
+        Row: {
+          assigned_at: string | null
+          assigned_by: string | null
+          created_at: string
+          ending_serial_number: string | null
+          id: string
+          notes: string | null
+          production_order_id: string
+          quantity: number
+          starting_serial_number: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_at?: string | null
+          assigned_by?: string | null
+          created_at?: string
+          ending_serial_number?: string | null
+          id?: string
+          notes?: string | null
+          production_order_id: string
+          quantity: number
+          starting_serial_number?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_at?: string | null
+          assigned_by?: string | null
+          created_at?: string
+          ending_serial_number?: string | null
+          id?: string
+          notes?: string | null
+          production_order_id?: string
+          quantity?: number
+          starting_serial_number?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "production_serial_numbers_production_order_id_fkey"
+            columns: ["production_order_id"]
+            isOneToOne: true
+            referencedRelation: "production_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       products: {
         Row: {
           bom_url: string | null

@@ -30,6 +30,7 @@ import RawMaterialsManagement from "./pages/management/RawMaterialsManagement";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import PPCDashboard from "@/pages/dashboards/PPCDashboard";
+import SerialNumberManagement from "./pages/SerialNumberManagement";
 import StoreDashboard from "@/pages/dashboards/StoreDashboard";
 import ProductionMainDashboard from "@/pages/dashboards/ProductionMainDashboard";
 import SalesDashboard from "@/pages/dashboards/SalesDashboard";

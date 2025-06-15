@@ -147,6 +147,14 @@ const PPCDashboard = () => {
                 Goods Receipt Notes
               </Button>
               <Button 
+                onClick={() => navigate('/dashboard/ppc/serial-numbers')} 
+                className="w-full justify-start"
+                variant="outline"
+              >
+                <Package className="h-4 w-4 mr-2" />
+                Serial Number Management
+              </Button>
+              <Button 
                 onClick={() => navigate('/purchase-discrepancies')} 
                 className="w-full justify-start"
                 variant="outline"
