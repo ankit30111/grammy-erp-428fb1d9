@@ -82,21 +82,22 @@ const CAPATrackingTab = () => {
       }
 
       // Update the appropriate table based on CAPA category
-      let tableName = '';
+      let updateResult;
       if (selectedCapa.capa_category === 'VENDOR') {
-        tableName = 'iqc_vendor_capa';
-      } else if (selectedCapa.capa_category === 'PRODUCTION') {
-        tableName = 'production_capa';
-      }
-
-      if (tableName) {
         const { error } = await supabase
-          .from(tableName)
+          .from('iqc_vendor_capa')
           .update(updateData)
           .eq('id', selectedCapa.id);
-
-        if (error) throw error;
+        updateResult = { error };
+      } else if (selectedCapa.capa_category === 'PRODUCTION') {
+        const { error } = await supabase
+          .from('production_capa')
+          .update(updateData)
+          .eq('id', selectedCapa.id);
+        updateResult = { error };
       }
+
+      if (updateResult?.error) throw updateResult.error;
 
       toast({
         title: "Success",
