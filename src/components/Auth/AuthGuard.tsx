@@ -51,7 +51,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
   }
 
   if (!user) {
-    return null; // Will redirect to auth page
+    return null; // Will redirect to login page
   }
 
   return <>{children}</>;
