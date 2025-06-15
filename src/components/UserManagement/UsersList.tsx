@@ -57,9 +57,9 @@ export function UsersList() {
 
       console.log("Fetched auth users:", data.users);
       // Filter users to only include those with valid email addresses
-      const validUsers = data.users.filter((user): user is AuthUser => 
+      const validUsers = data.users.filter((user: any) => 
         user.email !== undefined && user.email !== null
-      );
+      ) as AuthUser[];
       setUsers(validUsers);
     } catch (error) {
       console.error("Error fetching auth users:", error);
