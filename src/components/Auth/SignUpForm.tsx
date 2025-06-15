@@ -21,8 +21,6 @@ export function SignUpForm() {
     setLoading(true);
 
     try {
-      const redirectUrl = `${window.location.origin}/dashboard`;
-      
       // First, sign up the user with Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
@@ -30,8 +28,7 @@ export function SignUpForm() {
         options: {
           data: {
             full_name: name,
-          },
-          emailRedirectTo: redirectUrl
+          }
         }
       });
 
@@ -57,7 +54,7 @@ export function SignUpForm() {
           toast.error("Account created but failed to set up profile. Please contact admin.");
         } else {
           toast.success("Account created successfully! Please check your email for verification.");
-          navigate("/dashboard");
+          navigate("/");
         }
       }
     } catch (error) {

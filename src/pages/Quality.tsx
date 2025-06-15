@@ -1,8 +1,7 @@
-
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Clock, ClipboardCheck, FileCheck, Layers, AlertTriangle } from "lucide-react";
+import { Clock, ClipboardCheck, FileCheck, Layers } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { useQuery } from "@tanstack/react-query";
@@ -46,39 +45,10 @@ const Quality = () => {
     },
   });
 
-  const { data: capaStats } = useQuery({
-    queryKey: ["capa-stats"],
-    queryFn: async () => {
-      const { data: openCAPAs } = await supabase
-        .from("vendor_capa")
-        .select("id")
-        .eq("status", "Open");
-
-      const { data: pendingRCAs } = await supabase
-        .from("line_rejections")
-        .select(`
-          id,
-          rca_reports(id)
-        `)
-        .eq("reason", "Part Faulty");
-
-      const pendingRCACount = pendingRCAs?.filter(rejection => 
-        !rejection.rca_reports || rejection.rca_reports.length === 0
-      ).length || 0;
-
-      return {
-        openCAPAs: openCAPAs?.length || 0,
-        pendingRCAs: pendingRCACount
-      };
-    },
-  });
-
   const stats = {
     pendingIQC: grnStats?.pendingIQC || 0,
     activePQC: productionStats?.activePQC || 0,
     pendingOQC: productionStats?.pendingOQC || 0,
-    openCAPAs: capaStats?.openCAPAs || 0,
-    pendingRCAs: capaStats?.pendingRCAs || 0,
     returnAnalysis: 0, // This would need a separate table for customer returns
     capaItems: 0 // Mock data for now
   };
@@ -95,7 +65,7 @@ const Quality = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card className="relative overflow-hidden">
             <CardHeader className="pb-2">
               <CardTitle>Incoming Quality Control</CardTitle>
@@ -179,34 +149,6 @@ const Quality = () => {
               </div>
             </CardContent>
           </Card>
-
-          <Card className="relative overflow-hidden">
-            <CardHeader className="pb-2">
-              <CardTitle>CAPA Management</CardTitle>
-              <CardDescription>Vendor corrective actions</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Open CAPAs:</span>
-                  <span className="font-medium">{stats.openCAPAs}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Pending RCAs:</span>
-                  <span className="font-medium">{stats.pendingRCAs}</span>
-                </div>
-                <Button 
-                  className="w-full mt-4" 
-                  onClick={() => navigate("/quality/vendor-capa")}
-                >
-                  <AlertTriangle className="h-4 w-4 mr-2" /> Go to CAPA
-                </Button>
-              </div>
-              <div className="absolute -right-4 -top-1 opacity-10">
-                <AlertTriangle className="h-24 w-24 text-primary" />
-              </div>
-            </CardContent>
-          </Card>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -272,10 +214,6 @@ const Quality = () => {
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">Pending OQC:</span>
                   <span className="font-medium">{stats.pendingOQC}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Open CAPAs:</span>
-                  <span className="font-medium">{stats.openCAPAs}</span>
                 </div>
                 <div className="text-center py-4 text-sm text-muted-foreground">
                   Quality control system is operational

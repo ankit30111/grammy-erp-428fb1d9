@@ -21,6 +21,7 @@ const LineRejectionManager = () => {
   const [receivedQuantity, setReceivedQuantity] = useState("");
   const [rcaFile, setRcaFile] = useState<File | null>(null);
   const [capaFile, setCAPAFile] = useState<File | null>(null);
+  const [capaStatus, setCAPAStatus] = useState("");
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -110,7 +111,7 @@ const LineRejectionManager = () => {
   });
 
   const createCAPAMutation = useMutation({
-    mutationFn: async ({ rejectionId, fileUrl }: any) => {
+    mutationFn: async ({ rejectionId, fileUrl, vendorId }: any) => {
       const user = await supabase.auth.getUser();
       if (!user.data.user) throw new Error("User not authenticated");
 
@@ -129,7 +130,7 @@ const LineRejectionManager = () => {
         .from("vendor_capa")
         .insert([{
           line_rejection_id: rejectionId,
-          vendor_id: materialVendor?.vendor_id,
+          vendor_id: materialVendor?.vendor_id || vendorId,
           capa_file_url: fileUrl || "pending_upload",
           initiated_by: user.data.user.id,
           status: "Open"
@@ -167,8 +168,8 @@ const LineRejectionManager = () => {
         .from("vendor_capa")
         .update({
           status: "Closed",
-          approved_by: user.data.user.id,
-          approved_at: new Date().toISOString()
+          closed_by: user.data.user.id,
+          closed_at: new Date().toISOString()
         })
         .eq("id", capaId)
         .select()

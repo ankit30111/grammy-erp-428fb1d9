@@ -49,7 +49,7 @@ const IQC = () => {
     },
   });
 
-  // Fetch completed IQC items with CAPA status
+  // Fetch completed IQC items - individual grn_items with completed IQC status
   const { data: completedIQCItems = [] } = useQuery({
     queryKey: ["completed-iqc-items"],
     queryFn: async () => {
@@ -62,14 +62,7 @@ const IQC = () => {
             vendors!inner(name, vendor_code),
             purchase_orders!inner(po_number)
           ),
-          raw_materials!inner(name, material_code),
-          iqc_vendor_capa(
-            id,
-            capa_status,
-            initiated_at,
-            received_at,
-            approved_at
-          )
+          raw_materials!inner(name, material_code)
         `)
         .not("iqc_status", "is", null)
         .neq("iqc_status", "PENDING")
@@ -110,21 +103,6 @@ const IQC = () => {
         return <Badge variant="destructive">Failed</Badge>;
       default:
         return <Badge variant="secondary">{status}</Badge>;
-    }
-  };
-
-  const getCapaStatusBadge = (capaStatus: string) => {
-    switch (capaStatus) {
-      case 'AWAITED':
-        return <Badge variant="secondary">CAPA Awaited</Badge>;
-      case 'RECEIVED':
-        return <Badge variant="outline">CAPA Received</Badge>;
-      case 'APPROVED':
-        return <Badge variant="default">CAPA Approved</Badge>;
-      case 'REJECTED':
-        return <Badge variant="destructive">CAPA Rejected</Badge>;
-      default:
-        return null;
     }
   };
 
@@ -243,7 +221,6 @@ const IQC = () => {
                         <TableHead>Accepted Qty</TableHead>
                         <TableHead>Rejected Qty</TableHead>
                         <TableHead>IQC Status</TableHead>
-                        <TableHead>CAPA Status</TableHead>
                         <TableHead>Completed Date</TableHead>
                         <TableHead>Actions</TableHead>
                       </TableRow>
@@ -260,14 +237,6 @@ const IQC = () => {
                           <TableCell>{item.accepted_quantity}</TableCell>
                           <TableCell>{item.rejected_quantity || 0}</TableCell>
                           <TableCell>{getItemStatusBadge(item.iqc_status)}</TableCell>
-                          <TableCell>
-                            {item.iqc_vendor_capa && item.iqc_vendor_capa.length > 0 
-                              ? getCapaStatusBadge(item.iqc_vendor_capa[0].capa_status)
-                              : (item.iqc_status === 'REJECTED' || item.iqc_status === 'SEGREGATED')
-                                ? <Badge variant="secondary">No CAPA</Badge>
-                                : '-'
-                            }
-                          </TableCell>
                           <TableCell>
                             {item.iqc_completed_at 
                               ? new Date(item.iqc_completed_at).toLocaleDateString()
