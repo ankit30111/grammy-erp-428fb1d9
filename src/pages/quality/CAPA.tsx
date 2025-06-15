@@ -1,4 +1,3 @@
-
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -32,7 +31,7 @@ const CAPA = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch Vendor CAPAs
+  // Fetch Vendor CAPAs - including AWAITED and RECEIVED statuses
   const { data: vendorCapas = [] } = useQuery({
     queryKey: ["vendor-capas"],
     queryFn: async () => {
@@ -46,6 +45,7 @@ const CAPA = () => {
             raw_materials!inner(name, material_code)
           )
         `)
+        .in('capa_status', ['AWAITED', 'RECEIVED'])
         .order("initiated_at", { ascending: false });
       
       return data || [];
@@ -116,13 +116,12 @@ const CAPA = () => {
     },
   });
 
-  // CAPA Approval mutation
-  const approveCAPAMutation = useMutation({
-    mutationFn: async ({ capaId, capaType, action }: { capaId: string; capaType: string; action: 'approve' | 'reject' }) => {
+  // CAPA Upload mutation - updates status to RECEIVED and sets received_at
+  const uploadCAPAMutation = useMutation({
+    mutationFn: async ({ capaId, capaType }: { capaId: string; capaType: string }) => {
       const updateData = {
-        capa_status: action === 'approve' ? 'APPROVED' : 'AWAITED',
-        approved_at: action === 'approve' ? new Date().toISOString() : null,
-        approved_by: action === 'approve' ? null : null, // Would be set from auth in real app
+        capa_status: 'RECEIVED',
+        received_at: new Date().toISOString()
       };
 
       let updateQuery;
@@ -134,7 +133,7 @@ const CAPA = () => {
           updateQuery = supabase.from("production_capa").update(updateData).eq("id", capaId);
           break;
         default:
-          throw new Error("Invalid CAPA type for approval");
+          throw new Error("Invalid CAPA type for upload");
       }
 
       const { error } = await updateQuery;
@@ -144,32 +143,30 @@ const CAPA = () => {
       queryClient.invalidateQueries({ queryKey: ['vendor-capas'] });
       queryClient.invalidateQueries({ queryKey: ['production-capas'] });
       toast({
-        title: "CAPA Status Updated",
-        description: "CAPA status has been updated successfully",
+        title: "CAPA Uploaded Successfully",
+        description: "CAPA has been submitted for approval review",
       });
     },
     onError: (error) => {
-      console.error("Error updating CAPA status:", error);
+      console.error("Error uploading CAPA:", error);
       toast({
-        title: "Update Failed",
-        description: "Failed to update CAPA status",
+        title: "Upload Failed",
+        description: "Failed to upload CAPA document",
         variant: "destructive",
       });
     },
   });
 
-  // Calculate KPI statistics
+  // Calculate KPI statistics - updated to include RECEIVED status
   const kpiStats = {
     vendor: {
       total: vendorCapas.length,
       awaited: vendorCapas.filter(c => c.capa_status === 'AWAITED').length,
       received: vendorCapas.filter(c => c.capa_status === 'RECEIVED').length,
-      approved: vendorCapas.filter(c => c.capa_status === 'APPROVED').length,
-      implemented: vendorCapas.filter(c => c.capa_status === 'IMPLEMENTED').length,
       overdue: vendorCapas.filter(c => {
         const sevenDaysAgo = new Date();
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-        return c.capa_status !== 'IMPLEMENTED' && new Date(c.initiated_at) < sevenDaysAgo;
+        return c.capa_status === 'AWAITED' && new Date(c.initiated_at) < sevenDaysAgo;
       }).length,
     },
     lineRejection: {
@@ -197,9 +194,9 @@ const CAPA = () => {
   const getStatusBadge = (status: string, type: string = 'vendor') => {
     switch (status) {
       case 'AWAITED':
-        return <Badge variant="secondary">Awaited</Badge>;
+        return <Badge variant="secondary">Awaiting CAPA</Badge>;
       case 'RECEIVED':
-        return <Badge variant="outline">Received</Badge>;
+        return <Badge variant="outline">Under Review</Badge>;
       case 'APPROVED':
         return <Badge variant="default">Approved</Badge>;
       case 'IMPLEMENTED':
@@ -236,8 +233,8 @@ const CAPA = () => {
     });
   };
 
-  const handleCAPAAction = (capaId: string, capaType: string, action: 'approve' | 'reject') => {
-    approveCAPAMutation.mutate({ capaId, capaType, action });
+  const handleCAPAUploadSuccess = (capaId: string, capaType: string) => {
+    uploadCAPAMutation.mutate({ capaId, capaType });
   };
 
   return (
@@ -264,10 +261,10 @@ const CAPA = () => {
             <CardContent>
               <div className="text-2xl font-bold">{kpiStats.vendor.total}</div>
               <div className="grid grid-cols-2 gap-1 text-xs mt-2">
-                <div>Awaited: <span className="font-medium text-yellow-600">{kpiStats.vendor.awaited}</span></div>
-                <div>Received: <span className="font-medium text-blue-600">{kpiStats.vendor.received}</span></div>
-                <div>Approved: <span className="font-medium text-green-600">{kpiStats.vendor.approved}</span></div>
+                <div>Awaiting Upload: <span className="font-medium text-yellow-600">{kpiStats.vendor.awaited}</span></div>
+                <div>Under Review: <span className="font-medium text-blue-600">{kpiStats.vendor.received}</span></div>
                 <div>Overdue: <span className="font-medium text-red-600">{kpiStats.vendor.overdue}</span></div>
+                <div></div>
               </div>
             </CardContent>
           </Card>
@@ -435,30 +432,11 @@ const CAPA = () => {
                                   className="gap-1"
                                 >
                                   <Upload className="h-3 w-3" />
-                                  Upload
+                                  Upload CAPA
                                 </Button>
                               )}
                               {capa.capa_status === 'RECEIVED' && (
-                                <>
-                                  <Button 
-                                    variant="outline" 
-                                    size="sm"
-                                    onClick={() => handleCAPAAction(capa.id, 'vendor', 'approve')}
-                                    className="gap-1 text-green-600"
-                                  >
-                                    <CheckCircle className="h-3 w-3" />
-                                    Approve
-                                  </Button>
-                                  <Button 
-                                    variant="outline" 
-                                    size="sm"
-                                    onClick={() => handleCAPAAction(capa.id, 'vendor', 'reject')}
-                                    className="gap-1 text-red-600"
-                                  >
-                                    <XCircle className="h-3 w-3" />
-                                    Reject
-                                  </Button>
-                                </>
+                                <Badge variant="outline">Under Review</Badge>
                               )}
                               <Button variant="outline" size="sm">
                                 View Details
@@ -726,30 +704,11 @@ const CAPA = () => {
                                   className="gap-1"
                                 >
                                   <Upload className="h-3 w-3" />
-                                  Upload
+                                  Upload CAPA
                                 </Button>
                               )}
                               {capa.capa_status === 'RECEIVED' && (
-                                <>
-                                  <Button 
-                                    variant="outline" 
-                                    size="sm"
-                                    onClick={() => handleCAPAAction(capa.id, 'production', 'approve')}
-                                    className="gap-1 text-green-600"
-                                  >
-                                    <CheckCircle className="h-3 w-3" />
-                                    Approve
-                                  </Button>
-                                  <Button 
-                                    variant="outline" 
-                                    size="sm"
-                                    onClick={() => handleCAPAAction(capa.id, 'production', 'reject')}
-                                    className="gap-1 text-red-600"
-                                  >
-                                    <XCircle className="h-3 w-3" />
-                                    Reject
-                                  </Button>
-                                </>
+                                <Badge variant="outline">Under Review</Badge>
                               )}
                               <Button variant="outline" size="sm">
                                 View Details
@@ -773,6 +732,7 @@ const CAPA = () => {
           capaId={capaUploadDialog.capaId}
           capaType={capaUploadDialog.capaType}
           itemDetails={capaUploadDialog.itemDetails}
+          onUploadSuccess={(capaId, capaType) => handleCAPAUploadSuccess(capaId, capaType)}
         />
       </div>
     </DashboardLayout>

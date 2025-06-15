@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -42,7 +41,7 @@ const CAPAApprovalsTab = () => {
       const { data, error } = await supabase
         .from('capa_approvals_view')
         .select('*')
-        .in('status', ['RECEIVED', 'PENDING'])
+        .eq('status', 'RECEIVED')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -63,7 +62,7 @@ const CAPAApprovalsTab = () => {
     if (!selectedCapa || !actionType) return;
 
     try {
-      const newStatus = actionType === 'approve' ? 'APPROVED' : 'REJECTED';
+      const newStatus = actionType === 'approve' ? 'APPROVED' : 'AWAITED';
       let updateData: any = {};
 
       // Update the appropriate table based on CAPA category
@@ -72,7 +71,9 @@ const CAPAApprovalsTab = () => {
           capa_status: newStatus,
           approved_at: actionType === 'approve' ? new Date().toISOString() : null,
           approved_by: actionType === 'approve' ? (await supabase.auth.getUser()).data.user?.id : null,
-          rejection_reason: actionType === 'reject' ? remarks : null
+          rejection_reason: actionType === 'reject' ? remarks : null,
+          // Clear document URL if rejected to allow re-upload
+          capa_document_url: actionType === 'reject' ? null : undefined
         };
         
         const { error } = await supabase
@@ -86,7 +87,9 @@ const CAPAApprovalsTab = () => {
           capa_status: newStatus,
           approved_at: actionType === 'approve' ? new Date().toISOString() : null,
           approved_by: actionType === 'approve' ? (await supabase.auth.getUser()).data.user?.id : null,
-          rejection_reason: actionType === 'reject' ? remarks : null
+          rejection_reason: actionType === 'reject' ? remarks : null,
+          // Clear document URL if rejected to allow re-upload
+          capa_document_url: actionType === 'reject' ? null : undefined
         };
         
         const { error } = await supabase
@@ -97,10 +100,12 @@ const CAPAApprovalsTab = () => {
         if (error) throw error;
       } else if (selectedCapa.capa_category === 'LINE_REJECTION') {
         updateData = {
-          approval_status: newStatus,
+          approval_status: newStatus === 'APPROVED' ? 'APPROVED' : 'PENDING',
           approved_at: actionType === 'approve' ? new Date().toISOString() : null,
           approved_by: actionType === 'approve' ? (await supabase.auth.getUser()).data.user?.id : null,
-          rejection_reason: actionType === 'reject' ? remarks : null
+          rejection_reason: actionType === 'reject' ? remarks : null,
+          // Clear document URL if rejected to allow re-upload
+          rca_file_url: actionType === 'reject' ? null : undefined
         };
         
         const { error } = await supabase
@@ -111,10 +116,12 @@ const CAPAApprovalsTab = () => {
         if (error) throw error;
       } else if (selectedCapa.capa_category === 'PART_ANALYSIS') {
         updateData = {
-          status: actionType === 'approve' ? 'CLOSED' : 'REJECTED',
+          status: actionType === 'approve' ? 'CLOSED' : 'PENDING',
           closed_at: actionType === 'approve' ? new Date().toISOString() : null,
           closed_by: actionType === 'approve' ? (await supabase.auth.getUser()).data.user?.id : null,
-          remarks: remarks
+          remarks: remarks,
+          // Clear document URL if rejected to allow re-upload
+          capa_document_url: actionType === 'reject' ? null : undefined
         };
         
         const { error } = await supabase
@@ -127,7 +134,7 @@ const CAPAApprovalsTab = () => {
 
       toast({
         title: "Success",
-        description: `CAPA ${actionType === 'approve' ? 'approved' : 'rejected'} successfully`
+        description: `CAPA ${actionType === 'approve' ? 'approved' : 'rejected'} successfully${actionType === 'reject' ? '. Document can be re-uploaded.' : ''}`
       });
 
       setSelectedCapa(null);
@@ -156,7 +163,7 @@ const CAPAApprovalsTab = () => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'RECEIVED': return 'bg-yellow-100 text-yellow-800';
+      case 'RECEIVED': return 'bg-blue-100 text-blue-800';
       case 'PENDING': return 'bg-orange-100 text-orange-800';
       default: return 'bg-gray-100 text-gray-800';
     }
@@ -205,7 +212,7 @@ const CAPAApprovalsTab = () => {
                   <TableCell>{capa.vendor_name || '-'}</TableCell>
                   <TableCell>
                     <Badge className={getStatusColor(capa.status)}>
-                      {capa.status}
+                      Under Review
                     </Badge>
                   </TableCell>
                   <TableCell>
@@ -216,7 +223,10 @@ const CAPAApprovalsTab = () => {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => window.open(capa.capa_document_url!, '_blank')}
+                        onClick={() => window.open(
+                          `https://oacdhvmpkuadlyvvvbpq.supabase.co/storage/v1/object/public/capa-documents/${capa.capa_document_url}`, 
+                          '_blank'
+                        )}
                       >
                         <ExternalLink className="h-4 w-4" />
                       </Button>
@@ -287,6 +297,11 @@ const CAPAApprovalsTab = () => {
                           </DialogHeader>
                           <div className="space-y-4">
                             <p>Are you sure you want to reject this CAPA for <strong>{capa.part_or_process}</strong>?</p>
+                            <div className="bg-yellow-50 p-3 rounded-lg">
+                              <p className="text-sm text-yellow-800">
+                                <strong>Note:</strong> Rejecting this CAPA will allow the document to be re-uploaded for review.
+                              </p>
+                            </div>
                             <div className="space-y-2">
                               <Label htmlFor="rejection-reason">Rejection Reason *</Label>
                               <Textarea

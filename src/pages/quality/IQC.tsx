@@ -1,9 +1,10 @@
+
 import { useState } from "react";
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Clock, FileCheck, Upload, Search, AlertTriangle, Phone, FileText } from "lucide-react";
+import { Clock, FileCheck, Search, AlertTriangle, Phone, FileText } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -13,21 +14,11 @@ import { format } from "date-fns";
 import LineRejectionManager from "@/components/quality/LineRejectionManager";
 import IQCInspectionDialog from "@/components/quality/IQCInspectionDialog";
 import PartAnalysis from "@/components/quality/PartAnalysis";
-import CAPAUploadDialog from "@/components/quality/CAPAUploadDialog";
 
 const IQC = () => {
   const [selectedTab, setSelectedTab] = useState("pending");
   const [selectedGRN, setSelectedGRN] = useState<any>(null);
   const [showInspectionDialog, setShowInspectionDialog] = useState(false);
-  const [capaUploadDialog, setCAPAUploadDialog] = useState<{
-    isOpen: boolean;
-    capaId: string;
-    itemDetails: any;
-  }>({
-    isOpen: false,
-    capaId: "",
-    itemDetails: {}
-  });
 
   // Fetch pending GRNs for IQC - only those with pending or null IQC status
   const { data: pendingGRNs = [] } = useQuery({
@@ -163,21 +154,6 @@ const IQC = () => {
       );
     }
     return null;
-  };
-
-  const handleCAPAUpload = (item: any) => {
-    const capaData = item.iqc_vendor_capa?.[0];
-    if (capaData) {
-      setCAPAUploadDialog({
-        isOpen: true,
-        capaId: capaData.id,
-        itemDetails: {
-          materialName: item.raw_materials?.name,
-          vendorName: item.grn?.vendors?.name,
-          grnNumber: item.grn?.grn_number
-        }
-      });
-    }
   };
 
   return (
@@ -320,17 +296,6 @@ const IQC = () => {
                                   <FileCheck className="h-3 w-3 mr-1" />
                                   Report
                                 </Button>
-                                {needsCAPA && capaData && capaData.capa_status === 'AWAITED' && (
-                                  <Button 
-                                    variant="outline" 
-                                    size="sm"
-                                    onClick={() => handleCAPAUpload(item)}
-                                    className="gap-1"
-                                  >
-                                    <Upload className="h-3 w-3" />
-                                    Upload CAPA
-                                  </Button>
-                                )}
                                 {capaData && capaData.capa_document_url && (
                                   <Button 
                                     variant="outline" 
@@ -343,6 +308,17 @@ const IQC = () => {
                                   >
                                     <FileText className="h-3 w-3" />
                                     View CAPA
+                                  </Button>
+                                )}
+                                {needsCAPA && capaData && capaData.capa_status === 'AWAITED' && (
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm"
+                                    onClick={() => window.location.href = '/quality/capa'}
+                                    className="gap-1"
+                                  >
+                                    <FileText className="h-3 w-3" />
+                                    Manage CAPA
                                   </Button>
                                 )}
                               </div>
@@ -390,15 +366,6 @@ const IQC = () => {
             }}
           />
         )}
-
-        {/* CAPA Upload Dialog */}
-        <CAPAUploadDialog
-          isOpen={capaUploadDialog.isOpen}
-          onClose={() => setCAPAUploadDialog({ isOpen: false, capaId: "", itemDetails: {} })}
-          capaId={capaUploadDialog.capaId}
-          capaType="vendor"
-          itemDetails={capaUploadDialog.itemDetails}
-        />
       </div>
     </DashboardLayout>
   );
