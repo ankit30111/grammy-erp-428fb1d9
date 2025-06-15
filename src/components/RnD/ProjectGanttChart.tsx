@@ -147,9 +147,9 @@ const ProjectGanttChart = () => {
             status: project.status,
             startDate: startDate.toISOString().split('T')[0],
             endDate: adjustedEndDate.toISOString().split('T')[0],
-            progress,
+            progress: progress || 0, // Ensure never undefined/null
             customer: project.customers?.name || 'N/A',
-            daysRemaining,
+            daysRemaining: daysRemaining || 0, // Ensure never undefined/null
             color
           };
 
@@ -202,9 +202,9 @@ const ProjectGanttChart = () => {
             status: project.status.replace('_', ' '),
             startDate: startDate.toISOString().split('T')[0],
             endDate: adjustedEndDate.toISOString().split('T')[0],
-            progress,
+            progress: progress || 0, // Ensure never undefined/null
             customer: project.customers?.name || 'N/A',
-            daysRemaining,
+            daysRemaining: daysRemaining || 0, // Ensure never undefined/null
             color
           };
 
@@ -263,8 +263,8 @@ const ProjectGanttChart = () => {
           <p className="text-sm text-muted-foreground">{data.type} Project</p>
           <p className="text-sm">Status: {data.status}</p>
           <p className="text-sm">Customer: {data.customer}</p>
-          <p className="text-sm">Progress: {data.progress.toFixed(1)}%</p>
-          <p className="text-sm">Days Remaining: {data.daysRemaining}</p>
+          <p className="text-sm">Progress: {Number.isFinite(data.progress) ? data.progress.toFixed(1) : 0}%</p>
+          <p className="text-sm">Days Remaining: {Number.isFinite(data.daysRemaining) ? data.daysRemaining : 0}</p>
           <p className="text-sm">End Date: {data.endDate}</p>
         </div>
       );
@@ -303,15 +303,21 @@ const ProjectGanttChart = () => {
     );
   }
 
-  // Additional safety check before rendering chart
-  const safeGanttData = ganttData?.filter(item => 
+  // Final safety check - sanitize all data before passing to Recharts
+  const chartReadyData = (ganttData || []).map(item => ({
+    ...item,
+    progress: Number.isFinite(item.progress) && !Number.isNaN(item.progress) ? item.progress : 0,
+    daysRemaining: Number.isFinite(item.daysRemaining) && !Number.isNaN(item.daysRemaining) ? item.daysRemaining : 0
+  })).filter(item => 
     Number.isFinite(item.progress) && 
     !Number.isNaN(item.progress) &&
     item.progress >= 0 && 
-    item.progress <= 100
-  ) || [];
+    item.progress <= 100 &&
+    item.projectName && 
+    item.projectName.trim() !== ''
+  );
 
-  console.log('Safe gantt data for chart:', safeGanttData);
+  console.log('Chart ready data:', chartReadyData);
 
   return (
     <Card>
@@ -322,7 +328,7 @@ const ProjectGanttChart = () => {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        {!safeGanttData || safeGanttData.length === 0 ? (
+        {!chartReadyData || chartReadyData.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
             <Clock className="h-12 w-12 mx-auto mb-4" />
             <p>No active projects to display</p>
@@ -332,19 +338,19 @@ const ProjectGanttChart = () => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
               <div className="text-center p-4 bg-blue-50 rounded-lg">
                 <div className="text-2xl font-bold text-blue-600">
-                  {safeGanttData?.filter(p => p.type === 'NPD').length || 0}
+                  {chartReadyData?.filter(p => p.type === 'NPD').length || 0}
                 </div>
                 <div className="text-sm text-blue-700">NPD Projects</div>
               </div>
               <div className="text-center p-4 bg-green-50 rounded-lg">
                 <div className="text-2xl font-bold text-green-600">
-                  {safeGanttData?.filter(p => p.type === 'Pre-Existing').length || 0}
+                  {chartReadyData?.filter(p => p.type === 'Pre-Existing').length || 0}
                 </div>
                 <div className="text-sm text-green-700">Customization Projects</div>
               </div>
               <div className="text-center p-4 bg-orange-50 rounded-lg">
                 <div className="text-2xl font-bold text-orange-600">
-                  {safeGanttData?.filter(p => p.daysRemaining < 30).length || 0}
+                  {chartReadyData?.filter(p => (p.daysRemaining || 0) < 30).length || 0}
                 </div>
                 <div className="text-sm text-orange-700">Due in 30 Days</div>
               </div>
@@ -352,15 +358,15 @@ const ProjectGanttChart = () => {
             
             <ResponsiveContainer width="100%" height={400}>
               <BarChart
-                data={safeGanttData}
+                data={chartReadyData}
                 layout="horizontal"
                 margin={{ top: 20, right: 30, left: 100, bottom: 5 }}
               >
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis 
                   type="number" 
-                  domain={[0, 'dataMax']}
-                  tickFormatter={(value) => `${Number(value).toFixed(1)}%`}
+                  domain={[0, 100]}
+                  tickFormatter={(value) => `${Number(value).toFixed(0)}%`}
                 />
                 <YAxis 
                   type="category" 
@@ -370,7 +376,7 @@ const ProjectGanttChart = () => {
                 />
                 <Tooltip content={<CustomTooltip />} />
                 <Bar dataKey="progress" radius={4}>
-                  {safeGanttData?.map((entry, index) => (
+                  {chartReadyData?.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Bar>
