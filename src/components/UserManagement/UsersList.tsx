@@ -14,21 +14,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Loader2, Mail, Calendar, CheckCircle, XCircle } from "lucide-react";
-
-interface AuthUser {
-  id: string;
-  email: string;
-  created_at: string;
-  last_sign_in_at: string | null;
-  email_confirmed_at: string | null;
-  phone: string | null;
-  user_metadata: {
-    full_name?: string;
-  };
-}
+import type { User } from "@supabase/supabase-js";
 
 export function UsersList() {
-  const [users, setUsers] = useState<AuthUser[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -57,7 +46,11 @@ export function UsersList() {
       }
 
       console.log("Fetched auth users:", data.users);
-      setUsers(data.users || []);
+      // Filter users to only include those with valid email addresses
+      const validUsers = data.users.filter((user): user is User => 
+        user.email !== undefined && user.email !== null
+      );
+      setUsers(validUsers);
     } catch (error) {
       console.error("Error fetching auth users:", error);
       toast.error("An unexpected error occurred while fetching users");
@@ -66,7 +59,7 @@ export function UsersList() {
     }
   };
 
-  const getStatusBadge = (user: AuthUser) => {
+  const getStatusBadge = (user: User) => {
     if (!user.email_confirmed_at) {
       return <Badge variant="secondary">Unconfirmed</Badge>;
     }
@@ -76,7 +69,7 @@ export function UsersList() {
     return <Badge variant="outline">Registered</Badge>;
   };
 
-  const formatDate = (dateString: string | null) => {
+  const formatDate = (dateString: string | null | undefined) => {
     if (!dateString) return "-";
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
