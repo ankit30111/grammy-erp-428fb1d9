@@ -1,4 +1,3 @@
-
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -6,7 +5,7 @@ import { Lightbulb, Package, ArrowRight, Users, Clock, CheckCircle } from "lucid
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import ProjectGanttChart from "@/components/RnD/ProjectGanttChart";
+import ProjectStatusGrid from "@/components/RnD/ProjectStatusGrid";
 
 const RnD = () => {
   const navigate = useNavigate();
@@ -61,8 +60,8 @@ const RnD = () => {
           </div>
         </div>
 
-        {/* Gantt Chart */}
-        <ProjectGanttChart />
+        {/* Project Status Dashboard */}
+        <ProjectStatusGrid />
 
         <div className="grid gap-6 md:grid-cols-2">
           {/* NPD Widget */}
