@@ -254,6 +254,26 @@ const ProjectGanttChart = () => {
     }
   });
 
+  // Helper function to sanitize data specifically for Recharts
+  const sanitizeDataForChart = (data: GanttData[]): GanttData[] => {
+    return data.map(item => {
+      // Ensure all numeric values are safe for Recharts
+      const sanitizedProgress = Number.isFinite(item.progress) && !Number.isNaN(item.progress) 
+        ? Math.max(0, Math.min(100, item.progress)) 
+        : 0;
+      
+      const sanitizedDaysRemaining = Number.isFinite(item.daysRemaining) && !Number.isNaN(item.daysRemaining) 
+        ? Math.max(0, item.daysRemaining) 
+        : 0;
+
+      return {
+        ...item,
+        progress: sanitizedProgress,
+        daysRemaining: sanitizedDaysRemaining
+      };
+    });
+  };
+
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
@@ -303,21 +323,10 @@ const ProjectGanttChart = () => {
     );
   }
 
-  // Final safety check - sanitize all data before passing to Recharts
-  const chartReadyData = (ganttData || []).map(item => ({
-    ...item,
-    progress: Number.isFinite(item.progress) && !Number.isNaN(item.progress) ? item.progress : 0,
-    daysRemaining: Number.isFinite(item.daysRemaining) && !Number.isNaN(item.daysRemaining) ? item.daysRemaining : 0
-  })).filter(item => 
-    Number.isFinite(item.progress) && 
-    !Number.isNaN(item.progress) &&
-    item.progress >= 0 && 
-    item.progress <= 100 &&
-    item.projectName && 
-    item.projectName.trim() !== ''
-  );
+  // Apply final sanitization for chart rendering
+  const chartReadyData = sanitizeDataForChart(ganttData || []);
 
-  console.log('Chart ready data:', chartReadyData);
+  console.log('Chart ready data after sanitization:', chartReadyData);
 
   return (
     <Card>
