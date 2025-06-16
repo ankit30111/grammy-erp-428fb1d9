@@ -19,13 +19,22 @@ export function SignInForm() {
     setLoading(true);
 
     try {
+      // Clear any existing session first to prevent conflicts
+      await supabase.auth.signOut();
+      
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) {
-        toast.error(error.message);
+        // Handle specific auth errors gracefully
+        if (error.message.includes('refresh_token_not_found') || 
+            error.message.includes('Invalid Refresh Token')) {
+          toast.error("Session expired. Please sign in again.");
+        } else {
+          toast.error(error.message);
+        }
         return;
       }
 
@@ -33,7 +42,7 @@ export function SignInForm() {
       navigate("/dashboard");
     } catch (error) {
       console.error("Sign in error:", error);
-      toast.error("An unexpected error occurred");
+      toast.error("An unexpected error occurred. Please try again.");
     } finally {
       setLoading(false);
     }

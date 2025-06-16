@@ -14,28 +14,56 @@ export function AuthPage() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Check if user is already authenticated
+    let mounted = true;
+
     const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        navigate("/dashboard");
-      } else {
-        setLoading(false);
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('Auth check error:', error);
+          // Clear any invalid session data
+          if (error.message.includes('refresh_token_not_found') || 
+              error.message.includes('Invalid Refresh Token')) {
+            await supabase.auth.signOut();
+          }
+        } else if (session && mounted) {
+          navigate("/dashboard");
+          return;
+        }
+      } catch (error) {
+        console.error('Unexpected auth error:', error);
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
       }
     };
 
     checkAuth();
 
-    // Listen for auth changes
+    // Listen for auth changes with error handling
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        if (session) {
+      async (event, session) => {
+        if (!mounted) return;
+
+        console.log(`Auth page - Auth state change: ${event}`);
+        
+        if (event === 'SIGNED_IN' && session) {
           navigate("/dashboard");
+        } else if (event === 'TOKEN_REFRESHED' && !session) {
+          console.log('Token refresh failed on auth page');
+          setLoading(false);
+        } else if (event === 'SIGNED_OUT') {
+          setLoading(false);
         }
       }
     );
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, [navigate]);
 
   if (loading) {

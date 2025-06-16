@@ -16,23 +16,74 @@ export function AuthGuard({ children }: AuthGuardProps) {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Set up auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
+    let mounted = true;
+
+    const handleAuthStateChange = async (event: string, session: Session | null) => {
+      if (!mounted) return;
+
+      console.log(`Auth state change: ${event}`, session?.user?.id || 'no user');
+      
+      // Handle token refresh errors gracefully
+      if (event === 'TOKEN_REFRESHED' && !session) {
+        console.log('Token refresh failed, clearing session');
+        setSession(null);
+        setUser(null);
         setLoading(false);
+        return;
       }
-    );
 
-    // Check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+      // Handle signed out or invalid session
+      if (event === 'SIGNED_OUT' || !session) {
+        setSession(null);
+        setUser(null);
+        setLoading(false);
+        return;
+      }
+
+      // Valid session
       setSession(session);
-      setUser(session?.user ?? null);
+      setUser(session.user);
       setLoading(false);
-    });
+    };
 
-    return () => subscription.unsubscribe();
+    // Set up auth state listener with error handling
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthStateChange);
+
+    // Check for existing session with error handling
+    const checkSession = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('Session check error:', error);
+          // Clear any invalid session data
+          if (error.message.includes('refresh_token_not_found') || 
+              error.message.includes('Invalid Refresh Token')) {
+            await supabase.auth.signOut();
+          }
+          setSession(null);
+          setUser(null);
+        } else {
+          setSession(session);
+          setUser(session?.user ?? null);
+        }
+      } catch (error) {
+        console.error('Unexpected session error:', error);
+        setSession(null);
+        setUser(null);
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    checkSession();
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
