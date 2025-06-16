@@ -1,14 +1,15 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarChart } from "@/components/ui/bar-chart";
-import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Factory, TrendingUp, AlertTriangle } from "lucide-react";
 import { format, startOfMonth, endOfMonth } from "date-fns";
+import { useRealTimeQuery } from "@/hooks/useRealTimeQuery";
+import { useMultiTableRealTime } from "@/hooks/useMultiTableRealTime";
 
 export const ProductionOverviewWidget = () => {
-  // Monthly production by category
-  const { data: monthlyProduction } = useQuery({
+  // Monthly production by category with real-time updates
+  const { data: monthlyProduction } = useRealTimeQuery({
     queryKey: ['monthly-production'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -37,10 +38,11 @@ export const ProductionOverviewWidget = () => {
         quantity
       }));
     },
+    tableName: 'production_orders',
   });
 
-  // Production efficiency by line
-  const { data: lineEfficiency } = useQuery({
+  // Production efficiency by line with real-time updates
+  const { data: lineEfficiency } = useRealTimeQuery({
     queryKey: ['line-efficiency'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -73,6 +75,13 @@ export const ProductionOverviewWidget = () => {
         efficiency: Math.round(stats.total / stats.count)
       }));
     },
+    tableName: 'hourly_production',
+  });
+
+  // Set up multi-table subscriptions for this widget
+  useMultiTableRealTime({
+    queryKey: ['monthly-production', 'line-efficiency'],
+    tables: ['production_orders', 'hourly_production']
   });
 
   return (

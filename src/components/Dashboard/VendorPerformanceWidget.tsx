@@ -1,12 +1,13 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Truck, Star, Clock, AlertCircle } from "lucide-react";
+import { useRealTimeQuery } from "@/hooks/useRealTimeQuery";
+import { useMultiTableRealTime } from "@/hooks/useMultiTableRealTime";
 
 export const VendorPerformanceWidget = () => {
-  // Vendor delivery performance
-  const { data: vendorPerformance } = useQuery({
+  // Vendor delivery performance with real-time updates
+  const { data: vendorPerformance } = useRealTimeQuery({
     queryKey: ['vendor-performance'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -46,10 +47,11 @@ export const VendorPerformanceWidget = () => {
         totalOrders: stats.total
       })).slice(0, 5); // Top 5 vendors
     },
+    tableName: 'purchase_orders',
   });
 
-  // Vendor quality scores
-  const { data: vendorQuality } = useQuery({
+  // Vendor quality scores with real-time updates
+  const { data: vendorQuality } = useRealTimeQuery({
     queryKey: ['vendor-quality'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -87,20 +89,28 @@ export const VendorPerformanceWidget = () => {
         totalLots: stats.total
       })).slice(0, 5);
     },
+    tableName: 'grn_items',
   });
 
-  // Open CAPAs
-  const { data: openCAPAs } = useQuery({
+  // Open CAPAs with real-time updates
+  const { data: openCAPAs } = useRealTimeQuery({
     queryKey: ['open-capas'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('vendor_capa')
+        .from('iqc_vendor_capa')
         .select('id')
-        .eq('status', 'Open');
+        .eq('capa_status', 'AWAITED');
       
       if (error) throw error;
       return data?.length || 0;
     },
+    tableName: 'iqc_vendor_capa',
+  });
+
+  // Set up multi-table subscriptions for this widget
+  useMultiTableRealTime({
+    queryKey: ['vendor-performance', 'vendor-quality', 'open-capas'],
+    tables: ['purchase_orders', 'grn_items', 'iqc_vendor_capa', 'grn']
   });
 
   return (

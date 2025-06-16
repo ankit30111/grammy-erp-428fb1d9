@@ -1,12 +1,14 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Package2, AlertTriangle, ShoppingCart, Truck } from "lucide-react";
+import { useRealTimeQuery } from "@/hooks/useRealTimeQuery";
+import { useMultiTableRealTime } from "@/hooks/useMultiTableRealTime";
+import { useQuery } from "@tanstack/react-query";
 
 export const InventoryWidget = () => {
-  // Live inventory value
-  const { data: inventoryValue } = useQuery({
+  // Live inventory value with real-time updates
+  const { data: inventoryValue } = useRealTimeQuery({
     queryKey: ['inventory-value'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -18,10 +20,11 @@ export const InventoryWidget = () => {
       const totalUnits = data?.reduce((sum, item) => sum + item.quantity, 0) || 0;
       return totalUnits;
     },
+    tableName: 'inventory',
   });
 
-  // Material shortages
-  const { data: shortages } = useQuery({
+  // Material shortages with real-time updates
+  const { data: shortages } = useRealTimeQuery({
     queryKey: ['material-shortages-count'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -32,10 +35,11 @@ export const InventoryWidget = () => {
       if (error) throw error;
       return data?.length || 0;
     },
+    tableName: 'material_shortages_calculated',
   });
 
-  // Open POs
-  const { data: openPOs } = useQuery({
+  // Open POs with real-time updates
+  const { data: openPOs } = useRealTimeQuery({
     queryKey: ['open-pos'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -46,10 +50,11 @@ export const InventoryWidget = () => {
       if (error) throw error;
       return data?.length || 0;
     },
+    tableName: 'purchase_orders',
   });
 
-  // Pending GRNs
-  const { data: pendingGRNs } = useQuery({
+  // Pending GRNs with real-time updates
+  const { data: pendingGRNs } = useRealTimeQuery({
     queryKey: ['pending-grns-count'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -60,6 +65,7 @@ export const InventoryWidget = () => {
       if (error) throw error;
       return data?.length || 0;
     },
+    tableName: 'grn',
   });
 
   return (

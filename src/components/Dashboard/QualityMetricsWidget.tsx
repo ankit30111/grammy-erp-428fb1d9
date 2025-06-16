@@ -1,12 +1,13 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Shield, FileText, XCircle, CheckCircle } from "lucide-react";
+import { useRealTimeQuery } from "@/hooks/useRealTimeQuery";
+import { useMultiTableRealTime } from "@/hooks/useMultiTableRealTime";
 
 export const QualityMetricsWidget = () => {
-  // IQC Status Distribution
-  const { data: iqcStatus } = useQuery({
+  // IQC Status Distribution with real-time updates
+  const { data: iqcStatus } = useRealTimeQuery({
     queryKey: ['iqc-status'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -29,10 +30,11 @@ export const QualityMetricsWidget = () => {
         pending: Math.round(((statusCount?.PENDING || 0) / total) * 100)
       };
     },
+    tableName: 'grn_items',
   });
 
-  // PQC Report Upload Rate
-  const { data: pqcRate } = useQuery({
+  // PQC Report Upload Rate with real-time updates
+  const { data: pqcRate } = useRealTimeQuery({
     queryKey: ['pqc-upload-rate'],
     queryFn: async () => {
       const sevenDaysAgo = new Date();
@@ -56,10 +58,11 @@ export const QualityMetricsWidget = () => {
       
       return ordersCount > 0 ? Math.round((reportsCount / ordersCount) * 100) : 0;
     },
+    tableName: 'pqc_reports',
   });
 
-  // Line Rejection Rate
-  const { data: rejectionRate } = useQuery({
+  // Line Rejection Rate with real-time updates
+  const { data: rejectionRate } = useRealTimeQuery({
     queryKey: ['line-rejection-rate'],
     queryFn: async () => {
       const { data: rejections, error: rejError } = await supabase
@@ -77,10 +80,11 @@ export const QualityMetricsWidget = () => {
       
       return totalProduced > 0 ? ((totalRejected / totalProduced) * 100).toFixed(2) : "0.00";
     },
+    tableName: 'line_rejections',
   });
 
-  // Customer Complaints
-  const { data: complaints } = useQuery({
+  // Customer Complaints with real-time updates
+  const { data: complaints } = useRealTimeQuery({
     queryKey: ['customer-complaints'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -97,6 +101,13 @@ export const QualityMetricsWidget = () => {
         resolutionRate: total > 0 ? Math.round((resolved / total) * 100) : 0
       };
     },
+    tableName: 'customer_complaints',
+  });
+
+  // Set up multi-table subscriptions for this widget
+  useMultiTableRealTime({
+    queryKey: ['iqc-status', 'pqc-upload-rate', 'line-rejection-rate', 'customer-complaints'],
+    tables: ['grn_items', 'pqc_reports', 'line_rejections', 'customer_complaints', 'production_orders', 'hourly_production']
   });
 
   return (

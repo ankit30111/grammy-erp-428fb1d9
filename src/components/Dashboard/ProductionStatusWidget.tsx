@@ -1,13 +1,14 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Activity, Pause, Play, Clock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { useRealTimeQuery } from "@/hooks/useRealTimeQuery";
+import { useMultiTableRealTime } from "@/hooks/useMultiTableRealTime";
 
 export const ProductionStatusWidget = () => {
-  // Current production line status
-  const { data: lineStatus } = useQuery({
+  // Current production line status with real-time updates
+  const { data: lineStatus } = useRealTimeQuery({
     queryKey: ['production-line-status'],
     queryFn: async () => {
       const today = new Date().toISOString().split('T')[0];
@@ -44,10 +45,11 @@ export const ProductionStatusWidget = () => {
       
       return lineStatuses;
     },
+    tableName: 'production_orders',
   });
 
-  // Pending IQC lots
-  const { data: pendingIQC } = useQuery({
+  // Pending IQC lots with real-time updates
+  const { data: pendingIQC } = useRealTimeQuery({
     queryKey: ['pending-iqc-lots'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -62,6 +64,7 @@ export const ProductionStatusWidget = () => {
       if (error) throw error;
       return data?.length || 0;
     },
+    tableName: 'grn_items',
   });
 
   const getStatusIcon = (status: string) => {

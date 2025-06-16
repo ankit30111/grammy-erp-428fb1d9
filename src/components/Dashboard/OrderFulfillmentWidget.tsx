@@ -1,13 +1,14 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Package, Clock, CheckCircle, AlertCircle } from "lucide-react";
 import { format, startOfMonth, endOfMonth, isPast } from "date-fns";
+import { useRealTimeQuery } from "@/hooks/useRealTimeQuery";
+import { useMultiTableRealTime } from "@/hooks/useMultiTableRealTime";
 
 export const OrderFulfillmentWidget = () => {
-  // Monthly orders
-  const { data: monthlyOrders } = useQuery({
+  // Monthly orders with real-time updates
+  const { data: monthlyOrders } = useRealTimeQuery({
     queryKey: ['monthly-orders'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -19,10 +20,11 @@ export const OrderFulfillmentWidget = () => {
       if (error) throw error;
       return data?.length || 0;
     },
+    tableName: 'production_orders',
   });
 
-  // Order completion rate
-  const { data: completionRate } = useQuery({
+  // Order completion rate with real-time updates
+  const { data: completionRate } = useRealTimeQuery({
     queryKey: ['order-completion-rate'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -38,10 +40,11 @@ export const OrderFulfillmentWidget = () => {
       
       return total > 0 ? Math.round((completed / total) * 100) : 0;
     },
+    tableName: 'production_orders',
   });
 
-  // Delayed orders
-  const { data: delayedOrders } = useQuery({
+  // Delayed orders with real-time updates
+  const { data: delayedOrders } = useRealTimeQuery({
     queryKey: ['delayed-orders'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -57,6 +60,7 @@ export const OrderFulfillmentWidget = () => {
       
       return delayed;
     },
+    tableName: 'production_orders',
   });
 
   return (
