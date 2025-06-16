@@ -19,7 +19,7 @@ export const useCheckMaterialInventory = () => {
         throw materialError;
       }
 
-      // Get all GRN items for this material
+      // Get all GRN items for this material (store confirmed only)
       const { data: grnItems, error: grnError } = await supabase
         .from("grn_items")
         .select(`
@@ -42,36 +42,56 @@ export const useCheckMaterialInventory = () => {
 
       if (invError) throw invError;
 
-      // Get material movements for this material
-      const { data: movements, error: movError } = await supabase
+      // Get production dispatches (materials issued to production)
+      const { data: productionDispatches, error: dispatchError } = await supabase
         .from("material_movements")
-        .select("*")
+        .select("quantity")
         .eq("raw_material_id", material.id)
+        .eq("movement_type", "ISSUED_TO_PRODUCTION")
         .order("created_at", { ascending: false });
 
-      if (movError) throw movError;
+      if (dispatchError) throw dispatchError;
 
+      // Get approved material requests
+      const { data: materialRequests, error: requestError } = await supabase
+        .from("material_requests")
+        .select("approved_quantity")
+        .eq("raw_material_id", material.id)
+        .eq("status", "APPROVED");
+
+      if (requestError) throw requestError;
+
+      // Calculate totals
       const totalFromGRN = grnItems?.reduce((sum, item) => sum + item.accepted_quantity, 0) || 0;
+      const totalProductionDispatches = productionDispatches?.reduce((sum, dispatch) => sum + dispatch.quantity, 0) || 0;
+      const totalMaterialRequests = materialRequests?.reduce((sum, request) => sum + (request.approved_quantity || 0), 0) || 0;
+      const totalStoreOutput = totalProductionDispatches + totalMaterialRequests;
       const currentInventory = inventory?.quantity || 0;
-      const totalIssued = movements?.filter(m => m.movement_type === 'ISSUED_TO_PRODUCTION')
-        .reduce((sum, m) => sum + m.quantity, 0) || 0;
+      const expectedInventory = totalFromGRN - totalStoreOutput;
+      const discrepancy = currentInventory - expectedInventory;
 
-      console.log(`📊 Enhanced analysis for ${materialCode}:`);
+      console.log(`📊 Enhanced inventory analysis for ${materialCode}:`);
       console.log(`   - Total from GRN receipts: ${totalFromGRN}`);
-      console.log(`   - Total issued to production: ${totalIssued}`);
+      console.log(`   - Production dispatches: ${totalProductionDispatches}`);
+      console.log(`   - Material requests (approved): ${totalMaterialRequests}`);
+      console.log(`   - Total store output: ${totalStoreOutput}`);
       console.log(`   - Current inventory: ${currentInventory}`);
-      console.log(`   - Expected inventory: ${totalFromGRN - totalIssued}`);
-      console.log(`   - Discrepancy: ${currentInventory - (totalFromGRN - totalIssued)}`);
+      console.log(`   - Expected inventory: ${expectedInventory}`);
+      console.log(`   - Discrepancy: ${discrepancy}`);
 
       return {
         materialCode,
+        materialName: material.name,
         totalFromGRN,
-        totalIssued,
+        totalProductionDispatches,
+        totalMaterialRequests,
+        totalStoreOutput,
         currentInventory,
-        expectedInventory: totalFromGRN - totalIssued,
-        discrepancy: currentInventory - (totalFromGRN - totalIssued),
+        expectedInventory,
+        discrepancy,
         grnEntries: grnItems,
-        movements: movements
+        productionDispatches: productionDispatches,
+        materialRequests: materialRequests
       };
     },
   });
