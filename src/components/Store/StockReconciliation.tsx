@@ -10,12 +10,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { AlertTriangle, CheckCircle, Scale } from "lucide-react";
+import { AlertTriangle, CheckCircle, Scale, Search, Filter } from "lucide-react";
 
 const StockReconciliation = () => {
   const [physicalCounts, setPhysicalCounts] = useState<Record<string, number>>({});
   const [reasons, setReasons] = useState<Record<string, string>>({});
   const [selectedReasonCodes, setSelectedReasonCodes] = useState<Record<string, string>>({});
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("ALL");
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -28,6 +30,24 @@ const StockReconciliation = () => {
     "SUPPLIER_SHORTAGE",
     "PRODUCTION_WASTE",
     "OTHER"
+  ];
+
+  const categories = [
+    "Connector",
+    "Consumables", 
+    "Gasket",
+    "Loudspeaker",
+    "Metal",
+    "Others",
+    "Packaging",
+    "PCB",
+    "Plastic",
+    "Remote",
+    "Screw",
+    "Sticker",
+    "Transformer",
+    "Wire",
+    "Wooden"
   ];
 
   // Fetch current inventory
@@ -50,6 +70,23 @@ const StockReconciliation = () => {
       if (error) throw error;
       return data || [];
     },
+  });
+
+  // Filter inventory based on search term and category
+  const filteredInventory = inventory.filter(item => {
+    const materialCode = item.raw_materials?.material_code || "";
+    const materialName = item.raw_materials?.name || "";
+    const materialCategory = item.raw_materials?.category || "";
+    
+    // Search filter
+    const matchesSearch = searchTerm === "" || 
+      materialCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      materialName.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    // Category filter
+    const matchesCategory = selectedCategory === "ALL" || materialCategory === selectedCategory;
+    
+    return matchesSearch && matchesCategory;
   });
 
   // Submit reconciliation mutation
@@ -79,10 +116,6 @@ const StockReconciliation = () => {
         .select();
 
       if (error) throw error;
-
-      // Also create approval requests for the reconciliation adjustments
-      // This would typically go to a separate reconciliation_approvals table
-      // For now, we'll use the existing approvals system
 
       return reconciliationRecords;
     },
@@ -130,14 +163,14 @@ const StockReconciliation = () => {
   };
 
   const hasVariances = () => {
-    return inventory.some(item => {
+    return filteredInventory.some(item => {
       const variance = getVariance(item.raw_material_id, item.quantity);
       return variance !== 0 && physicalCounts[item.raw_material_id] !== undefined;
     });
   };
 
   const getVariancesForSubmission = () => {
-    return inventory
+    return filteredInventory
       .filter(item => {
         const variance = getVariance(item.raw_material_id, item.quantity);
         const hasPhysicalCount = physicalCounts[item.raw_material_id] !== undefined;
@@ -186,6 +219,13 @@ const StockReconciliation = () => {
     submitReconciliation.mutate(variancesToSubmit);
   };
 
+  const clearFilters = () => {
+    setSearchTerm("");
+    setSelectedCategory("ALL");
+  };
+
+  const hasActiveFilters = searchTerm !== "" || selectedCategory !== "ALL";
+
   return (
     <Card>
       <CardHeader>
@@ -204,6 +244,57 @@ const StockReconciliation = () => {
           Enter physical stock counts for each material. Variances from system quantities will require approval.
         </div>
 
+        {/* Search and Filter Controls */}
+        <div className="flex flex-col sm:flex-row gap-4 p-4 bg-gray-50 rounded-lg">
+          <div className="flex-1">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by material code or name..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+          </div>
+          
+          <div className="w-full sm:w-48">
+            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+              <SelectTrigger>
+                <Filter className="h-4 w-4 mr-2" />
+                <SelectValue placeholder="Category" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">All Categories</SelectItem>
+                {categories.map((category) => (
+                  <SelectItem key={category} value={category}>
+                    {category}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {hasActiveFilters && (
+            <Button variant="outline" onClick={clearFilters} size="sm">
+              Clear Filters
+            </Button>
+          )}
+        </div>
+
+        {/* Results Summary */}
+        {hasActiveFilters && (
+          <div className="text-sm text-muted-foreground">
+            Showing {filteredInventory.length} of {inventory.length} materials
+            {searchTerm && (
+              <span> matching "{searchTerm}"</span>
+            )}
+            {selectedCategory !== "ALL" && (
+              <span> in {selectedCategory} category</span>
+            )}
+          </div>
+        )}
+
         <Table>
           <TableHeader>
             <TableRow>
@@ -218,7 +309,7 @@ const StockReconciliation = () => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {inventory.map((item) => {
+            {filteredInventory.map((item) => {
               const variance = getVariance(item.raw_material_id, item.quantity);
               const hasVariance = variance !== 0 && physicalCounts[item.raw_material_id] !== undefined;
 
@@ -292,6 +383,14 @@ const StockReconciliation = () => {
               <CheckCircle className="h-4 w-4" />
               Submit for Approval ({getVariancesForSubmission().length} items)
             </Button>
+          </div>
+        )}
+
+        {filteredInventory.length === 0 && inventory.length > 0 && (
+          <div className="text-center py-8 text-muted-foreground">
+            <AlertTriangle className="mx-auto h-12 w-12 opacity-50 mb-4" />
+            <p>No materials found matching your search criteria</p>
+            <p className="text-sm">Try adjusting your search term or category filter</p>
           </div>
         )}
 
