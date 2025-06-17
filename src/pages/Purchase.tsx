@@ -1,4 +1,3 @@
-
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,6 +18,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { MaterialShortagesPage } from "@/components/Purchase/MaterialShortagesPage";
 import { EditablePurchaseOrders } from "@/components/Purchase/EditablePurchaseOrders";
 import { format } from "date-fns";
+import { ManualPOCreationDialog } from "@/components/Purchase/ManualPOCreationDialog";
 
 const Purchase = () => {
   const [selectedMaterials, setSelectedMaterials] = useState<string[]>([]);
