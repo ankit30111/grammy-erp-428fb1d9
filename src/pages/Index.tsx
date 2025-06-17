@@ -1,4 +1,3 @@
-
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 import { Clock, Wifi, WifiOff } from "lucide-react";
 import { ProductionOverviewWidget } from "@/components/Dashboard/ProductionOverviewWidget";
@@ -9,11 +8,9 @@ import { VendorPerformanceWidget } from "@/components/Dashboard/VendorPerformanc
 import { ProductionStatusWidget } from "@/components/Dashboard/ProductionStatusWidget";
 import { useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
-
 const Index = () => {
   const [lastUpdated, setLastUpdated] = useState(new Date());
   const [isConnected, setIsConnected] = useState(true);
-
   useEffect(() => {
     // Update timestamp every 30 seconds to show real-time status
     const interval = setInterval(() => {
@@ -23,36 +20,28 @@ const Index = () => {
     // Monitor online/offline status
     const handleOnline = () => setIsConnected(true);
     const handleOffline = () => setIsConnected(false);
-
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
-
     return () => {
       clearInterval(interval);
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
   }, []);
-
-  return (
-    <DashboardLayout>
+  return <DashboardLayout>
       <div className="grid gap-6">
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold">Factory Dashboard</h1>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
-              {isConnected ? (
-                <Wifi className="h-4 w-4 text-green-600" />
-              ) : (
-                <WifiOff className="h-4 w-4 text-red-600" />
-              )}
+              {isConnected ? <Wifi className="h-4 w-4 text-green-600" /> : <WifiOff className="h-4 w-4 text-red-600" />}
               <Badge variant={isConnected ? "default" : "destructive"}>
                 {isConnected ? "LIVE" : "OFFLINE"}
               </Badge>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">Last updated:</span>
-              <span className="text-sm font-medium">{lastUpdated.toLocaleString()}</span>
+              
+              
               <Clock className="h-4 w-4 text-muted-foreground" />
             </div>
           </div>
@@ -94,8 +83,6 @@ const Index = () => {
           <VendorPerformanceWidget />
         </div>
       </div>
-    </DashboardLayout>
-  );
+    </DashboardLayout>;
 };
-
 export default Index;
