@@ -228,8 +228,8 @@ const Purchase = () => {
 
           <TabsContent value="create-po" className="space-y-4">
             <div className="space-y-6">
-              {availableMaterialsForPO.length > 0 && (
-                <div className="flex items-center gap-4">
+              <div className="flex items-center gap-4">
+                {availableMaterialsForPO.length > 0 && (
                   <Dialog open={poDialogOpen} onOpenChange={setPODialogOpen}>
                     <DialogTrigger asChild>
                       <Button className="gap-2" disabled={selectedMaterials.length === 0}>
@@ -325,8 +325,11 @@ const Purchase = () => {
                       </div>
                     </DialogContent>
                   </Dialog>
-                </div>
-              )}
+                )}
+                
+                {/* Add the Manual PO Creation Dialog */}
+                <ManualPOCreationDialog />
+              </div>
 
               {Object.entries(materialsByVendor).map(([vendor, vendorMaterials]) => (
                 <Card key={vendor}>
