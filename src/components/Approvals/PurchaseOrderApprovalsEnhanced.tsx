@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -60,7 +59,7 @@ const PurchaseOrderApprovalsEnhanced = () => {
           vendors:vendor_id (name),
           purchase_order_items (id)
         `)
-        .eq('status', 'PENDING_APPROVAL')
+        .eq('status', 'PENDING')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -179,7 +178,7 @@ const PurchaseOrderApprovalsEnhanced = () => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'PENDING_APPROVAL': return 'bg-yellow-100 text-yellow-800';
+      case 'PENDING': return 'bg-yellow-100 text-yellow-800';
       case 'APPROVED': return 'bg-green-100 text-green-800';
       case 'REJECTED': return 'bg-red-100 text-red-800';
       default: return 'bg-gray-100 text-gray-800';
