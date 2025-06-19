@@ -37,7 +37,7 @@ const GRNReceiving = () => {
             name
           )
         `)
-        .in('iqc_status', ['ACCEPTED', 'SEGREGATED'])
+        .in('iqc_status', ['APPROVED', 'SEGREGATED'])
         .neq('accepted_quantity', 0)
         .is('store_confirmed', false)
         .order('created_at', { ascending: false });
@@ -113,7 +113,7 @@ const GRNReceiving = () => {
   };
 
   const getAcceptedQuantity = (item: any) => {
-    // For SEGREGATED items, show the accepted quantity, for ACCEPTED items show received quantity
+    // For SEGREGATED items, show the accepted quantity, for APPROVED items show received quantity
     return item.iqc_status === 'SEGREGATED' ? item.accepted_quantity : item.received_quantity;
   };
 
@@ -172,8 +172,8 @@ const GRNReceiving = () => {
                     </TableCell>
                     <TableCell>
                       <Badge 
-                        variant={item.iqc_status === 'ACCEPTED' ? 'default' : 'secondary'}
-                        className={item.iqc_status === 'ACCEPTED' ? 'bg-green-100 text-green-800' : ''}
+                        variant={item.iqc_status === 'APPROVED' ? 'default' : 'secondary'}
+                        className={item.iqc_status === 'APPROVED' ? 'bg-green-100 text-green-800' : ''}
                       >
                         {item.iqc_status}
                       </Badge>
