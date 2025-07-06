@@ -3404,6 +3404,10 @@ export type Database = {
         }
         Returns: string
       }
+      renumber_vouchers_after_deletion: {
+        Args: { deleted_voucher_number: string }
+        Returns: undefined
+      }
       resolve_production_discrepancy: {
         Args: {
           p_discrepancy_id: string

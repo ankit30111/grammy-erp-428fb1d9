@@ -84,6 +84,7 @@ export const useValidateProjectionDeletion = () => {
           production_orders!production_schedule_id (
             id,
             status,
+            voucher_number,
             kit_preparation!production_order_id (
               id,
               status
@@ -104,18 +105,20 @@ export const useValidateProjectionDeletion = () => {
         const orders = schedule.production_orders || [];
         
         for (const order of orders) {
+          const voucherNumber = order.voucher_number;
+          
           // Check if production has started or completed
           if (order.status === "IN_PROGRESS") {
             return { 
               canDelete: false, 
-              reason: "Cannot delete: Production is currently in progress" 
+              reason: `Cannot delete: Production already started for voucher ${voucherNumber}` 
             };
           }
           
           if (order.status === "COMPLETED") {
             return { 
               canDelete: false, 
-              reason: "Cannot delete: Production has already been completed" 
+              reason: `Cannot delete: Production already completed for voucher ${voucherNumber}` 
             };
           }
 
@@ -125,7 +128,7 @@ export const useValidateProjectionDeletion = () => {
             if (kit.status === "MATERIALS_SENT" || kit.status === "SENT") {
               return { 
                 canDelete: false, 
-                reason: "Cannot delete: Materials have already been sent to production" 
+                reason: `Cannot delete: Material already sent to production for voucher ${voucherNumber}` 
               };
             }
           }
@@ -151,6 +154,23 @@ export const useDeleteProjection = () => {
         throw new Error(validation.reason);
       }
 
+      // Get voucher numbers before deletion for renumbering
+      const { data: schedulesToDelete, error: scheduleError } = await supabase
+        .from("production_schedules")
+        .select(`
+          id,
+          production_orders!production_schedule_id (
+            voucher_number
+          )
+        `)
+        .eq("projection_id", id);
+
+      if (scheduleError) throw scheduleError;
+
+      const vouchersToRenumber = schedulesToDelete
+        ?.flatMap(schedule => schedule.production_orders?.map(order => order.voucher_number) || [])
+        .filter(Boolean) || [];
+
       // If validation passes, proceed with deletion
       const { error } = await supabase
         .from("projections")
@@ -158,9 +178,24 @@ export const useDeleteProjection = () => {
         .eq("id", id);
       
       if (error) throw error;
+
+      // After successful deletion, renumber the affected vouchers
+      for (const voucherNumber of vouchersToRenumber) {
+        const { error: renumberError } = await supabase
+          .rpc('renumber_vouchers_after_deletion', {
+            deleted_voucher_number: voucherNumber
+          });
+        
+        if (renumberError) {
+          console.error('Error renumbering vouchers:', renumberError);
+          // Don't throw error here as deletion was successful
+        }
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["projections"] });
+      queryClient.invalidateQueries({ queryKey: ["production-schedules"] });
+      queryClient.invalidateQueries({ queryKey: ["production-orders"] });
     },
   });
 };
