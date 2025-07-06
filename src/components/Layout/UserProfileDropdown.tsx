@@ -18,7 +18,7 @@ export function UserProfileDropdown() {
     return (
       <Button variant="ghost" size="sm" className="gap-2">
         <User className="h-5 w-5" />
-        <span>Loading...</span>
+        <span>No Profile</span>
       </Button>
     );
   }

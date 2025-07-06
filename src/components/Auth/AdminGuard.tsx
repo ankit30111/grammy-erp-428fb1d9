@@ -20,6 +20,29 @@ export function AdminGuard({ children }: AdminGuardProps) {
     );
   }
 
+  if (!userProfile) {
+    return (
+      <div className="container mx-auto py-8">
+        <Card className="max-w-md mx-auto">
+          <CardHeader className="text-center">
+            <div className="flex justify-center mb-2">
+              <AlertTriangle className="h-12 w-12 text-destructive" />
+            </div>
+            <CardTitle className="text-destructive">User Profile Not Found</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4 text-center">
+            <p className="text-muted-foreground">
+              Your user profile could not be found. Please contact your system administrator.
+            </p>
+            <p className="text-xs text-muted-foreground">
+              You may need to be added to the user management system.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   if (!isAdmin) {
     return (
       <div className="container mx-auto py-8">
@@ -40,10 +63,10 @@ export function AdminGuard({ children }: AdminGuardProps) {
                 <span className="font-medium">Current User</span>
               </div>
               <p className="text-sm text-muted-foreground">
-                {userProfile?.full_name || userProfile?.email}
+                {userProfile.full_name || userProfile.email}
               </p>
               <p className="text-sm text-muted-foreground">
-                Role: {userProfile?.role || 'Unknown'}
+                Role: {userProfile.role || 'Unknown'}
               </p>
             </div>
             <p className="text-xs text-muted-foreground">

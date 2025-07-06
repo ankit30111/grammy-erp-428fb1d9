@@ -1,4 +1,3 @@
-
 import { AuthPage } from "@/components/Auth/AuthPage";
 
 const Auth = () => {

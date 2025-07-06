@@ -44,16 +44,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           )
         `)
         .eq('id', userId)
-        .single();
+        .maybeSingle();
 
       if (error) {
         console.error('Error fetching user profile:', error);
+        setUserProfile(null);
         return;
       }
 
-      setUserProfile(data);
+      if (data) {
+        setUserProfile(data);
+      } else {
+        console.warn('No user profile found for user:', userId);
+        setUserProfile(null);
+      }
     } catch (error) {
       console.error('Error fetching user profile:', error);
+      setUserProfile(null);
     }
   };
 

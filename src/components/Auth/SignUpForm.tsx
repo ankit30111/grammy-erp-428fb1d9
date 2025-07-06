@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -38,10 +37,11 @@ export function SignUpForm() {
       }
 
       if (authData.user) {
-        // Create user account record without department restriction
+        // Create user account record using the auth user's ID
         const { error: accountError } = await supabase
           .from("user_accounts")
           .insert({
+            id: authData.user.id, // Use the same ID as auth.users
             username: email,
             email: email,
             full_name: name,
