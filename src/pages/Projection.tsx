@@ -126,9 +126,10 @@ const Projection = () => {
           description: "Customer projection has been deleted successfully",
         });
       } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : "Failed to delete projection. Please try again.";
         toast({
-          title: "Error",
-          description: "Failed to delete projection. Please try again.",
+          title: "Cannot delete projection",
+          description: errorMessage,
           variant: "destructive",
         });
       }
