@@ -202,14 +202,14 @@ export function EditUserDialog({ user, open, onOpenChange, onUserUpdated }: Edit
             <div className="space-y-2">
               <Label htmlFor="department">Department</Label>
               <Select
-                value={formData.department_id}
-                onValueChange={(value) => setFormData({ ...formData, department_id: value })}
+                value={formData.department_id || "unassigned"}
+                onValueChange={(value) => setFormData({ ...formData, department_id: value === "unassigned" ? "" : value })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select department" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Not assigned</SelectItem>
+                  <SelectItem value="unassigned">Not assigned</SelectItem>
                   {departments.map((dept) => (
                     <SelectItem key={dept.id} value={dept.id}>
                       {dept.name}
