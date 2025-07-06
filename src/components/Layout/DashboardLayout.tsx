@@ -1,10 +1,11 @@
 
 import { ReactNode } from "react";
 import { Sidebar } from "@/components/Navigation/Sidebar";
-import { Bell, User, Search } from "lucide-react";
+import { Bell, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { UserProfileDropdown } from "./UserProfileDropdown";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -65,21 +66,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="gap-2">
-                  <User className="h-5 w-5" />
-                  <span>System User</span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-64">
-                <DropdownMenuLabel>System Access</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem className="cursor-pointer">
-                  <span className="text-sm text-muted-foreground">Universal access enabled</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <UserProfileDropdown />
           </div>
         </header>
 

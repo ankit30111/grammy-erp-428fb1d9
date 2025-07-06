@@ -29,7 +29,8 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { Loader2, Trash2 } from "lucide-react";
+import { Loader2, Trash2, Eye, EyeOff, AlertTriangle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface UserAccount {
   id: string;
@@ -60,6 +61,8 @@ export function EditUserDialog({ user, open, onOpenChange, onUserUpdated }: Edit
   const [loading, setLoading] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [departments, setDepartments] = useState<Department[]>([]);
+  const [showPassword, setShowPassword] = useState(false);
+  const [userPassword, setUserPassword] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     full_name: "",
     email: "",
@@ -93,6 +96,32 @@ export function EditUserDialog({ user, open, onOpenChange, onUserUpdated }: Edit
     } catch (error) {
       console.error("Error fetching departments:", error);
       toast.error("Failed to fetch departments");
+    }
+  };
+
+  const viewPassword = async () => {
+    if (!user) return;
+    
+    try {
+      setLoading(true);
+      // Get the user's password hash from user_accounts table
+      const { data, error } = await supabase
+        .from("user_accounts")
+        .select("password_hash")
+        .eq("id", user.id)
+        .single();
+      
+      if (error) throw error;
+      
+      // Note: In a real application, passwords should never be viewable
+      // This is a security risk and should only be used for development/testing
+      setUserPassword(data.password_hash);
+      setShowPassword(true);
+    } catch (error) {
+      console.error("Error fetching password:", error);
+      toast.error("Failed to fetch password");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -162,6 +191,14 @@ export function EditUserDialog({ user, open, onOpenChange, onUserUpdated }: Edit
           </DialogHeader>
 
           <div className="space-y-4 py-4">
+            <Alert className="border-amber-200 bg-amber-50">
+              <AlertTriangle className="h-4 w-4 text-amber-600" />
+              <AlertDescription className="text-amber-800">
+                <strong>Security Warning:</strong> Password viewing should only be used in development. 
+                In production, passwords should never be viewable.
+              </AlertDescription>
+            </Alert>
+
             <div className="space-y-2">
               <Label htmlFor="full_name">Full Name</Label>
               <Input
@@ -181,6 +218,28 @@ export function EditUserDialog({ user, open, onOpenChange, onUserUpdated }: Edit
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 placeholder="Enter email"
               />
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password">Password</Label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={viewPassword}
+                  disabled={loading}
+                  className="flex items-center gap-2"
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  {showPassword ? "Hide" : "View"} Password
+                </Button>
+              </div>
+              {showPassword && userPassword && (
+                <div className="p-2 bg-muted rounded border text-sm font-mono break-all">
+                  {userPassword}
+                </div>
+              )}
             </div>
 
             <div className="space-y-2">
