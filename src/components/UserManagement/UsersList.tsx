@@ -13,70 +13,81 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Loader2, Mail, Calendar, CheckCircle, XCircle } from "lucide-react";
+import { Loader2, Users, Calendar, CheckCircle, XCircle, Shield } from "lucide-react";
 
-interface AuthUser {
+interface UserAccount {
   id: string;
-  email?: string;
-  email_confirmed_at?: string;
-  last_sign_in_at?: string;
+  email: string;
+  full_name: string;
+  role: string;
+  is_active: boolean;
   created_at: string;
-  user_metadata?: {
-    full_name?: string;
+  department_id?: string;
+  departments?: {
+    name: string;
   };
 }
 
 export function UsersList() {
-  const [users, setUsers] = useState<AuthUser[]>([]);
+  const [users, setUsers] = useState<UserAccount[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchAuthUsers();
+    fetchUsers();
   }, []);
 
-  const fetchAuthUsers = async () => {
+  const fetchUsers = async () => {
     try {
       setLoading(true);
       
-      // First try to get current session to check if user has admin access
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
-        toast.error("Authentication required");
-        return;
-      }
-
-      // Use the admin API to list all users
-      const { data, error } = await supabase.auth.admin.listUsers();
+      // Query user_accounts table with department information
+      const { data, error } = await supabase
+        .from("user_accounts")
+        .select(`
+          id,
+          email,
+          full_name,
+          role,
+          is_active,
+          created_at,
+          department_id,
+          departments (
+            name
+          )
+        `)
+        .order("created_at", { ascending: false });
 
       if (error) {
-        console.error("Error fetching auth users:", error);
-        toast.error("Failed to fetch users. Admin access may be required.");
+        console.error("Error fetching users:", error);
+        toast.error("Failed to fetch users from database.");
         return;
       }
 
-      console.log("Fetched auth users:", data.users);
-      // Filter users to only include those with valid email addresses
-      const validUsers = data.users.filter((user: any) => 
-        user.email !== undefined && user.email !== null
-      ) as AuthUser[];
-      setUsers(validUsers);
+      console.log("Fetched users:", data);
+      setUsers(data || []);
     } catch (error) {
-      console.error("Error fetching auth users:", error);
+      console.error("Error fetching users:", error);
       toast.error("An unexpected error occurred while fetching users");
     } finally {
       setLoading(false);
     }
   };
 
-  const getStatusBadge = (user: AuthUser) => {
-    if (!user.email_confirmed_at) {
-      return <Badge variant="secondary">Unconfirmed</Badge>;
+  const getStatusBadge = (user: UserAccount) => {
+    if (!user.is_active) {
+      return <Badge variant="destructive">Inactive</Badge>;
     }
-    if (user.last_sign_in_at) {
-      return <Badge variant="default">Active</Badge>;
+    return <Badge variant="default">Active</Badge>;
+  };
+
+  const getRoleBadge = (role: string) => {
+    if (role === 'admin') {
+      return <Badge variant="secondary" className="flex items-center gap-1">
+        <Shield className="h-3 w-3" />
+        Admin
+      </Badge>;
     }
-    return <Badge variant="outline">Registered</Badge>;
+    return <Badge variant="outline">User</Badge>;
   };
 
   const formatDate = (dateString: string | null | undefined) => {
@@ -94,7 +105,7 @@ export function UsersList() {
     return (
       <div className="flex items-center justify-center py-8">
         <Loader2 className="h-6 w-6 animate-spin" />
-        <span className="ml-2">Loading users from Authentication...</span>
+        <span className="ml-2">Loading users from database...</span>
       </div>
     );
   }
@@ -103,19 +114,19 @@ export function UsersList() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Mail className="h-5 w-5" />
-          Authenticated Users ({users.length})
+          <Users className="h-5 w-5" />
+          System Users ({users.length})
         </CardTitle>
         <p className="text-sm text-muted-foreground">
-          Users registered in Supabase Authentication
+          Users registered in the system
         </p>
       </CardHeader>
       <CardContent>
         {users.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
-            <Mail className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>No authenticated users found.</p>
-            <p className="text-sm">Users need to be created through Supabase Auth.</p>
+            <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
+            <p>No users found.</p>
+            <p className="text-sm">Users need to be created through the system.</p>
           </div>
         ) : (
           <div className="space-y-4">
@@ -123,10 +134,10 @@ export function UsersList() {
               <Button 
                 variant="outline" 
                 size="sm" 
-                onClick={fetchAuthUsers}
+                onClick={fetchUsers}
                 className="flex items-center gap-2"
               >
-                <Mail className="h-4 w-4" />
+                <Users className="h-4 w-4" />
                 Refresh Users
               </Button>
             </div>
@@ -134,11 +145,11 @@ export function UsersList() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Email</TableHead>
+                  <TableHead>User Details</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Department</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Created</TableHead>
-                  <TableHead>Last Sign In</TableHead>
-                  <TableHead>Email Confirmed</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -146,13 +157,23 @@ export function UsersList() {
                   <TableRow key={user.id}>
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-2">
-                        <Mail className="h-4 w-4 text-muted-foreground" />
-                        {user.email}
-                      </div>
-                      {user.user_metadata?.full_name && (
-                        <div className="text-sm text-muted-foreground">
-                          {user.user_metadata.full_name}
+                        <Users className="h-4 w-4 text-muted-foreground" />
+                        <div>
+                          <div>{user.email}</div>
+                          {user.full_name && (
+                            <div className="text-sm text-muted-foreground">
+                              {user.full_name}
+                            </div>
+                          )}
                         </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {getRoleBadge(user.role)}
+                    </TableCell>
+                    <TableCell>
+                      {user.departments?.name || (
+                        <span className="text-muted-foreground">Not assigned</span>
                       )}
                     </TableCell>
                     <TableCell>
@@ -163,32 +184,6 @@ export function UsersList() {
                         <Calendar className="h-4 w-4 text-muted-foreground" />
                         {formatDate(user.created_at)}
                       </div>
-                    </TableCell>
-                    <TableCell>
-                      {user.last_sign_in_at ? (
-                        <div className="flex items-center gap-2">
-                          <CheckCircle className="h-4 w-4 text-green-500" />
-                          {formatDate(user.last_sign_in_at)}
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-2">
-                          <XCircle className="h-4 w-4 text-gray-400" />
-                          Never
-                        </div>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {user.email_confirmed_at ? (
-                        <div className="flex items-center gap-2">
-                          <CheckCircle className="h-4 w-4 text-green-500" />
-                          Confirmed
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-2">
-                          <XCircle className="h-4 w-4 text-orange-500" />
-                          Pending
-                        </div>
-                      )}
                     </TableCell>
                   </TableRow>
                 ))}
