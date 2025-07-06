@@ -34,6 +34,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const isAdmin = userProfile?.role === 'admin';
 
   const fetchUserProfile = async (userId: string) => {
+    console.log('Fetching user profile for:', userId);
     try {
       const { data, error } = await supabase
         .from('user_accounts')
@@ -49,18 +50,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (error) {
         console.error('Error fetching user profile:', error);
         setUserProfile(null);
+        setLoading(false);
         return;
       }
 
       if (data) {
+        console.log('User profile found:', data);
         setUserProfile(data);
       } else {
         console.warn('No user profile found for user:', userId);
         setUserProfile(null);
       }
+      setLoading(false);
     } catch (error) {
       console.error('Error fetching user profile:', error);
       setUserProfile(null);
+      setLoading(false);
     }
   };
 
@@ -97,12 +102,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSession(session);
         setUser(session.user);
         
-        // Fetch user profile data
+        // Fetch user profile data - fetchUserProfile handles loading state
         if (session.user) {
           await fetchUserProfile(session.user.id);
+        } else {
+          setLoading(false);
         }
-        
-        setLoading(false);
       }
     );
 
@@ -116,20 +121,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setSession(null);
           setUser(null);
           setUserProfile(null);
+          setLoading(false);
         } else if (session) {
           setSession(session);
           setUser(session.user);
           await fetchUserProfile(session.user.id);
+        } else {
+          setLoading(false);
         }
       } catch (error) {
         console.error('Unexpected session error:', error);
         setSession(null);
         setUser(null);
         setUserProfile(null);
-      } finally {
-        if (mounted) {
-          setLoading(false);
-        }
+        setLoading(false);
       }
     };
 
