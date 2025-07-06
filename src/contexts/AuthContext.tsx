@@ -30,11 +30,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [fetchingProfile, setFetchingProfile] = useState(false);
 
   const isAdmin = userProfile?.role === 'admin';
 
   const fetchUserProfile = async (userId: string) => {
+    // Prevent multiple simultaneous profile fetches
+    if (fetchingProfile) {
+      console.log('Profile fetch already in progress, skipping...');
+      return;
+    }
+
+    setFetchingProfile(true);
     console.log('Fetching user profile for:', userId);
+    
+    // Add safety timeout to prevent infinite loading
+    const timeoutId = setTimeout(() => {
+      console.warn('Profile fetch timed out after 10 seconds');
+      setFetchingProfile(false);
+      setLoading(false);
+    }, 10000);
+
     try {
       const { data, error } = await supabase
         .from('user_accounts')
@@ -47,24 +63,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .eq('id', userId)
         .maybeSingle();
 
+      clearTimeout(timeoutId);
+
       if (error) {
         console.error('Error fetching user profile:', error);
         setUserProfile(null);
-        setLoading(false);
-        return;
-      }
-
-      if (data) {
+      } else if (data) {
         console.log('User profile found:', data);
         setUserProfile(data);
       } else {
         console.warn('No user profile found for user:', userId);
         setUserProfile(null);
       }
-      setLoading(false);
     } catch (error) {
+      clearTimeout(timeoutId);
       console.error('Error fetching user profile:', error);
       setUserProfile(null);
+    } finally {
+      setFetchingProfile(false);
       setLoading(false);
     }
   };
@@ -83,9 +99,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let mounted = true;
 
-    // Set up auth state listener
+    // Set up auth state listener - this will handle all auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
         if (!mounted) return;
 
         console.log(`Auth state change: ${event}`);
@@ -98,47 +114,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return;
         }
 
-        // Valid session
+        // Valid session - set session and user immediately
         setSession(session);
         setUser(session.user);
         
-        // Fetch user profile data - fetchUserProfile handles loading state
+        // Fetch user profile data asynchronously
         if (session.user) {
-          await fetchUserProfile(session.user.id);
+          // Use setTimeout to avoid blocking the auth state change
+          setTimeout(() => {
+            fetchUserProfile(session.user.id);
+          }, 0);
         } else {
           setLoading(false);
         }
       }
     );
 
-    // Check for existing session
-    const checkSession = async () => {
-      try {
-        const { data: { session }, error } = await supabase.auth.getSession();
-        
-        if (error) {
-          console.error('Session check error:', error);
-          setSession(null);
-          setUser(null);
-          setUserProfile(null);
-          setLoading(false);
-        } else if (session) {
-          setSession(session);
-          setUser(session.user);
-          await fetchUserProfile(session.user.id);
-        } else {
-          setLoading(false);
-        }
-      } catch (error) {
-        console.error('Unexpected session error:', error);
-        setSession(null);
-        setUser(null);
-        setUserProfile(null);
-        setLoading(false);
-      }
-    };
-
-    checkSession();
+    // Get initial session - this will trigger the auth state change event
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      // The onAuthStateChange handler will take care of processing the session
+      // No need to duplicate logic here
+    });
 
     return () => {
       mounted = false;
