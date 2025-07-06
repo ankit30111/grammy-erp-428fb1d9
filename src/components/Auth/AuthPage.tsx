@@ -3,9 +3,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { SignInForm } from "./SignInForm";
-import { SignUpForm } from "./SignUpForm";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2 } from "lucide-react";
 
 export function AuthPage() {
@@ -95,21 +93,10 @@ export function AuthPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-center">Authentication</CardTitle>
+            <CardTitle className="text-center">Sign In</CardTitle>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="signin" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="signin">Sign In</TabsTrigger>
-                <TabsTrigger value="signup">Sign Up</TabsTrigger>
-              </TabsList>
-              <TabsContent value="signin" className="mt-4">
-                <SignInForm />
-              </TabsContent>
-              <TabsContent value="signup" className="mt-4">
-                <SignUpForm />
-              </TabsContent>
-            </Tabs>
+            <SignInForm />
           </CardContent>
         </Card>
       </div>
