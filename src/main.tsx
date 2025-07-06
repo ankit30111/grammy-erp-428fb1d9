@@ -2,6 +2,7 @@
 import { createRoot } from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Toaster } from "@/components/ui/toaster"
+import { AuthProvider } from '@/contexts/AuthContext'
 import App from './App.tsx'
 import './index.css'
 
@@ -21,7 +22,9 @@ if (!container) throw new Error("Root element not found");
 const root = createRoot(container);
 root.render(
   <QueryClientProvider client={queryClient}>
-    <App />
-    <Toaster />
+    <AuthProvider>
+      <App />
+      <Toaster />
+    </AuthProvider>
   </QueryClientProvider>
 );

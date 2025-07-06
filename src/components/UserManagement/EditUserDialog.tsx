@@ -29,7 +29,9 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { Loader2, Trash2 } from "lucide-react";
+import { Loader2, Trash2, Eye, EyeOff, AlertTriangle } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface UserAccount {
   id: string;
@@ -39,6 +41,7 @@ interface UserAccount {
   is_active: boolean;
   created_at: string;
   department_id?: string;
+  password_hash?: string;
   departments?: {
     name: string;
   };
@@ -57,9 +60,11 @@ interface EditUserDialogProps {
 }
 
 export function EditUserDialog({ user, open, onOpenChange, onUserUpdated }: EditUserDialogProps) {
+  const { isAdmin } = useAuth();
   const [loading, setLoading] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [departments, setDepartments] = useState<Department[]>([]);
+  const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     full_name: "",
     email: "",
@@ -227,6 +232,42 @@ export function EditUserDialog({ user, open, onOpenChange, onUserUpdated }: Edit
               />
               <Label htmlFor="is_active">Active</Label>
             </div>
+
+            {isAdmin && user?.password_hash && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label>Password</Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="flex items-center gap-2"
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    {showPassword ? 'Hide' : 'View'} Password
+                  </Button>
+                </div>
+                
+                {showPassword && (
+                  <div className="space-y-2">
+                    <Alert className="border-destructive/50">
+                      <AlertTriangle className="h-4 w-4" />
+                      <AlertDescription className="text-sm">
+                        <strong>Security Warning:</strong> This is the hashed password from the database. 
+                        Never share this information. For security purposes, passwords are stored encrypted.
+                      </AlertDescription>
+                    </Alert>
+                    <div className="p-3 bg-muted rounded-md">
+                      <p className="text-xs text-muted-foreground mb-1">Hashed Password:</p>
+                      <code className="text-xs break-all font-mono">
+                        {user.password_hash}
+                      </code>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <DialogFooter className="flex justify-between">
