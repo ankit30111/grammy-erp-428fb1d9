@@ -13,7 +13,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Loader2, Users, Calendar, CheckCircle, XCircle, Shield } from "lucide-react";
+import { Loader2, Users, Calendar, Shield, Edit } from "lucide-react";
+import { EditUserDialog } from "./EditUserDialog";
 
 interface UserAccount {
   id: string;
@@ -31,6 +32,8 @@ interface UserAccount {
 export function UsersList() {
   const [users, setUsers] = useState<UserAccount[]>([]);
   const [loading, setLoading] = useState(true);
+  const [editingUser, setEditingUser] = useState<UserAccount | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
 
   useEffect(() => {
     fetchUsers();
@@ -101,6 +104,15 @@ export function UsersList() {
     });
   };
 
+  const handleEditUser = (user: UserAccount) => {
+    setEditingUser(user);
+    setEditDialogOpen(true);
+  };
+
+  const handleUserUpdated = () => {
+    fetchUsers();
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-8">
@@ -150,6 +162,7 @@ export function UsersList() {
                   <TableHead>Department</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Created</TableHead>
+                  <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -185,6 +198,17 @@ export function UsersList() {
                         {formatDate(user.created_at)}
                       </div>
                     </TableCell>
+                    <TableCell>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleEditUser(user)}
+                        className="flex items-center gap-2"
+                      >
+                        <Edit className="h-4 w-4" />
+                        Edit
+                      </Button>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -192,6 +216,13 @@ export function UsersList() {
           </div>
         )}
       </CardContent>
+
+      <EditUserDialog
+        user={editingUser}
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        onUserUpdated={handleUserUpdated}
+      />
     </Card>
   );
 }

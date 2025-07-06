@@ -3,13 +3,10 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { SignInForm } from "./SignInForm";
-import { SignUpForm } from "./SignUpForm";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2 } from "lucide-react";
 
 export function AuthPage() {
-  const [activeTab, setActiveTab] = useState("signin");
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
@@ -94,21 +91,10 @@ export function AuthPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-center">Authentication</CardTitle>
+            <CardTitle className="text-center">Sign In</CardTitle>
           </CardHeader>
           <CardContent>
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="signin">Sign In</TabsTrigger>
-                <TabsTrigger value="signup">Sign Up</TabsTrigger>
-              </TabsList>
-              <TabsContent value="signin">
-                <SignInForm />
-              </TabsContent>
-              <TabsContent value="signup">
-                <SignUpForm />
-              </TabsContent>
-            </Tabs>
+            <SignInForm />
           </CardContent>
         </Card>
       </div>
