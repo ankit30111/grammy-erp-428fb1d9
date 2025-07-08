@@ -3,10 +3,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ShoppingCart, FileText, Eye, Calendar } from "lucide-react";
+import { ShoppingCart, FileText, Eye, Calendar, FileDown } from "lucide-react";
 import { usePurchaseOrders } from "@/hooks/usePurchaseOrders";
 import { format } from "date-fns";
 import { Progress } from "@/components/ui/progress";
+import { useToast } from "@/hooks/use-toast";
+import { generatePurchaseOrderPDF, generatePurchaseOrderFilename, type PurchaseOrderData } from "@/utils/pdfTemplates";
 
 interface PurchaseOrdersListProps {
   onViewDetails?: (poId: string) => void;
@@ -14,6 +16,7 @@ interface PurchaseOrdersListProps {
 
 const PurchaseOrdersList = ({ onViewDetails }: PurchaseOrdersListProps) => {
   const { data: purchaseOrders, isLoading } = usePurchaseOrders();
+  const { toast } = useToast();
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -52,6 +55,58 @@ const PurchaseOrdersList = ({ onViewDetails }: PurchaseOrdersListProps) => {
       case 'COMPLETE': return 'success';
       case 'PENDING DELIVERY': return 'warning';
       default: return getStatusColor(po.status);
+    }
+  };
+
+  // Generate PDF for purchase order
+  const handleGeneratePDF = (po: any) => {
+    if (!po.purchase_order_items?.length) {
+      toast({
+        title: "Cannot Generate PDF",
+        description: "This purchase order has no items.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // Prepare PDF data
+      const pdfData: PurchaseOrderData = {
+        poNumber: po.po_number,
+        vendorName: po.vendors?.name || "Unknown Vendor",
+        vendorAddress: po.vendors?.address || "Address not available",
+        vendorContact: po.vendors?.contact_number || "Contact not available", 
+        expectedDeliveryDate: po.expected_delivery_date || po.created_at,
+        createdAt: po.created_at,
+        createdBy: "Purchase Department", // Could be enhanced to get actual user
+        totalAmount: po.total_amount || 0,
+        notes: po.notes,
+        items: po.purchase_order_items.map((item: any) => ({
+          materialCode: item.raw_materials?.material_code || "N/A",
+          materialName: item.raw_materials?.name || "Unknown Material",
+          quantity: item.quantity,
+          unitPrice: item.unit_price || 0,
+          totalPrice: item.total_price || (item.quantity * (item.unit_price || 0))
+        }))
+      };
+
+      // Generate and download PDF
+      const pdf = generatePurchaseOrderPDF(pdfData);
+      const filename = generatePurchaseOrderFilename(po.po_number);
+      pdf.save(filename);
+
+      toast({
+        title: "PDF Generated",
+        description: `Purchase order PDF downloaded: ${filename}`,
+      });
+
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      toast({
+        title: "PDF Generation Failed",
+        description: "Failed to generate purchase order PDF. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -152,15 +207,26 @@ const PurchaseOrdersList = ({ onViewDetails }: PurchaseOrdersListProps) => {
                   </TableCell>
                   <TableCell>₹{po.total_amount?.toFixed(2) || '0.00'}</TableCell>
                   <TableCell>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => onViewDetails?.(po.id)}
-                      className="gap-2"
-                    >
-                      <Eye className="h-4 w-4" />
-                      View
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => onViewDetails?.(po.id)}
+                        className="gap-2"
+                      >
+                        <Eye className="h-4 w-4" />
+                        View
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleGeneratePDF(po)}
+                        className="gap-2"
+                      >
+                        <FileDown className="h-4 w-4" />
+                        PDF
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               );

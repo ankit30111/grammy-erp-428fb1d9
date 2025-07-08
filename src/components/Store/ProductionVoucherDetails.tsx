@@ -4,10 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Package, AlertTriangle, CheckCircle } from "lucide-react";
+import { ArrowLeft, Package, AlertTriangle, CheckCircle, FileDown } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { generateProductionVoucherPDF, generateProductionVoucherFilename, type ProductionVoucherData } from "@/utils/pdfTemplates";
 
 interface ProductionVoucherDetailsProps {
   voucherId: string;
@@ -405,6 +406,57 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
     sendMaterialsMutation.mutate(materialsWithQuantities);
   };
 
+  // Generate PDF for production voucher
+  const handleGeneratePDF = () => {
+    if (!productionOrder || !bom.length || dispatchedItems.length === 0) {
+      toast({
+        title: "Cannot Generate PDF",
+        description: "No materials have been dispatched yet. Please dispatch materials first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // Prepare PDF data
+      const pdfData: ProductionVoucherData = {
+        voucherNumber: productionOrder.voucher_number,
+        productName: productionOrder.products?.name || "Unknown Product",
+        productionQuantity: productionOrder.quantity,
+        scheduledDate: productionOrder.scheduled_date,
+        dispatchedAt: new Date().toISOString(),
+        dispatchedBy: "Store Department", // Could be enhanced to get current user
+        materials: bom.map(bomItem => ({
+          materialCode: bomItem.raw_materials.material_code,
+          materialName: bomItem.raw_materials.name,
+          category: bomItem.raw_materials.category,
+          requiredQuantity: bomItem.quantity * productionOrder.quantity,
+          dispatchedQuantity: getDispatchedQuantity(bomItem.raw_materials.id),
+          currentStock: getCurrentStock(bomItem.raw_materials.id),
+          bomType: bomItem.bom_type || 'main_assembly'
+        }))
+      };
+
+      // Generate and download PDF
+      const pdf = generateProductionVoucherPDF(pdfData);
+      const filename = generateProductionVoucherFilename(productionOrder.voucher_number);
+      pdf.save(filename);
+
+      toast({
+        title: "PDF Generated",
+        description: `Production voucher PDF downloaded: ${filename}`,
+      });
+
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      toast({
+        title: "PDF Generation Failed",
+        description: "Failed to generate production voucher PDF. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   // Force inventory refresh when component mounts or voucher changes
   useEffect(() => {
     console.log("🔄 AUTO-REFRESHING INVENTORY DATA FOR REAL-TIME SYNC");
@@ -637,6 +689,16 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
             </Table>
 
             <div className="flex justify-end gap-4 pt-4 border-t">
+              {dispatchedItems.length > 0 && (
+                <Button
+                  variant="outline"
+                  onClick={handleGeneratePDF}
+                  className="gap-2"
+                >
+                  <FileDown className="h-4 w-4" />
+                  Generate PDF
+                </Button>
+              )}
               <Button
                 onClick={handleSendMaterials}
                 disabled={sendMaterialsMutation.isPending}
