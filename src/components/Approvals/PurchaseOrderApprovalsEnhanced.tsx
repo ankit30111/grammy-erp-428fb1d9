@@ -521,62 +521,69 @@ const PurchaseOrderApprovalsEnhanced = () => {
                                   size="sm"
                                   variant="outline"
                                   disabled={po.has_existing_workflow}
+                                  onClick={() => {
+                                    toast({
+                                      title: "Hold for Review",
+                                      description: "Purchase order has been put on hold for review"
+                                    });
+                                  }}
                                   className="flex items-center gap-1"
                                 >
                                   <Clock className="h-4 w-4" />
                                   Hold for Review
                                 </Button>
 
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  disabled={po.has_existing_workflow}
+                                  onClick={() => setEditingItems(true)}
+                                  className="flex items-center gap-1"
+                                >
+                                  <Edit className="h-4 w-4" />
+                                  Edit PO
+                                </Button>
+
                                 <Dialog>
                                   <DialogTrigger asChild>
                                     <Button
-                                      size="sm"
                                       variant="outline"
-                                      disabled={po.has_existing_workflow}
+                                      size="sm"
+                                      disabled={processingAction || po.has_existing_workflow}
                                       className="flex items-center gap-1"
                                     >
-                                      <MessageSquare className="h-4 w-4" />
-                                      Request Changes
+                                      <CheckCircle className="h-4 w-4" />
+                                      Approve PO
                                     </Button>
                                   </DialogTrigger>
                                   <DialogContent>
                                     <DialogHeader>
-                                      <DialogTitle>Request Changes to Purchase Order</DialogTitle>
+                                      <DialogTitle>Approve Purchase Order</DialogTitle>
                                     </DialogHeader>
                                     <div className="space-y-4">
-                                      <p>Request changes to PO <strong>{po.po_number}</strong></p>
-                                      <div className="space-y-2">
-                                        <Label htmlFor="change-request">Change Request Details *</Label>
-                                        <Textarea
-                                          id="change-request"
-                                          placeholder="Please specify what changes are needed..."
-                                          rows={4}
-                                        />
-                                      </div>
+                                      <p>Are you sure you want to approve PO <strong>{po.po_number}</strong>?</p>
                                       <div className="flex justify-end gap-2">
                                         <Button variant="outline">Cancel</Button>
-                                        <Button>Submit Request</Button>
+                                        <Button 
+                                          onClick={() => {
+                                            setActionType('approve');
+                                            handlePOAction();
+                                          }}
+                                          disabled={processingAction}
+                                        >
+                                          {processingAction && actionType === 'approve' ? (
+                                            <>
+                                              <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                                              Processing...
+                                            </>
+                                          ) : (
+                                            'Confirm Approval'
+                                          )}
+                                        </Button>
                                       </div>
                                     </div>
                                   </DialogContent>
                                 </Dialog>
-
-                                <Button
-                                  variant="outline"
-                                  onClick={() => {
-                                    setActionType('approve');
-                                    handlePOAction();
-                                  }}
-                                  disabled={processingAction || po.has_existing_workflow}
-                                  className="flex items-center gap-1"
-                                >
-                                  {processingAction && actionType === 'approve' ? (
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                  ) : (
-                                    <CheckCircle className="h-4 w-4" />
-                                  )}
-                                  {processingAction && actionType === 'approve' ? 'Processing...' : 'Approve PO'}
-                                </Button>
                                 
                                 <Dialog>
                                   <DialogTrigger asChild>
@@ -638,6 +645,130 @@ const PurchaseOrderApprovalsEnhanced = () => {
                                   </DialogContent>
                                 </Dialog>
                               </div>
+
+                              {/* Edit PO Items Section */}
+                              {editingItems && (
+                                <div className="mt-4 p-4 bg-yellow-50 rounded-lg border">
+                                  <h5 className="font-medium text-yellow-800 mb-3">Edit Purchase Order Items</h5>
+                                  <div className="space-y-3">
+                                    {poItems.map((item, index) => (
+                                      <div key={item.id} className="grid grid-cols-4 gap-3 items-center p-3 bg-white rounded border">
+                                        <div className="text-sm font-medium">{item.raw_material_name}</div>
+                                        <div>
+                                          <Label className="text-xs">Quantity</Label>
+                                          <Input
+                                            type="number"
+                                            value={item.quantity}
+                                            onChange={(e) => {
+                                              const newItems = [...poItems];
+                                              newItems[index].quantity = parseInt(e.target.value) || 0;
+                                              newItems[index].total_price = newItems[index].quantity * newItems[index].unit_price;
+                                              setPOItems(newItems);
+                                            }}
+                                            className="mt-1"
+                                          />
+                                        </div>
+                                        <div>
+                                          <Label className="text-xs">Unit Price</Label>
+                                          <Input
+                                            type="number"
+                                            step="0.01"
+                                            value={item.unit_price}
+                                            onChange={(e) => {
+                                              const newItems = [...poItems];
+                                              newItems[index].unit_price = parseFloat(e.target.value) || 0;
+                                              newItems[index].total_price = newItems[index].quantity * newItems[index].unit_price;
+                                              setPOItems(newItems);
+                                            }}
+                                            className="mt-1"
+                                          />
+                                        </div>
+                                        <div>
+                                          <Label className="text-xs">Total</Label>
+                                          <div className="text-sm font-medium mt-1 p-2 bg-gray-100 rounded">
+                                            ₹{item.total_price.toLocaleString()}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                  <div className="flex justify-between items-center mt-4 pt-3 border-t">
+                                    <div className="text-lg font-semibold">
+                                      Total Amount: ₹{poItems.reduce((sum, item) => sum + item.total_price, 0).toLocaleString()}
+                                    </div>
+                                    <div className="flex gap-2">
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => {
+                                          setEditingItems(false);
+                                          fetchPOItems(po.id); // Reset to original values
+                                        }}
+                                      >
+                                        Cancel
+                                      </Button>
+                                      <Button
+                                        variant="default"
+                                        size="sm"
+                                        onClick={async () => {
+                                          try {
+                                            setProcessingAction(true);
+                                            
+                                            // Update PO items in database
+                                            for (const item of poItems) {
+                                              await supabase
+                                                .from('purchase_order_items')
+                                                .update({
+                                                  quantity: item.quantity,
+                                                  unit_price: item.unit_price,
+                                                  total_price: item.total_price
+                                                })
+                                                .eq('id', item.id);
+                                            }
+                                            
+                                            // Update total amount
+                                            const newTotal = poItems.reduce((sum, item) => sum + item.total_price, 0);
+                                            await supabase
+                                              .from('purchase_orders')
+                                              .update({ 
+                                                total_amount: newTotal,
+                                                updated_at: new Date().toISOString()
+                                              })
+                                              .eq('id', selectedPO?.id);
+                                            
+                                            toast({
+                                              title: "Success",
+                                              description: "Purchase order updated successfully"
+                                            });
+                                            
+                                            setEditingItems(false);
+                                            fetchPendingPOs();
+                                          } catch (error) {
+                                            console.error('Error updating PO:', error);
+                                            toast({
+                                              title: "Error",
+                                              description: "Failed to update purchase order",
+                                              variant: "destructive"
+                                            });
+                                          } finally {
+                                            setProcessingAction(false);
+                                          }
+                                        }}
+                                        disabled={processingAction}
+                                      >
+                                        {processingAction ? (
+                                          <>
+                                            <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                                            Saving...
+                                          </>
+                                        ) : (
+                                          'Save Changes'
+                                        )}
+                                      </Button>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           </div>
                         </DialogContent>
