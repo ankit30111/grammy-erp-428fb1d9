@@ -521,11 +521,28 @@ const PurchaseOrderApprovalsEnhanced = () => {
                                   size="sm"
                                   variant="outline"
                                   disabled={po.has_existing_workflow}
-                                  onClick={() => {
-                                    toast({
-                                      title: "Hold for Review",
-                                      description: "Purchase order has been put on hold for review"
-                                    });
+                                  onClick={async () => {
+                                    try {
+                                      setProcessingAction(true);
+                                      await supabase
+                                        .from('purchase_orders')
+                                        .update({ status: 'ON_HOLD', updated_at: new Date().toISOString() })
+                                        .eq('id', po.id);
+                                      
+                                      toast({
+                                        title: "Hold for Review",
+                                        description: "Purchase order has been put on hold for review"
+                                      });
+                                      fetchPendingPOs();
+                                    } catch (error) {
+                                      toast({
+                                        title: "Error",
+                                        description: "Failed to put PO on hold",
+                                        variant: "destructive"
+                                      });
+                                    } finally {
+                                      setProcessingAction(false);
+                                    }
                                   }}
                                   className="flex items-center gap-1"
                                 >
@@ -544,106 +561,177 @@ const PurchaseOrderApprovalsEnhanced = () => {
                                   Edit PO
                                 </Button>
 
-                                <Dialog>
-                                  <DialogTrigger asChild>
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      disabled={processingAction || po.has_existing_workflow}
-                                      className="flex items-center gap-1"
-                                    >
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  disabled={processingAction || po.has_existing_workflow}
+                                  onClick={async () => {
+                                    if (!confirm(`Are you sure you want to approve PO ${po.po_number}?`)) return;
+                                    
+                                    setProcessingAction(true);
+                                    setActionType('approve');
+                                    
+                                    try {
+                                      const { data: user } = await supabase.auth.getUser();
+                                      if (!user.user) {
+                                        toast({
+                                          title: "Error",
+                                          description: "You must be logged in to perform this action",
+                                          variant: "destructive"
+                                        });
+                                        return;
+                                      }
+
+                                      const currentTime = new Date().toISOString();
+
+                                      // Create workflow entry
+                                      const { error: workflowError } = await supabase
+                                        .from('approval_workflows')
+                                        .insert({
+                                          workflow_type: 'PURCHASE_ORDER',
+                                          reference_id: po.id,
+                                          status: 'APPROVED',
+                                          reviewed_by: user.user.id,
+                                          reviewed_at: currentTime,
+                                          comments: 'Purchase order approved'
+                                        });
+
+                                      if (workflowError) throw workflowError;
+
+                                      // Update PO status
+                                      const { error: poError } = await supabase
+                                        .from('purchase_orders')
+                                        .update({
+                                          status: 'APPROVED',
+                                          updated_at: currentTime
+                                        })
+                                        .eq('id', po.id);
+
+                                      if (poError) throw poError;
+
+                                      toast({
+                                        title: "Success",
+                                        description: "Purchase order approved successfully"
+                                      });
+
+                                      fetchPendingPOs();
+                                    } catch (error) {
+                                      console.error('Error approving PO:', error);
+                                      toast({
+                                        title: "Error",
+                                        description: "Failed to approve purchase order",
+                                        variant: "destructive"
+                                      });
+                                    } finally {
+                                      setProcessingAction(false);
+                                      setActionType(null);
+                                    }
+                                  }}
+                                  className="flex items-center gap-1"
+                                >
+                                  {processingAction && actionType === 'approve' ? (
+                                    <>
+                                      <Loader2 className="h-4 w-4 animate-spin" />
+                                      Processing...
+                                    </>
+                                  ) : (
+                                    <>
                                       <CheckCircle className="h-4 w-4" />
                                       Approve PO
-                                    </Button>
-                                  </DialogTrigger>
-                                  <DialogContent>
-                                    <DialogHeader>
-                                      <DialogTitle>Approve Purchase Order</DialogTitle>
-                                    </DialogHeader>
-                                    <div className="space-y-4">
-                                      <p>Are you sure you want to approve PO <strong>{po.po_number}</strong>?</p>
-                                      <div className="flex justify-end gap-2">
-                                        <Button variant="outline">Cancel</Button>
-                                        <Button 
-                                          onClick={() => {
-                                            setActionType('approve');
-                                            handlePOAction();
-                                          }}
-                                          disabled={processingAction}
-                                        >
-                                          {processingAction && actionType === 'approve' ? (
-                                            <>
-                                              <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                                              Processing...
-                                            </>
-                                          ) : (
-                                            'Confirm Approval'
-                                          )}
-                                        </Button>
-                                      </div>
-                                    </div>
-                                  </DialogContent>
-                                </Dialog>
+                                    </>
+                                  )}
+                                </Button>
                                 
-                                <Dialog>
-                                  <DialogTrigger asChild>
-                                    <Button
-                                      variant="destructive"
-                                      onClick={() => setActionType('reject')}
-                                      disabled={processingAction || po.has_existing_workflow}
-                                      className="flex items-center gap-1"
-                                    >
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  disabled={processingAction || po.has_existing_workflow}
+                                  onClick={async () => {
+                                    const reason = prompt(`Please provide a reason for rejecting PO ${po.po_number}:`);
+                                    if (!reason || !reason.trim()) {
+                                      toast({
+                                        title: "Error",
+                                        description: "Rejection reason is required",
+                                        variant: "destructive"
+                                      });
+                                      return;
+                                    }
+                                    
+                                    setProcessingAction(true);
+                                    setActionType('reject');
+                                    
+                                    try {
+                                      const { data: user } = await supabase.auth.getUser();
+                                      if (!user.user) {
+                                        toast({
+                                          title: "Error",
+                                          description: "You must be logged in to perform this action",
+                                          variant: "destructive"
+                                        });
+                                        return;
+                                      }
+
+                                      const currentTime = new Date().toISOString();
+
+                                      // Create workflow entry
+                                      const { error: workflowError } = await supabase
+                                        .from('approval_workflows')
+                                        .insert({
+                                          workflow_type: 'PURCHASE_ORDER',
+                                          reference_id: po.id,
+                                          status: 'REJECTED',
+                                          reviewed_by: user.user.id,
+                                          reviewed_at: currentTime,
+                                          rejection_reason: reason,
+                                          comments: reason
+                                        });
+
+                                      if (workflowError) throw workflowError;
+
+                                      // Update PO status
+                                      const { error: poError } = await supabase
+                                        .from('purchase_orders')
+                                        .update({
+                                          status: 'REJECTED',
+                                          rejection_reason: reason,
+                                          updated_at: currentTime
+                                        })
+                                        .eq('id', po.id);
+
+                                      if (poError) throw poError;
+
+                                      toast({
+                                        title: "Success",
+                                        description: "Purchase order rejected successfully"
+                                      });
+
+                                      fetchPendingPOs();
+                                    } catch (error) {
+                                      console.error('Error rejecting PO:', error);
+                                      toast({
+                                        title: "Error",
+                                        description: "Failed to reject purchase order",
+                                        variant: "destructive"
+                                      });
+                                    } finally {
+                                      setProcessingAction(false);
+                                      setActionType(null);
+                                    }
+                                  }}
+                                  className="flex items-center gap-1"
+                                >
+                                  {processingAction && actionType === 'reject' ? (
+                                    <>
+                                      <Loader2 className="h-4 w-4 animate-spin" />
+                                      Processing...
+                                    </>
+                                  ) : (
+                                    <>
                                       <XCircle className="h-4 w-4" />
                                       Reject PO
-                                    </Button>
-                                  </DialogTrigger>
-                                  <DialogContent>
-                                    <DialogHeader>
-                                      <DialogTitle>Reject Purchase Order</DialogTitle>
-                                    </DialogHeader>
-                                    <div className="space-y-4">
-                                      <p>Are you sure you want to reject PO <strong>{po.po_number}</strong>?</p>
-                                      <div className="space-y-2">
-                                        <Label htmlFor="rejection-reason">Rejection Reason *</Label>
-                                        <Textarea
-                                          id="rejection-reason"
-                                          value={rejectionReason}
-                                          onChange={(e) => setRejectionReason(e.target.value)}
-                                          placeholder="Please provide detailed reason for rejection..."
-                                          required
-                                          disabled={processingAction}
-                                          rows={4}
-                                        />
-                                      </div>
-                                      <div className="flex justify-end gap-2">
-                                        <Button 
-                                          variant="outline" 
-                                          onClick={() => {
-                                            setActionType(null);
-                                            setRejectionReason("");
-                                          }}
-                                          disabled={processingAction}
-                                        >
-                                          Cancel
-                                        </Button>
-                                        <Button 
-                                          variant="destructive" 
-                                          onClick={handlePOAction}
-                                          disabled={!rejectionReason.trim() || processingAction}
-                                        >
-                                          {processingAction && actionType === 'reject' ? (
-                                            <>
-                                              <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                                              Processing...
-                                            </>
-                                          ) : (
-                                            'Reject PO'
-                                          )}
-                                        </Button>
-                                      </div>
-                                    </div>
-                                  </DialogContent>
-                                </Dialog>
+                                    </>
+                                  )}
+                                </Button>
                               </div>
 
                               {/* Edit PO Items Section */}
