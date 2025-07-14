@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { CheckCircle, XCircle, Package, Edit } from "lucide-react";
+import { CheckCircle, XCircle, Package, Edit, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -21,6 +21,7 @@ interface PurchaseOrder {
   status: string;
   items_count: number;
   created_by_name: string | null;
+  has_existing_workflow?: boolean;
 }
 
 interface POItem {
@@ -39,6 +40,7 @@ const PurchaseOrderApprovalsEnhanced = () => {
   const [actionType, setActionType] = useState<'approve' | 'reject' | null>(null);
   const [rejectionReason, setRejectionReason] = useState("");
   const [editingItems, setEditingItems] = useState(false);
+  const [processingAction, setProcessingAction] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -47,6 +49,7 @@ const PurchaseOrderApprovalsEnhanced = () => {
 
   const fetchPendingPOs = async () => {
     try {
+      // Fetch purchase orders with existing workflow status
       const { data, error } = await supabase
         .from('purchase_orders')
         .select(`
@@ -64,6 +67,16 @@ const PurchaseOrderApprovalsEnhanced = () => {
 
       if (error) throw error;
 
+      // Check for existing workflows for these POs
+      const poIds = data?.map(po => po.id) || [];
+      const { data: workflowData } = await supabase
+        .from('approval_workflows')
+        .select('reference_id, status')
+        .eq('workflow_type', 'PURCHASE_ORDER')
+        .in('reference_id', poIds);
+
+      const workflowMap = new Map(workflowData?.map(w => [w.reference_id, w.status]) || []);
+
       const formattedData = data?.map(po => ({
         id: po.id,
         po_number: po.po_number,
@@ -73,7 +86,8 @@ const PurchaseOrderApprovalsEnhanced = () => {
         expected_delivery_date: po.expected_delivery_date,
         status: po.status,
         items_count: po.purchase_order_items?.length || 0,
-        created_by_name: null
+        created_by_name: null,
+        has_existing_workflow: workflowMap.has(po.id)
       })) || [];
 
       setPurchaseOrders(formattedData);
@@ -123,56 +137,128 @@ const PurchaseOrderApprovalsEnhanced = () => {
     }
   };
 
+  const checkExistingWorkflow = async (poId: string): Promise<boolean> => {
+    const { data } = await supabase
+      .from('approval_workflows')
+      .select('id')
+      .eq('workflow_type', 'PURCHASE_ORDER')
+      .eq('reference_id', poId)
+      .single();
+    
+    return !!data;
+  };
+
   const handlePOAction = async () => {
-    if (!selectedPO || !actionType) return;
+    if (!selectedPO || !actionType || processingAction) return;
+
+    // Validation
+    if (actionType === 'reject' && !rejectionReason.trim()) {
+      toast({
+        title: "Error",
+        description: "Please provide a rejection reason",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setProcessingAction(true);
 
     try {
+      // Check for existing workflow
+      const hasExistingWorkflow = await checkExistingWorkflow(selectedPO.id);
+      if (hasExistingWorkflow) {
+        toast({
+          title: "Error",
+          description: "This purchase order has already been processed",
+          variant: "destructive"
+        });
+        setProcessingAction(false);
+        return;
+      }
+
+      const { data: user } = await supabase.auth.getUser();
+      if (!user.user) {
+        toast({
+          title: "Error",
+          description: "You must be logged in to perform this action",
+          variant: "destructive"
+        });
+        setProcessingAction(false);
+        return;
+      }
+
       const newStatus = actionType === 'approve' ? 'APPROVED' : 'REJECTED';
-      const updateData: any = {
+      const currentTime = new Date().toISOString();
+
+      // Use a transaction-like approach with proper error handling
+      const workflowData = {
+        workflow_type: 'PURCHASE_ORDER',
+        reference_id: selectedPO.id,
         status: newStatus,
-        updated_at: new Date().toISOString()
+        reviewed_by: user.user.id,
+        reviewed_at: currentTime,
+        rejection_reason: actionType === 'reject' ? rejectionReason : null,
+        comments: actionType === 'approve' ? 'Purchase order approved' : rejectionReason
+      };
+
+      const poUpdateData: any = {
+        status: newStatus,
+        updated_at: currentTime
       };
 
       if (actionType === 'reject') {
-        updateData.rejection_reason = rejectionReason;
+        poUpdateData.rejection_reason = rejectionReason;
       }
 
-      // Create approval workflow entry
-      await supabase.from('approval_workflows').insert({
-        workflow_type: 'PURCHASE_ORDER',
-        reference_id: selectedPO.id,
-        status: actionType === 'approve' ? 'APPROVED' : 'REJECTED',
-        reviewed_by: (await supabase.auth.getUser()).data.user?.id,
-        reviewed_at: new Date().toISOString(),
-        rejection_reason: actionType === 'reject' ? rejectionReason : null,
-        comments: actionType === 'approve' ? 'Purchase order approved' : rejectionReason
-      });
+      // First, create the workflow entry
+      const { error: workflowError } = await supabase
+        .from('approval_workflows')
+        .insert(workflowData);
 
-      // Update purchase order status
-      const { error } = await supabase
+      if (workflowError) {
+        console.error('Workflow creation error:', workflowError);
+        throw new Error(`Failed to create approval workflow: ${workflowError.message}`);
+      }
+
+      // Then, update the purchase order status
+      const { error: poError } = await supabase
         .from('purchase_orders')
-        .update(updateData)
+        .update(poUpdateData)
         .eq('id', selectedPO.id);
 
-      if (error) throw error;
+      if (poError) {
+        console.error('PO update error:', poError);
+        // If PO update fails, try to clean up the workflow entry
+        await supabase
+          .from('approval_workflows')
+          .delete()
+          .eq('reference_id', selectedPO.id)
+          .eq('workflow_type', 'PURCHASE_ORDER');
+        
+        throw new Error(`Failed to update purchase order: ${poError.message}`);
+      }
 
       toast({
         title: "Success",
         description: `Purchase order ${actionType === 'approve' ? 'approved' : 'rejected'} successfully`
       });
 
+      // Reset form and refresh data
       setSelectedPO(null);
       setActionType(null);
       setRejectionReason("");
       setPOItems([]);
       fetchPendingPOs();
+
     } catch (error) {
-      console.error('Error updating purchase order:', error);
+      console.error('Error processing purchase order action:', error);
       toast({
         title: "Error",
-        description: "Failed to update purchase order",
+        description: error instanceof Error ? error.message : "Failed to process purchase order",
         variant: "destructive"
       });
+    } finally {
+      setProcessingAction(false);
     }
   };
 
@@ -296,9 +382,14 @@ const PurchaseOrderApprovalsEnhanced = () => {
                                   setActionType('approve');
                                   handlePOAction();
                                 }}
+                                disabled={processingAction || po.has_existing_workflow}
                               >
-                                <CheckCircle className="h-4 w-4 mr-1" />
-                                Approve PO
+                                {processingAction && actionType === 'approve' ? (
+                                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                                ) : (
+                                  <CheckCircle className="h-4 w-4 mr-1" />
+                                )}
+                                {processingAction && actionType === 'approve' ? 'Processing...' : 'Approve PO'}
                               </Button>
                               
                               <Dialog>
@@ -306,6 +397,7 @@ const PurchaseOrderApprovalsEnhanced = () => {
                                   <Button
                                     variant="destructive"
                                     onClick={() => setActionType('reject')}
+                                    disabled={processingAction || po.has_existing_workflow}
                                   >
                                     <XCircle className="h-4 w-4 mr-1" />
                                     Reject PO
@@ -325,18 +417,33 @@ const PurchaseOrderApprovalsEnhanced = () => {
                                         onChange={(e) => setRejectionReason(e.target.value)}
                                         placeholder="Please provide reason for rejection..."
                                         required
+                                        disabled={processingAction}
                                       />
                                     </div>
                                     <div className="flex justify-end gap-2">
-                                      <Button variant="outline" onClick={() => setActionType(null)}>
+                                      <Button 
+                                        variant="outline" 
+                                        onClick={() => {
+                                          setActionType(null);
+                                          setRejectionReason("");
+                                        }}
+                                        disabled={processingAction}
+                                      >
                                         Cancel
                                       </Button>
                                       <Button 
                                         variant="destructive" 
                                         onClick={handlePOAction}
-                                        disabled={!rejectionReason.trim()}
+                                        disabled={!rejectionReason.trim() || processingAction}
                                       >
-                                        Reject PO
+                                        {processingAction && actionType === 'reject' ? (
+                                          <>
+                                            <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                                            Processing...
+                                          </>
+                                        ) : (
+                                          'Reject PO'
+                                        )}
                                       </Button>
                                     </div>
                                   </div>
