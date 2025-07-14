@@ -7,9 +7,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { CheckCircle, XCircle, Package, Edit, Loader2 } from "lucide-react";
+import { CheckCircle, XCircle, Package, Edit, Loader2, FileText, Download, Eye, Clock, MessageSquare } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { generatePurchaseOrderPDF, generatePurchaseOrderFilename, type PurchaseOrderData } from "@/utils/pdfTemplates";
 
 interface PurchaseOrder {
   id: string;
@@ -112,7 +113,7 @@ const PurchaseOrderApprovalsEnhanced = () => {
           quantity,
           unit_price,
           total_price,
-          raw_materials:raw_material_id (name)
+          raw_materials:raw_material_id (name, material_code)
         `)
         .eq('purchase_order_id', poId);
 
@@ -121,6 +122,7 @@ const PurchaseOrderApprovalsEnhanced = () => {
       const formattedItems = data?.map(item => ({
         id: item.id,
         raw_material_name: item.raw_materials?.name || 'Unknown Material',
+        material_code: item.raw_materials?.material_code || 'N/A',
         quantity: item.quantity,
         unit_price: item.unit_price || 0,
         total_price: item.total_price || 0
@@ -132,6 +134,118 @@ const PurchaseOrderApprovalsEnhanced = () => {
       toast({
         title: "Error",
         description: "Failed to fetch purchase order items",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const fetchCompletePoData = async (poId: string): Promise<PurchaseOrderData | null> => {
+    try {
+      const { data: poData, error: poError } = await supabase
+        .from('purchase_orders')
+        .select(`
+          *,
+          vendors:vendor_id (name, address, contact_number, email),
+          purchase_order_items (
+            id,
+            quantity,
+            unit_price,
+            total_price,
+            raw_materials:raw_material_id (name, material_code)
+          )
+        `)
+        .eq('id', poId)
+        .single();
+
+      if (poError) throw poError;
+
+      const vendor = poData.vendors;
+      return {
+        poNumber: poData.po_number,
+        vendorName: vendor?.name || 'Unknown Vendor',
+        vendorAddress: vendor?.address || 'Address not available',
+        vendorContact: vendor?.contact_number || vendor?.email || 'Contact not available',
+        expectedDeliveryDate: poData.expected_delivery_date || new Date().toISOString(),
+        items: poData.purchase_order_items?.map(item => ({
+          materialCode: item.raw_materials?.material_code || 'N/A',
+          materialName: item.raw_materials?.name || 'Unknown Material',
+          quantity: item.quantity,
+          unitPrice: item.unit_price || 0,
+          totalPrice: item.total_price || 0
+        })) || [],
+        totalAmount: poData.total_amount || 0,
+        notes: poData.notes || '',
+        createdBy: 'Purchase Department',
+        createdAt: poData.created_at
+      };
+    } catch (error) {
+      console.error('Error fetching complete PO data:', error);
+      return null;
+    }
+  };
+
+  const handleViewPDF = async (po: PurchaseOrder) => {
+    try {
+      const poData = await fetchCompletePoData(po.id);
+      if (!poData) {
+        toast({
+          title: "Error",
+          description: "Failed to fetch purchase order data for PDF generation",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      const pdf = generatePurchaseOrderPDF(poData);
+      const dataUrl = pdf.getDataURL();
+      
+      // Open PDF in new tab
+      const newWindow = window.open();
+      if (newWindow) {
+        newWindow.document.write(`
+          <html>
+            <head><title>Purchase Order - ${po.po_number}</title></head>
+            <body style="margin:0;">
+              <iframe src="${dataUrl}" width="100%" height="100%" style="border:none;"></iframe>
+            </body>
+          </html>
+        `);
+      }
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      toast({
+        title: "Error",
+        description: "Failed to generate PDF",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleDownloadPDF = async (po: PurchaseOrder) => {
+    try {
+      const poData = await fetchCompletePoData(po.id);
+      if (!poData) {
+        toast({
+          title: "Error",
+          description: "Failed to fetch purchase order data for PDF generation",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      const pdf = generatePurchaseOrderPDF(poData);
+      const filename = generatePurchaseOrderFilename(po.po_number);
+      pdf.save(filename);
+      
+      toast({
+        title: "Success",
+        description: "PDF downloaded successfully"
+      });
+    } catch (error) {
+      console.error('Error downloading PDF:', error);
+      toast({
+        title: "Error",
+        description: "Failed to download PDF",
         variant: "destructive"
       });
     }
@@ -375,80 +489,155 @@ const PurchaseOrderApprovalsEnhanced = () => {
                               </Table>
                             </div>
 
-                            <div className="flex justify-end gap-2">
-                              <Button
-                                variant="outline"
-                                onClick={() => {
-                                  setActionType('approve');
-                                  handlePOAction();
-                                }}
-                                disabled={processingAction || po.has_existing_workflow}
-                              >
-                                {processingAction && actionType === 'approve' ? (
-                                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                                ) : (
-                                  <CheckCircle className="h-4 w-4 mr-1" />
-                                )}
-                                {processingAction && actionType === 'approve' ? 'Processing...' : 'Approve PO'}
-                              </Button>
-                              
-                              <Dialog>
-                                <DialogTrigger asChild>
-                                  <Button
-                                    variant="destructive"
-                                    onClick={() => setActionType('reject')}
-                                    disabled={processingAction || po.has_existing_workflow}
-                                  >
-                                    <XCircle className="h-4 w-4 mr-1" />
-                                    Reject PO
-                                  </Button>
-                                </DialogTrigger>
-                                <DialogContent>
-                                  <DialogHeader>
-                                    <DialogTitle>Reject Purchase Order</DialogTitle>
-                                  </DialogHeader>
-                                  <div className="space-y-4">
-                                    <p>Are you sure you want to reject PO <strong>{po.po_number}</strong>?</p>
-                                    <div className="space-y-2">
-                                      <Label htmlFor="rejection-reason">Rejection Reason *</Label>
-                                      <Textarea
-                                        id="rejection-reason"
-                                        value={rejectionReason}
-                                        onChange={(e) => setRejectionReason(e.target.value)}
-                                        placeholder="Please provide reason for rejection..."
-                                        required
-                                        disabled={processingAction}
-                                      />
+                            <div className="flex flex-col gap-4">
+                              {/* PDF Actions */}
+                              <div className="flex justify-start gap-2 p-4 bg-blue-50 rounded-lg">
+                                <h4 className="font-medium text-sm text-blue-800 mr-4">Document Actions:</h4>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleViewPDF(po)}
+                                  className="flex items-center gap-1"
+                                >
+                                  <Eye className="h-4 w-4" />
+                                  View PDF
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleDownloadPDF(po)}
+                                  className="flex items-center gap-1"
+                                >
+                                  <Download className="h-4 w-4" />
+                                  Download PDF
+                                </Button>
+                              </div>
+
+                              {/* Review Actions */}
+                              <div className="flex justify-end gap-2 p-4 bg-gray-50 rounded-lg">
+                                <h4 className="font-medium text-sm text-gray-700 mr-auto">Review Actions:</h4>
+                                
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  disabled={po.has_existing_workflow}
+                                  className="flex items-center gap-1"
+                                >
+                                  <Clock className="h-4 w-4" />
+                                  Hold for Review
+                                </Button>
+
+                                <Dialog>
+                                  <DialogTrigger asChild>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      disabled={po.has_existing_workflow}
+                                      className="flex items-center gap-1"
+                                    >
+                                      <MessageSquare className="h-4 w-4" />
+                                      Request Changes
+                                    </Button>
+                                  </DialogTrigger>
+                                  <DialogContent>
+                                    <DialogHeader>
+                                      <DialogTitle>Request Changes to Purchase Order</DialogTitle>
+                                    </DialogHeader>
+                                    <div className="space-y-4">
+                                      <p>Request changes to PO <strong>{po.po_number}</strong></p>
+                                      <div className="space-y-2">
+                                        <Label htmlFor="change-request">Change Request Details *</Label>
+                                        <Textarea
+                                          id="change-request"
+                                          placeholder="Please specify what changes are needed..."
+                                          rows={4}
+                                        />
+                                      </div>
+                                      <div className="flex justify-end gap-2">
+                                        <Button variant="outline">Cancel</Button>
+                                        <Button>Submit Request</Button>
+                                      </div>
                                     </div>
-                                    <div className="flex justify-end gap-2">
-                                      <Button 
-                                        variant="outline" 
-                                        onClick={() => {
-                                          setActionType(null);
-                                          setRejectionReason("");
-                                        }}
-                                        disabled={processingAction}
-                                      >
-                                        Cancel
-                                      </Button>
-                                      <Button 
-                                        variant="destructive" 
-                                        onClick={handlePOAction}
-                                        disabled={!rejectionReason.trim() || processingAction}
-                                      >
-                                        {processingAction && actionType === 'reject' ? (
-                                          <>
-                                            <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                                            Processing...
-                                          </>
-                                        ) : (
-                                          'Reject PO'
-                                        )}
-                                      </Button>
+                                  </DialogContent>
+                                </Dialog>
+
+                                <Button
+                                  variant="outline"
+                                  onClick={() => {
+                                    setActionType('approve');
+                                    handlePOAction();
+                                  }}
+                                  disabled={processingAction || po.has_existing_workflow}
+                                  className="flex items-center gap-1"
+                                >
+                                  {processingAction && actionType === 'approve' ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <CheckCircle className="h-4 w-4" />
+                                  )}
+                                  {processingAction && actionType === 'approve' ? 'Processing...' : 'Approve PO'}
+                                </Button>
+                                
+                                <Dialog>
+                                  <DialogTrigger asChild>
+                                    <Button
+                                      variant="destructive"
+                                      onClick={() => setActionType('reject')}
+                                      disabled={processingAction || po.has_existing_workflow}
+                                      className="flex items-center gap-1"
+                                    >
+                                      <XCircle className="h-4 w-4" />
+                                      Reject PO
+                                    </Button>
+                                  </DialogTrigger>
+                                  <DialogContent>
+                                    <DialogHeader>
+                                      <DialogTitle>Reject Purchase Order</DialogTitle>
+                                    </DialogHeader>
+                                    <div className="space-y-4">
+                                      <p>Are you sure you want to reject PO <strong>{po.po_number}</strong>?</p>
+                                      <div className="space-y-2">
+                                        <Label htmlFor="rejection-reason">Rejection Reason *</Label>
+                                        <Textarea
+                                          id="rejection-reason"
+                                          value={rejectionReason}
+                                          onChange={(e) => setRejectionReason(e.target.value)}
+                                          placeholder="Please provide detailed reason for rejection..."
+                                          required
+                                          disabled={processingAction}
+                                          rows={4}
+                                        />
+                                      </div>
+                                      <div className="flex justify-end gap-2">
+                                        <Button 
+                                          variant="outline" 
+                                          onClick={() => {
+                                            setActionType(null);
+                                            setRejectionReason("");
+                                          }}
+                                          disabled={processingAction}
+                                        >
+                                          Cancel
+                                        </Button>
+                                        <Button 
+                                          variant="destructive" 
+                                          onClick={handlePOAction}
+                                          disabled={!rejectionReason.trim() || processingAction}
+                                        >
+                                          {processingAction && actionType === 'reject' ? (
+                                            <>
+                                              <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                                              Processing...
+                                            </>
+                                          ) : (
+                                            'Reject PO'
+                                          )}
+                                        </Button>
+                                      </div>
                                     </div>
-                                  </div>
-                                </DialogContent>
-                              </Dialog>
+                                  </DialogContent>
+                                </Dialog>
+                              </div>
                             </div>
                           </div>
                         </DialogContent>
