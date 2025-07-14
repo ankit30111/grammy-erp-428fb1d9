@@ -198,6 +198,107 @@ export type Database = {
           },
         ]
       }
+      customer_complaint_batch_items: {
+        Row: {
+          batch_id: string
+          brand_name: string
+          created_at: string | null
+          id: string
+          item_type: Database["public"]["Enums"]["batch_item_type"]
+          notes: string | null
+          part_description: string | null
+          product_id: string | null
+          quantity_received: number
+        }
+        Insert: {
+          batch_id: string
+          brand_name: string
+          created_at?: string | null
+          id?: string
+          item_type: Database["public"]["Enums"]["batch_item_type"]
+          notes?: string | null
+          part_description?: string | null
+          product_id?: string | null
+          quantity_received?: number
+        }
+        Update: {
+          batch_id?: string
+          brand_name?: string
+          created_at?: string | null
+          id?: string
+          item_type?: Database["public"]["Enums"]["batch_item_type"]
+          notes?: string | null
+          part_description?: string | null
+          product_id?: string | null
+          quantity_received?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_complaint_batch_items_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "customer_complaint_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_complaint_batch_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customer_complaint_batches: {
+        Row: {
+          batch_number: string
+          bill_number: string
+          created_at: string | null
+          created_by: string | null
+          customer_id: string
+          id: string
+          notes: string | null
+          purchase_date: string | null
+          receipt_date: string
+          receipt_type: Database["public"]["Enums"]["receipt_type"]
+          updated_at: string | null
+        }
+        Insert: {
+          batch_number: string
+          bill_number: string
+          created_at?: string | null
+          created_by?: string | null
+          customer_id: string
+          id?: string
+          notes?: string | null
+          purchase_date?: string | null
+          receipt_date?: string
+          receipt_type: Database["public"]["Enums"]["receipt_type"]
+          updated_at?: string | null
+        }
+        Update: {
+          batch_number?: string
+          bill_number?: string
+          created_at?: string | null
+          created_by?: string | null
+          customer_id?: string
+          id?: string
+          notes?: string | null
+          purchase_date?: string | null
+          receipt_date?: string
+          receipt_type?: Database["public"]["Enums"]["receipt_type"]
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_complaint_batches_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customer_complaint_parts: {
         Row: {
           analyzed_at: string | null
@@ -275,9 +376,12 @@ export type Database = {
       }
       customer_complaints: {
         Row: {
+          batch_id: string | null
+          batch_item_id: string | null
           bill_number: string
           brand_name: string
           complaint_date: string
+          complaint_number: string | null
           complaint_reason: string
           created_at: string
           created_by: string | null
@@ -291,9 +395,12 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          batch_id?: string | null
+          batch_item_id?: string | null
           bill_number: string
           brand_name: string
           complaint_date?: string
+          complaint_number?: string | null
           complaint_reason: string
           created_at?: string
           created_by?: string | null
@@ -307,9 +414,12 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          batch_id?: string | null
+          batch_item_id?: string | null
           bill_number?: string
           brand_name?: string
           complaint_date?: string
+          complaint_number?: string | null
           complaint_reason?: string
           created_at?: string
           created_by?: string | null
@@ -323,6 +433,20 @@ export type Database = {
           updated_by?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "customer_complaints_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "customer_complaint_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_complaints_batch_item_id_fkey"
+            columns: ["batch_item_id"]
+            isOneToOne: false
+            referencedRelation: "customer_complaint_batch_items"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "customer_complaints_customer_id_fkey"
             columns: ["customer_id"]
@@ -3341,6 +3465,18 @@ export type Database = {
       }
     }
     Functions: {
+      create_complaints_from_batch: {
+        Args: { p_batch_id: string }
+        Returns: undefined
+      }
+      generate_batch_number: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      generate_complaint_number: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       generate_dispatch_order_number: {
         Args: Record<PropertyKey, never>
         Returns: string
@@ -3436,6 +3572,7 @@ export type Database = {
       }
     }
     Enums: {
+      batch_item_type: "PRODUCT" | "DATA" | "PART"
       bom_type: "main_assembly" | "sub_assembly" | "accessory"
       bom_type_enum: "main_assembly" | "sub_assembly" | "accessory"
       employee_status: "active" | "inactive" | "terminated" | "on_leave"
@@ -3445,6 +3582,7 @@ export type Database = {
         | "satisfactory"
         | "needs_improvement"
         | "unsatisfactory"
+      receipt_type: "COMPLETE_PRODUCTS" | "DATA_ONLY" | "FAULTY_PARTS_ONLY"
       skill_level: "beginner" | "intermediate" | "advanced" | "expert"
     }
     CompositeTypes: {
@@ -3573,6 +3711,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      batch_item_type: ["PRODUCT", "DATA", "PART"],
       bom_type: ["main_assembly", "sub_assembly", "accessory"],
       bom_type_enum: ["main_assembly", "sub_assembly", "accessory"],
       employee_status: ["active", "inactive", "terminated", "on_leave"],
@@ -3583,6 +3722,7 @@ export const Constants = {
         "needs_improvement",
         "unsatisfactory",
       ],
+      receipt_type: ["COMPLETE_PRODUCTS", "DATA_ONLY", "FAULTY_PARTS_ONLY"],
       skill_level: ["beginner", "intermediate", "advanced", "expert"],
     },
   },
