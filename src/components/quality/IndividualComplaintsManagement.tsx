@@ -42,7 +42,7 @@ const IndividualComplaintsManagement = () => {
           *,
           customers!inner(name),
           products(name, product_code),
-          customer_complaint_batches(batch_number, receipt_type),
+          customer_complaint_batches(receipt_type),
           customer_complaint_batch_items(item_type, part_description)
         `)
         .order("created_at", { ascending: false });
@@ -167,8 +167,7 @@ const IndividualComplaintsManagement = () => {
     const matchesSearch = !searchTerm || 
       complaint.complaint_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       complaint.customers?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      complaint.products?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      complaint.customer_complaint_batches?.batch_number?.toLowerCase().includes(searchTerm.toLowerCase());
+      complaint.products?.name?.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesStatus = statusFilter === "all" || complaint.status === statusFilter;
     
@@ -260,7 +259,6 @@ const IndividualComplaintsManagement = () => {
             <TableHeader>
               <TableRow>
                 <TableHead>Complaint #</TableHead>
-                <TableHead>Batch #</TableHead>
                 <TableHead>Type</TableHead>
                 <TableHead>Customer</TableHead>
                 <TableHead>Product/Item</TableHead>
@@ -274,9 +272,6 @@ const IndividualComplaintsManagement = () => {
               {filteredComplaints.map((complaint) => (
                 <TableRow key={complaint.id}>
                   <TableCell className="font-mono text-sm">{complaint.complaint_number}</TableCell>
-                  <TableCell className="font-mono text-xs">
-                    {complaint.customer_complaint_batches?.batch_number || '-'}
-                  </TableCell>
                   <TableCell>{getComplaintTypeIcon(complaint)}</TableCell>
                   <TableCell>{complaint.customers?.name}</TableCell>
                   <TableCell>
@@ -335,9 +330,7 @@ const IndividualComplaintsManagement = () => {
               Process Complaint - {selectedComplaint.complaint_number}
             </CardTitle>
             <div className="text-sm text-muted-foreground">
-              {selectedComplaint.customer_complaint_batches?.batch_number && (
-                <span>From batch: {selectedComplaint.customer_complaint_batches.batch_number}</span>
-              )}
+              <span>Customer: {selectedComplaint.customers?.name} | Brand: {selectedComplaint.brand_name}</span>
             </div>
           </CardHeader>
           <CardContent className="space-y-6">

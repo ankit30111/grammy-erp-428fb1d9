@@ -251,7 +251,6 @@ export type Database = {
       }
       customer_complaint_batches: {
         Row: {
-          batch_number: string
           bill_number: string
           created_at: string | null
           created_by: string | null
@@ -264,7 +263,6 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
-          batch_number: string
           bill_number: string
           created_at?: string | null
           created_by?: string | null
@@ -277,7 +275,6 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
-          batch_number?: string
           bill_number?: string
           created_at?: string | null
           created_by?: string | null
@@ -3468,10 +3465,6 @@ export type Database = {
       create_complaints_from_batch: {
         Args: { p_batch_id: string }
         Returns: undefined
-      }
-      generate_batch_number: {
-        Args: Record<PropertyKey, never>
-        Returns: string
       }
       generate_complaint_number: {
         Args: Record<PropertyKey, never>
