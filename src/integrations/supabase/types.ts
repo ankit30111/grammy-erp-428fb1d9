@@ -209,6 +209,7 @@ export type Database = {
           part_description: string | null
           product_id: string | null
           quantity_received: number
+          raw_material_id: string | null
         }
         Insert: {
           batch_id: string
@@ -220,6 +221,7 @@ export type Database = {
           part_description?: string | null
           product_id?: string | null
           quantity_received?: number
+          raw_material_id?: string | null
         }
         Update: {
           batch_id?: string
@@ -231,6 +233,7 @@ export type Database = {
           part_description?: string | null
           product_id?: string | null
           quantity_received?: number
+          raw_material_id?: string | null
         }
         Relationships: [
           {
@@ -245,6 +248,13 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_complaint_batch_items_raw_material_id_fkey"
+            columns: ["raw_material_id"]
+            isOneToOne: false
+            referencedRelation: "raw_materials"
             referencedColumns: ["id"]
           },
         ]

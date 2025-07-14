@@ -11,10 +11,12 @@ import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Plus, Trash2, Package, FileText, Wrench } from "lucide-react";
+import { useBOMByProduct } from "@/hooks/useBOM";
 
 interface BatchItem {
   id: string;
   product_id?: string;
+  raw_material_id?: string;
   brand_name: string;
   quantity_received: number;
   item_type: 'PRODUCT' | 'DATA' | 'PART';
@@ -35,6 +37,7 @@ const BatchReceiptEntry = () => {
   const [batchItems, setBatchItems] = useState<BatchItem[]>([]);
   const [currentItem, setCurrentItem] = useState({
     product_id: "",
+    raw_material_id: "",
     brand_name: "",
     quantity_received: 1,
     item_type: "PRODUCT" as "PRODUCT" | "DATA" | "PART",
@@ -44,6 +47,11 @@ const BatchReceiptEntry = () => {
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // Fetch BOM data when product is selected for faulty parts
+  const { data: bomData = [] } = useBOMByProduct(
+    formData.receipt_type === 'FAULTY_PARTS_ONLY' ? currentItem.product_id : ""
+  );
 
   // Fetch customers
   const { data: customers = [] } = useQuery({
@@ -102,6 +110,7 @@ const BatchReceiptEntry = () => {
       const itemsData = batchItems.map(item => ({
         batch_id: batch.id,
         product_id: item.product_id || null,
+        raw_material_id: item.raw_material_id || null,
         brand_name: item.brand_name,
         quantity_received: item.quantity_received,
         item_type: item.item_type,
@@ -171,10 +180,19 @@ const BatchReceiptEntry = () => {
       return;
     }
 
-    if (currentItem.item_type === 'PART' && !currentItem.part_description) {
+    if (currentItem.item_type === 'DATA' && !currentItem.product_id) {
       toast({
         title: "Error",
-        description: "Please provide part description",
+        description: "Please select a product for data analysis",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (currentItem.item_type === 'PART' && (!currentItem.product_id || !currentItem.raw_material_id)) {
+      toast({
+        title: "Error",
+        description: "Please select both product and part",
         variant: "destructive",
       });
       return;
@@ -183,12 +201,14 @@ const BatchReceiptEntry = () => {
     const newItem: BatchItem = {
       id: Date.now().toString(),
       ...currentItem,
-      product_id: currentItem.item_type === 'PRODUCT' ? currentItem.product_id : undefined
+      product_id: currentItem.item_type !== 'PRODUCT' ? currentItem.product_id : currentItem.product_id,
+      raw_material_id: currentItem.item_type === 'PART' ? currentItem.raw_material_id : undefined
     };
 
     setBatchItems(prev => [...prev, newItem]);
     setCurrentItem({
       product_id: "",
+      raw_material_id: "",
       brand_name: "",
       quantity_received: 1,
       item_type: formData.receipt_type === 'COMPLETE_PRODUCTS' ? 'PRODUCT' : 
@@ -235,10 +255,17 @@ const BatchReceiptEntry = () => {
       const product = products.find(p => p.id === item.product_id);
       return product ? `${product.name} (${product.product_code})` : 'Unknown Product';
     }
-    if (item.item_type === 'PART') {
-      return item.part_description || 'Part';
+    if (item.item_type === 'DATA') {
+      const product = products.find(p => p.id === item.product_id);
+      return product ? `Data Analysis: ${product.name} (${product.product_code})` : 'Data Analysis: Unknown Product';
     }
-    return 'Data Only';
+    if (item.item_type === 'PART') {
+      const product = products.find(p => p.id === item.product_id);
+      const productName = product ? `${product.name}` : 'Unknown Product';
+      const partName = item.part_description || 'Unknown Part';
+      return `${productName} - ${partName}`;
+    }
+    return 'Unknown';
   };
 
   return (
@@ -308,12 +335,17 @@ const BatchReceiptEntry = () => {
                   value={formData.receipt_type}
                   onValueChange={(value: any) => {
                     setFormData({ ...formData, receipt_type: value });
-                    // Reset current item type based on receipt type
-                    setCurrentItem(prev => ({
-                      ...prev,
+                    // Reset current item type and clear fields based on receipt type
+                    setCurrentItem({
+                      product_id: "",
+                      raw_material_id: "",
+                      brand_name: "",
+                      quantity_received: 1,
                       item_type: value === 'COMPLETE_PRODUCTS' ? 'PRODUCT' : 
-                                value === 'DATA_ONLY' ? 'DATA' : 'PART'
-                    }));
+                                value === 'DATA_ONLY' ? 'DATA' : 'PART',
+                      part_description: "",
+                      notes: ""
+                    });
                   }}
                 >
                   <SelectTrigger>
@@ -356,6 +388,7 @@ const BatchReceiptEntry = () => {
             <div className="border-t pt-6">
               <h3 className="text-lg font-semibold mb-4">Add Items to Batch</h3>
               <div className="grid grid-cols-12 gap-4 items-end">
+                {/* Product Selection for Complete Products */}
                 {formData.receipt_type === 'COMPLETE_PRODUCTS' && (
                   <div className="col-span-3">
                     <Label>Product *</Label>
@@ -377,15 +410,82 @@ const BatchReceiptEntry = () => {
                   </div>
                 )}
 
-                {formData.receipt_type === 'FAULTY_PARTS_ONLY' && (
+                {/* Product Selection for Data Only */}
+                {formData.receipt_type === 'DATA_ONLY' && (
                   <div className="col-span-3">
-                    <Label>Part Description *</Label>
-                    <Input
-                      value={currentItem.part_description}
-                      onChange={(e) => setCurrentItem({ ...currentItem, part_description: e.target.value })}
-                      placeholder="Describe the faulty part"
-                    />
+                    <Label>Product *</Label>
+                    <Select
+                      value={currentItem.product_id}
+                      onValueChange={(value) => setCurrentItem({ ...currentItem, product_id: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select product for analysis" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {products.map((product) => (
+                          <SelectItem key={product.id} value={product.id}>
+                            {product.name} ({product.product_code})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
+                )}
+
+                {/* Product and Part Selection for Faulty Parts Only */}
+                {formData.receipt_type === 'FAULTY_PARTS_ONLY' && (
+                  <>
+                    <div className="col-span-3">
+                      <Label>Product *</Label>
+                      <Select
+                        value={currentItem.product_id}
+                        onValueChange={(value) => {
+                          setCurrentItem({ 
+                            ...currentItem, 
+                            product_id: value,
+                            raw_material_id: "" // Reset part selection when product changes
+                          });
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select product" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {products.map((product) => (
+                            <SelectItem key={product.id} value={product.id}>
+                              {product.name} ({product.product_code})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="col-span-3">
+                      <Label>Faulty Part *</Label>
+                      <Select
+                        value={currentItem.raw_material_id}
+                        onValueChange={(value) => {
+                          const selectedPart = bomData.find(item => item.raw_materials.id === value);
+                          setCurrentItem({ 
+                            ...currentItem, 
+                            raw_material_id: value,
+                            part_description: selectedPart ? selectedPart.raw_materials.name : ""
+                          });
+                        }}
+                        disabled={!currentItem.product_id}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder={!currentItem.product_id ? "Select product first" : "Select faulty part"} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {bomData.map((bomItem) => (
+                            <SelectItem key={bomItem.raw_materials.id} value={bomItem.raw_materials.id}>
+                              {bomItem.raw_materials.name} ({bomItem.raw_materials.material_code})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </>
                 )}
 
                 <div className="col-span-3">
@@ -491,6 +591,15 @@ const BatchReceiptEntry = () => {
                   notes: ""
                 });
                 setBatchItems([]);
+                setCurrentItem({
+                  product_id: "",
+                  raw_material_id: "",
+                  brand_name: "",
+                  quantity_received: 1,
+                  item_type: "PRODUCT",
+                  part_description: "",
+                  notes: ""
+                });
               }}>
                 Clear All
               </Button>
