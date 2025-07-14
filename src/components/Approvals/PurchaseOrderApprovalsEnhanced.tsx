@@ -38,10 +38,9 @@ const PurchaseOrderApprovalsEnhanced = () => {
   const [loading, setLoading] = useState(true);
   const [selectedPO, setSelectedPO] = useState<PurchaseOrder | null>(null);
   const [poItems, setPOItems] = useState<POItem[]>([]);
-  const [actionType, setActionType] = useState<'approve' | 'reject' | null>(null);
-  const [rejectionReason, setRejectionReason] = useState("");
   const [editingItems, setEditingItems] = useState(false);
-  const [processingAction, setProcessingAction] = useState(false);
+  const [processingAction, setProcessingAction] = useState<'approve' | 'reject' | null>(null);
+  const [processingEdit, setProcessingEdit] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -262,119 +261,6 @@ const PurchaseOrderApprovalsEnhanced = () => {
     return !!data;
   };
 
-  const handlePOAction = async () => {
-    if (!selectedPO || !actionType || processingAction) return;
-
-    // Validation
-    if (actionType === 'reject' && !rejectionReason.trim()) {
-      toast({
-        title: "Error",
-        description: "Please provide a rejection reason",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setProcessingAction(true);
-
-    try {
-      // Check for existing workflow
-      const hasExistingWorkflow = await checkExistingWorkflow(selectedPO.id);
-      if (hasExistingWorkflow) {
-        toast({
-          title: "Error",
-          description: "This purchase order has already been processed",
-          variant: "destructive"
-        });
-        setProcessingAction(false);
-        return;
-      }
-
-      const { data: user } = await supabase.auth.getUser();
-      if (!user.user) {
-        toast({
-          title: "Error",
-          description: "You must be logged in to perform this action",
-          variant: "destructive"
-        });
-        setProcessingAction(false);
-        return;
-      }
-
-      const newStatus = actionType === 'approve' ? 'APPROVED' : 'REJECTED';
-      const currentTime = new Date().toISOString();
-
-      // Use a transaction-like approach with proper error handling
-      const workflowData = {
-        workflow_type: 'PURCHASE_ORDER',
-        reference_id: selectedPO.id,
-        status: newStatus,
-        reviewed_by: user.user.id,
-        reviewed_at: currentTime,
-        rejection_reason: actionType === 'reject' ? rejectionReason : null,
-        comments: actionType === 'approve' ? 'Purchase order approved' : rejectionReason
-      };
-
-      const poUpdateData: any = {
-        status: newStatus,
-        updated_at: currentTime
-      };
-
-      if (actionType === 'reject') {
-        poUpdateData.rejection_reason = rejectionReason;
-      }
-
-      // First, create the workflow entry
-      const { error: workflowError } = await supabase
-        .from('approval_workflows')
-        .insert(workflowData);
-
-      if (workflowError) {
-        console.error('Workflow creation error:', workflowError);
-        throw new Error(`Failed to create approval workflow: ${workflowError.message}`);
-      }
-
-      // Then, update the purchase order status
-      const { error: poError } = await supabase
-        .from('purchase_orders')
-        .update(poUpdateData)
-        .eq('id', selectedPO.id);
-
-      if (poError) {
-        console.error('PO update error:', poError);
-        // If PO update fails, try to clean up the workflow entry
-        await supabase
-          .from('approval_workflows')
-          .delete()
-          .eq('reference_id', selectedPO.id)
-          .eq('workflow_type', 'PURCHASE_ORDER');
-        
-        throw new Error(`Failed to update purchase order: ${poError.message}`);
-      }
-
-      toast({
-        title: "Success",
-        description: `Purchase order ${actionType === 'approve' ? 'approved' : 'rejected'} successfully`
-      });
-
-      // Reset form and refresh data
-      setSelectedPO(null);
-      setActionType(null);
-      setRejectionReason("");
-      setPOItems([]);
-      fetchPendingPOs();
-
-    } catch (error) {
-      console.error('Error processing purchase order action:', error);
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to process purchase order",
-        variant: "destructive"
-      });
-    } finally {
-      setProcessingAction(false);
-    }
-  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -521,39 +407,6 @@ const PurchaseOrderApprovalsEnhanced = () => {
                                   size="sm"
                                   variant="outline"
                                   disabled={po.has_existing_workflow}
-                                  onClick={async () => {
-                                    try {
-                                      setProcessingAction(true);
-                                      await supabase
-                                        .from('purchase_orders')
-                                        .update({ status: 'ON_HOLD', updated_at: new Date().toISOString() })
-                                        .eq('id', po.id);
-                                      
-                                      toast({
-                                        title: "Hold for Review",
-                                        description: "Purchase order has been put on hold for review"
-                                      });
-                                      fetchPendingPOs();
-                                    } catch (error) {
-                                      toast({
-                                        title: "Error",
-                                        description: "Failed to put PO on hold",
-                                        variant: "destructive"
-                                      });
-                                    } finally {
-                                      setProcessingAction(false);
-                                    }
-                                  }}
-                                  className="flex items-center gap-1"
-                                >
-                                  <Clock className="h-4 w-4" />
-                                  Hold for Review
-                                </Button>
-
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  disabled={po.has_existing_workflow}
                                   onClick={() => setEditingItems(true)}
                                   className="flex items-center gap-1"
                                 >
@@ -564,12 +417,11 @@ const PurchaseOrderApprovalsEnhanced = () => {
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  disabled={processingAction || po.has_existing_workflow}
+                                  disabled={processingAction === 'approve' || po.has_existing_workflow}
                                   onClick={async () => {
                                     if (!confirm(`Are you sure you want to approve PO ${po.po_number}?`)) return;
                                     
-                                    setProcessingAction(true);
-                                    setActionType('approve');
+                                    setProcessingAction('approve');
                                     
                                     try {
                                       const { data: user } = await supabase.auth.getUser();
@@ -623,13 +475,12 @@ const PurchaseOrderApprovalsEnhanced = () => {
                                         variant: "destructive"
                                       });
                                     } finally {
-                                      setProcessingAction(false);
-                                      setActionType(null);
+                                      setProcessingAction(null);
                                     }
                                   }}
                                   className="flex items-center gap-1"
                                 >
-                                  {processingAction && actionType === 'approve' ? (
+                                  {processingAction === 'approve' ? (
                                     <>
                                       <Loader2 className="h-4 w-4 animate-spin" />
                                       Processing...
@@ -645,7 +496,7 @@ const PurchaseOrderApprovalsEnhanced = () => {
                                 <Button
                                   variant="destructive"
                                   size="sm"
-                                  disabled={processingAction || po.has_existing_workflow}
+                                  disabled={processingAction === 'reject' || po.has_existing_workflow}
                                   onClick={async () => {
                                     const reason = prompt(`Please provide a reason for rejecting PO ${po.po_number}:`);
                                     if (!reason || !reason.trim()) {
@@ -657,8 +508,7 @@ const PurchaseOrderApprovalsEnhanced = () => {
                                       return;
                                     }
                                     
-                                    setProcessingAction(true);
-                                    setActionType('reject');
+                                    setProcessingAction('reject');
                                     
                                     try {
                                       const { data: user } = await supabase.auth.getUser();
@@ -714,13 +564,12 @@ const PurchaseOrderApprovalsEnhanced = () => {
                                         variant: "destructive"
                                       });
                                     } finally {
-                                      setProcessingAction(false);
-                                      setActionType(null);
+                                      setProcessingAction(null);
                                     }
                                   }}
                                   className="flex items-center gap-1"
                                 >
-                                  {processingAction && actionType === 'reject' ? (
+                                  {processingAction === 'reject' ? (
                                     <>
                                       <Loader2 className="h-4 w-4 animate-spin" />
                                       Processing...
@@ -798,60 +647,60 @@ const PurchaseOrderApprovalsEnhanced = () => {
                                       <Button
                                         variant="default"
                                         size="sm"
-                                        onClick={async () => {
-                                          try {
-                                            setProcessingAction(true);
-                                            
-                                            // Update PO items in database
-                                            for (const item of poItems) {
-                                              await supabase
-                                                .from('purchase_order_items')
-                                                .update({
-                                                  quantity: item.quantity,
-                                                  unit_price: item.unit_price,
-                                                  total_price: item.total_price
-                                                })
-                                                .eq('id', item.id);
-                                            }
-                                            
-                                            // Update total amount
-                                            const newTotal = poItems.reduce((sum, item) => sum + item.total_price, 0);
-                                            await supabase
-                                              .from('purchase_orders')
-                                              .update({ 
-                                                total_amount: newTotal,
-                                                updated_at: new Date().toISOString()
-                                              })
-                                              .eq('id', selectedPO?.id);
-                                            
-                                            toast({
-                                              title: "Success",
-                                              description: "Purchase order updated successfully"
-                                            });
-                                            
-                                            setEditingItems(false);
-                                            fetchPendingPOs();
-                                          } catch (error) {
-                                            console.error('Error updating PO:', error);
-                                            toast({
-                                              title: "Error",
-                                              description: "Failed to update purchase order",
-                                              variant: "destructive"
-                                            });
-                                          } finally {
-                                            setProcessingAction(false);
-                                          }
-                                        }}
-                                        disabled={processingAction}
-                                      >
-                                        {processingAction ? (
-                                          <>
-                                            <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                                            Saving...
-                                          </>
-                                        ) : (
-                                          'Save Changes'
-                                        )}
+                                         onClick={async () => {
+                                           try {
+                                             setProcessingEdit(true);
+                                             
+                                             // Update PO items in database
+                                             for (const item of poItems) {
+                                               await supabase
+                                                 .from('purchase_order_items')
+                                                 .update({
+                                                   quantity: item.quantity,
+                                                   unit_price: item.unit_price,
+                                                   total_price: item.total_price
+                                                 })
+                                                 .eq('id', item.id);
+                                             }
+                                             
+                                             // Update total amount
+                                             const newTotal = poItems.reduce((sum, item) => sum + item.total_price, 0);
+                                             await supabase
+                                               .from('purchase_orders')
+                                               .update({ 
+                                                 total_amount: newTotal,
+                                                 updated_at: new Date().toISOString()
+                                               })
+                                               .eq('id', selectedPO?.id);
+                                             
+                                             toast({
+                                               title: "Success",
+                                               description: "Purchase order updated successfully"
+                                             });
+                                             
+                                             setEditingItems(false);
+                                             fetchPendingPOs();
+                                           } catch (error) {
+                                             console.error('Error updating PO:', error);
+                                             toast({
+                                               title: "Error",
+                                               description: "Failed to update purchase order",
+                                               variant: "destructive"
+                                             });
+                                           } finally {
+                                             setProcessingEdit(false);
+                                           }
+                                         }}
+                                         disabled={processingEdit}
+                                       >
+                                         {processingEdit ? (
+                                           <>
+                                             <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                                             Saving...
+                                           </>
+                                         ) : (
+                                           'Save Changes'
+                                         )}
                                       </Button>
                                     </div>
                                   </div>
