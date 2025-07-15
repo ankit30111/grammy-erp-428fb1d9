@@ -1627,16 +1627,62 @@ export type Database = {
           },
         ]
       }
+      npd_bom_comments: {
+        Row: {
+          comment_text: string
+          comment_type: string | null
+          created_at: string | null
+          created_by: string
+          department: string | null
+          id: string
+          npd_bom_material_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          comment_text: string
+          comment_type?: string | null
+          created_at?: string | null
+          created_by: string
+          department?: string | null
+          id?: string
+          npd_bom_material_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          comment_text?: string
+          comment_type?: string | null
+          created_at?: string | null
+          created_by?: string
+          department?: string | null
+          id?: string
+          npd_bom_material_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "npd_bom_comments_npd_bom_material_id_fkey"
+            columns: ["npd_bom_material_id"]
+            isOneToOne: false
+            referencedRelation: "npd_bom_materials"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       npd_bom_materials: {
         Row: {
           alternative_options: string | null
+          avl_generated: boolean | null
           cost_estimate: number | null
           created_at: string
           created_by: string | null
           description: string | null
           expected_due_date: string | null
+          expected_function: string | null
+          final_part_code: string | null
           id: string
+          iqc_checklist_generated: boolean | null
           is_critical: boolean | null
+          is_temporary_part: boolean | null
           last_updated_by: string | null
           lead_time_days: number | null
           material_code: string | null
@@ -1644,9 +1690,14 @@ export type Database = {
           material_status: string | null
           notes: string | null
           npd_project_bom_id: string
+          part_status: string | null
+          part_type: string | null
           quantity: number
+          reference_drawings_url: string | null
+          sample_target_date: string | null
           specification_sheet_url: string | null
           specifications: string | null
+          temporary_part_code: string | null
           unit: string | null
           updated_at: string
           vendor_contact: string | null
@@ -1654,13 +1705,18 @@ export type Database = {
         }
         Insert: {
           alternative_options?: string | null
+          avl_generated?: boolean | null
           cost_estimate?: number | null
           created_at?: string
           created_by?: string | null
           description?: string | null
           expected_due_date?: string | null
+          expected_function?: string | null
+          final_part_code?: string | null
           id?: string
+          iqc_checklist_generated?: boolean | null
           is_critical?: boolean | null
+          is_temporary_part?: boolean | null
           last_updated_by?: string | null
           lead_time_days?: number | null
           material_code?: string | null
@@ -1668,9 +1724,14 @@ export type Database = {
           material_status?: string | null
           notes?: string | null
           npd_project_bom_id: string
+          part_status?: string | null
+          part_type?: string | null
           quantity?: number
+          reference_drawings_url?: string | null
+          sample_target_date?: string | null
           specification_sheet_url?: string | null
           specifications?: string | null
+          temporary_part_code?: string | null
           unit?: string | null
           updated_at?: string
           vendor_contact?: string | null
@@ -1678,13 +1739,18 @@ export type Database = {
         }
         Update: {
           alternative_options?: string | null
+          avl_generated?: boolean | null
           cost_estimate?: number | null
           created_at?: string
           created_by?: string | null
           description?: string | null
           expected_due_date?: string | null
+          expected_function?: string | null
+          final_part_code?: string | null
           id?: string
+          iqc_checklist_generated?: boolean | null
           is_critical?: boolean | null
+          is_temporary_part?: boolean | null
           last_updated_by?: string | null
           lead_time_days?: number | null
           material_code?: string | null
@@ -1692,9 +1758,14 @@ export type Database = {
           material_status?: string | null
           notes?: string | null
           npd_project_bom_id?: string
+          part_status?: string | null
+          part_type?: string | null
           quantity?: number
+          reference_drawings_url?: string | null
+          sample_target_date?: string | null
           specification_sheet_url?: string | null
           specifications?: string | null
+          temporary_part_code?: string | null
           unit?: string | null
           updated_at?: string
           vendor_contact?: string | null
@@ -1710,16 +1781,60 @@ export type Database = {
           },
         ]
       }
+      npd_bom_stage_history: {
+        Row: {
+          created_at: string | null
+          from_stage: string | null
+          id: string
+          notes: string | null
+          npd_project_bom_id: string
+          to_stage: string
+          transition_by: string | null
+          transition_date: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          from_stage?: string | null
+          id?: string
+          notes?: string | null
+          npd_project_bom_id: string
+          to_stage: string
+          transition_by?: string | null
+          transition_date?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          from_stage?: string | null
+          id?: string
+          notes?: string | null
+          npd_project_bom_id?: string
+          to_stage?: string
+          transition_by?: string | null
+          transition_date?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "npd_bom_stage_history_npd_project_bom_id_fkey"
+            columns: ["npd_project_bom_id"]
+            isOneToOne: false
+            referencedRelation: "npd_project_bom"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       npd_project_bom: {
         Row: {
           approved_at: string | null
           approved_by: string | null
           bom_name: string
+          bom_stage: string | null
           created_at: string
           created_by: string | null
           description: string | null
           id: string
           npd_project_id: string
+          stage_updated_at: string | null
+          stage_updated_by: string | null
           status: string | null
           updated_at: string
           version: number
@@ -1728,11 +1843,14 @@ export type Database = {
           approved_at?: string | null
           approved_by?: string | null
           bom_name?: string
+          bom_stage?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
           id?: string
           npd_project_id: string
+          stage_updated_at?: string | null
+          stage_updated_by?: string | null
           status?: string | null
           updated_at?: string
           version?: number
@@ -1741,11 +1859,14 @@ export type Database = {
           approved_at?: string | null
           approved_by?: string | null
           bom_name?: string
+          bom_stage?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
           id?: string
           npd_project_id?: string
+          stage_updated_at?: string | null
+          stage_updated_by?: string | null
           status?: string | null
           updated_at?: string
           version?: number
@@ -1806,6 +1927,71 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      npd_sample_tracking: {
+        Row: {
+          approval_notes: string | null
+          created_at: string | null
+          created_by: string | null
+          id: string
+          npd_bom_material_id: string
+          quality_notes: string | null
+          rejection_reason: string | null
+          sample_approval_date: string | null
+          sample_received_date: string | null
+          sample_rejection_date: string | null
+          sample_request_date: string | null
+          sample_sent_date: string | null
+          test_report_url: string | null
+          updated_at: string | null
+          updated_by: string | null
+          vendor_response_time: number | null
+        }
+        Insert: {
+          approval_notes?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          npd_bom_material_id: string
+          quality_notes?: string | null
+          rejection_reason?: string | null
+          sample_approval_date?: string | null
+          sample_received_date?: string | null
+          sample_rejection_date?: string | null
+          sample_request_date?: string | null
+          sample_sent_date?: string | null
+          test_report_url?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+          vendor_response_time?: number | null
+        }
+        Update: {
+          approval_notes?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          npd_bom_material_id?: string
+          quality_notes?: string | null
+          rejection_reason?: string | null
+          sample_approval_date?: string | null
+          sample_received_date?: string | null
+          sample_rejection_date?: string | null
+          sample_request_date?: string | null
+          sample_sent_date?: string | null
+          test_report_url?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+          vendor_response_time?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "npd_sample_tracking_npd_bom_material_id_fkey"
+            columns: ["npd_bom_material_id"]
+            isOneToOne: false
+            referencedRelation: "npd_bom_materials"
             referencedColumns: ["id"]
           },
         ]
@@ -3502,6 +3688,10 @@ export type Database = {
       }
       generate_spare_order_number: {
         Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      generate_temp_part_code: {
+        Args: { part_category: string }
         Returns: string
       }
       generate_vendor_code: {
