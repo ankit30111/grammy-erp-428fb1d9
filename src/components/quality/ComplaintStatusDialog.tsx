@@ -17,6 +17,11 @@ interface ComplaintStatusDialogProps {
 }
 
 export const ComplaintStatusDialog = ({ complaint, isOpen, onClose }: ComplaintStatusDialogProps) => {
+  // Early return if complaint is null
+  if (!complaint) {
+    return null;
+  }
+
   // Fetch complaint parts and their analysis status
   const { data: complaintParts = [] } = useQuery({
     queryKey: ["complaint-parts", complaint?.id],
