@@ -10,8 +10,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Send, Eye, Search, Filter, Package } from "lucide-react";
+import { Send, Eye, Search, Filter, Package, BarChart3 } from "lucide-react";
 import { format } from "date-fns";
+import { ComplaintStatusDialog } from "./ComplaintStatusDialog";
 
 interface SelectedPart {
   id: string;
@@ -28,6 +29,8 @@ const IndividualComplaintsManagement = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [batchFilter, setBatchFilter] = useState("all");
+  const [statusDialogOpen, setStatusDialogOpen] = useState(false);
+  const [statusDialogComplaint, setStatusDialogComplaint] = useState<any>(null);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -298,15 +301,29 @@ const IndividualComplaintsManagement = () => {
                   <TableCell>{format(new Date(complaint.complaint_date), 'MMM dd, yyyy')}</TableCell>
                   <TableCell>{getStatusBadge(complaint.status)}</TableCell>
                   <TableCell>
-                    <Button 
-                      size="sm" 
-                      variant="outline"
-                      onClick={() => setSelectedComplaint(complaint)}
-                      disabled={complaint.status === 'IQC_COMPLETED'}
-                    >
-                      <Eye className="h-4 w-4 mr-2" />
-                      {complaint.status === 'IQC_COMPLETED' ? 'Completed' : 'Process'}
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => {
+                          setStatusDialogComplaint(complaint);
+                          setStatusDialogOpen(true);
+                        }}
+                      >
+                        <BarChart3 className="h-4 w-4 mr-2" />
+                        Status
+                      </Button>
+                      {complaint.status !== 'IQC_COMPLETED' && (
+                        <Button 
+                          size="sm" 
+                          variant="default"
+                          onClick={() => setSelectedComplaint(complaint)}
+                        >
+                          <Eye className="h-4 w-4 mr-2" />
+                          Process
+                        </Button>
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -432,6 +449,16 @@ const IndividualComplaintsManagement = () => {
           </CardContent>
         </Card>
       )}
+
+      {/* Status Dialog */}
+      <ComplaintStatusDialog
+        complaint={statusDialogComplaint}
+        isOpen={statusDialogOpen}
+        onClose={() => {
+          setStatusDialogOpen(false);
+          setStatusDialogComplaint(null);
+        }}
+      />
     </div>
   );
 };
