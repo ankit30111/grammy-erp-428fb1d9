@@ -15,7 +15,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import BenchmarkDialog from "@/components/RnD/BenchmarkDialog";
-import ProjectBOMDialog from "@/components/RnD/ProjectBOMDialog";
+import { ProjectBOMDialog } from "@/components/RnD/ProjectBOMDialog";
 
 interface NPDProject {
   id: string;
