@@ -26,6 +26,7 @@ export const EnhancedProjectBOMDialog: React.FC<EnhancedProjectBOMDialogProps> =
   projectId,
   projectName
 }) => {
+  console.log('EnhancedProjectBOMDialog loaded successfully');
   const [showPartSelection, setShowPartSelection] = useState(false);
   const [selectedMaterialId, setSelectedMaterialId] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
