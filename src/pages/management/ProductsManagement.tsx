@@ -529,6 +529,7 @@ const ProductsManagement = () => {
           product={selectedProduct}
           open={documentsOpen}
           onOpenChange={setDocumentsOpen}
+          onDocumentUpdate={fetchProducts}
         />
 
         {/* Delete Product Alert Dialog */}
