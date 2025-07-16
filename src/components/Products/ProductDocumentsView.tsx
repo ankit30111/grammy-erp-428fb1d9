@@ -17,7 +17,6 @@ interface ProductDocumentsViewProps {
 
 export function ProductDocumentsView({ product, open, onOpenChange, onDocumentUpdate }: ProductDocumentsViewProps) {
   const [uploadingStates, setUploadingStates] = useState<Record<string, boolean>>({});
-  const [localProduct, setLocalProduct] = useState(product);
   const { toast } = useToast();
   
   const documents = [
@@ -40,7 +39,7 @@ export function ProductDocumentsView({ product, open, onOpenChange, onDocumentUp
       const url = URL.createObjectURL(data);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${localProduct.product_code}_${label}.pdf`;
+      a.download = `${product.product_code}_${label}.pdf`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -82,8 +81,8 @@ export function ProductDocumentsView({ product, open, onOpenChange, onDocumentUp
 
     try {
       const fileExt = file.name.split('.').pop();
-      const fileName = `${localProduct.product_code}_${documentKey}_${Date.now()}.${fileExt}`;
-      const filePath = `${localProduct.product_code}/${fileName}`;
+      const fileName = `${product.product_code}_${documentKey}_${Date.now()}.${fileExt}`;
+      const filePath = `${product.product_code}/${fileName}`;
 
       // Upload to Supabase Storage
       const { data, error: uploadError } = await supabase.storage
@@ -99,12 +98,9 @@ export function ProductDocumentsView({ product, open, onOpenChange, onDocumentUp
       const { error: updateError } = await supabase
         .from('products')
         .update({ [documentKey]: filePath })
-        .eq('id', localProduct.id);
+        .eq('id', product.id);
 
       if (updateError) throw updateError;
-
-      // Update local state
-      setLocalProduct(prev => ({ ...prev, [documentKey]: filePath }));
 
       toast({
         title: "Upload successful",
@@ -135,13 +131,13 @@ export function ProductDocumentsView({ product, open, onOpenChange, onDocumentUp
     event.target.value = '';
   };
 
-  if (!localProduct) return null;
+  if (!product) return null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl">
         <DialogHeader>
-          <DialogTitle>Documents for {localProduct.name} ({localProduct.product_code})</DialogTitle>
+          <DialogTitle>Documents for {product.name} ({product.product_code})</DialogTitle>
         </DialogHeader>
         
         <div className="space-y-4">
@@ -152,17 +148,17 @@ export function ProductDocumentsView({ product, open, onOpenChange, onDocumentUp
                   <div className="flex items-center gap-2">
                     <FileText className="h-5 w-5" />
                     <span className="font-medium">{label}</span>
-                    {localProduct[key] && (
+                    {product[key] && (
                       <CheckCircle className="h-4 w-4 text-green-500" />
                     )}
                   </div>
                   
                   <div className="flex items-center gap-2">
-                    {localProduct[key] ? (
+                    {product[key] ? (
                       <Button 
                         variant="outline" 
                         size="sm"
-                        onClick={() => handleDownload(localProduct[key], label)}
+                        onClick={() => handleDownload(product[key], label)}
                         disabled={uploadingStates[key]}
                       >
                         <Download className="h-4 w-4 mr-2" />
@@ -181,7 +177,7 @@ export function ProductDocumentsView({ product, open, onOpenChange, onDocumentUp
                         disabled={uploadingStates[key]}
                       />
                       <Button
-                        variant={localProduct[key] ? "secondary" : "default"}
+                        variant={product[key] ? "secondary" : "default"}
                         size="sm"
                         disabled={uploadingStates[key]}
                       >
@@ -190,7 +186,7 @@ export function ProductDocumentsView({ product, open, onOpenChange, onDocumentUp
                         ) : (
                           <Upload className="h-4 w-4 mr-2" />
                         )}
-                        {uploadingStates[key] ? "Uploading..." : (localProduct[key] ? "Replace" : "Upload")}
+                        {uploadingStates[key] ? "Uploading..." : (product[key] ? "Replace" : "Upload")}
                       </Button>
                     </div>
                   </div>
