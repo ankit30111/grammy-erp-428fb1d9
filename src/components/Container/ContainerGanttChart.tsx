@@ -34,7 +34,7 @@ const statusColors = {
 
 export default function ContainerGanttChart({ containers }: ContainerGanttChartProps) {
   const chartData = useMemo(() => {
-    if (!containers.length) return { minDate: new Date(), maxDate: new Date(), containerData: [] };
+    if (!containers.length) return { minDate: new Date(), maxDate: new Date(), totalDays: 0, containerData: [] };
 
     const dates = containers.flatMap(container => [
       container.loading_date,
@@ -49,10 +49,32 @@ export default function ContainerGanttChart({ containers }: ContainerGanttChartP
       container.arrived_date
     ].filter(Boolean).map(date => parseISO(date!)));
 
+    // If no valid dates found, use current date as fallback
+    if (dates.length === 0) {
+      const today = new Date();
+      const fallbackEnd = new Date(today);
+      fallbackEnd.setDate(today.getDate() + 30); // 30 days from today
+      
+      return { 
+        minDate: today, 
+        maxDate: fallbackEnd, 
+        totalDays: 30, 
+        containerData: containers.map(container => ({
+          ...container,
+          startDate: today,
+          progress: [],
+          progressPercentage: 0,
+          daysFromStart: 0,
+          statusColor: statusColors[container.current_status as keyof typeof statusColors] || "#6b7280"
+        }))
+      };
+    }
+
     const minDate = new Date(Math.min(...dates.map(d => d.getTime())));
     const maxDate = new Date(Math.max(...dates.map(d => d.getTime())));
     
-    const totalDays = differenceInDays(maxDate, minDate) || 1;
+    // Ensure we have at least 1 day difference
+    const totalDays = Math.max(differenceInDays(maxDate, minDate), 1);
 
     const containerData = containers.map(container => {
       const startDate = container.loading_date ? parseISO(container.loading_date) : minDate;
@@ -69,7 +91,7 @@ export default function ContainerGanttChart({ containers }: ContainerGanttChartP
         startDate,
         progress,
         progressPercentage: ((currentStatusIndex + 1) / statusSteps.length) * 100,
-        daysFromStart: differenceInDays(startDate, minDate),
+        daysFromStart: Math.max(differenceInDays(startDate, minDate), 0),
         statusColor: statusColors[container.current_status as keyof typeof statusColors] || "#6b7280"
       };
     });
@@ -81,6 +103,18 @@ export default function ContainerGanttChart({ containers }: ContainerGanttChartP
     return (
       <div className="flex items-center justify-center h-64 text-muted-foreground">
         No containers to display
+      </div>
+    );
+  }
+
+  // Handle case where chart data has no valid timeline
+  if (chartData.totalDays === 0) {
+    return (
+      <div className="flex items-center justify-center h-64 text-muted-foreground">
+        <div className="text-center">
+          <p>No timeline data available</p>
+          <p className="text-sm mt-2">Containers need dates to display timeline</p>
+        </div>
       </div>
     );
   }
@@ -98,6 +132,10 @@ export default function ContainerGanttChart({ containers }: ContainerGanttChartP
               const date = new Date(chartData.minDate);
               date.setDate(date.getDate() + i);
               const isWeekStart = i % 7 === 0;
+              
+              // Validate date before formatting
+              const isValidDate = !isNaN(date.getTime());
+              
               return (
                 <div
                   key={i}
@@ -108,7 +146,7 @@ export default function ContainerGanttChart({ containers }: ContainerGanttChartP
                   }`}
                   style={{ width: dayWidth }}
                 >
-                  {isWeekStart ? format(date, 'MMM d') : i % 7 === 3 ? format(date, 'd') : ''}
+                  {isValidDate && isWeekStart ? format(date, 'MMM d') : isValidDate && i % 7 === 3 ? format(date, 'd') : ''}
                 </div>
               );
             })}
@@ -159,16 +197,21 @@ export default function ContainerGanttChart({ containers }: ContainerGanttChartP
                 </div>
 
                 {/* Enhanced Status milestones */}
-                {container.progress.map((date, index) => (
-                  <div
-                    key={index}
-                    className="absolute top-1 w-2 h-10 bg-primary rounded-full shadow-sm border-2 border-background"
-                    style={{
-                      left: (differenceInDays(date, chartData.minDate) * dayWidth) - 4
-                    }}
-                    title={`${statusSteps[index]}: ${format(date, 'MMM d, yyyy')}`}
-                  />
-                ))}
+                {container.progress.map((date, index) => {
+                  const isValidDate = date && !isNaN(date.getTime());
+                  if (!isValidDate) return null;
+                  
+                  return (
+                    <div
+                      key={index}
+                      className="absolute top-1 w-2 h-10 bg-primary rounded-full shadow-sm border-2 border-background"
+                      style={{
+                        left: (differenceInDays(date, chartData.minDate) * dayWidth) - 4
+                      }}
+                      title={`${statusSteps[index]}: ${format(date, 'MMM d, yyyy')}`}
+                    />
+                  );
+                })}
 
                 {/* Timeline markers for major statuses */}
                 <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-muted-foreground/20 to-muted-foreground/5 rounded-b-md" />
