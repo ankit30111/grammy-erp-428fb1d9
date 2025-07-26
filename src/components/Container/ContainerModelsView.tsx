@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { format } from "date-fns";
-import { Package, Calendar, Truck, Ship, Plane, RefreshCw } from "lucide-react";
+import { Package, Calendar, Truck, Ship, Plane } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -125,8 +125,6 @@ function getLocationFromStatus(status: string): string {
 export default function ContainerModelsView({ containers }: ContainerModelsViewProps) {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("delivery_date");
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const { toast } = useToast();
   
   // Get all materials flattened across containers
   const allMaterials = useAllContainerMaterials(containers);
@@ -162,40 +160,6 @@ export default function ContainerModelsView({ containers }: ContainerModelsViewP
     });
   }, [allMaterials, statusFilter, sortBy]);
   
-  const handleRefreshLDBStatus = async () => {
-    setIsRefreshing(true);
-    
-    try {
-      const uniqueContainers = [...new Set(containers.map(c => c.container_number))];
-      let successCount = 0;
-      let errorCount = 0;
-      
-      for (const containerNumber of uniqueContainers) {
-        const result = await LDBService.fetchContainerStatus(containerNumber);
-        if (result.success) {
-          console.log(`LDB Status for ${containerNumber}:`, result);
-          successCount++;
-        } else {
-          console.warn(`Failed to fetch status for ${containerNumber}:`, result.error);
-          errorCount++;
-        }
-      }
-      
-      toast({
-        title: "LDB Status Update",
-        description: `Successfully fetched ${successCount} containers. ${errorCount} failed.`,
-        variant: successCount > 0 ? "default" : "destructive",
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to refresh container status from LDB",
-        variant: "destructive",
-      });
-    } finally {
-      setIsRefreshing(false);
-    }
-  };
 
   // Get status counts for overview cards
   const statusCounts = containers.reduce((acc, container) => {
@@ -318,16 +282,6 @@ export default function ContainerModelsView({ containers }: ContainerModelsViewP
           </Select>
         </div>
         
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleRefreshLDBStatus}
-          disabled={isRefreshing}
-          className="ml-auto"
-        >
-          <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
-          Sync with LDB
-        </Button>
       </div>
 
       {/* Models Table */}
@@ -346,6 +300,7 @@ export default function ContainerModelsView({ containers }: ContainerModelsViewP
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead>Brand</TableHead>
                   <TableHead>Model</TableHead>
                   <TableHead className="text-right">Qty</TableHead>
                   <TableHead>Container</TableHead>
@@ -358,14 +313,10 @@ export default function ContainerModelsView({ containers }: ContainerModelsViewP
                 {filteredAndSortedMaterials.map((material) => (
                   <TableRow key={material.id}>
                     <TableCell>
-                      <div className="space-y-1">
-                        <div className="font-medium">{material.brand} {material.model}</div>
-                        {material.brand !== material.model && (
-                          <div className="text-xs text-muted-foreground">
-                            {material.model}
-                          </div>
-                        )}
-                      </div>
+                      <div className="font-medium">{material.brand || '-'}</div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="font-medium">{material.model || '-'}</div>
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="font-medium">{material.quantity}</div>
