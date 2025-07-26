@@ -48,7 +48,7 @@ export class LDBService {
    * Get direct URL to LDB search for a container
    */
   static getLDBSearchUrl(containerNumber: string): string {
-    return `${this.LDB_BASE_URL}?container=${encodeURIComponent(containerNumber)}`;
+    return `${this.LDB_BASE_URL}/39/${this.formatContainerNumber(containerNumber)}`;
   }
 
   /**

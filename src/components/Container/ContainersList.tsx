@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { format } from "date-fns";
-import { Eye, Edit, Package, RefreshCw, ExternalLink } from "lucide-react";
+import { Eye, Edit, Package, ExternalLink } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -47,7 +47,7 @@ export default function ContainersList({ containers }: ContainersListProps) {
   const [selectedContainer, setSelectedContainer] = useState<Container | null>(null);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  
   const updateContainer = useUpdateContainer();
   const { toast } = useToast();
 
@@ -80,38 +80,6 @@ export default function ContainersList({ containers }: ContainersListProps) {
     }
   };
 
-  const handleSyncLDB = async () => {
-    setIsRefreshing(true);
-    try {
-      let successCount = 0;
-      let errorCount = 0;
-      
-      for (const container of containers) {
-        const result = await LDBService.fetchContainerStatus(container.container_number);
-        if (result.success) {
-          console.log(`LDB Status for ${container.container_number}:`, result);
-          successCount++;
-        } else {
-          console.warn(`Failed to fetch status for ${container.container_number}:`, result.error);
-          errorCount++;
-        }
-      }
-      
-      toast({
-        title: "LDB Status Update",
-        description: `Successfully fetched ${successCount} containers. ${errorCount} failed.`,
-        variant: successCount > 0 ? "default" : "destructive",
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to refresh container status from LDB",
-        variant: "destructive",
-      });
-    } finally {
-      setIsRefreshing(false);
-    }
-  };
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return '-';
@@ -130,18 +98,6 @@ export default function ContainersList({ containers }: ContainersListProps) {
 
   return (
     <div className="space-y-4">
-      {/* Action Bar */}
-      <div className="flex justify-end">
-        <Button
-          variant="outline"
-          onClick={handleSyncLDB}
-          disabled={isRefreshing}
-          className="flex items-center gap-2"
-        >
-          <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-          Sync with LDB
-        </Button>
-      </div>
       
       <div className="rounded-md border">
         <Table>
