@@ -167,18 +167,24 @@ export default function ContainerModelsView({ containers }: ContainerModelsViewP
     
     try {
       const uniqueContainers = [...new Set(containers.map(c => c.container_number))];
+      let successCount = 0;
+      let errorCount = 0;
       
       for (const containerNumber of uniqueContainers) {
         const result = await LDBService.fetchContainerStatus(containerNumber);
-        if (!result.success) {
+        if (result.success) {
+          console.log(`LDB Status for ${containerNumber}:`, result);
+          successCount++;
+        } else {
           console.warn(`Failed to fetch status for ${containerNumber}:`, result.error);
+          errorCount++;
         }
       }
       
       toast({
-        title: "LDB Status Check",
-        description: "Please check individual containers manually at LDB website for now.",
-        variant: "default",
+        title: "LDB Status Update",
+        description: `Successfully fetched ${successCount} containers. ${errorCount} failed.`,
+        variant: successCount > 0 ? "default" : "destructive",
       });
     } catch (error) {
       toast({

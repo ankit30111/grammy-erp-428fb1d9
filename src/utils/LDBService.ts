@@ -1,3 +1,5 @@
+import { supabase } from "@/integrations/supabase/client";
+
 interface LDBContainerStatus {
   success: boolean;
   containerNumber?: string;
@@ -11,20 +13,27 @@ export class LDBService {
   private static readonly LDB_BASE_URL = 'https://www.ldb.co.in/ldb/containersearch';
   
   /**
-   * Fetch container status from LDB website
-   * Note: This would require web scraping or API integration
+   * Fetch container status from LDB website using Supabase Edge Function
    */
   static async fetchContainerStatus(containerNumber: string): Promise<LDBContainerStatus> {
     try {
       console.log(`Fetching status for container: ${containerNumber} from LDB`);
       
-      // For now, return a mock response since we need to implement actual scraping
-      // In production, this would use Firecrawl or direct API call
-      return {
-        success: false,
-        containerNumber,
-        error: 'LDB integration not yet implemented. Please check manually at: ' + this.getLDBSearchUrl(containerNumber)
-      };
+      // Call our Supabase Edge Function to scrape LDB
+      const { data, error } = await supabase.functions.invoke('ldb-scraper', {
+        body: { containerNumber: this.formatContainerNumber(containerNumber) }
+      });
+
+      if (error) {
+        console.error('Error calling LDB scraper function:', error);
+        return {
+          success: false,
+          containerNumber,
+          error: `Failed to fetch from LDB: ${error.message}`
+        };
+      }
+
+      return data as LDBContainerStatus;
     } catch (error) {
       console.error('Error fetching container status from LDB:', error);
       return {
