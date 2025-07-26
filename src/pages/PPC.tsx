@@ -315,9 +315,6 @@ const PPC = () => {
             {/* GRN Management Content */}
           </TabsContent>
 
-          <TabsContent value="schedule">
-            {/* Schedule Content */}
-          </TabsContent>
 
           <TabsContent value="iqc-rejections">
             <IQCRejections />
