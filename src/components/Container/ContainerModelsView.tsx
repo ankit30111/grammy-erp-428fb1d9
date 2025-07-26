@@ -8,7 +8,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Container, useContainerMaterials } from "@/hooks/useContainers";
 import { LDBService } from "@/utils/LDBService";
-import { useToast } from "@/hooks/use-toast";
 
 interface ContainerModelsViewProps {
   containers: Container[];
