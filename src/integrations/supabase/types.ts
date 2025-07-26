@@ -198,6 +198,91 @@ export type Database = {
           },
         ]
       }
+      container_materials: {
+        Row: {
+          brand: string | null
+          container_id: string
+          created_at: string
+          id: string
+          material_description: string
+          model: string
+          notes: string | null
+          quantity: number
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          brand?: string | null
+          container_id: string
+          created_at?: string
+          id?: string
+          material_description: string
+          model: string
+          notes?: string | null
+          quantity: number
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          brand?: string | null
+          container_id?: string
+          created_at?: string
+          id?: string
+          material_description?: string
+          model?: string
+          notes?: string | null
+          quantity?: number
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "container_materials_container_id_fkey"
+            columns: ["container_id"]
+            isOneToOne: false
+            referencedRelation: "import_containers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      container_status_history: {
+        Row: {
+          changed_at: string
+          changed_by: string | null
+          container_id: string
+          from_status: string | null
+          id: string
+          notes: string | null
+          to_status: string
+        }
+        Insert: {
+          changed_at?: string
+          changed_by?: string | null
+          container_id: string
+          from_status?: string | null
+          id?: string
+          notes?: string | null
+          to_status: string
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string | null
+          container_id?: string
+          from_status?: string | null
+          id?: string
+          notes?: string | null
+          to_status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "container_status_history_container_id_fkey"
+            columns: ["container_id"]
+            isOneToOne: false
+            referencedRelation: "import_containers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customer_complaint_batch_items: {
         Row: {
           batch_id: string
@@ -1141,6 +1226,72 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      import_containers: {
+        Row: {
+          arrived_date: string | null
+          china_custom_date: string | null
+          container_number: string
+          created_at: string
+          created_by: string | null
+          current_status: string
+          dispatched_date: string | null
+          id: string
+          in_train_date: string | null
+          in_transit_date: string | null
+          india_custom_date: string | null
+          indian_dock_date: string | null
+          loaded_date: string | null
+          loading_date: string | null
+          notes: string | null
+          ordered_date: string | null
+          shipped_date: string | null
+          supplier_info: string | null
+          updated_at: string
+        }
+        Insert: {
+          arrived_date?: string | null
+          china_custom_date?: string | null
+          container_number: string
+          created_at?: string
+          created_by?: string | null
+          current_status?: string
+          dispatched_date?: string | null
+          id?: string
+          in_train_date?: string | null
+          in_transit_date?: string | null
+          india_custom_date?: string | null
+          indian_dock_date?: string | null
+          loaded_date?: string | null
+          loading_date?: string | null
+          notes?: string | null
+          ordered_date?: string | null
+          shipped_date?: string | null
+          supplier_info?: string | null
+          updated_at?: string
+        }
+        Update: {
+          arrived_date?: string | null
+          china_custom_date?: string | null
+          container_number?: string
+          created_at?: string
+          created_by?: string | null
+          current_status?: string
+          dispatched_date?: string | null
+          id?: string
+          in_train_date?: string | null
+          in_transit_date?: string | null
+          india_custom_date?: string | null
+          indian_dock_date?: string | null
+          loaded_date?: string | null
+          loading_date?: string | null
+          notes?: string | null
+          ordered_date?: string | null
+          shipped_date?: string | null
+          supplier_info?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       inventory: {
         Row: {

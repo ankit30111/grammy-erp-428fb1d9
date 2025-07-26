@@ -12,6 +12,7 @@ import { calculateMaterialShortages, MaterialShortage } from "@/utils/materialSh
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import IQCRejections from "@/components/PPC/IQCRejections";
+import ContainerTracking from "@/pages/ContainerTracking";
 const PPC = () => {
   const [shortages, setShortages] = useState<MaterialShortage[]>([]);
   const [isCalculating, setIsCalculating] = useState(false);
@@ -81,7 +82,13 @@ const PPC = () => {
         
         
         <Tabs value={selectedTab} onValueChange={setSelectedTab}>
-          
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="planning">Planning</TabsTrigger>
+            <TabsTrigger value="containers">Containers</TabsTrigger>
+            <TabsTrigger value="purchase">Purchase</TabsTrigger>
+            <TabsTrigger value="grn">GRN</TabsTrigger>
+            <TabsTrigger value="iqc-rejections">IQC</TabsTrigger>
+          </TabsList>
           
           <TabsContent value="planning">
             <div className="flex items-center justify-between">
@@ -294,6 +301,10 @@ const PPC = () => {
                   </div>
                 </CardContent>
               </Card>}
+          </TabsContent>
+
+          <TabsContent value="containers">
+            <ContainerTracking />
           </TabsContent>
 
           <TabsContent value="purchase">
