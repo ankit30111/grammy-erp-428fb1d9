@@ -49,28 +49,29 @@ export function CreateUserForm() {
     setIsLoading(true);
 
     try {
-      // Use Supabase Auth Admin API to create user
-      const { data: authData, error } = await supabase.auth.admin.createUser({
-        email: data.email,
-        password: data.password,
-        email_confirm: true, // Auto-confirm email for admin created users
-        user_metadata: {
-          full_name: data.fullName || ''
+      // Use secure Edge Function to create user (admin-only)
+      const { data: result, error } = await supabase.functions.invoke('admin-create-user', {
+        body: {
+          email: data.email,
+          password: data.password,
+          fullName: data.fullName || ''
         }
       });
 
       if (error) {
-        console.error("Auth creation error:", error);
-        if (error.message.includes("already registered")) {
-          toast.error("A user with this email already exists");
-        } else {
-          toast.error("Failed to create user: " + error.message);
-        }
+        console.error("Edge function error:", error);
+        toast.error("Failed to create user: " + error.message);
         return;
       }
 
-      console.log("User created successfully:", authData.user);
-      toast.success(`User created successfully! Email: ${data.email}`);
+      if (!result.success) {
+        console.error("User creation failed:", result.message);
+        toast.error(result.message);
+        return;
+      }
+
+      console.log("User created successfully:", result.user);
+      toast.success(result.message);
       form.reset();
     } catch (error) {
       console.error("Error creating user:", error);
