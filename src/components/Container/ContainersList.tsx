@@ -1,10 +1,13 @@
 import { useState } from "react";
 import { format } from "date-fns";
-import { Eye, Edit, Package } from "lucide-react";
+import { Eye, Edit, Package, RefreshCw, ExternalLink } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Container } from "@/hooks/useContainers";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Container, useUpdateContainer } from "@/hooks/useContainers";
+import { LDBService } from "@/utils/LDBService";
+import { useToast } from "@/hooks/use-toast";
 import ContainerDetailsDialog from "./ContainerDetailsDialog";
 import EditContainerDialog from "./EditContainerDialog";
 
@@ -26,10 +29,27 @@ const statusColors = {
   ARRIVED: "bg-emerald-500"
 };
 
+const statusOptions = [
+  { value: 'ORDERED', label: 'Ordered' },
+  { value: 'LOADING', label: 'Loading' },
+  { value: 'LOADED', label: 'Loaded' },
+  { value: 'CHINA_CUSTOM', label: 'China Custom' },
+  { value: 'SHIPPED', label: 'Shipped' },
+  { value: 'IN_TRANSIT', label: 'In Transit' },
+  { value: 'INDIAN_DOCK', label: 'Indian Dock' },
+  { value: 'IN_TRAIN', label: 'In Train' },
+  { value: 'INDIA_CUSTOM', label: 'India Custom' },
+  { value: 'DISPATCHED', label: 'Dispatched' },
+  { value: 'ARRIVED', label: 'Arrived' },
+];
+
 export default function ContainersList({ containers }: ContainersListProps) {
   const [selectedContainer, setSelectedContainer] = useState<Container | null>(null);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const updateContainer = useUpdateContainer();
+  const { toast } = useToast();
 
   const handleViewDetails = (container: Container) => {
     setSelectedContainer(container);
@@ -39,6 +59,58 @@ export default function ContainersList({ containers }: ContainersListProps) {
   const handleEditContainer = (container: Container) => {
     setSelectedContainer(container);
     setEditDialogOpen(true);
+  };
+
+  const handleStatusChange = async (containerId: string, newStatus: string) => {
+    try {
+      await updateContainer.mutateAsync({
+        id: containerId,
+        current_status: newStatus,
+      });
+      toast({
+        title: "Status Updated",
+        description: "Container status has been updated successfully.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update container status.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleSyncLDB = async () => {
+    setIsRefreshing(true);
+    try {
+      let successCount = 0;
+      let errorCount = 0;
+      
+      for (const container of containers) {
+        const result = await LDBService.fetchContainerStatus(container.container_number);
+        if (result.success) {
+          console.log(`LDB Status for ${container.container_number}:`, result);
+          successCount++;
+        } else {
+          console.warn(`Failed to fetch status for ${container.container_number}:`, result.error);
+          errorCount++;
+        }
+      }
+      
+      toast({
+        title: "LDB Status Update",
+        description: `Successfully fetched ${successCount} containers. ${errorCount} failed.`,
+        variant: successCount > 0 ? "default" : "destructive",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to refresh container status from LDB",
+        variant: "destructive",
+      });
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
   const formatDate = (dateString?: string) => {
@@ -57,7 +129,20 @@ export default function ContainersList({ containers }: ContainersListProps) {
   }
 
   return (
-    <>
+    <div className="space-y-4">
+      {/* Action Bar */}
+      <div className="flex justify-end">
+        <Button
+          variant="outline"
+          onClick={handleSyncLDB}
+          disabled={isRefreshing}
+          className="flex items-center gap-2"
+        >
+          <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+          Sync with LDB
+        </Button>
+      </div>
+      
       <div className="rounded-md border">
         <Table>
           <TableHeader>
@@ -67,6 +152,7 @@ export default function ContainersList({ containers }: ContainersListProps) {
               <TableHead>Loading Date</TableHead>
               <TableHead>Current Location</TableHead>
               <TableHead>Supplier</TableHead>
+              <TableHead>Quick Status Change</TableHead>
               <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -74,12 +160,23 @@ export default function ContainersList({ containers }: ContainersListProps) {
             {containers.map((container) => (
               <TableRow key={container.id}>
                 <TableCell>
-                  <div className="font-medium">{container.container_number}</div>
-                  {container.notes && (
-                    <div className="text-xs text-muted-foreground truncate max-w-[200px]">
-                      {container.notes}
-                    </div>
-                  )}
+                  <div className="space-y-1">
+                    <div className="font-medium">{container.container_number}</div>
+                    <Button
+                      variant="link"
+                      size="sm"
+                      className="h-auto p-0 text-xs text-muted-foreground"
+                      onClick={() => window.open(LDBService.getLDBSearchUrl(container.container_number), '_blank')}
+                    >
+                      <ExternalLink className="h-3 w-3 mr-1" />
+                      Check LDB Status
+                    </Button>
+                    {container.notes && (
+                      <div className="text-xs text-muted-foreground truncate max-w-[200px]">
+                        {container.notes}
+                      </div>
+                    )}
+                  </div>
                 </TableCell>
                 <TableCell>
                   <Badge 
@@ -102,6 +199,23 @@ export default function ContainersList({ containers }: ContainersListProps) {
                   <div className="text-sm">
                     {container.supplier_info || '-'}
                   </div>
+                </TableCell>
+                <TableCell>
+                  <Select
+                    value={container.current_status}
+                    onValueChange={(newStatus) => handleStatusChange(container.id, newStatus)}
+                  >
+                    <SelectTrigger className="w-40">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {statusOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </TableCell>
                 <TableCell>
                   <div className="flex space-x-2">
@@ -140,6 +254,6 @@ export default function ContainersList({ containers }: ContainersListProps) {
         open={editDialogOpen}
         onOpenChange={setEditDialogOpen}
       />
-    </>
+    </div>
   );
 }
