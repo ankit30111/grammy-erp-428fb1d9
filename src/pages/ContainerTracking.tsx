@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Container, Calendar, Package } from "lucide-react";
+import { Plus, Container, Calendar, Package, Boxes } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { useContainers } from "@/hooks/useContainers";
 import ContainerGanttChart from "@/components/Container/ContainerGanttChart";
 import ContainersList from "@/components/Container/ContainersList";
+import ContainerModelsView from "@/components/Container/ContainerModelsView";
 import CreateContainerDialog from "@/components/Container/CreateContainerDialog";
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 
@@ -85,8 +86,12 @@ export default function ContainerTracking() {
         </div>
 
         {/* Main Content */}
-        <Tabs defaultValue="gantt" className="space-y-4">
+        <Tabs defaultValue="models" className="space-y-4">
           <TabsList>
+            <TabsTrigger value="models" className="flex items-center space-x-2">
+              <Boxes className="h-4 w-4" />
+              <span>Model View</span>
+            </TabsTrigger>
             <TabsTrigger value="gantt" className="flex items-center space-x-2">
               <Calendar className="h-4 w-4" />
               <span>Gantt View</span>
@@ -96,6 +101,10 @@ export default function ContainerTracking() {
               <span>List View</span>
             </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="models">
+            <ContainerModelsView containers={containers} />
+          </TabsContent>
 
           <TabsContent value="gantt">
             <Card>

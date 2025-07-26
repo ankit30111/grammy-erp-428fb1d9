@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Container } from "@/hooks/useContainers";
 import ContainerDetailsDialog from "./ContainerDetailsDialog";
+import EditContainerDialog from "./EditContainerDialog";
 
 interface ContainersListProps {
   containers: Container[];
@@ -28,10 +29,16 @@ const statusColors = {
 export default function ContainersList({ containers }: ContainersListProps) {
   const [selectedContainer, setSelectedContainer] = useState<Container | null>(null);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
 
   const handleViewDetails = (container: Container) => {
     setSelectedContainer(container);
     setDetailsDialogOpen(true);
+  };
+
+  const handleEditContainer = (container: Container) => {
+    setSelectedContainer(container);
+    setEditDialogOpen(true);
   };
 
   const formatDate = (dateString?: string) => {
@@ -105,6 +112,13 @@ export default function ContainersList({ containers }: ContainersListProps) {
                     >
                       <Eye className="h-4 w-4" />
                     </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleEditContainer(container)}
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
                   </div>
                 </TableCell>
               </TableRow>
@@ -120,6 +134,12 @@ export default function ContainersList({ containers }: ContainersListProps) {
           onOpenChange={setDetailsDialogOpen}
         />
       )}
+
+      <EditContainerDialog
+        container={selectedContainer}
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+      />
     </>
   );
 }
