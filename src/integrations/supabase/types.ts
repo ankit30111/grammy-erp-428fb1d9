@@ -1248,6 +1248,7 @@ export type Database = {
           shipped_date: string | null
           supplier_info: string | null
           updated_at: string
+          vessel_name: string | null
         }
         Insert: {
           arrived_date?: string | null
@@ -1269,6 +1270,7 @@ export type Database = {
           shipped_date?: string | null
           supplier_info?: string | null
           updated_at?: string
+          vessel_name?: string | null
         }
         Update: {
           arrived_date?: string | null
@@ -1290,6 +1292,7 @@ export type Database = {
           shipped_date?: string | null
           supplier_info?: string | null
           updated_at?: string
+          vessel_name?: string | null
         }
         Relationships: []
       }

@@ -125,6 +125,20 @@ export default function CreateContainerDialog({ open, onOpenChange }: CreateCont
 
             <FormField
               control={form.control}
+              name="vessel_name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Vessel Name</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Enter vessel name" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
               name="notes"
               render={({ field }) => (
                 <FormItem>

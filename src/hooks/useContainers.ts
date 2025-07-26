@@ -18,6 +18,7 @@ export interface Container {
   dispatched_date?: string;
   arrived_date?: string;
   supplier_info?: string;
+  vessel_name?: string;
   notes?: string;
   created_at: string;
   updated_at: string;
