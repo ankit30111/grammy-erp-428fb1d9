@@ -1,11 +1,14 @@
 import { useState, useMemo } from "react";
 import { format } from "date-fns";
-import { Package, Calendar, Truck, Ship, Plane } from "lucide-react";
+import { Package, Calendar, Truck, Ship, Plane, RefreshCw } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
 import { Container, useContainerMaterials } from "@/hooks/useContainers";
+import { LDBService } from "@/utils/LDBService";
+import { useToast } from "@/hooks/use-toast";
 
 interface ContainerModelsViewProps {
   containers: Container[];
@@ -62,62 +65,141 @@ const getExpectedDeliveryDate = (container: Container): string => {
   return 'TBD';
 };
 
-function ContainerMaterialsData({ containerId }: { containerId: string }) {
-  const { data: materials = [] } = useContainerMaterials(containerId);
-  
-  if (materials.length === 0) {
-    return <span className="text-muted-foreground">No materials added</span>;
-  }
+// Interface for flattened material data
+interface MaterialRow {
+  id: string;
+  model: string;
+  brand: string;
+  quantity: number;
+  containerId: string;
+  containerNumber: string;
+  status: string;
+  location: string;
+  expectedDelivery: string;
+  supplier: string;
+}
 
-  return (
-    <div className="space-y-1">
-      {materials.map((material, index) => (
-        <div key={material.id} className="text-sm">
-          <span className="font-medium">{material.brand}</span> {material.model}
-          {index < materials.length - 1 && <br />}
-        </div>
-      ))}
-    </div>
-  );
+// Hook to get all materials flattened across containers
+function useAllContainerMaterials(containers: Container[]) {
+  const materialQueries = containers.map(container => {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    const { data: materials = [] } = useContainerMaterials(container.id);
+    return { container, materials };
+  });
+
+  return useMemo(() => {
+    const allMaterials: MaterialRow[] = [];
+    
+    materialQueries.forEach(({ container, materials }) => {
+      materials.forEach(material => {
+        allMaterials.push({
+          id: material.id,
+          model: material.model,
+          brand: material.brand,
+          quantity: material.quantity,
+          containerId: container.id,
+          containerNumber: container.container_number,
+          status: container.current_status,
+          location: getLocationFromStatus(container.current_status),
+          expectedDelivery: getExpectedDeliveryDate(container),
+          supplier: container.supplier_info || '-'
+        });
+      });
+    });
+    
+    return allMaterials;
+  }, [materialQueries]);
+}
+
+function getLocationFromStatus(status: string): string {
+  switch (status) {
+    case 'IN_TRANSIT': return 'At Sea';
+    case 'INDIAN_DOCK': return 'Indian Port';
+    case 'IN_TRAIN': return 'On Train to Factory';
+    case 'ARRIVED': return 'At Factory';
+    case 'DISPATCHED': return 'Dispatched from Port';
+    default: return status.replace('_', ' ');
+  }
 }
 
 export default function ContainerModelsView({ containers }: ContainerModelsViewProps) {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("delivery_date");
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const { toast } = useToast();
+  
+  // Get all materials flattened across containers
+  const allMaterials = useAllContainerMaterials(containers);
 
   const formatDate = (dateString?: string) => {
     if (!dateString || dateString === 'TBD') return dateString || '-';
     return format(new Date(dateString), 'MMM d, yyyy');
   };
 
-  const filteredAndSortedContainers = useMemo(() => {
-    let filtered = containers;
+  const filteredAndSortedMaterials = useMemo(() => {
+    let filtered = allMaterials;
     
     if (statusFilter !== "all") {
-      filtered = containers.filter(container => container.current_status === statusFilter);
+      filtered = allMaterials.filter(material => material.status === statusFilter);
     }
 
     return filtered.sort((a, b) => {
       if (sortBy === "delivery_date") {
-        const dateA = getExpectedDeliveryDate(a);
-        const dateB = getExpectedDeliveryDate(b);
+        const dateA = a.expectedDelivery;
+        const dateB = b.expectedDelivery;
         if (dateA === 'TBD' && dateB === 'TBD') return 0;
         if (dateA === 'TBD') return 1;
         if (dateB === 'TBD') return -1;
         return new Date(dateA).getTime() - new Date(dateB).getTime();
       }
       if (sortBy === "status") {
-        return a.current_status.localeCompare(b.current_status);
+        return a.status.localeCompare(b.status);
       }
-      return a.container_number.localeCompare(b.container_number);
+      if (sortBy === "model") {
+        return `${a.brand} ${a.model}`.localeCompare(`${b.brand} ${b.model}`);
+      }
+      return a.containerNumber.localeCompare(b.containerNumber);
     });
-  }, [containers, statusFilter, sortBy]);
+  }, [allMaterials, statusFilter, sortBy]);
+  
+  const handleRefreshLDBStatus = async () => {
+    setIsRefreshing(true);
+    
+    try {
+      const uniqueContainers = [...new Set(containers.map(c => c.container_number))];
+      
+      for (const containerNumber of uniqueContainers) {
+        const result = await LDBService.fetchContainerStatus(containerNumber);
+        if (!result.success) {
+          console.warn(`Failed to fetch status for ${containerNumber}:`, result.error);
+        }
+      }
+      
+      toast({
+        title: "LDB Status Check",
+        description: "Please check individual containers manually at LDB website for now.",
+        variant: "default",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to refresh container status from LDB",
+        variant: "destructive",
+      });
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   // Get status counts for overview cards
   const statusCounts = containers.reduce((acc, container) => {
     acc[container.current_status] = (acc[container.current_status] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
+  
+  // Get material counts
+  const totalModels = allMaterials.length;
+  const uniqueModels = new Set(allMaterials.map(m => `${m.brand} ${m.model}`)).size;
 
   const criticalStatuses = ['IN_TRANSIT', 'INDIAN_DOCK', 'IN_TRAIN', 'DISPATCHED'];
   const inTransitCount = criticalStatuses.reduce((sum, status) => sum + (statusCounts[status] || 0), 0);
@@ -128,6 +210,16 @@ export default function ContainerModelsView({ containers }: ContainerModelsViewP
         <Package className="h-12 w-12 mb-4" />
         <p className="text-lg">No containers found</p>
         <p className="text-sm">Add containers to track model deliveries</p>
+      </div>
+    );
+  }
+  
+  if (!allMaterials.length) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
+        <Package className="h-12 w-12 mb-4" />
+        <p className="text-lg">No models found</p>
+        <p className="text-sm">Add materials to containers to track model deliveries</p>
       </div>
     );
   }
@@ -175,18 +267,19 @@ export default function ContainerModelsView({ containers }: ContainerModelsViewP
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center space-x-2">
-              <Truck className="h-5 w-5 text-purple-500" />
+              <Package className="h-5 w-5 text-purple-500" />
               <div>
-                <p className="text-sm font-medium">Total Containers</p>
-                <p className="text-2xl font-bold">{containers.length}</p>
+                <p className="text-sm font-medium">Total Models</p>
+                <p className="text-2xl font-bold">{uniqueModels}</p>
+                <p className="text-xs text-muted-foreground">{totalModels} items</p>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Filters */}
-      <div className="flex space-x-4">
+      {/* Filters and Actions */}
+      <div className="flex flex-wrap items-center gap-4">
         <div className="flex items-center space-x-2">
           <label className="text-sm font-medium">Filter by Status:</label>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -213,10 +306,22 @@ export default function ContainerModelsView({ containers }: ContainerModelsViewP
             <SelectContent>
               <SelectItem value="delivery_date">Expected Delivery</SelectItem>
               <SelectItem value="status">Status</SelectItem>
+              <SelectItem value="model">Model</SelectItem>
               <SelectItem value="container">Container Number</SelectItem>
             </SelectContent>
           </Select>
         </div>
+        
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleRefreshLDBStatus}
+          disabled={isRefreshing}
+          className="ml-auto"
+        >
+          <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+          Sync with LDB
+        </Button>
       </div>
 
       {/* Models Table */}
@@ -235,64 +340,64 @@ export default function ContainerModelsView({ containers }: ContainerModelsViewP
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead>Model</TableHead>
+                  <TableHead className="text-right">Qty</TableHead>
                   <TableHead>Container</TableHead>
-                  <TableHead>Models & Brands</TableHead>
-                  <TableHead>Current Status</TableHead>
-                  <TableHead>Current Location</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Location</TableHead>
                   <TableHead>Expected Delivery</TableHead>
-                  <TableHead>Supplier</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredAndSortedContainers.map((container) => (
-                  <TableRow key={container.id}>
+                {filteredAndSortedMaterials.map((material) => (
+                  <TableRow key={material.id}>
                     <TableCell>
-                      <div className="font-medium">{container.container_number}</div>
-                      {container.notes && (
-                        <div className="text-xs text-muted-foreground truncate max-w-[150px]">
-                          {container.notes}
-                        </div>
-                      )}
+                      <div className="space-y-1">
+                        <div className="font-medium">{material.brand} {material.model}</div>
+                        {material.brand !== material.model && (
+                          <div className="text-xs text-muted-foreground">
+                            {material.model}
+                          </div>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="font-medium">{material.quantity}</div>
                     </TableCell>
                     <TableCell>
-                      <ContainerMaterialsData containerId={container.id} />
+                      <div className="font-medium text-sm">{material.containerNumber}</div>
+                      <Button
+                        variant="link"
+                        size="sm"
+                        className="h-auto p-0 text-xs text-muted-foreground"
+                        onClick={() => window.open(LDBService.getLDBSearchUrl(material.containerNumber), '_blank')}
+                      >
+                        Check LDB Status →
+                      </Button>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center space-x-2">
-                        {getStatusIcon(container.current_status)}
+                        {getStatusIcon(material.status)}
                         <Badge 
                           variant="outline" 
-                          className={`text-white ${statusColors[container.current_status as keyof typeof statusColors] || 'bg-gray-500'}`}
+                          className={`text-white ${statusColors[material.status as keyof typeof statusColors] || 'bg-gray-500'}`}
                         >
-                          {container.current_status.replace('_', ' ')}
+                          {material.status.replace('_', ' ')}
                         </Badge>
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="text-sm">
-                        {container.current_status === 'IN_TRANSIT' && 'At Sea'}
-                        {container.current_status === 'INDIAN_DOCK' && 'Indian Port'}
-                        {container.current_status === 'IN_TRAIN' && 'On Train to Factory'}
-                        {container.current_status === 'ARRIVED' && 'At Factory'}
-                        {container.current_status === 'DISPATCHED' && 'Dispatched from Port'}
-                        {!['IN_TRANSIT', 'INDIAN_DOCK', 'IN_TRAIN', 'ARRIVED', 'DISPATCHED'].includes(container.current_status) && 
-                          container.current_status.replace('_', ' ')}
-                      </div>
+                      <div className="text-sm">{material.location}</div>
                     </TableCell>
                     <TableCell>
                       <div className="text-sm font-medium">
-                        {formatDate(getExpectedDeliveryDate(container))}
+                        {formatDate(material.expectedDelivery)}
                       </div>
-                      {container.current_status === 'ARRIVED' && (
+                      {material.status === 'ARRIVED' && (
                         <Badge variant="secondary" className="mt-1">
                           Delivered
                         </Badge>
                       )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="text-sm">
-                        {container.supplier_info || '-'}
-                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
