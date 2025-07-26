@@ -2,11 +2,12 @@ import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, ShoppingCart, Package, TrendingUp, AlertTriangle, CheckCircle, Clock, ArrowRight, BarChart3, DollarSign, RefreshCw } from "lucide-react";
+import { Calendar, ShoppingCart, Package, TrendingUp, AlertTriangle, CheckCircle, Clock, ArrowRight, BarChart3, DollarSign, RefreshCw, Truck, ExternalLink } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useProjections } from "@/hooks/useProjections";
 import { useProductionSchedules } from "@/hooks/useProductionSchedules";
 import { usePurchaseOrders } from "@/hooks/usePurchaseOrders";
+import { useContainers } from "@/hooks/useContainers";
 import { useState, useEffect } from "react";
 import { calculateMaterialShortages, MaterialShortage } from "@/utils/materialShortageCalculator";
 import { useToast } from "@/hooks/use-toast";
@@ -26,6 +27,9 @@ const PPC = () => {
   const {
     data: purchaseOrders
   } = usePurchaseOrders();
+  const {
+    data: containers
+  } = useContainers();
   const {
     toast
   } = useToast();
@@ -109,7 +113,7 @@ const PPC = () => {
             </div>
 
             {/* Department Navigation Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               <Card className="hover:shadow-lg transition-shadow cursor-pointer">
                 <CardHeader className="pb-3">
                   <CardTitle className="flex items-center gap-2 text-lg">
@@ -214,7 +218,93 @@ const PPC = () => {
                   </div>
                 </CardContent>
               </Card>
+
+              <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <Truck className="h-5 w-5 text-purple-600" />
+                    Container Tracking
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-sm text-muted-foreground">Total Containers</span>
+                      <span className="font-medium">{containers?.length || 0}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-muted-foreground">In Transit</span>
+                      <Badge variant="secondary">
+                        {containers?.filter(c => c.current_status === 'IN_TRANSIT' || c.current_status === 'SHIPPED').length || 0}
+                      </Badge>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-muted-foreground">Recent Arrivals</span>
+                      <Badge variant="secondary">
+                        {containers?.filter(c => c.current_status === 'ARRIVED').length || 0}
+                      </Badge>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between pt-2 border-t">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="h-4 w-4 text-green-600" />
+                      <span className="text-sm">Import tracking</span>
+                    </div>
+                    <Button variant="outline" size="sm" className="gap-2" onClick={() => setSelectedTab("containers")}>
+                      View Details <ArrowRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
+
+            {/* Quick Access Section */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <ExternalLink className="h-5 w-5 text-blue-600" />
+                  Quick Access
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                  <Link to="/planning-dashboard">
+                    <Button variant="outline" className="w-full justify-start gap-2 h-auto p-4">
+                      <Calendar className="h-4 w-4" />
+                      <span className="text-sm">Production Planning</span>
+                    </Button>
+                  </Link>
+                  <Link to="/purchase">
+                    <Button variant="outline" className="w-full justify-start gap-2 h-auto p-4">
+                      <ShoppingCart className="h-4 w-4" />
+                      <span className="text-sm">Purchase Orders</span>
+                    </Button>
+                  </Link>
+                  <Link to="/grn">
+                    <Button variant="outline" className="w-full justify-start gap-2 h-auto p-4">
+                      <Package className="h-4 w-4" />
+                      <span className="text-sm">Goods Receipt Notes</span>
+                    </Button>
+                  </Link>
+                  <Link to="/serial-number-management">
+                    <Button variant="outline" className="w-full justify-start gap-2 h-auto p-4">
+                      <BarChart3 className="h-4 w-4" />
+                      <span className="text-sm">Serial Number Management</span>
+                    </Button>
+                  </Link>
+                  <Link to="/purchase-discrepancies">
+                    <Button variant="outline" className="w-full justify-start gap-2 h-auto p-4">
+                      <AlertTriangle className="h-4 w-4" />
+                      <span className="text-sm">Purchase Discrepancies</span>
+                    </Button>
+                  </Link>
+                  <Button variant="outline" className="w-full justify-start gap-2 h-auto p-4" onClick={() => setSelectedTab("containers")}>
+                    <Truck className="h-4 w-4" />
+                    <span className="text-sm">Container Tracking</span>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
 
             {/* Key Metrics Summary */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
