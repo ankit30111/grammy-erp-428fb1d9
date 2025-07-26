@@ -64,7 +64,7 @@ export default function ContainersList({ containers }: ContainersListProps) {
             <TableRow>
               <TableHead>Container Number</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead>Ordered Date</TableHead>
+              <TableHead>Loading Date</TableHead>
               <TableHead>Current Location</TableHead>
               <TableHead>Supplier</TableHead>
               <TableHead>Actions</TableHead>
@@ -89,7 +89,7 @@ export default function ContainersList({ containers }: ContainersListProps) {
                     {container.current_status.replace('_', ' ')}
                   </Badge>
                 </TableCell>
-                <TableCell>{formatDate(container.ordered_date)}</TableCell>
+                <TableCell>{formatDate(container.loading_date)}</TableCell>
                 <TableCell>
                   {container.current_status === 'IN_TRANSIT' && 'At Sea'}
                   {container.current_status === 'INDIAN_DOCK' && 'Indian Port'}

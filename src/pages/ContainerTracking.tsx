@@ -86,12 +86,8 @@ export default function ContainerTracking() {
         </div>
 
         {/* Main Content */}
-        <Tabs defaultValue="models" className="space-y-4">
+        <Tabs defaultValue="gantt" className="space-y-4">
           <TabsList>
-            <TabsTrigger value="models" className="flex items-center space-x-2">
-              <Boxes className="h-4 w-4" />
-              <span>Model View</span>
-            </TabsTrigger>
             <TabsTrigger value="gantt" className="flex items-center space-x-2">
               <Calendar className="h-4 w-4" />
               <span>Gantt View</span>
@@ -100,11 +96,11 @@ export default function ContainerTracking() {
               <Container className="h-4 w-4" />
               <span>List View</span>
             </TabsTrigger>
+            <TabsTrigger value="models" className="flex items-center space-x-2">
+              <Boxes className="h-4 w-4" />
+              <span>Model View</span>
+            </TabsTrigger>
           </TabsList>
-
-          <TabsContent value="models">
-            <ContainerModelsView containers={containers} />
-          </TabsContent>
 
           <TabsContent value="gantt">
             <Card>
@@ -132,6 +128,10 @@ export default function ContainerTracking() {
                 <ContainersList containers={containers} />
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="models">
+            <ContainerModelsView containers={containers} />
           </TabsContent>
         </Tabs>
 
