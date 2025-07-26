@@ -21,6 +21,7 @@ import Purchase from "./pages/Purchase";
 import Projection from "./pages/Projection";
 import FinishedGoods from "./pages/FinishedGoods";
 import CustomerComplaints from "./pages/CustomerComplaints";
+import ContainerTracking from "./pages/ContainerTracking";
 import SpareOrders from "./pages/SpareOrders";
 import HRManagement from "./pages/management/HRManagement";
 import CustomersManagement from "./pages/management/CustomersManagement";
@@ -171,6 +172,12 @@ function App() {
             <Route path="/customer-complaints" element={
               <AuthGuard>
                 <CustomerComplaints />
+              </AuthGuard>
+            } />
+            
+            <Route path="/container-tracking" element={
+              <AuthGuard>
+                <ContainerTracking />
               </AuthGuard>
             } />
             

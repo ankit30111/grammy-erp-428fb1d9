@@ -1,5 +1,5 @@
 
-import { Home, Plus, Wrench, Calendar, Package, BarChart2, Layers, ClipboardCheck, DollarSign, Users, FileText, UserPlus, Building2, User, MessageSquare, CheckSquare, Lightbulb } from "lucide-react";
+import { Home, Plus, Wrench, Calendar, Package, BarChart2, Layers, ClipboardCheck, DollarSign, Users, FileText, UserPlus, Building2, User, MessageSquare, CheckSquare, Lightbulb, Container } from "lucide-react";
 
 interface NavigationSubItem {
   to: string;
@@ -28,6 +28,7 @@ export const navigationItems: NavigationItem[] = [
   { to: "/rnd", icon: <Lightbulb size={20} />, label: "R&D" },
   { to: "/sales", icon: <DollarSign size={20} />, label: "Sales" },
   { to: "/customer-complaints", icon: <MessageSquare size={20} />, label: "Customer Complaints" },
+  { to: "/container-tracking", icon: <Container size={20} />, label: "Container Tracking" },
   { to: "/management/hr", icon: <Users size={20} />, label: "Human Resources" }
 ];
 
