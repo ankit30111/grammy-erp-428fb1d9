@@ -22,7 +22,6 @@ import {
 import { Search, Plus, Building2, Edit, Trash2, FileText } from "lucide-react";
 import { useVendors } from "@/hooks/useVendors";
 import { VendorForm } from "@/components/forms/VendorForm";
-import TestWhatsAppButton from "@/components/quality/TestWhatsAppButton";
 
 const Vendors = () => {
   const { vendors, isLoading, deleteVendor } = useVendors();
@@ -81,9 +80,7 @@ const Vendors = () => {
             <Building2 className="h-6 w-6" />
             <h1 className="text-3xl font-bold">Vendor Management</h1>
           </div>
-          <div className="flex items-center gap-2">
-            <TestWhatsAppButton />
-            <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
               <Button>
                 <Plus className="mr-2 h-4 w-4" />
@@ -97,7 +94,6 @@ const Vendors = () => {
               <VendorForm onSuccess={handleAddSuccess} />
             </DialogContent>
           </Dialog>
-          </div>
         </div>
 
         {/* Edit Dialog */}

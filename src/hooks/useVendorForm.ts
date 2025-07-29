@@ -11,8 +11,6 @@ interface VendorFormData {
   gst_number: string;
   bank_account_number: string;
   ifsc_code: string;
-  whatsapp_number: string;
-  whatsapp_notifications_enabled: boolean;
   gst_certificate: File | null;
   msme_certificate: File | null;
 }
@@ -26,8 +24,6 @@ const initialFormData: VendorFormData = {
   gst_number: "",
   bank_account_number: "",
   ifsc_code: "",
-  whatsapp_number: "",
-  whatsapp_notifications_enabled: true,
   gst_certificate: null,
   msme_certificate: null
 };
@@ -90,8 +86,6 @@ export const useVendorForm = () => {
         gst_number: formData.gst_number.trim(),
         bank_account_number: formData.bank_account_number.trim() || undefined,
         ifsc_code: formData.ifsc_code.trim() || undefined,
-        whatsapp_number: formData.whatsapp_number.trim() || undefined,
-        whatsapp_notifications_enabled: formData.whatsapp_notifications_enabled,
         gst_certificate: formData.gst_certificate || undefined,
         msme_certificate: formData.msme_certificate || undefined
       };
@@ -152,8 +146,6 @@ export const useVendorForm = () => {
         gst_number: formData.gst_number.trim(),
         bank_account_number: formData.bank_account_number.trim() || undefined,
         ifsc_code: formData.ifsc_code.trim() || undefined,
-        whatsapp_number: formData.whatsapp_number.trim() || undefined,
-        whatsapp_notifications_enabled: formData.whatsapp_notifications_enabled,
         gst_certificate: formData.gst_certificate || undefined,
         msme_certificate: formData.msme_certificate || undefined
       };
