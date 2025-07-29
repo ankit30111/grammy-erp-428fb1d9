@@ -326,7 +326,7 @@ const IQC = () => {
                                   <ManualWhatsAppButton
                                     grnItemId={item.id}
                                     vendorName={item.grn?.vendors?.name || 'Unknown'}
-                                    disabled={!item.whatsapp_notification_sent}
+                                    disabled={item.whatsapp_notification_sent}
                                   />
                                 )}
                               </div>
