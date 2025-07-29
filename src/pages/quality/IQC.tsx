@@ -14,6 +14,7 @@ import { format } from "date-fns";
 import LineRejectionManager from "@/components/quality/LineRejectionManager";
 import IQCInspectionDialog from "@/components/quality/IQCInspectionDialog";
 import PartAnalysis from "@/components/quality/PartAnalysis";
+import ManualWhatsAppButton from "@/components/quality/ManualWhatsAppButton";
 
 const IQC = () => {
   const [selectedTab, setSelectedTab] = useState("pending");
@@ -291,7 +292,7 @@ const IQC = () => {
                               }
                             </TableCell>
                             <TableCell>
-                              <div className="flex gap-1">
+                              <div className="flex gap-1 flex-wrap">
                                 <Button variant="outline" size="sm">
                                   <FileCheck className="h-3 w-3 mr-1" />
                                   Report
@@ -320,6 +321,13 @@ const IQC = () => {
                                     <FileText className="h-3 w-3" />
                                     Manage CAPA
                                   </Button>
+                                )}
+                                {needsCAPA && (
+                                  <ManualWhatsAppButton
+                                    grnItemId={item.id}
+                                    vendorName={item.grn?.vendors?.name || 'Unknown'}
+                                    disabled={!item.whatsapp_notification_sent}
+                                  />
                                 )}
                               </div>
                             </TableCell>

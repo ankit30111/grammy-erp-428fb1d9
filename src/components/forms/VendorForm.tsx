@@ -37,6 +37,8 @@ export const VendorForm = ({ onSuccess, editingVendor, onCancel }: VendorFormPro
         gst_number: editingVendor.gst_number || "",
         bank_account_number: editingVendor.bank_account_number || "",
         ifsc_code: editingVendor.ifsc_code || "",
+        whatsapp_number: editingVendor.whatsapp_number || "",
+        whatsapp_notifications_enabled: editingVendor.whatsapp_notifications_enabled !== false,
         gst_certificate: null,
         msme_certificate: null
       });
@@ -172,6 +174,33 @@ export const VendorForm = ({ onSuccess, editingVendor, onCancel }: VendorFormPro
             onChange={(e) => updateFormField('ifsc_code', e.target.value)}
             placeholder="HDFC0001234"
           />
+        </div>
+      </div>
+
+      {/* WhatsApp Configuration */}
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="whatsapp">WhatsApp Number</Label>
+          <Input 
+            id="whatsapp" 
+            value={formData.whatsapp_number || ''} 
+            onChange={(e) => updateFormField('whatsapp_number', e.target.value)}
+            placeholder="+91-9876543210"
+          />
+        </div>
+        <div className="space-y-2 flex items-end">
+          <div className="flex items-center space-x-2">
+            <input
+              type="checkbox"
+              id="whatsapp_enabled"
+              checked={formData.whatsapp_notifications_enabled !== false}
+              onChange={(e) => updateFormField('whatsapp_notifications_enabled', e.target.checked)}
+              className="rounded border-gray-300"
+            />
+            <Label htmlFor="whatsapp_enabled" className="text-sm font-normal">
+              Enable WhatsApp notifications for IQC failures
+            </Label>
+          </div>
         </div>
       </div>
 
