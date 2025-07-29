@@ -25,11 +25,23 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-    // Get WhatsApp API credentials
+    // Get WhatsApp API credentials with enhanced logging
     const whatsappToken = Deno.env.get('META_WHATSAPP_ACCESS_TOKEN')
     const phoneNumberId = Deno.env.get('META_WHATSAPP_PHONE_NUMBER_ID')
+    
+    console.log('WhatsApp credentials check:', {
+      hasAccessToken: !!whatsappToken,
+      accessTokenLength: whatsappToken?.length || 0,
+      accessTokenPreview: whatsappToken ? `${whatsappToken.substring(0, 20)}...` : 'NOT_SET',
+      hasPhoneNumberId: !!phoneNumberId,
+      phoneNumberId: phoneNumberId || 'NOT_SET'
+    })
 
     if (!whatsappToken || !phoneNumberId) {
+      console.error('Missing WhatsApp API credentials:', {
+        hasAccessToken: !!whatsappToken,
+        hasPhoneNumberId: !!phoneNumberId
+      })
       throw new Error('WhatsApp API credentials not configured')
     }
 
@@ -98,6 +110,14 @@ serve(async (req) => {
     if (!whatsappNumber.startsWith('91')) { // Assuming Indian numbers
       whatsappNumber = '91' + whatsappNumber
     }
+    
+    console.log('Vendor and WhatsApp details:', {
+      vendorId: grn.vendor_id,
+      vendorName: vendor.name,
+      originalNumber: vendor.whatsapp_number,
+      formattedNumber: whatsappNumber,
+      notificationsEnabled: vendor.whatsapp_notifications_enabled
+    })
 
     // Prepare message content
     const failureReason = grnItemData.iqc_status === 'REJECTED' ? 'REJECTED' : 'SEGREGATED'
@@ -186,6 +206,12 @@ Thank you for your immediate attention to this matter.
     }
 
     // If we have media, send it as a separate message
+    console.log('Sending WhatsApp message:', {
+      url: `https://graph.facebook.com/v18.0/${phoneNumberId}/messages`,
+      to: whatsappNumber,
+      messageLength: messageText.length
+    })
+
     const messageResponse = await fetch(`https://graph.facebook.com/v18.0/${phoneNumberId}/messages`, {
       method: 'POST',
       headers: {
@@ -196,8 +222,20 @@ Thank you for your immediate attention to this matter.
     })
 
     const messageResult = await messageResponse.json()
+    
+    console.log('WhatsApp API response:', {
+      status: messageResponse.status,
+      statusText: messageResponse.statusText,
+      success: messageResponse.ok,
+      result: messageResult
+    })
 
     if (!messageResponse.ok) {
+      console.error('WhatsApp API error details:', {
+        status: messageResponse.status,
+        statusText: messageResponse.statusText,
+        errorDetails: messageResult
+      })
       throw new Error(`WhatsApp API error: ${JSON.stringify(messageResult)}`)
     }
 
@@ -225,11 +263,12 @@ Thank you for your immediate attention to this matter.
     }
 
     // Log notification in database
+    console.log('Logging notification with vendor_id:', grn.vendor_id)
     const { error: logError } = await supabase
       .from('whatsapp_notifications')
       .insert({
         grn_item_id: grn_item_id,
-        vendor_id: vendor.id,
+        vendor_id: grn.vendor_id, // Use vendor_id from GRN, not from vendor object
         message_content: messageText,
         file_url: grnItemData.iqc_report_url,
         whatsapp_message_id: messageResult.messages?.[0]?.id,
