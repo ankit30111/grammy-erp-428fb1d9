@@ -45,7 +45,7 @@ serve(async (req) => {
           vendor_id,
           purchase_orders!inner(
             po_number,
-            order_date
+            po_date
           ),
           vendors!inner(
             name,
@@ -122,7 +122,7 @@ We regret to inform you that the following material has failed our Incoming Qual
 • GRN Number: ${grn.grn_number}
 • PO Number: ${po.po_number}
 • Received Date: ${new Date(grn.received_date).toLocaleDateString('en-IN')}
-• PO Date: ${new Date(po.order_date).toLocaleDateString('en-IN')}
+• PO Date: ${new Date(po.po_date).toLocaleDateString('en-IN')}
 
 ⚠️ *CORRECTIVE ACTION REQUIRED:*
 Please submit a CAPA (Corrective and Preventive Action) document addressing the root cause and preventive measures for this quality issue.
