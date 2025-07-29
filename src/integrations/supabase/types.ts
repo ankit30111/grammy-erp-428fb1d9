@@ -3727,7 +3727,9 @@ export type Database = {
         Row: {
           created_at: string
           delivered_at: string | null
+          delivery_status: string | null
           error_message: string | null
+          failed_at: string | null
           file_url: string | null
           grn_item_id: string
           id: string
@@ -3742,7 +3744,9 @@ export type Database = {
         Insert: {
           created_at?: string
           delivered_at?: string | null
+          delivery_status?: string | null
           error_message?: string | null
+          failed_at?: string | null
           file_url?: string | null
           grn_item_id: string
           id?: string
@@ -3757,7 +3761,9 @@ export type Database = {
         Update: {
           created_at?: string
           delivered_at?: string | null
+          delivery_status?: string | null
           error_message?: string | null
+          failed_at?: string | null
           file_url?: string | null
           grn_item_id?: string
           id?: string
@@ -3785,6 +3791,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      whatsapp_replies: {
+        Row: {
+          created_at: string
+          id: string
+          message_content: string | null
+          received_at: string
+          sender_number: string
+          whatsapp_message_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message_content?: string | null
+          received_at?: string
+          sender_number: string
+          whatsapp_message_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message_content?: string | null
+          received_at?: string
+          sender_number?: string
+          whatsapp_message_id?: string
+        }
+        Relationships: []
       }
     }
     Views: {
