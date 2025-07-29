@@ -71,12 +71,23 @@ serve(async (req) => {
     const po = grnItemData.grn.purchase_orders
 
     // Check if vendor has WhatsApp enabled and number configured
-    if (!vendor.whatsapp_notifications_enabled || !vendor.whatsapp_number) {
-      console.log('WhatsApp notifications disabled or no number for vendor:', vendor.name)
+    if (!vendor.whatsapp_notifications_enabled) {
+      console.log('WhatsApp notifications disabled for vendor:', vendor.name)
       return new Response(
         JSON.stringify({ 
           success: false, 
-          message: 'WhatsApp notifications not enabled for vendor' 
+          message: `WhatsApp notifications are disabled for vendor: ${vendor.name}` 
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    if (!vendor.whatsapp_number) {
+      console.log('No WhatsApp number configured for vendor:', vendor.name)
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          message: `No WhatsApp number configured for vendor: ${vendor.name}. Please update vendor details.` 
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
