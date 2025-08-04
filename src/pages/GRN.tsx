@@ -8,12 +8,14 @@ import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { useGRN } from "@/hooks/useGRN";
 import GRNForm from "@/components/PPC/GRNForm";
+import { NonPOGRNForm } from "@/components/PPC/NonPOGRNForm";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
 
 const GRN = () => {
   const [activeTab, setActiveTab] = useState("create");
@@ -22,6 +24,7 @@ const GRN = () => {
   const [editingGRN, setEditingGRN] = useState<any>(null);
   const [editQuantities, setEditQuantities] = useState<Record<string, number>>({});
   const [searchQuery, setSearchQuery] = useState("");
+  const [useNonPOMode, setUseNonPOMode] = useState(false);
   
   const { data: existingGRNs, isLoading: grnLoading, refetch } = useGRN();
   const { toast } = useToast();
@@ -114,7 +117,31 @@ const GRN = () => {
           </TabsList>
 
           <TabsContent value="create" className="space-y-4">
-            <GRNForm />
+            <Card>
+              <CardHeader className="pb-4">
+                <div className="flex items-center justify-between">
+                  <CardTitle>Create GRN</CardTitle>
+                  <div className="flex items-center space-x-2">
+                    <Label htmlFor="grn-mode" className="text-sm font-medium">
+                      {useNonPOMode ? "Without PO" : "With PO"}
+                    </Label>
+                    <Switch
+                      id="grn-mode"
+                      checked={useNonPOMode}
+                      onCheckedChange={setUseNonPOMode}
+                    />
+                  </div>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  {useNonPOMode 
+                    ? "Create GRN for direct material receipts without a purchase order"
+                    : "Create GRN based on approved purchase orders"
+                  }
+                </p>
+              </CardHeader>
+            </Card>
+            
+            {useNonPOMode ? <NonPOGRNForm /> : <GRNForm />}
           </TabsContent>
 
           <TabsContent value="tracking" className="space-y-4">
@@ -160,7 +187,11 @@ const GRN = () => {
                             <TableCell className="font-medium">{grn.grn_number}</TableCell>
                             <TableCell>{new Date(grn.received_date).toLocaleDateString()}</TableCell>
                             <TableCell>{grn.vendors?.name || 'N/A'}</TableCell>
-                            <TableCell className="text-blue-600 font-medium">{grn.purchase_orders?.po_number || 'N/A'}</TableCell>
+                            <TableCell className="text-blue-600 font-medium">
+                              {grn.purchase_orders?.po_number || (
+                                <span className="text-muted-foreground italic">Non-PO</span>
+                              )}
+                            </TableCell>
                             <TableCell>{grn.grn_items?.length || 0}</TableCell>
                             <TableCell>{getStatusBadge(grn.status)}</TableCell>
                             <TableCell className="space-x-2">
@@ -201,7 +232,9 @@ const GRN = () => {
                           <div>
                             <span className="text-sm text-muted-foreground">PO Reference</span>
                             <p className="font-medium">
-                              {filteredGRNs.find(grn => grn.id === selectedGRN)?.purchase_orders?.po_number}
+                              {filteredGRNs.find(grn => grn.id === selectedGRN)?.purchase_orders?.po_number || (
+                                <span className="text-muted-foreground italic">Non-PO GRN</span>
+                              )}
                             </p>
                           </div>
                           <div>
@@ -223,7 +256,7 @@ const GRN = () => {
                             <TableRow>
                               <TableHead>Material Code</TableHead>
                               <TableHead>Material Name</TableHead>
-                              <TableHead>PO Quantity</TableHead>
+                              <TableHead>Expected/PO Quantity</TableHead>
                               <TableHead>Received Quantity</TableHead>
                               <TableHead>IQC Status</TableHead>
                             </TableRow>
@@ -281,7 +314,7 @@ const GRN = () => {
                     <TableRow>
                       <TableHead>Material Code</TableHead>
                       <TableHead>Material Name</TableHead>
-                      <TableHead>PO Quantity</TableHead>
+                      <TableHead>Expected/PO Quantity</TableHead>
                       <TableHead>Received Quantity</TableHead>
                     </TableRow>
                   </TableHeader>

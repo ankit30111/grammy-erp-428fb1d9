@@ -47,10 +47,11 @@ export const useCreateGRN = () => {
         .from('grn')
         .insert({
           grn_number: '', // Empty string will be replaced by trigger
-          purchase_order_id: grnData.purchase_order_id,
+          purchase_order_id: grnData.purchase_order_id || null, // Allow null for non-PO GRNs
           vendor_id: grnData.vendor_id,
-          status: 'PENDING',
+          status: 'RECEIVED', // Set to RECEIVED for both PO and non-PO GRNs
           notes: grnData.notes,
+          received_date: grnData.received_date || new Date().toISOString().split('T')[0],
         })
         .select()
         .single();
@@ -61,7 +62,7 @@ export const useCreateGRN = () => {
       const items = grnData.items.map((item: any) => ({
         grn_id: grnRecord.id,
         raw_material_id: item.raw_material_id,
-        po_quantity: item.po_quantity,
+        po_quantity: item.po_quantity || item.expected_quantity, // Use expected_quantity for non-PO GRNs
         received_quantity: item.received_quantity,
         iqc_status: 'PENDING',
       }));

@@ -1081,7 +1081,7 @@ export type Database = {
           grn_number: string
           id: string
           notes: string | null
-          purchase_order_id: string
+          purchase_order_id: string | null
           received_by: string | null
           received_date: string
           status: string
@@ -1093,7 +1093,7 @@ export type Database = {
           grn_number: string
           id?: string
           notes?: string | null
-          purchase_order_id: string
+          purchase_order_id?: string | null
           received_by?: string | null
           received_date?: string
           status?: string
@@ -1105,7 +1105,7 @@ export type Database = {
           grn_number?: string
           id?: string
           notes?: string | null
-          purchase_order_id?: string
+          purchase_order_id?: string | null
           received_by?: string | null
           received_date?: string
           status?: string
