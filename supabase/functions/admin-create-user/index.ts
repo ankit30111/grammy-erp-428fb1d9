@@ -134,36 +134,61 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Create user using admin client
-    const { data: authData, error: createError } = await supabaseAdmin.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true, // Auto-confirm email for admin created users
-      user_metadata: {
-        full_name: fullName || ''
-      }
-    })
-
-    if (createError) {
-      console.error('User creation failed:', createError)
-      let errorMessage = 'Failed to create user'
+    // Check if user already exists in Auth
+    console.log('Checking if user already exists in auth...')
+    const { data: existingAuthUser } = await supabaseAdmin.auth.admin.getUserByEmail(email)
+    
+    let authUserId: string
+    
+    if (existingAuthUser?.user) {
+      console.log('User already exists in auth:', existingAuthUser.user.id)
+      authUserId = existingAuthUser.user.id
       
-      if (createError.message.includes('already registered')) {
-        errorMessage = 'A user with this email already exists'
-      } else {
-        errorMessage = createError.message
+      // Check if user also exists in user_accounts
+      const { data: existingUserAccount } = await supabaseAdmin
+        .from('user_accounts')
+        .select('id')
+        .eq('id', authUserId)
+        .single()
+      
+      if (existingUserAccount) {
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            message: 'User with this email already exists in the system' 
+          }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+      
+      console.log('Auth user exists but no user_accounts record found. Creating user_accounts record...')
+    } else {
+      console.log('Creating new user with Supabase Auth...')
+      
+      // Create user with Supabase Auth
+      const { data: authData, error: createError } = await supabaseAdmin.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: true, // Auto-confirm email for admin created users
+        user_metadata: {
+          full_name: fullName || ''
+        }
+      })
+
+      if (createError) {
+        console.error('User creation failed:', createError)
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            message: 'Failed to create user account: ' + createError.message 
+          }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
       }
 
-      return new Response(
-        JSON.stringify({ success: false, message: errorMessage }),
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      )
+      console.log('User created successfully:', authData.user?.id, email)
+      authUserId = authData.user!.id
     }
-
-    console.log('User created successfully:', authData.user?.id, email)
 
     // Generate unique username from email
     let username = email.split('@')[0]
@@ -182,7 +207,7 @@ Deno.serve(async (req) => {
     }
 
     const insertData = {
-      id: authData.user!.id,
+      id: authUserId,
       username: username,
       email: email,
       full_name: fullName || '',
@@ -209,8 +234,10 @@ Deno.serve(async (req) => {
       })
       console.error('Data that failed to insert:', JSON.stringify(insertData, null, 2))
       
-      // Rollback: Delete the auth user since user_accounts creation failed
-      await supabaseAdmin.auth.admin.deleteUser(authData.user!.id)
+      // Rollback: Delete the auth user if we created one (only if it's not an existing user)
+      if (!existingAuthUser?.user) {
+        await supabaseAdmin.auth.admin.deleteUser(authUserId)
+      }
       
       let errorMessage = 'Failed to create user account record.'
       
@@ -243,14 +270,14 @@ Deno.serve(async (req) => {
       )
     }
 
-    console.log('User account record created successfully:', authData.user!.id)
+    console.log('User account record created successfully:', authUserId)
 
     const response: CreateUserResponse = {
       success: true,
       message: `User created successfully! Email: ${email}`,
       user: {
-        id: authData.user?.id,
-        email: authData.user?.email
+        id: authUserId,
+        email: email
       }
     }
 
