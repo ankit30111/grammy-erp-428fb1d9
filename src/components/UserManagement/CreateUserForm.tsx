@@ -23,7 +23,11 @@ interface CreateUserFormData {
   fullName?: string;
 }
 
-export function CreateUserForm() {
+interface CreateUserFormProps {
+  onUserCreated?: () => void;
+}
+
+export function CreateUserForm({ onUserCreated }: CreateUserFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   
   const form = useForm<CreateUserFormData>({
@@ -73,6 +77,11 @@ export function CreateUserForm() {
       console.log("User created successfully:", result.user);
       toast.success(result.message);
       form.reset();
+      
+      // Notify parent component to refresh user list
+      if (onUserCreated) {
+        onUserCreated();
+      }
     } catch (error) {
       console.error("Error creating user:", error);
       toast.error("An unexpected error occurred while creating the user");

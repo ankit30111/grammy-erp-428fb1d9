@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, forwardRef, useImperativeHandle } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Table,
@@ -29,7 +29,11 @@ interface UserAccount {
   };
 }
 
-export function UsersList() {
+export interface UsersListRef {
+  refreshUsers: () => void;
+}
+
+export const UsersList = forwardRef<UsersListRef>((props, ref) => {
   const [users, setUsers] = useState<UserAccount[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingUser, setEditingUser] = useState<UserAccount | null>(null);
@@ -112,6 +116,11 @@ export function UsersList() {
   const handleUserUpdated = () => {
     fetchUsers();
   };
+
+  // Expose refresh function to parent component
+  useImperativeHandle(ref, () => ({
+    refreshUsers: fetchUsers
+  }));
 
   if (loading) {
     return (
@@ -225,4 +234,4 @@ export function UsersList() {
       />
     </Card>
   );
-}
+});

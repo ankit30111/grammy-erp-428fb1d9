@@ -157,6 +157,39 @@ Deno.serve(async (req) => {
 
     console.log('User created successfully:', authData.user?.id, email)
 
+    // Create corresponding record in user_accounts table
+    const { error: userAccountError } = await supabaseAdmin
+      .from('user_accounts')
+      .insert({
+        id: authData.user!.id,
+        username: email.split('@')[0], // Generate username from email
+        email: email,
+        full_name: fullName || '',
+        role: 'user', // Default role
+        is_active: true,
+        created_by: user.id
+      })
+
+    if (userAccountError) {
+      console.error('Failed to create user_accounts record:', userAccountError)
+      
+      // Rollback: Delete the auth user since user_accounts creation failed
+      await supabaseAdmin.auth.admin.deleteUser(authData.user!.id)
+      
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          message: 'Failed to create user account record. User creation rolled back.' 
+        }),
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
+    }
+
+    console.log('User account record created successfully:', authData.user!.id)
+
     const response: CreateUserResponse = {
       success: true,
       message: `User created successfully! Email: ${email}`,
