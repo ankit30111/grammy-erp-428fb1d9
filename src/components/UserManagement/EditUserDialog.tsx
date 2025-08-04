@@ -29,7 +29,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { Loader2, Trash2 } from "lucide-react";
+import { Loader2, Trash2, Eye, EyeOff, RefreshCw } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface UserAccount {
@@ -62,12 +62,15 @@ export function EditUserDialog({ user, open, onOpenChange, onUserUpdated }: Edit
   const [loading, setLoading] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [departments, setDepartments] = useState<Department[]>([]);
+  const [showPasswordSection, setShowPasswordSection] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     full_name: "",
     email: "",
     role: "user",
     is_active: true,
     department_id: "",
+    password: "",
   });
 
   React.useEffect(() => {
@@ -78,7 +81,10 @@ export function EditUserDialog({ user, open, onOpenChange, onUserUpdated }: Edit
         role: user.role || "user",
         is_active: user.is_active,
         department_id: user.department_id || "",
+        password: "",
       });
+      setShowPasswordSection(false);
+      setShowPassword(false);
       fetchDepartments();
     }
   }, [user, open]);
@@ -98,13 +104,24 @@ export function EditUserDialog({ user, open, onOpenChange, onUserUpdated }: Edit
     }
   };
 
+  const generatePassword = () => {
+    const length = 12;
+    const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
+    let password = "";
+    for (let i = 0; i < length; i++) {
+      password += charset.charAt(Math.floor(Math.random() * charset.length));
+    }
+    setFormData({ ...formData, password });
+  };
+
   const handleSave = async () => {
     if (!user) return;
 
     try {
       setLoading(true);
       
-      const { error } = await supabase
+      // Update user_accounts table
+      const { error: updateError } = await supabase
         .from("user_accounts")
         .update({
           full_name: formData.full_name,
@@ -115,7 +132,28 @@ export function EditUserDialog({ user, open, onOpenChange, onUserUpdated }: Edit
         })
         .eq("id", user.id);
 
-      if (error) throw error;
+      if (updateError) throw updateError;
+
+      // Update password if provided
+      if (formData.password) {
+        if (formData.password.length < 6) {
+          toast.error("Password must be at least 6 characters long");
+          return;
+        }
+
+        const { error: passwordError } = await supabase.functions.invoke('admin-update-user-password', {
+          body: {
+            userId: user.id,
+            newPassword: formData.password
+          }
+        });
+
+        if (passwordError) {
+          console.error("Password update error:", passwordError);
+          toast.error("Failed to update password: " + passwordError.message);
+          return;
+        }
+      }
 
       toast.success("User updated successfully");
       onUserUpdated();
@@ -228,6 +266,59 @@ export function EditUserDialog({ user, open, onOpenChange, onUserUpdated }: Edit
                 onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
               />
               <Label htmlFor="is_active">Active</Label>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label>Password</Label>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowPasswordSection(!showPasswordSection)}
+                  className="text-xs h-7"
+                >
+                  {showPasswordSection ? "Cancel" : "Change Password"}
+                </Button>
+              </div>
+              
+              {showPasswordSection && (
+                <div className="space-y-2 p-3 border rounded-md bg-muted/50">
+                  <div className="relative">
+                    <Input
+                      type={showPassword ? "text" : "password"}
+                      value={formData.password}
+                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                      placeholder="Enter new password (min 6 characters)"
+                      className="pr-20"
+                    />
+                    <div className="absolute right-1 top-1/2 -translate-y-1/2 flex gap-1">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="h-8 w-8 p-0"
+                      >
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={generatePassword}
+                        className="h-8 w-8 p-0"
+                        title="Generate password"
+                      >
+                        <RefreshCw className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Leave empty to keep current password unchanged
+                  </p>
+                </div>
+              )}
             </div>
 
           </div>
