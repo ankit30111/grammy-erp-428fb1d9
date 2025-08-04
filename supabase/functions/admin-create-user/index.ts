@@ -165,33 +165,79 @@ Deno.serve(async (req) => {
 
     console.log('User created successfully:', authData.user?.id, email)
 
+    // Generate unique username from email
+    let username = email.split('@')[0]
+    
+    // Check if username already exists and make it unique if needed
+    const { data: existingUser } = await supabaseAdmin
+      .from('user_accounts')
+      .select('username')
+      .eq('username', username)
+      .single()
+    
+    if (existingUser) {
+      const timestamp = Date.now().toString().slice(-4)
+      username = `${username}_${timestamp}`
+      console.log('Username conflict detected, using unique username:', username)
+    }
+
+    const insertData = {
+      id: authData.user!.id,
+      username: username,
+      email: email,
+      full_name: fullName || '',
+      role: 'user', // Default role
+      is_active: true,
+      created_by: user.id,
+      password_hash: 'managed_by_supabase_auth' // Default value since Auth handles passwords
+    }
+
+    console.log('Attempting to insert user_accounts record:', JSON.stringify(insertData, null, 2))
+
     // Create corresponding record in user_accounts table
     const { error: userAccountError } = await supabaseAdmin
       .from('user_accounts')
-      .insert({
-        id: authData.user!.id,
-        username: email.split('@')[0], // Generate username from email
-        email: email,
-        full_name: fullName || '',
-        role: 'user', // Default role
-        is_active: true,
-        created_by: user.id,
-        password_hash: 'managed_by_supabase_auth' // Default value since Auth handles passwords
-      })
+      .insert(insertData)
 
     if (userAccountError) {
       console.error('Failed to create user_accounts record:', userAccountError)
+      console.error('Error details:', {
+        code: userAccountError.code,
+        message: userAccountError.message,
+        details: userAccountError.details,
+        hint: userAccountError.hint
+      })
+      console.error('Data that failed to insert:', JSON.stringify(insertData, null, 2))
       
       // Rollback: Delete the auth user since user_accounts creation failed
       await supabaseAdmin.auth.admin.deleteUser(authData.user!.id)
       
+      let errorMessage = 'Failed to create user account record.'
+      
+      // Handle specific constraint violations
+      if (userAccountError.code === '23505') {
+        if (userAccountError.message.includes('username')) {
+          errorMessage = 'Username already exists. Please try again.'
+        } else if (userAccountError.message.includes('email')) {
+          errorMessage = 'Email already exists in user accounts.'
+        } else {
+          errorMessage = 'A user with this information already exists.'
+        }
+      } else if (userAccountError.code === '23503') {
+        errorMessage = 'Invalid reference data provided.'
+      }
+      
       return new Response(
         JSON.stringify({ 
           success: false, 
-          message: 'Failed to create user account record. User creation rolled back.' 
+          message: errorMessage,
+          error_details: {
+            code: userAccountError.code,
+            database_message: userAccountError.message
+          }
         }),
         { 
-          status: 500, 
+          status: 400, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
         }
       )
