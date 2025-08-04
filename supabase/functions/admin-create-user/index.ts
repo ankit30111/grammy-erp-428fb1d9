@@ -134,15 +134,16 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Check if user already exists in Auth
+    // Check if user already exists in Auth by listing users with email filter
     console.log('Checking if user already exists in auth...')
-    const { data: existingAuthUser } = await supabaseAdmin.auth.admin.getUserByEmail(email)
+    const { data: authUsers } = await supabaseAdmin.auth.admin.listUsers()
+    const existingAuthUser = authUsers?.users?.find(user => user.email === email)
     
     let authUserId: string
     
-    if (existingAuthUser?.user) {
-      console.log('User already exists in auth:', existingAuthUser.user.id)
-      authUserId = existingAuthUser.user.id
+    if (existingAuthUser) {
+      console.log('User already exists in auth:', existingAuthUser.id)
+      authUserId = existingAuthUser.id
       
       // Check if user also exists in user_accounts
       const { data: existingUserAccount } = await supabaseAdmin
@@ -235,7 +236,7 @@ Deno.serve(async (req) => {
       console.error('Data that failed to insert:', JSON.stringify(insertData, null, 2))
       
       // Rollback: Delete the auth user if we created one (only if it's not an existing user)
-      if (!existingAuthUser?.user) {
+      if (!existingAuthUser) {
         await supabaseAdmin.auth.admin.deleteUser(authUserId)
       }
       
