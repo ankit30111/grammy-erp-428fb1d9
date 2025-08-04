@@ -64,13 +64,22 @@ export function CreateUserForm({ onUserCreated }: CreateUserFormProps) {
 
       if (error) {
         console.error("Edge function error:", error);
-        toast.error("Failed to create user: " + error.message);
+        console.error("Full error object:", JSON.stringify(error, null, 2));
+        
+        let errorMessage = "Failed to create user";
+        if (error.message) {
+          errorMessage = error.message;
+        }
+        
+        toast.error(errorMessage);
         return;
       }
 
-      if (!result.success) {
-        console.error("User creation failed:", result.message);
-        toast.error(result.message);
+      if (!result || !result.success) {
+        const errorMessage = result?.message || "Unknown error occurred";
+        console.error("User creation failed:", errorMessage);
+        console.error("Full result:", JSON.stringify(result, null, 2));
+        toast.error(errorMessage);
         return;
       }
 

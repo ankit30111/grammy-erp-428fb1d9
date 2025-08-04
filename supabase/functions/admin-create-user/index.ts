@@ -24,8 +24,11 @@ Deno.serve(async (req) => {
   }
 
   try {
+    console.log('Admin create user function called:', req.method)
+    
     // Verify request method
     if (req.method !== 'POST') {
+      console.log('Invalid method:', req.method)
       return new Response(
         JSON.stringify({ success: false, message: 'Method not allowed' }),
         { 
@@ -50,6 +53,7 @@ Deno.serve(async (req) => {
     // Get the current user to verify admin privileges
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) {
+      console.log('No authorization header')
       return new Response(
         JSON.stringify({ success: false, message: 'Authorization header required' }),
         { 
@@ -59,23 +63,18 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Create client with user's token to verify admin status
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      {
-        global: {
-          headers: { Authorization: authHeader }
-        }
-      }
-    )
+    console.log('Auth header present, extracting user...')
 
-    // Verify the user is authenticated
-    const { data: { user }, error: authError } = await supabaseClient.auth.getUser()
+    // Extract JWT token from header
+    const token = authHeader.replace('Bearer ', '')
+    console.log('Token extracted, verifying...')
+
+    // Use admin client to verify the JWT and get user info
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token)
     if (authError || !user) {
       console.error('Authentication failed:', authError)
       return new Response(
-        JSON.stringify({ success: false, message: 'Authentication failed' }),
+        JSON.stringify({ success: false, message: 'Authentication failed: ' + (authError?.message || 'Unknown error') }),
         { 
           status: 401, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -83,23 +82,32 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Check if user is admin
-    const { data: userAccount, error: accountError } = await supabaseClient
+    console.log('User authenticated:', user.id)
+
+    // Use admin client to check user role (bypassing RLS)
+    const { data: userAccount, error: accountError } = await supabaseAdmin
       .from('user_accounts')
       .select('role')
       .eq('id', user.id)
       .single()
 
+    console.log('User account query result:', { userAccount, accountError })
+
     if (accountError || !userAccount || userAccount.role !== 'admin') {
-      console.error('Admin verification failed:', accountError, userAccount)
+      console.error('Admin verification failed:', { accountError, userAccount, userId: user.id })
       return new Response(
-        JSON.stringify({ success: false, message: 'Admin privileges required' }),
+        JSON.stringify({ 
+          success: false, 
+          message: 'Admin privileges required. Current role: ' + (userAccount?.role || 'none') 
+        }),
         { 
           status: 403, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
         }
       )
     }
+
+    console.log('Admin verification successful')
 
     // Parse request body
     const body: CreateUserRequest = await req.json()
