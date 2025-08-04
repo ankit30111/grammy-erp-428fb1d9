@@ -175,7 +175,8 @@ Deno.serve(async (req) => {
         full_name: fullName || '',
         role: 'user', // Default role
         is_active: true,
-        created_by: user.id
+        created_by: user.id,
+        password_hash: 'managed_by_supabase_auth' // Default value since Auth handles passwords
       })
 
     if (userAccountError) {
