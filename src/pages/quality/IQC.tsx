@@ -29,7 +29,7 @@ const IQC = () => {
         .select(`
           *,
           vendors!inner(name),
-          purchase_orders!inner(po_number),
+          purchase_orders(po_number),
           grn_items!inner(
             *,
             raw_materials!inner(name, material_code)
@@ -60,7 +60,7 @@ const IQC = () => {
           grn!inner(
             grn_number,
             vendors!inner(name, vendor_code),
-            purchase_orders!inner(po_number)
+            purchase_orders(po_number)
           ),
           raw_materials!inner(name, material_code),
           iqc_vendor_capa!left(
@@ -204,7 +204,9 @@ const IQC = () => {
                       {pendingGRNs.map((grn) => (
                         <TableRow key={grn.id}>
                           <TableCell className="font-medium">{grn.grn_number}</TableCell>
-                          <TableCell className="font-medium text-blue-600">{grn.purchase_orders?.po_number}</TableCell>
+                          <TableCell className="font-medium text-blue-600">
+                            {grn.purchase_orders?.po_number || "Non-PO GRN"}
+                          </TableCell>
                           <TableCell>{grn.vendors?.name}</TableCell>
                           <TableCell>{new Date(grn.received_date).toLocaleDateString()}</TableCell>
                           <TableCell>{grn.grn_items?.length || 0}</TableCell>
@@ -268,7 +270,9 @@ const IQC = () => {
                         return (
                           <TableRow key={item.id}>
                             <TableCell className="font-medium">{item.grn?.grn_number}</TableCell>
-                            <TableCell className="font-medium text-blue-600">{item.grn?.purchase_orders?.po_number}</TableCell>
+                            <TableCell className="font-medium text-blue-600">
+                              {item.grn?.purchase_orders?.po_number || "Non-PO GRN"}
+                            </TableCell>
                             <TableCell className="font-mono">{item.raw_materials?.material_code}</TableCell>
                             <TableCell>{item.raw_materials?.name}</TableCell>
                             <TableCell>{item.grn?.vendors?.name}</TableCell>
