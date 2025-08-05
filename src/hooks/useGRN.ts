@@ -42,21 +42,29 @@ export const useCreateGRN = () => {
 
   return useMutation({
     mutationFn: async (grnData: any) => {
-      // Insert GRN with empty grn_number (let trigger generate it)
-      const { data: grnRecord, error: grnError } = await supabase
-        .from('grn')
-        .insert({
-          grn_number: '', // Empty string will be replaced by trigger
-          purchase_order_id: grnData.purchase_order_id || null, // Allow null for non-PO GRNs
-          vendor_id: grnData.vendor_id,
-          status: 'RECEIVED', // Set to RECEIVED for both PO and non-PO GRNs
-          notes: grnData.notes,
-          received_date: grnData.received_date || new Date().toISOString().split('T')[0],
-        })
-        .select()
-        .single();
+      try {
+        console.log('Creating GRN with data:', grnData);
+        
+        // Insert GRN with empty grn_number (let trigger generate it)
+        const { data: grnRecord, error: grnError } = await supabase
+          .from('grn')
+          .insert({
+            grn_number: '', // Empty string will be replaced by trigger
+            purchase_order_id: grnData.purchase_order_id || null, // Allow null for non-PO GRNs
+            vendor_id: grnData.vendor_id,
+            status: 'RECEIVED', // Set to RECEIVED for both PO and non-PO GRNs
+            notes: grnData.notes,
+            received_date: grnData.received_date || new Date().toISOString().split('T')[0],
+          })
+          .select()
+          .single();
 
-      if (grnError) throw grnError;
+        if (grnError) {
+          console.error('GRN creation error:', grnError);
+          throw new Error(`Failed to create GRN: ${grnError.message}`);
+        }
+
+        console.log('GRN created successfully:', grnRecord);
 
       // Insert GRN items
       const items = grnData.items.map((item: any) => ({
@@ -71,21 +79,32 @@ export const useCreateGRN = () => {
         .from('grn_items')
         .insert(items);
 
-      if (itemsError) throw itemsError;
+        if (itemsError) {
+          console.error('GRN items creation error:', itemsError);
+          throw new Error(`Failed to create GRN items: ${itemsError.message}`);
+        }
 
-      return grnRecord;
+        console.log('GRN items created successfully');
+        return grnRecord;
+      } catch (error) {
+        console.error('Error in GRN creation process:', error);
+        throw error;
+      }
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['grn'] });
+      queryClient.invalidateQueries({ queryKey: ['purchase-orders'] });
       toast({
         title: "Success",
-        description: "GRN created successfully",
+        description: `GRN ${data.grn_number} created successfully`,
       });
     },
-    onError: (error) => {
+    onError: (error: any) => {
+      console.error('GRN creation failed:', error);
+      const errorMessage = error?.message || 'Unknown error occurred';
       toast({
-        title: "Error",
-        description: "Failed to create GRN",
+        title: "Failed to create GRN",
+        description: errorMessage,
         variant: "destructive",
       });
     },

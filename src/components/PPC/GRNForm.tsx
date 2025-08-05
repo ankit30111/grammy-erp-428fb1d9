@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { usePurchaseOrders } from "@/hooks/usePurchaseOrders";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { useCreateGRN } from "@/hooks/useGRN";
 import GRNFormHeader from "./GRNFormHeader";
 import GRNFormInputs from "./GRNFormInputs";
 import GRNItemsTable from "./GRNItemsTable";
@@ -25,6 +25,7 @@ const GRNForm = () => {
   
   const { data: purchaseOrders, refetch: refetchPOs, isLoading } = usePurchaseOrders();
   const { toast } = useToast();
+  const createGRNMutation = useCreateGRN();
 
   const handlePOSelection = (poId: string) => {
     setSelectedPO(poId);
@@ -92,46 +93,28 @@ const GRNForm = () => {
     }
 
     setIsSubmitting(true);
+    
     try {
-      // Create GRN - the trigger will generate grn_number with GRN_MM_XX format
       const selectedPOData = purchaseOrders?.find(p => p.id === selectedPO);
-      const { data: grn, error: grnError } = await supabase
-        .from('grn')
-        .insert({
-          grn_number: '', // Empty string will be replaced by trigger with GRN_MM_XX format
-          purchase_order_id: selectedPO,
-          vendor_id: selectedPOData?.vendor_id || '',
-          received_date: receivedDate,
-          status: 'RECEIVED',
-          notes: `Invoice Number: ${invoiceNumber}`
-        })
-        .select()
-        .single();
+      
+      // Prepare data for the mutation
+      const grnData = {
+        purchase_order_id: selectedPO,
+        vendor_id: selectedPOData?.vendor_id || '',
+        received_date: receivedDate,
+        notes: `Invoice Number: ${invoiceNumber}`,
+        items: grnItems.filter(item => item.received_quantity > 0).map(item => ({
+          raw_material_id: item.raw_material_id,
+          po_quantity: item.po_quantity,
+          received_quantity: item.received_quantity
+        }))
+      };
 
-      if (grnError) throw grnError;
+      console.log('Submitting GRN data:', grnData);
+      
+      await createGRNMutation.mutateAsync(grnData);
 
-      // Create GRN items only for items that were actually received
-      const receivedItems = grnItems.filter(item => item.received_quantity > 0);
-      const grnItemsData = receivedItems.map(item => ({
-        grn_id: grn.id,
-        raw_material_id: item.raw_material_id,
-        po_quantity: item.po_quantity,
-        received_quantity: item.received_quantity,
-        iqc_status: 'PENDING'
-      }));
-
-      const { error: itemsError } = await supabase
-        .from('grn_items')
-        .insert(grnItemsData);
-
-      if (itemsError) throw itemsError;
-
-      toast({
-        title: "GRN Created",
-        description: `GRN ${grn.grn_number} created successfully with the new format`,
-      });
-
-      // Reset form
+      // Reset form on success
       setSelectedPO("");
       setInvoiceNumber("");
       setGRNItems([]);
@@ -141,12 +124,8 @@ const GRNForm = () => {
       refetchPOs();
 
     } catch (error) {
-      console.error('Error creating GRN:', error);
-      toast({
-        title: "Error",
-        description: "Failed to create GRN",
-        variant: "destructive",
-      });
+      console.error('Error in GRN submission:', error);
+      // Error handling is done by the mutation
     } finally {
       setIsSubmitting(false);
     }

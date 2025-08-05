@@ -127,6 +127,8 @@ export const NonPOGRNForm = () => {
       })),
     };
 
+    console.log('Submitting Non-PO GRN data:', grnData);
+
     createGRN(grnData, {
       onSuccess: () => {
         // Reset form
