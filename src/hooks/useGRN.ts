@@ -140,3 +140,43 @@ export const useUpdateGRNItem = () => {
     },
   });
 };
+
+export const useDeleteGRN = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async (grnId: string) => {
+      // First delete all GRN items
+      const { error: itemsError } = await supabase
+        .from('grn_items')
+        .delete()
+        .eq('grn_id', grnId);
+
+      if (itemsError) throw itemsError;
+
+      // Then delete the GRN record
+      const { error: grnError } = await supabase
+        .from('grn')
+        .delete()
+        .eq('id', grnId);
+
+      if (grnError) throw grnError;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['grn'] });
+      toast({
+        title: "Success",
+        description: "GRN deleted successfully",
+      });
+    },
+    onError: (error) => {
+      console.error('Delete GRN error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete GRN",
+        variant: "destructive",
+      });
+    },
+  });
+};

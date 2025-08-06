@@ -3,10 +3,10 @@ import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Package, Clock, Edit, Search, Filter } from "lucide-react";
+import { Package, Clock, Edit, Search, Filter, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
-import { useGRN } from "@/hooks/useGRN";
+import { useGRN, useDeleteGRN } from "@/hooks/useGRN";
 import GRNForm from "@/components/PPC/GRNForm";
 import { NonPOGRNForm } from "@/components/PPC/NonPOGRNForm";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -16,6 +16,8 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 const GRN = () => {
   const [activeTab, setActiveTab] = useState("create");
@@ -25,8 +27,11 @@ const GRN = () => {
   const [editQuantities, setEditQuantities] = useState<Record<string, number>>({});
   const [searchQuery, setSearchQuery] = useState("");
   const [useNonPOMode, setUseNonPOMode] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [grnToDelete, setGrnToDelete] = useState<any>(null);
   
   const { data: existingGRNs, isLoading: grnLoading, refetch } = useGRN();
+  const deleteGRNMutation = useDeleteGRN();
   const { toast } = useToast();
 
   const handleEditGRN = (grn: any) => {
@@ -70,6 +75,31 @@ const GRN = () => {
         variant: "destructive",
       });
     }
+  };
+
+  const handleDeleteGRN = (grn: any) => {
+    setGrnToDelete(grn);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDeleteGRN = async () => {
+    if (!grnToDelete) return;
+
+    try {
+      await deleteGRNMutation.mutateAsync(grnToDelete.id);
+      setDeleteDialogOpen(false);
+      setGrnToDelete(null);
+      refetch();
+    } catch (error) {
+      console.error('Error deleting GRN:', error);
+    }
+  };
+
+  // Check if GRN can be deleted (all items must have PENDING IQC status)
+  const canDeleteGRN = (grn: any) => {
+    return grn.grn_items?.every((item: any) => 
+      !item.iqc_status || item.iqc_status === 'PENDING'
+    ) || false;
   };
 
   // Filter GRNs based on search query
@@ -213,6 +243,17 @@ const GRN = () => {
                                   Edit
                                 </Button>
                               )}
+                              {canDeleteGRN(grn) && (
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={() => handleDeleteGRN(grn)}
+                                  className="gap-1 text-destructive hover:text-destructive"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                  Delete
+                                </Button>
+                              )}
                             </TableCell>
                           </TableRow>
                         ))}
@@ -303,44 +344,46 @@ const GRN = () => {
 
         {/* Edit GRN Dialog */}
         <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-          <DialogContent className="max-w-4xl">
+          <DialogContent className="max-w-4xl max-h-[90vh]">
             <DialogHeader>
               <DialogTitle>Edit GRN: {editingGRN?.grn_number}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               {editingGRN?.grn_items && (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Material Code</TableHead>
-                      <TableHead>Material Name</TableHead>
-                      <TableHead>Expected/PO Quantity</TableHead>
-                      <TableHead>Received Quantity</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {editingGRN.grn_items.map((item: any) => (
-                      <TableRow key={item.id}>
-                        <TableCell className="font-mono">{item.raw_materials?.material_code}</TableCell>
-                        <TableCell>{item.raw_materials?.name}</TableCell>
-                        <TableCell>{item.po_quantity}</TableCell>
-                        <TableCell>
-                          <Input
-                            type="number"
-                            min="0"
-                            max={item.po_quantity}
-                            value={editQuantities[item.id] || 0}
-                            onChange={(e) => setEditQuantities(prev => ({
-                              ...prev,
-                              [item.id]: parseInt(e.target.value) || 0
-                            }))}
-                            className="w-24"
-                          />
-                        </TableCell>
+                <ScrollArea className="h-[60vh]">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Material Code</TableHead>
+                        <TableHead>Material Name</TableHead>
+                        <TableHead>Expected/PO Quantity</TableHead>
+                        <TableHead>Received Quantity</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {editingGRN.grn_items.map((item: any) => (
+                        <TableRow key={item.id}>
+                          <TableCell className="font-mono">{item.raw_materials?.material_code}</TableCell>
+                          <TableCell>{item.raw_materials?.name}</TableCell>
+                          <TableCell>{item.po_quantity}</TableCell>
+                          <TableCell>
+                            <Input
+                              type="number"
+                              min="0"
+                              max={item.po_quantity}
+                              value={editQuantities[item.id] || 0}
+                              onChange={(e) => setEditQuantities(prev => ({
+                                ...prev,
+                                [item.id]: parseInt(e.target.value) || 0
+                              }))}
+                              className="w-24"
+                            />
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </ScrollArea>
               )}
               <div className="flex justify-end gap-2 pt-4">
                 <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
@@ -353,6 +396,28 @@ const GRN = () => {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete GRN</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete GRN {grnToDelete?.grn_number}? This action cannot be undone.
+                All related GRN items will also be deleted.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={confirmDeleteGRN}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </DashboardLayout>
   );
