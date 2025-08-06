@@ -77,6 +77,7 @@ const RawMaterialsManagement = () => {
 
   const [newMaterial, setNewMaterial] = useState({
     name: "",
+    material_code: "",
     category: "",
     unit_of_measure: "",
     specification: ""
@@ -100,6 +101,11 @@ const RawMaterialsManagement = () => {
       return;
     }
 
+    if (!newMaterial.material_code.trim()) {
+      toast.error("Material Code is required");
+      return;
+    }
+
     if (!newMaterial.category.trim()) {
       toast.error("Part Category is required");
       return;
@@ -109,6 +115,7 @@ const RawMaterialsManagement = () => {
     try {
       await addRawMaterial.mutateAsync({
         name: newMaterial.name,
+        material_code: newMaterial.material_code,
         category: newMaterial.category,
         specification: newMaterial.specification,
         vendorIds: selectedVendors,
@@ -118,7 +125,7 @@ const RawMaterialsManagement = () => {
       });
 
       // Reset form
-      setNewMaterial({ name: "", category: "", unit_of_measure: "", specification: "" });
+      setNewMaterial({ name: "", material_code: "", category: "", unit_of_measure: "", specification: "" });
       setSelectedVendors([]);
       setPrimaryVendor("");
       setSpecificationFile(null);
@@ -136,6 +143,7 @@ const RawMaterialsManagement = () => {
     setSelectedMaterial(material);
     setNewMaterial({
       name: material.name,
+      material_code: material.material_code || "",
       category: material.category,
       unit_of_measure: material.unit_of_measure || "",
       specification: material.specification || ""
@@ -155,6 +163,7 @@ const RawMaterialsManagement = () => {
       await updateRawMaterial.mutateAsync({
         id: selectedMaterial.id,
         name: newMaterial.name,
+        material_code: newMaterial.material_code,
         category: newMaterial.category,
         specification: newMaterial.specification,
         vendorIds: selectedVendors,
@@ -260,6 +269,17 @@ const RawMaterialsManagement = () => {
                       value={newMaterial.name} 
                       onChange={(e) => setNewMaterial({...newMaterial, name: e.target.value})}
                       placeholder="Enter part name"
+                      required
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="material_code">Material Code *</Label>
+                    <Input 
+                      id="material_code" 
+                      value={newMaterial.material_code} 
+                      onChange={(e) => setNewMaterial({...newMaterial, material_code: e.target.value.toUpperCase()})}
+                      placeholder="Enter material code (e.g., B-001, C-002)"
                       required
                     />
                   </div>
@@ -431,7 +451,7 @@ const RawMaterialsManagement = () => {
                   <Button 
                     type="submit" 
                     onClick={handleAddMaterial} 
-                    disabled={isUploading || addRawMaterial.isPending || !newMaterial.name.trim() || !newMaterial.category.trim()}
+                    disabled={isUploading || addRawMaterial.isPending || !newMaterial.name.trim() || !newMaterial.material_code.trim() || !newMaterial.category.trim()}
                   >
                     {isUploading ? (
                       <>
@@ -714,6 +734,16 @@ const RawMaterialsManagement = () => {
                   value={newMaterial.name} 
                   onChange={(e) => setNewMaterial({...newMaterial, name: e.target.value})}
                   placeholder="Enter part name"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="edit-material-code">Material Code</Label>
+                <Input 
+                  id="edit-material-code" 
+                  value={newMaterial.material_code} 
+                  onChange={(e) => setNewMaterial({...newMaterial, material_code: e.target.value.toUpperCase()})}
+                  placeholder="Enter material code (e.g., B-001, C-002)"
                 />
               </div>
               
