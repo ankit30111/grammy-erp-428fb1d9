@@ -3936,29 +3936,21 @@ export type Database = {
       }
       purchase_order_received_quantities: {
         Row: {
-          ordered_quantity: number | null
           pending_quantity: number | null
-          purchase_order_id: string | null
           purchase_order_item_id: string | null
-          raw_material_id: string | null
           total_received_quantity: number | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "purchase_order_items_purchase_order_id_fkey"
-            columns: ["purchase_order_id"]
-            isOneToOne: false
-            referencedRelation: "purchase_orders"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "purchase_order_items_raw_material_id_fkey"
-            columns: ["raw_material_id"]
-            isOneToOne: false
-            referencedRelation: "raw_materials"
-            referencedColumns: ["id"]
-          },
-        ]
+        Insert: {
+          pending_quantity?: never
+          purchase_order_item_id?: string | null
+          total_received_quantity?: never
+        }
+        Update: {
+          pending_quantity?: never
+          purchase_order_item_id?: string | null
+          total_received_quantity?: never
+        }
+        Relationships: []
       }
     }
     Functions: {
