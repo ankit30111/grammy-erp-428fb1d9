@@ -246,21 +246,46 @@ const IQC = () => {
                     No completed IQC items found
                   </div>
                 ) : (
-                  <Table>
+                  <Table 
+                    containerClassName="overflow-x-hidden" 
+                    className="table-fixed text-xs"
+                  >
                     <TableHeader>
                       <TableRow>
-                        <TableHead>GRN Number</TableHead>
-                        <TableHead>PO Number</TableHead>
-                        <TableHead>Material Code</TableHead>
-                        <TableHead>Material Name</TableHead>
-                        <TableHead>Vendor</TableHead>
-                        <TableHead>Received Qty</TableHead>
-                        <TableHead>Accepted Qty</TableHead>
-                        <TableHead>Rejected Qty</TableHead>
-                        <TableHead>IQC Status</TableHead>
-                        <TableHead>CAPA Status</TableHead>
-                        <TableHead>Completed Date</TableHead>
-                        <TableHead>Actions</TableHead>
+                        <TableHead className="w-24 px-2">
+                          <div className="truncate">GRN No.</div>
+                        </TableHead>
+                        <TableHead className="w-24 px-2">
+                          <div className="truncate">PO No.</div>
+                        </TableHead>
+                        <TableHead className="w-20 px-2">
+                          <div className="truncate">Mat. Code</div>
+                        </TableHead>
+                        <TableHead className="w-32 px-2">
+                          <div className="truncate">Material Name</div>
+                        </TableHead>
+                        <TableHead className="w-24 px-2">
+                          <div className="truncate">Vendor</div>
+                        </TableHead>
+                        <TableHead className="w-16 px-2">
+                          <div className="truncate">Rcvd Qty</div>
+                        </TableHead>
+                        <TableHead className="w-16 px-2">
+                          <div className="truncate">Acc. Qty</div>
+                        </TableHead>
+                        <TableHead className="w-16 px-2">
+                          <div className="truncate">Rej. Qty</div>
+                        </TableHead>
+                        <TableHead className="w-20 px-2">
+                          <div className="truncate">IQC Status</div>
+                        </TableHead>
+                        <TableHead className="w-24 px-2">
+                          <div className="truncate">CAPA Status</div>
+                        </TableHead>
+                        <TableHead className="w-20 px-2">
+                          <div className="truncate">Date</div>
+                        </TableHead>
+                        <TableHead className="w-32 px-2">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -270,33 +295,47 @@ const IQC = () => {
                         
                         return (
                           <TableRow key={item.id}>
-                            <TableCell className="font-medium">{item.grn?.grn_number}</TableCell>
-                            <TableCell className="font-medium text-blue-600">
-                              {item.grn?.purchase_orders?.po_number || "Non-PO GRN"}
+                            <TableCell className="px-2 py-2">
+                              <div className="truncate font-medium">{item.grn?.grn_number}</div>
                             </TableCell>
-                            <TableCell className="font-mono">{item.raw_materials?.material_code}</TableCell>
-                            <TableCell>{item.raw_materials?.name}</TableCell>
-                            <TableCell>{item.grn?.vendors?.name}</TableCell>
-                            <TableCell>{item.received_quantity}</TableCell>
-                            <TableCell>{item.accepted_quantity}</TableCell>
-                            <TableCell>{item.rejected_quantity || 0}</TableCell>
-                            <TableCell>{getItemStatusBadge(item.iqc_status)}</TableCell>
-                            <TableCell>
-                              {needsCAPA ? getCAPAStatusBadge(capaData) : <Badge variant="secondary">Not Required</Badge>}
+                            <TableCell className="px-2 py-2">
+                              <div className="truncate font-medium text-blue-600">
+                                {item.grn?.purchase_orders?.po_number || "Non-PO"}
+                              </div>
+                            </TableCell>
+                            <TableCell className="px-2 py-2">
+                              <div className="truncate font-mono text-xs">{item.raw_materials?.material_code}</div>
+                            </TableCell>
+                            <TableCell className="px-2 py-2">
+                              <div className="truncate" title={item.raw_materials?.name}>
+                                {item.raw_materials?.name}
+                              </div>
+                            </TableCell>
+                            <TableCell className="px-2 py-2">
+                              <div className="truncate" title={item.grn?.vendors?.name}>
+                                {item.grn?.vendors?.name}
+                              </div>
+                            </TableCell>
+                            <TableCell className="px-2 py-2 text-center">{item.received_quantity}</TableCell>
+                            <TableCell className="px-2 py-2 text-center">{item.accepted_quantity}</TableCell>
+                            <TableCell className="px-2 py-2 text-center">{item.rejected_quantity || 0}</TableCell>
+                            <TableCell className="px-2 py-2">{getItemStatusBadge(item.iqc_status)}</TableCell>
+                            <TableCell className="px-2 py-2">
+                              {needsCAPA ? getCAPAStatusBadge(capaData) : <Badge variant="secondary" className="text-xs">Not Req.</Badge>}
                               {capaData && capaData.capa_status === 'AWAITED' && (
                                 <div className="text-xs text-red-600 mt-1">
-                                  {getDaysOpen(capaData.initiated_at)} days open
+                                  {getDaysOpen(capaData.initiated_at)}d
                                 </div>
                               )}
                             </TableCell>
-                            <TableCell>
+                            <TableCell className="px-2 py-2 text-xs">
                               {item.iqc_completed_at 
-                                ? format(new Date(item.iqc_completed_at), "dd/MM/yyyy")
+                                ? format(new Date(item.iqc_completed_at), "dd/MM/yy")
                                 : '-'
                               }
                             </TableCell>
-                            <TableCell>
-                              <div className="flex gap-1">
+                            <TableCell className="px-2 py-2">
+                              <div className="flex flex-col gap-1">
                                 <IQCReportViewer 
                                   reportUrl={item.iqc_report_url || ''}
                                   itemId={item.id}
@@ -310,10 +349,10 @@ const IQC = () => {
                                       `https://oacdhvmpkuadlyvvvbpq.supabase.co/storage/v1/object/public/capa-documents/${capaData.capa_document_url}`, 
                                       '_blank'
                                     )}
-                                    className="gap-1"
+                                    className="gap-1 text-xs h-7"
                                   >
                                     <FileText className="h-3 w-3" />
-                                    View CAPA
+                                    CAPA
                                   </Button>
                                 )}
                                 {needsCAPA && capaData && capaData.capa_status === 'AWAITED' && (
@@ -321,10 +360,10 @@ const IQC = () => {
                                     variant="outline" 
                                     size="sm"
                                     onClick={() => window.location.href = '/quality/capa'}
-                                    className="gap-1"
+                                    className="gap-1 text-xs h-7"
                                   >
                                     <FileText className="h-3 w-3" />
-                                    Manage CAPA
+                                    Manage
                                   </Button>
                                 )}
                               </div>
