@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "12.2.3 (519615d)"
@@ -4005,53 +4005,53 @@ export type Database = {
       log_audit_event: {
         Args: {
           p_action: string
-          p_table_name: string
-          p_record_id?: string
-          p_old_values?: Json
           p_new_values?: Json
+          p_old_values?: Json
+          p_record_id?: string
+          p_table_name: string
         }
         Returns: undefined
       }
       log_material_movement: {
         Args: {
-          p_raw_material_id: string
           p_movement_type: string
-          p_quantity: number
-          p_reference_id: string
-          p_reference_type: string
-          p_reference_number: string
           p_notes?: string
+          p_quantity: number
+          p_raw_material_id: string
+          p_reference_id: string
+          p_reference_number: string
+          p_reference_type: string
         }
         Returns: undefined
       }
       log_production_material_receipt: {
         Args: {
-          p_production_order_id: string
-          p_raw_material_id: string
-          p_quantity: number
-          p_received_by?: string
           p_notes?: string
+          p_production_order_id: string
+          p_quantity: number
+          p_raw_material_id: string
+          p_received_by?: string
         }
         Returns: undefined
       }
       log_production_material_receipt_with_discrepancy_check: {
         Args: {
-          p_production_order_id: string
-          p_raw_material_id: string
-          p_quantity: number
-          p_received_by?: string
           p_notes?: string
+          p_production_order_id: string
+          p_quantity: number
+          p_raw_material_id: string
+          p_received_by?: string
         }
         Returns: undefined
       }
       log_production_receipt_with_discrepancy: {
         Args: {
+          p_notes?: string
           p_production_order_id: string
           p_raw_material_id: string
-          p_sent_quantity: number
-          p_received_quantity: number
           p_received_by?: string
-          p_notes?: string
+          p_received_quantity: number
+          p_sent_quantity: number
         }
         Returns: string
       }
@@ -4061,19 +4061,19 @@ export type Database = {
       }
       resolve_production_discrepancy: {
         Args: {
-          p_discrepancy_id: string
           p_action: string
-          p_reviewed_by: string
+          p_discrepancy_id: string
           p_resolution_notes?: string
+          p_reviewed_by: string
         }
         Returns: undefined
       }
       resolve_production_receipt_discrepancy: {
         Args: {
-          p_receipt_id: string
           p_action: string
-          p_resolved_by: string
+          p_receipt_id: string
           p_resolution_notes?: string
+          p_resolved_by: string
         }
         Returns: undefined
       }
