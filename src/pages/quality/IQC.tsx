@@ -14,6 +14,7 @@ import { format } from "date-fns";
 import LineRejectionManager from "@/components/quality/LineRejectionManager";
 import IQCInspectionDialog from "@/components/quality/IQCInspectionDialog";
 import PartAnalysis from "@/components/quality/PartAnalysis";
+import { IQCReportViewer } from "@/components/quality/IQCReportViewer";
 
 const IQC = () => {
   const [selectedTab, setSelectedTab] = useState("pending");
@@ -296,10 +297,11 @@ const IQC = () => {
                             </TableCell>
                             <TableCell>
                               <div className="flex gap-1">
-                                <Button variant="outline" size="sm">
-                                  <FileCheck className="h-3 w-3 mr-1" />
-                                  Report
-                                </Button>
+                                <IQCReportViewer 
+                                  reportUrl={item.iqc_report_url || ''}
+                                  itemId={item.id}
+                                  materialName={item.raw_materials?.name || 'Unknown'}
+                                />
                                 {capaData && capaData.capa_document_url && (
                                   <Button 
                                     variant="outline" 
