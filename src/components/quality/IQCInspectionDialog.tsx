@@ -1,3 +1,4 @@
+
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -82,6 +83,8 @@ const IQCInspectionDialog = ({ grn, isOpen, onClose }: IQCInspectionDialogProps)
   };
 
   const handleSubmit = () => {
+    console.log('Submitting IQC inspection with results:', inspectionResults);
+    console.log('Validation errors:', validationErrors);
     submitInspection.mutate();
   };
 
@@ -95,6 +98,17 @@ const IQCInspectionDialog = ({ grn, isOpen, onClose }: IQCInspectionDialogProps)
   ) || [];
 
   if (!grn || pendingItems.length === 0) return null;
+
+  // Check if any validation errors exist
+  const hasValidationErrors = Object.keys(validationErrors).some(key => validationErrors[key]);
+
+  console.log('IQC Dialog State:', {
+    pendingItems: pendingItems.length,
+    inspectionResults,
+    validationErrors,
+    hasValidationErrors,
+    submitPending: submitInspection.isPending
+  });
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -279,7 +293,7 @@ const IQCInspectionDialog = ({ grn, isOpen, onClose }: IQCInspectionDialogProps)
           </div>
           
           {/* Global validation errors */}
-          {Object.keys(validationErrors).length > 0 && (
+          {hasValidationErrors && (
             <Alert variant="destructive">
               <AlertTriangle className="h-4 w-4" />
               <AlertDescription>
@@ -294,7 +308,7 @@ const IQCInspectionDialog = ({ grn, isOpen, onClose }: IQCInspectionDialogProps)
             </Button>
             <Button 
               onClick={handleSubmit}
-              disabled={submitInspection.isPending || Object.keys(validationErrors).some(key => validationErrors[key])}
+              disabled={submitInspection.isPending || hasValidationErrors}
               className="gap-2"
             >
               {submitInspection.isPending ? (

@@ -1154,8 +1154,6 @@ export type Database = {
           vendor_capa_file_url: string | null
           vendor_capa_required: boolean | null
           vendor_capa_status: string | null
-          whatsapp_notification_sent: boolean | null
-          whatsapp_notification_sent_at: string | null
         }
         Insert: {
           accepted_quantity?: number | null
@@ -1181,8 +1179,6 @@ export type Database = {
           vendor_capa_file_url?: string | null
           vendor_capa_required?: boolean | null
           vendor_capa_status?: string | null
-          whatsapp_notification_sent?: boolean | null
-          whatsapp_notification_sent_at?: string | null
         }
         Update: {
           accepted_quantity?: number | null
@@ -1208,8 +1204,6 @@ export type Database = {
           vendor_capa_file_url?: string | null
           vendor_capa_required?: boolean | null
           vendor_capa_status?: string | null
-          whatsapp_notification_sent?: boolean | null
-          whatsapp_notification_sent_at?: string | null
         }
         Relationships: [
           {
@@ -3717,8 +3711,6 @@ export type Database = {
           name: string
           updated_at: string
           vendor_code: string
-          whatsapp_notifications_enabled: boolean | null
-          whatsapp_number: string | null
         }
         Insert: {
           address?: string | null
@@ -3737,8 +3729,6 @@ export type Database = {
           name: string
           updated_at?: string
           vendor_code: string
-          whatsapp_notifications_enabled?: boolean | null
-          whatsapp_number?: string | null
         }
         Update: {
           address?: string | null
@@ -3757,104 +3747,6 @@ export type Database = {
           name?: string
           updated_at?: string
           vendor_code?: string
-          whatsapp_notifications_enabled?: boolean | null
-          whatsapp_number?: string | null
-        }
-        Relationships: []
-      }
-      whatsapp_notifications: {
-        Row: {
-          created_at: string
-          delivered_at: string | null
-          delivery_status: string | null
-          error_message: string | null
-          failed_at: string | null
-          file_url: string | null
-          grn_item_id: string
-          id: string
-          message_content: string
-          read_at: string | null
-          sent_at: string | null
-          status: string
-          updated_at: string
-          vendor_id: string
-          whatsapp_message_id: string | null
-        }
-        Insert: {
-          created_at?: string
-          delivered_at?: string | null
-          delivery_status?: string | null
-          error_message?: string | null
-          failed_at?: string | null
-          file_url?: string | null
-          grn_item_id: string
-          id?: string
-          message_content: string
-          read_at?: string | null
-          sent_at?: string | null
-          status?: string
-          updated_at?: string
-          vendor_id: string
-          whatsapp_message_id?: string | null
-        }
-        Update: {
-          created_at?: string
-          delivered_at?: string | null
-          delivery_status?: string | null
-          error_message?: string | null
-          failed_at?: string | null
-          file_url?: string | null
-          grn_item_id?: string
-          id?: string
-          message_content?: string
-          read_at?: string | null
-          sent_at?: string | null
-          status?: string
-          updated_at?: string
-          vendor_id?: string
-          whatsapp_message_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "whatsapp_notifications_grn_item_id_fkey"
-            columns: ["grn_item_id"]
-            isOneToOne: false
-            referencedRelation: "grn_items"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "whatsapp_notifications_vendor_id_fkey"
-            columns: ["vendor_id"]
-            isOneToOne: false
-            referencedRelation: "vendors"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      whatsapp_replies: {
-        Row: {
-          created_at: string
-          id: string
-          message_content: string | null
-          received_at: string
-          sender_number: string
-          whatsapp_message_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          message_content?: string | null
-          received_at?: string
-          sender_number: string
-          whatsapp_message_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          message_content?: string | null
-          received_at?: string
-          sender_number?: string
-          whatsapp_message_id?: string
         }
         Relationships: []
       }

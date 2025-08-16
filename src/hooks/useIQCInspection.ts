@@ -87,6 +87,9 @@ export const useIQCInspection = (grn: any) => {
     mutationFn: async () => {
       const itemIds = Object.keys(inspectionResults);
       
+      console.log('Starting IQC submission for items:', itemIds);
+      console.log('Inspection results:', inspectionResults);
+      
       // Validate all items before submission
       const errors: Record<string, string> = {};
       itemIds.forEach(itemId => {
@@ -97,6 +100,7 @@ export const useIQCInspection = (grn: any) => {
       });
       
       if (Object.keys(errors).length > 0) {
+        console.error('Validation errors found:', errors);
         setValidationErrors(errors);
         throw new Error("Please fix validation errors before submitting");
       }
@@ -110,6 +114,7 @@ export const useIQCInspection = (grn: any) => {
           let reportUrl = '';
 
           if (result.iqcReport) {
+            console.log('Uploading IQC report for item:', itemId);
             const fileName = `iqc-report-${grn.grn_number}-${itemId}-${Date.now()}.${result.iqcReport.name.split('.').pop()}`;
             
             let uploadAttempts = 0;
@@ -125,6 +130,7 @@ export const useIQCInspection = (grn: any) => {
                   });
 
                 if (uploadError) {
+                  console.error(`Upload attempt ${uploadAttempts + 1} failed:`, uploadError);
                   uploadAttempts++;
                   if (uploadAttempts >= maxRetries) {
                     throw new Error(`File upload failed after ${maxRetries} attempts: ${uploadError.message}`);
@@ -134,8 +140,10 @@ export const useIQCInspection = (grn: any) => {
                 }
                 
                 reportUrl = fileName;
+                console.log('File uploaded successfully:', fileName);
                 break;
               } catch (error) {
+                console.error(`Upload error on attempt ${uploadAttempts + 1}:`, error);
                 uploadAttempts++;
                 if (uploadAttempts >= maxRetries) {
                   throw error;
@@ -154,10 +162,19 @@ export const useIQCInspection = (grn: any) => {
           throw new Error('User not authenticated');
         }
 
+        console.log('Authenticated user:', user.id);
+
         // Update all GRN items
         for (const { itemId, reportUrl } of uploadResults) {
           const result = inspectionResults[itemId];
           
+          console.log(`Updating GRN item ${itemId} with:`, {
+            iqc_status: result.status,
+            accepted_quantity: result.acceptedQuantity,
+            rejected_quantity: result.rejectedQuantity,
+            iqc_report_url: reportUrl || null
+          });
+
           const updateData: any = {
             iqc_status: result.status,
             iqc_completed_at: new Date().toISOString(),
@@ -173,9 +190,11 @@ export const useIQCInspection = (grn: any) => {
             .eq("id", itemId);
 
           if (error) {
-            console.error('Database update error:', error);
+            console.error('Database update error for item', itemId, ':', error);
             throw new Error(`Failed to update item ${itemId}: ${error.message}`);
           }
+
+          console.log(`Successfully updated GRN item ${itemId}`);
         }
 
         // Update GRN status if all items are completed
@@ -183,22 +202,32 @@ export const useIQCInspection = (grn: any) => {
           item.iqc_status !== 'PENDING' || !!inspectionResults[item.id]
         );
 
+        console.log('All items inspected:', allItemsInspected);
+
         if (allItemsInspected) {
+          console.log('Updating GRN status to IQC_COMPLETED for GRN:', grn.id);
           const { error: grnError } = await supabase
             .from("grn")
             .update({ status: "IQC_COMPLETED" })
             .eq("id", grn.id);
 
           if (grnError) {
+            console.error('GRN status update error:', grnError);
             throw new Error(`Failed to update GRN status: ${grnError.message}`);
           }
+          
+          console.log('Successfully updated GRN status');
         }
 
+        console.log('IQC submission completed successfully');
+
       } catch (error) {
+        console.error('IQC submission error:', error);
         throw error;
       }
     },
     onSuccess: () => {
+      console.log('IQC submission successful, invalidating queries');
       queryClient.invalidateQueries({ queryKey: ['pending-grns'] });
       queryClient.invalidateQueries({ queryKey: ['completed-grns'] });
       queryClient.invalidateQueries({ queryKey: ['completed-iqc-items'] });
