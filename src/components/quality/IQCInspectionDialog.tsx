@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Label } from "@/components/ui/label";
-import { FileText, Upload, File, ExternalLink } from "lucide-react";
+import { FileText, Upload, File, ExternalLink, AlertTriangle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
@@ -11,6 +11,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface IQCInspectionDialogProps {
   grn: any;
@@ -29,10 +30,15 @@ const IQCInspectionDialog = ({ grn, isOpen, onClose }: IQCInspectionDialogProps)
     iqcReport?: File;
     selectedFile?: string;
   }>>({});
+  
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
-  // Initialize results when GRN changes
-  useState(() => {
-    if (!grn?.grn_items) return;
+  // Initialize results when GRN changes - fixed effect hook
+  useEffect(() => {
+    if (!grn?.grn_items) {
+      setInspectionResults({});
+      return;
+    }
     
     const initialResults: Record<string, any> = {};
     grn.grn_items.forEach((item: any) => {
@@ -40,7 +46,7 @@ const IQCInspectionDialog = ({ grn, isOpen, onClose }: IQCInspectionDialogProps)
         initialResults[item.id] = {
           status: 'APPROVED',
           remarks: '',
-          acceptedQuantity: item.received_quantity,
+          acceptedQuantity: item.received_quantity || 0,
           rejectedQuantity: 0,
           selectedFile: '',
         };
@@ -48,7 +54,8 @@ const IQCInspectionDialog = ({ grn, isOpen, onClose }: IQCInspectionDialogProps)
     });
     
     setInspectionResults(initialResults);
-  });
+    setValidationErrors({});
+  }, [grn]);
 
   // Handle file upload
   const handleFileChange = (itemId: string, event: React.ChangeEvent<HTMLInputElement>) => {
@@ -93,6 +100,28 @@ const IQCInspectionDialog = ({ grn, isOpen, onClose }: IQCInspectionDialogProps)
     }));
   };
 
+  // Enhanced quantity validation
+  const validateQuantities = (itemId: string, results: any): string | null => {
+    const item = grn.grn_items.find((i: any) => i.id === itemId);
+    if (!item) return "Item not found";
+    
+    const result = results[itemId];
+    if (!result) return "No inspection data";
+    
+    const total = result.acceptedQuantity + result.rejectedQuantity;
+    const received = item.received_quantity;
+    
+    if (total !== received) {
+      return `Total quantities (${total}) must equal received quantity (${received})`;
+    }
+    
+    if (result.acceptedQuantity < 0 || result.rejectedQuantity < 0) {
+      return "Quantities cannot be negative";
+    }
+    
+    return null;
+  };
+
   // Handle quantity inputs for segregated items
   const handleQuantityChange = (
     itemId: string, 
@@ -102,101 +131,168 @@ const IQCInspectionDialog = ({ grn, isOpen, onClose }: IQCInspectionDialogProps)
     const item = grn.grn_items.find((i: any) => i.id === itemId);
     if (!item) return;
     
+    const clampedValue = Math.max(0, Math.min(value, item.received_quantity));
     const otherField = field === 'acceptedQuantity' ? 'rejectedQuantity' : 'acceptedQuantity';
-    const totalQty = item.received_quantity;
-    const otherValue = totalQty - value;
+    const otherValue = item.received_quantity - clampedValue;
     
-    setInspectionResults(prev => ({
-      ...prev,
+    const newResults = {
+      ...inspectionResults,
       [itemId]: {
-        ...prev[itemId],
-        [field]: value,
-        [otherField]: otherValue >= 0 ? otherValue : 0
+        ...inspectionResults[itemId],
+        [field]: clampedValue,
+        [otherField]: Math.max(0, otherValue)
       }
+    };
+    
+    setInspectionResults(newResults);
+    
+    // Clear validation error for this item if quantities are now valid
+    const error = validateQuantities(itemId, newResults);
+    setValidationErrors(prev => ({
+      ...prev,
+      [itemId]: error || ''
     }));
   };
 
-  // Submit IQC inspection results
+  // Submit IQC inspection results with comprehensive validation and error handling
   const submitInspection = useMutation({
     mutationFn: async () => {
-      // Upload IQC reports if any
       const itemIds = Object.keys(inspectionResults);
-      const uploadPromises = itemIds.map(async (itemId) => {
-        const result = inspectionResults[itemId];
-        let reportUrl = '';
-
-        if (result.iqcReport) {
-          const fileName = `iqc-report-${grn.grn_number}-${itemId}-${Date.now()}.pdf`;
-          const { error: uploadError } = await supabase.storage
-            .from("iqc-reports")
-            .upload(fileName, result.iqcReport);
-
-          if (uploadError) throw uploadError;
-          reportUrl = fileName;
+      
+      // Validate all items before submission
+      const errors: Record<string, string> = {};
+      itemIds.forEach(itemId => {
+        const error = validateQuantities(itemId, inspectionResults);
+        if (error) {
+          errors[itemId] = error;
         }
-
-        return { itemId, reportUrl };
       });
+      
+      if (Object.keys(errors).length > 0) {
+        setValidationErrors(errors);
+        throw new Error("Please fix validation errors before submitting");
+      }
 
-      const uploadResults = await Promise.all(uploadPromises);
-      const uploadMap = uploadResults.reduce((map, { itemId, reportUrl }) => {
-        map[itemId] = reportUrl;
-        return map;
-      }, {} as Record<string, string>);
-
-      // Update IQC status for each item
-      const updatePromises = itemIds.map(async (itemId) => {
-        const result = inspectionResults[itemId];
+      // Process updates atomically
+      try {
+        // Upload IQC reports with retry logic
+        const uploadResults: { itemId: string; reportUrl: string }[] = [];
         
-        const updateData = {
-          iqc_status: result.status,
-          iqc_completed_at: new Date().toISOString(),
-          iqc_completed_by: null, // Would be set from auth in real app
-          accepted_quantity: result.acceptedQuantity,
-          rejected_quantity: result.rejectedQuantity,
-        };
+        for (const itemId of itemIds) {
+          const result = inspectionResults[itemId];
+          let reportUrl = '';
 
-        if (uploadMap[itemId]) {
-          // @ts-ignore
-          updateData.iqc_report_url = uploadMap[itemId];
+          if (result.iqcReport) {
+            const fileName = `iqc-report-${grn.grn_number}-${itemId}-${Date.now()}.${result.iqcReport.name.split('.').pop()}`;
+            
+            let uploadAttempts = 0;
+            const maxRetries = 3;
+            
+            while (uploadAttempts < maxRetries) {
+              try {
+                const { error: uploadError, data } = await supabase.storage
+                  .from("iqc-reports")
+                  .upload(fileName, result.iqcReport, {
+                    cacheControl: '3600',
+                    upsert: false
+                  });
+
+                if (uploadError) {
+                  uploadAttempts++;
+                  if (uploadAttempts >= maxRetries) {
+                    throw new Error(`File upload failed after ${maxRetries} attempts: ${uploadError.message}`);
+                  }
+                  await new Promise(resolve => setTimeout(resolve, 1000 * uploadAttempts)); // Exponential backoff
+                  continue;
+                }
+                
+                reportUrl = fileName;
+                break;
+              } catch (error) {
+                uploadAttempts++;
+                if (uploadAttempts >= maxRetries) {
+                  throw error;
+                }
+                await new Promise(resolve => setTimeout(resolve, 1000 * uploadAttempts));
+              }
+            }
+          }
+
+          uploadResults.push({ itemId, reportUrl });
         }
 
-        const { error } = await supabase
-          .from("grn_items")
-          .update(updateData)
-          .eq("id", itemId);
+        // Update all GRN items atomically
+        for (const { itemId, reportUrl } of uploadResults) {
+          const result = inspectionResults[itemId];
+          
+          const updateData: any = {
+            iqc_status: result.status,
+            iqc_completed_at: new Date().toISOString(),
+            iqc_completed_by: null, // Would be set from auth context
+            accepted_quantity: result.acceptedQuantity,
+            rejected_quantity: result.rejectedQuantity,
+            iqc_report_url: reportUrl || null
+          };
 
-        if (error) throw error;
-      });
+          const { error } = await supabase
+            .from("grn_items")
+            .update(updateData)
+            .eq("id", itemId);
 
-      await Promise.all(updatePromises);
+          if (error) {
+            throw new Error(`Failed to update item ${itemId}: ${error.message}`);
+          }
+        }
 
-      // Check if all items are inspected and update GRN status
-      const allItemsInspected = grn.grn_items.every((item: any) => 
-        item.iqc_status !== 'PENDING' || !!inspectionResults[item.id]
-      );
+        // Update GRN status if all items are completed
+        const allItemsInspected = grn.grn_items.every((item: any) => 
+          item.iqc_status !== 'PENDING' || !!inspectionResults[item.id]
+        );
 
-      if (allItemsInspected) {
-        await supabase
-          .from("grn")
-          .update({ status: "IQC_COMPLETED" })
-          .eq("id", grn.id);
+        if (allItemsInspected) {
+          const { error: grnError } = await supabase
+            .from("grn")
+            .update({ status: "IQC_COMPLETED" })
+            .eq("id", grn.id);
+
+          if (grnError) {
+            throw new Error(`Failed to update GRN status: ${grnError.message}`);
+          }
+        }
+
+      } catch (error) {
+        // If any operation fails, we throw the error to trigger retry or user notification
+        throw error;
       }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pending-grns'] });
       queryClient.invalidateQueries({ queryKey: ['completed-grns'] });
+      queryClient.invalidateQueries({ queryKey: ['completed-iqc-items'] });
+      queryClient.invalidateQueries({ queryKey: ['grn-items'] });
       toast({
         title: "Inspection Completed",
-        description: "GRN items have been inspected successfully",
+        description: "GRN items have been inspected successfully. CAPA workflows have been initiated for rejected/segregated items.",
       });
+      setInspectionResults({});
+      setValidationErrors({});
       onClose();
     },
-    onError: (error) => {
+    onError: (error: any) => {
       console.error("Error submitting IQC inspection:", error);
+      
+      let errorMessage = "Failed to save inspection results";
+      if (error.message.includes("upload")) {
+        errorMessage = "File upload failed. Please check your internet connection and try again.";
+      } else if (error.message.includes("validation")) {
+        errorMessage = "Please fix the validation errors before submitting.";
+      } else if (error.message.includes("transaction")) {
+        errorMessage = "Database transaction failed. Please try again.";
+      }
+      
       toast({
         title: "Inspection Failed",
-        description: "Failed to save inspection results",
+        description: errorMessage,
         variant: "destructive",
       });
     },
@@ -276,36 +372,47 @@ const IQCInspectionDialog = ({ grn, isOpen, onClose }: IQCInspectionDialogProps)
                   </div>
                   
                   {inspectionResults[item.id]?.status === 'SEGREGATED' && (
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label>Accepted Quantity</Label>
-                        <Input
-                          type="number"
-                          min={0}
-                          max={item.received_quantity}
-                          value={inspectionResults[item.id]?.acceptedQuantity || 0}
-                          onChange={(e) => handleQuantityChange(
-                            item.id, 
-                            'acceptedQuantity',
-                            parseInt(e.target.value) || 0
-                          )}
-                          className="mt-1"
-                        />
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label>Accepted Quantity</Label>
+                          <Input
+                            type="number"
+                            min={0}
+                            max={item.received_quantity}
+                            value={inspectionResults[item.id]?.acceptedQuantity || 0}
+                            onChange={(e) => handleQuantityChange(
+                              item.id, 
+                              'acceptedQuantity',
+                              parseInt(e.target.value) || 0
+                            )}
+                            className={`mt-1 ${validationErrors[item.id] ? 'border-red-500' : ''}`}
+                          />
+                        </div>
+                        <div>
+                          <Label>Rejected Quantity</Label>
+                          <Input
+                            type="number"
+                            min={0}
+                            max={item.received_quantity}
+                            value={inspectionResults[item.id]?.rejectedQuantity || 0}
+                            onChange={(e) => handleQuantityChange(
+                              item.id, 
+                              'rejectedQuantity',
+                              parseInt(e.target.value) || 0
+                            )}
+                            className={`mt-1 ${validationErrors[item.id] ? 'border-red-500' : ''}`}
+                          />
+                        </div>
                       </div>
-                      <div>
-                        <Label>Rejected Quantity</Label>
-                        <Input
-                          type="number"
-                          min={0}
-                          max={item.received_quantity}
-                          value={inspectionResults[item.id]?.rejectedQuantity || 0}
-                          onChange={(e) => handleQuantityChange(
-                            item.id, 
-                            'rejectedQuantity',
-                            parseInt(e.target.value) || 0
-                          )}
-                          className="mt-1"
-                        />
+                      {validationErrors[item.id] && (
+                        <Alert variant="destructive">
+                          <AlertTriangle className="h-4 w-4" />
+                          <AlertDescription>{validationErrors[item.id]}</AlertDescription>
+                        </Alert>
+                      )}
+                      <div className="text-sm text-muted-foreground">
+                        Total: {(inspectionResults[item.id]?.acceptedQuantity || 0) + (inspectionResults[item.id]?.rejectedQuantity || 0)} / {item.received_quantity}
                       </div>
                     </div>
                   )}
@@ -386,16 +493,33 @@ const IQCInspectionDialog = ({ grn, isOpen, onClose }: IQCInspectionDialogProps)
             ))}
           </div>
           
+          {/* Global validation errors */}
+          {Object.keys(validationErrors).length > 0 && (
+            <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>
+                Please fix all validation errors before submitting the inspection.
+              </AlertDescription>
+            </Alert>
+          )}
+          
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={onClose}>
+            <Button variant="outline" onClick={onClose} disabled={submitInspection.isPending}>
               Cancel
             </Button>
             <Button 
               onClick={() => submitInspection.mutate()}
-              disabled={submitInspection.isPending}
+              disabled={submitInspection.isPending || Object.keys(validationErrors).some(key => validationErrors[key])}
               className="gap-2"
             >
-              {submitInspection.isPending ? "Saving..." : "Complete Inspection"}
+              {submitInspection.isPending ? (
+                <>
+                  <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></span>
+                  Saving...
+                </>
+              ) : (
+                "Complete Inspection"
+              )}
             </Button>
           </div>
         </div>
