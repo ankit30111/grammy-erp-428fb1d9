@@ -147,6 +147,12 @@ export const useIQCInspection = (grn: any) => {
           uploadResults.push({ itemId, reportUrl });
         }
 
+        // Get current user ID
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          throw new Error('User not authenticated');
+        }
+
         // Update all GRN items
         for (const { itemId, reportUrl } of uploadResults) {
           const result = inspectionResults[itemId];
@@ -154,7 +160,7 @@ export const useIQCInspection = (grn: any) => {
           const updateData: any = {
             iqc_status: result.status,
             iqc_completed_at: new Date().toISOString(),
-            iqc_completed_by: null, // Would be set from auth context
+            iqc_completed_by: user.id, // Set to current user ID
             accepted_quantity: result.acceptedQuantity,
             rejected_quantity: result.rejectedQuantity,
             iqc_report_url: reportUrl || null
@@ -166,7 +172,8 @@ export const useIQCInspection = (grn: any) => {
             .eq("id", itemId);
 
           if (error) {
-            throw new Error(`Failed to update item ${itemId}: ${error.message}`);
+            console.error('PostgREST Error:', error);
+            throw new Error(`Failed to update item ${itemId}: ${error.message} (${error.code || 'Unknown code'})`);
           }
         }
 
