@@ -4,7 +4,7 @@ import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Clock, FileCheck, Search, AlertTriangle, Phone, FileText } from "lucide-react";
+import { Clock, FileCheck, Search, AlertTriangle, FileText } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -141,21 +141,6 @@ const IQC = () => {
     return diffDays;
   };
 
-  const getNotifyVendorButton = (grn: any) => {
-    const hasRejectedOrSegregated = grn.grn_items.some((item: any) => 
-      item.iqc_status === 'REJECTED' || item.iqc_status === 'SEGREGATED'
-    );
-
-    if (hasRejectedOrSegregated) {
-      return (
-        <Button variant="outline" size="sm" className="ml-2">
-          <Phone className="h-3 w-3 mr-1" />
-          Notify Vendor
-        </Button>
-      );
-    }
-    return null;
-  };
 
   return (
     <DashboardLayout>
@@ -246,46 +231,23 @@ const IQC = () => {
                     No completed IQC items found
                   </div>
                 ) : (
-                  <Table 
+                   <Table 
                     containerClassName="overflow-x-hidden" 
-                    className="table-fixed text-xs"
+                    className="table-fixed w-full text-xs"
                   >
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="w-24 px-2">
-                          <div className="truncate">GRN No.</div>
-                        </TableHead>
-                        <TableHead className="w-24 px-2">
-                          <div className="truncate">PO No.</div>
-                        </TableHead>
-                        <TableHead className="w-20 px-2">
-                          <div className="truncate">Mat. Code</div>
-                        </TableHead>
-                        <TableHead className="w-32 px-2">
-                          <div className="truncate">Material Name</div>
-                        </TableHead>
-                        <TableHead className="w-24 px-2">
-                          <div className="truncate">Vendor</div>
-                        </TableHead>
-                        <TableHead className="w-16 px-2">
-                          <div className="truncate">Rcvd Qty</div>
-                        </TableHead>
-                        <TableHead className="w-16 px-2">
-                          <div className="truncate">Acc. Qty</div>
-                        </TableHead>
-                        <TableHead className="w-16 px-2">
-                          <div className="truncate">Rej. Qty</div>
-                        </TableHead>
-                        <TableHead className="w-20 px-2">
-                          <div className="truncate">IQC Status</div>
-                        </TableHead>
-                        <TableHead className="w-24 px-2">
-                          <div className="truncate">CAPA Status</div>
-                        </TableHead>
-                        <TableHead className="w-20 px-2">
-                          <div className="truncate">Date</div>
-                        </TableHead>
-                        <TableHead className="w-32 px-2">Actions</TableHead>
+                        <TableHead className="w-[10%] p-2 whitespace-normal break-words">GRN No.</TableHead>
+                        <TableHead className="w-[8%] p-2 whitespace-normal break-words">PO No.</TableHead>
+                        <TableHead className="w-[8%] p-2 whitespace-normal break-words">Mat. Code</TableHead>
+                        <TableHead className="w-[20%] p-2 whitespace-normal break-words">Material Name</TableHead>
+                        <TableHead className="w-[12%] p-2 whitespace-normal break-words">Vendor</TableHead>
+                        <TableHead className="w-[6%] p-2 text-center">Rcvd</TableHead>
+                        <TableHead className="w-[6%] p-2 text-center">Acc.</TableHead>
+                        <TableHead className="w-[6%] p-2 text-center">Rej.</TableHead>
+                        <TableHead className="w-[8%] p-2">Status</TableHead>
+                        <TableHead className="w-[8%] p-2">CAPA</TableHead>
+                        <TableHead className="w-[8%] p-2">Date</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -294,79 +256,37 @@ const IQC = () => {
                         const needsCAPA = item.iqc_status === 'REJECTED' || item.iqc_status === 'SEGREGATED';
                         
                         return (
-                          <TableRow key={item.id}>
-                            <TableCell className="px-2 py-2">
-                              <div className="truncate font-medium">{item.grn?.grn_number}</div>
+                          <TableRow key={item.id} className="h-16">
+                            <TableCell className="p-2 whitespace-normal break-words font-medium">{item.grn?.grn_number}</TableCell>
+                            <TableCell className="p-2 whitespace-normal break-words font-medium text-blue-600">
+                              {item.grn?.purchase_orders?.po_number || "Non-PO"}
                             </TableCell>
-                            <TableCell className="px-2 py-2">
-                              <div className="truncate font-medium text-blue-600">
-                                {item.grn?.purchase_orders?.po_number || "Non-PO"}
+                            <TableCell className="p-2 whitespace-normal break-words font-mono text-xs">{item.raw_materials?.material_code}</TableCell>
+                            <TableCell className="p-2 whitespace-normal break-words">
+                              {item.raw_materials?.name}
+                            </TableCell>
+                            <TableCell className="p-2 whitespace-normal break-words">
+                              {item.grn?.vendors?.name}
+                            </TableCell>
+                            <TableCell className="p-2 text-center">{item.received_quantity}</TableCell>
+                            <TableCell className="p-2 text-center">{item.accepted_quantity}</TableCell>
+                            <TableCell className="p-2 text-center">{item.rejected_quantity || 0}</TableCell>
+                            <TableCell className="p-2">{getItemStatusBadge(item.iqc_status)}</TableCell>
+                            <TableCell className="p-2">
+                              <div className="space-y-1">
+                                {needsCAPA ? getCAPAStatusBadge(capaData) : <Badge variant="secondary" className="text-xs">Not Req.</Badge>}
+                                {capaData && capaData.capa_status === 'AWAITED' && (
+                                  <div className="text-xs text-red-600">
+                                    {getDaysOpen(capaData.initiated_at)}d
+                                  </div>
+                                )}
                               </div>
                             </TableCell>
-                            <TableCell className="px-2 py-2">
-                              <div className="truncate font-mono text-xs">{item.raw_materials?.material_code}</div>
-                            </TableCell>
-                            <TableCell className="px-2 py-2">
-                              <div className="truncate" title={item.raw_materials?.name}>
-                                {item.raw_materials?.name}
-                              </div>
-                            </TableCell>
-                            <TableCell className="px-2 py-2">
-                              <div className="truncate" title={item.grn?.vendors?.name}>
-                                {item.grn?.vendors?.name}
-                              </div>
-                            </TableCell>
-                            <TableCell className="px-2 py-2 text-center">{item.received_quantity}</TableCell>
-                            <TableCell className="px-2 py-2 text-center">{item.accepted_quantity}</TableCell>
-                            <TableCell className="px-2 py-2 text-center">{item.rejected_quantity || 0}</TableCell>
-                            <TableCell className="px-2 py-2">{getItemStatusBadge(item.iqc_status)}</TableCell>
-                            <TableCell className="px-2 py-2">
-                              {needsCAPA ? getCAPAStatusBadge(capaData) : <Badge variant="secondary" className="text-xs">Not Req.</Badge>}
-                              {capaData && capaData.capa_status === 'AWAITED' && (
-                                <div className="text-xs text-red-600 mt-1">
-                                  {getDaysOpen(capaData.initiated_at)}d
-                                </div>
-                              )}
-                            </TableCell>
-                            <TableCell className="px-2 py-2 text-xs">
+                            <TableCell className="p-2 text-xs">
                               {item.iqc_completed_at 
                                 ? format(new Date(item.iqc_completed_at), "dd/MM/yy")
                                 : '-'
                               }
-                            </TableCell>
-                            <TableCell className="px-2 py-2">
-                              <div className="flex flex-col gap-1">
-                                <IQCReportViewer 
-                                  reportUrl={item.iqc_report_url || ''}
-                                  itemId={item.id}
-                                  materialName={item.raw_materials?.name || 'Unknown'}
-                                />
-                                {capaData && capaData.capa_document_url && (
-                                  <Button 
-                                    variant="outline" 
-                                    size="sm"
-                                    onClick={() => window.open(
-                                      `https://oacdhvmpkuadlyvvvbpq.supabase.co/storage/v1/object/public/capa-documents/${capaData.capa_document_url}`, 
-                                      '_blank'
-                                    )}
-                                    className="gap-1 text-xs h-7"
-                                  >
-                                    <FileText className="h-3 w-3" />
-                                    CAPA
-                                  </Button>
-                                )}
-                                {needsCAPA && capaData && capaData.capa_status === 'AWAITED' && (
-                                  <Button 
-                                    variant="outline" 
-                                    size="sm"
-                                    onClick={() => window.location.href = '/quality/capa'}
-                                    className="gap-1 text-xs h-7"
-                                  >
-                                    <FileText className="h-3 w-3" />
-                                    Manage
-                                  </Button>
-                                )}
-                              </div>
                             </TableCell>
                           </TableRow>
                         );
