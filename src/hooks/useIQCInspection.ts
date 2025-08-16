@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -160,7 +161,7 @@ export const useIQCInspection = (grn: any) => {
           const updateData: any = {
             iqc_status: result.status,
             iqc_completed_at: new Date().toISOString(),
-            iqc_completed_by: user.id, // Set to current user ID
+            iqc_completed_by: user.id,
             accepted_quantity: result.acceptedQuantity,
             rejected_quantity: result.rejectedQuantity,
             iqc_report_url: reportUrl || null
@@ -172,8 +173,8 @@ export const useIQCInspection = (grn: any) => {
             .eq("id", itemId);
 
           if (error) {
-            console.error('PostgREST Error:', error);
-            throw new Error(`Failed to update item ${itemId}: ${error.message} (${error.code || 'Unknown code'})`);
+            console.error('Database update error:', error);
+            throw new Error(`Failed to update item ${itemId}: ${error.message}`);
           }
         }
 
@@ -219,6 +220,8 @@ export const useIQCInspection = (grn: any) => {
         errorMessage = "Please fix the validation errors before submitting.";
       } else if (error.message.includes("Failed to update")) {
         errorMessage = "Database update failed. Please try again.";
+      } else if (error.message.includes("User not authenticated")) {
+        errorMessage = "Authentication required. Please log in and try again.";
       }
       
       toast({
