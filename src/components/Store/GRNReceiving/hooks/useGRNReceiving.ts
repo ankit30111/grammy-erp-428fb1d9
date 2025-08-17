@@ -3,11 +3,13 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 
 export const useGRNReceiving = () => {
   const [physicalQuantities, setPhysicalQuantities] = useState<Record<string, number>>({});
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   // Fetch GRN items that are ready for store receipt (IQC approved)
   const { data: grnItems = [], isLoading } = useQuery({
@@ -45,15 +47,19 @@ export const useGRNReceiving = () => {
   // Mutation to handle physical verification and store confirmation
   const confirmPhysicalVerificationMutation = useMutation({
     mutationFn: async ({ itemId, physicalQuantity }: { itemId: string; physicalQuantity: number }) => {
+      if (!user?.id) {
+        throw new Error('User not authenticated');
+      }
+
       const { error } = await supabase
         .from('grn_items')
         .update({
           store_physical_quantity: physicalQuantity,
           physical_verification_date: new Date().toISOString(),
-          physical_verified_by: null, // Would be set from auth in real app
+          physical_verified_by: user.id,
           store_confirmed: true,
           store_confirmed_at: new Date().toISOString(),
-          store_confirmed_by: null, // Would be set from auth in real app
+          store_confirmed_by: user.id,
         })
         .eq('id', itemId);
 
@@ -69,11 +75,19 @@ export const useGRNReceiving = () => {
         description: "Material has been received to store and inventory updated",
       });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       console.error('Error confirming physical verification:', error);
+      
+      let errorMessage = "Failed to confirm physical verification";
+      if (error?.message?.includes('not authenticated')) {
+        errorMessage = "Please sign in to confirm receipt";
+      } else if (error?.message?.includes('row-level security')) {
+        errorMessage = "You don't have permission to confirm this receipt";
+      }
+      
       toast({
         title: "Error",
-        description: "Failed to confirm physical verification",
+        description: errorMessage,
         variant: "destructive",
       });
     },
