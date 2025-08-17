@@ -101,6 +101,11 @@ const IQCInspectionDialog = ({ grn, isOpen, onClose }: IQCInspectionDialogProps)
 
   // Check if any validation errors exist
   const hasValidationErrors = Object.keys(validationErrors).some(key => validationErrors[key]);
+  
+  // Check if all items have IQC reports uploaded
+  const allReportsUploaded = pendingItems.every(item => 
+    inspectionResults[item.id]?.iqcReport || inspectionResults[item.id]?.selectedFile
+  );
 
   console.log('IQC Dialog State:', {
     pendingItems: pendingItems.length,
@@ -222,9 +227,9 @@ const IQCInspectionDialog = ({ grn, isOpen, onClose }: IQCInspectionDialogProps)
                     </div>
                   )}
                   
-                  <div>
-                    <Label>Upload IQC Report</Label>
-                    <div className="flex items-center gap-2 mt-1">
+                   <div>
+                     <Label>Upload IQC Report <span className="text-red-500">*</span></Label>
+                     <div className="flex items-center gap-2 mt-1">
                       <div className="relative w-full">
                         <Input
                           type="file"
@@ -233,13 +238,15 @@ const IQCInspectionDialog = ({ grn, isOpen, onClose }: IQCInspectionDialogProps)
                           onChange={(e) => handleFileChange(item.id, e)}
                           accept=".pdf,.jpg,.png"
                         />
-                        <Input
-                          readOnly
-                          value={inspectionResults[item.id]?.selectedFile || ''}
-                          placeholder="Select a file..."
-                          onClick={() => document.getElementById(`iqc-report-${item.id}`)?.click()}
-                          className="cursor-pointer pr-10"
-                        />
+                         <Input
+                           readOnly
+                           value={inspectionResults[item.id]?.selectedFile || ''}
+                           placeholder="Select a file... (Required)"
+                           onClick={() => document.getElementById(`iqc-report-${item.id}`)?.click()}
+                           className={`cursor-pointer pr-10 ${
+                             !inspectionResults[item.id]?.selectedFile ? 'border-red-300' : ''
+                           }`}
+                         />
                         <Upload className="absolute right-3 top-2.5 h-4 w-4 text-muted-foreground" />
                       </div>
                     </div>
@@ -293,11 +300,12 @@ const IQCInspectionDialog = ({ grn, isOpen, onClose }: IQCInspectionDialogProps)
           </div>
           
           {/* Global validation errors */}
-          {hasValidationErrors && (
+          {(hasValidationErrors || !allReportsUploaded) && (
             <Alert variant="destructive">
               <AlertTriangle className="h-4 w-4" />
               <AlertDescription>
-                Please fix all validation errors before submitting the inspection.
+                {hasValidationErrors && "Please fix all validation errors before submitting the inspection."}
+                {!hasValidationErrors && !allReportsUploaded && "Please upload IQC reports for all items before completing the inspection."}
               </AlertDescription>
             </Alert>
           )}
@@ -308,7 +316,7 @@ const IQCInspectionDialog = ({ grn, isOpen, onClose }: IQCInspectionDialogProps)
             </Button>
             <Button 
               onClick={handleSubmit}
-              disabled={submitInspection.isPending || hasValidationErrors}
+              disabled={submitInspection.isPending || hasValidationErrors || !allReportsUploaded}
               className="gap-2"
             >
               {submitInspection.isPending ? (

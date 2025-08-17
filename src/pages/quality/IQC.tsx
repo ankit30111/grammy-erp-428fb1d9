@@ -91,7 +91,9 @@ const IQC = () => {
         `)
         .not("iqc_status", "is", null)
         .neq("iqc_status", "PENDING")
-        .in("iqc_status", ["APPROVED", "REJECTED", "SEGREGATED", "FAILED"]);
+        .in("iqc_status", ["APPROVED", "REJECTED", "SEGREGATED", "FAILED"])
+        .not('iqc_report_url', 'is', null)
+        .neq('iqc_report_url', '');
 
       // Apply date filter based on view mode
       if (viewMode === "month") {
