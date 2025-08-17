@@ -8,9 +8,10 @@ import { Clock, FileCheck, Search, AlertTriangle, FileText } from "lucide-react"
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { format } from "date-fns";
+import { format, startOfMonth, endOfMonth } from "date-fns";
 import LineRejectionManager from "@/components/quality/LineRejectionManager";
 import IQCInspectionDialog from "@/components/quality/IQCInspectionDialog";
 import PartAnalysis from "@/components/quality/PartAnalysis";
@@ -20,6 +21,10 @@ const IQC = () => {
   const [selectedTab, setSelectedTab] = useState("pending");
   const [selectedGRN, setSelectedGRN] = useState<any>(null);
   const [showInspectionDialog, setShowInspectionDialog] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [viewMode, setViewMode] = useState<"month" | "all">("month");
 
   // Fetch pending GRNs for IQC - only those with pending or null IQC status
   const { data: pendingGRNs = [] } = useQuery({
@@ -50,11 +55,11 @@ const IQC = () => {
     },
   });
 
-  // Enhanced completed IQC items query with CAPA information
+  // Enhanced completed IQC items query with CAPA information and filtering
   const { data: completedIQCItems = [] } = useQuery({
-    queryKey: ["completed-iqc-items"],
+    queryKey: ["completed-iqc-items", viewMode, selectedMonth, selectedYear],
     queryFn: async () => {
-      const { data } = await supabase
+      let query = supabase
         .from("grn_items")
         .select(`
           id,
@@ -86,9 +91,18 @@ const IQC = () => {
         `)
         .not("iqc_status", "is", null)
         .neq("iqc_status", "PENDING")
-        .in("iqc_status", ["APPROVED", "REJECTED", "SEGREGATED", "FAILED"])
-        .order("iqc_completed_at", { ascending: false })
-        .limit(50);
+        .in("iqc_status", ["APPROVED", "REJECTED", "SEGREGATED", "FAILED"]);
+
+      // Apply date filter based on view mode
+      if (viewMode === "month") {
+        const startDate = startOfMonth(new Date(selectedYear, selectedMonth - 1));
+        const endDate = endOfMonth(new Date(selectedYear, selectedMonth - 1));
+        query = query
+          .gte("iqc_completed_at", startDate.toISOString())
+          .lte("iqc_completed_at", endDate.toISOString());
+      }
+
+      const { data } = await query.order("iqc_completed_at", { ascending: false });
       
       return data || [];
     },
@@ -151,6 +165,37 @@ const IQC = () => {
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     return diffDays;
   };
+
+  // Filter completed items based on search term
+  const filteredCompletedItems = completedIQCItems.filter(item => {
+    if (!searchTerm) return true;
+    const searchLower = searchTerm.toLowerCase();
+    return (
+      item.grn?.grn_number?.toLowerCase().includes(searchLower) ||
+      item.raw_materials?.name?.toLowerCase().includes(searchLower) ||
+      item.raw_materials?.material_code?.toLowerCase().includes(searchLower) ||
+      item.grn?.vendors?.name?.toLowerCase().includes(searchLower)
+    );
+  });
+
+  // Generate year options (current year and 2 years back)
+  const yearOptions = Array.from({ length: 3 }, (_, i) => new Date().getFullYear() - i);
+  
+  // Generate month options
+  const monthOptions = [
+    { value: 1, label: "January" },
+    { value: 2, label: "February" },
+    { value: 3, label: "March" },
+    { value: 4, label: "April" },
+    { value: 5, label: "May" },
+    { value: 6, label: "June" },
+    { value: 7, label: "July" },
+    { value: 8, label: "August" },
+    { value: 9, label: "September" },
+    { value: 10, label: "October" },
+    { value: 11, label: "November" },
+    { value: 12, label: "December" },
+  ];
 
 
   return (
@@ -229,17 +274,81 @@ const IQC = () => {
           
           <TabsContent value="completed">
             <Card>
-              <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-2 sm:space-y-0">
-                <CardTitle>Completed IQC Items</CardTitle>
-                <div className="relative w-full sm:w-64">
-                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input placeholder="Search by GRN or material" className="pl-8" />
+              <CardHeader className="space-y-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-2 sm:space-y-0">
+                  <CardTitle>Completed IQC Items</CardTitle>
+                  <div className="relative w-full sm:w-64">
+                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input 
+                      placeholder="Search by GRN or material" 
+                      className="pl-8"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                  </div>
+                </div>
+                
+                {/* Filter Controls */}
+                <div className="flex flex-wrap items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm font-medium">View:</label>
+                    <Select value={viewMode} onValueChange={(value: "month" | "all") => setViewMode(value)}>
+                      <SelectTrigger className="w-32">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="month">Monthly</SelectItem>
+                        <SelectItem value="all">All Time</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  {viewMode === "month" && (
+                    <>
+                      <div className="flex items-center gap-2">
+                        <label className="text-sm font-medium">Month:</label>
+                        <Select value={selectedMonth.toString()} onValueChange={(value) => setSelectedMonth(parseInt(value))}>
+                          <SelectTrigger className="w-32">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {monthOptions.map((month) => (
+                              <SelectItem key={month.value} value={month.value.toString()}>
+                                {month.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      <div className="flex items-center gap-2">
+                        <label className="text-sm font-medium">Year:</label>
+                        <Select value={selectedYear.toString()} onValueChange={(value) => setSelectedYear(parseInt(value))}>
+                          <SelectTrigger className="w-24">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {yearOptions.map((year) => (
+                              <SelectItem key={year} value={year.toString()}>
+                                {year}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </>
+                  )}
+                  
+                  <div className="text-sm text-muted-foreground">
+                    Showing {filteredCompletedItems.length} items
+                    {viewMode === "month" && ` for ${monthOptions.find(m => m.value === selectedMonth)?.label} ${selectedYear}`}
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
-                {completedIQCItems.length === 0 ? (
+                {filteredCompletedItems.length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground">
-                    No completed IQC items found
+                    {completedIQCItems.length === 0 ? "No completed IQC items found" : "No items match your search criteria"}
                   </div>
                 ) : (
                     <Table 
@@ -263,7 +372,7 @@ const IQC = () => {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {completedIQCItems.map((item) => {
+                      {filteredCompletedItems.map((item) => {
                         const capaData = item.iqc_vendor_capa?.[0];
                         const needsCAPA = item.iqc_status === 'REJECTED' || item.iqc_status === 'SEGREGATED';
                         
