@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,11 +25,13 @@ const IQC = () => {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [viewMode, setViewMode] = useState<"month" | "all">("month");
 
-  // Fetch pending GRNs for IQC - only those with pending or null IQC status
+  // Enhanced pending GRNs query - show ANY GRN that has at least one pending item
   const { data: pendingGRNs = [] } = useQuery({
     queryKey: ["pending-grns"],
     queryFn: async () => {
-      const { data } = await supabase
+      console.log('Fetching pending GRNs...');
+      
+      const { data, error } = await supabase
         .from("grn")
         .select(`
           *,
@@ -41,16 +42,31 @@ const IQC = () => {
             raw_materials!inner(name, material_code)
           )
         `)
-        .eq("status", "RECEIVED")
-        .or("iqc_status.is.null,iqc_status.eq.PENDING", { foreignTable: "grn_items" });
+        .order('created_at', { ascending: false });
       
-      // Filter out GRNs where all items are already completed
-      const filteredData = data?.filter(grn => 
-        grn.grn_items.some((item: any) => 
+      if (error) {
+        console.error('Error fetching GRNs:', error);
+        throw error;
+      }
+      
+      console.log('All GRNs fetched:', data?.length);
+      
+      // Filter to show GRNs that have at least one item with PENDING or null IQC status
+      const filteredData = data?.filter(grn => {
+        const hasPendingItems = grn.grn_items.some((item: any) => 
           !item.iqc_status || item.iqc_status === 'PENDING'
-        )
-      ) || [];
+        );
+        
+        if (hasPendingItems) {
+          console.log(`GRN ${grn.grn_number} has pending items:`, 
+            grn.grn_items.filter((item: any) => !item.iqc_status || item.iqc_status === 'PENDING')
+          );
+        }
+        
+        return hasPendingItems;
+      }) || [];
       
+      console.log('Filtered pending GRNs:', filteredData.length);
       return filteredData;
     },
   });
