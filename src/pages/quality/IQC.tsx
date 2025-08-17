@@ -57,13 +57,23 @@ const IQC = () => {
       const { data } = await supabase
         .from("grn_items")
         .select(`
-          *,
-          grn!inner(
+          id,
+          grn_id,
+          raw_material_id,
+          received_quantity,
+          accepted_quantity,
+          rejected_quantity,
+          iqc_status,
+          iqc_completed_at,
+          iqc_report_url,
+          grn:grn_id!inner(
+            id,
             grn_number,
-            vendors!inner(name, vendor_code),
+            vendor_id,
+            vendors:vendor_id!inner(name, vendor_code),
             purchase_orders(po_number)
           ),
-          raw_materials!inner(name, material_code),
+          raw_materials:raw_material_id!inner(name, material_code),
           iqc_vendor_capa!left(
             id,
             capa_status,
@@ -76,6 +86,7 @@ const IQC = () => {
         `)
         .not("iqc_status", "is", null)
         .neq("iqc_status", "PENDING")
+        .in("iqc_status", ["APPROVED", "REJECTED", "SEGREGATED", "FAILED"])
         .order("iqc_completed_at", { ascending: false })
         .limit(50);
       
@@ -231,22 +242,23 @@ const IQC = () => {
                     No completed IQC items found
                   </div>
                 ) : (
-                   <Table 
+                    <Table 
                     containerClassName="overflow-x-hidden" 
                     className="table-fixed w-full text-xs"
                   >
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="w-[10%] p-2 whitespace-normal break-words">GRN No.</TableHead>
-                        <TableHead className="w-[8%] p-2 whitespace-normal break-words">PO No.</TableHead>
-                        <TableHead className="w-[8%] p-2 whitespace-normal break-words">Mat. Code</TableHead>
-                        <TableHead className="w-[20%] p-2 whitespace-normal break-words">Material Name</TableHead>
+                        <TableHead className="w-[8%] p-2 whitespace-normal break-words">GRN No.</TableHead>
+                        <TableHead className="w-[7%] p-2 whitespace-normal break-words">PO No.</TableHead>
+                        <TableHead className="w-[7%] p-2 whitespace-normal break-words">Mat. Code</TableHead>
+                        <TableHead className="w-[18%] p-2 whitespace-normal break-words">Material Name</TableHead>
                         <TableHead className="w-[12%] p-2 whitespace-normal break-words">Vendor</TableHead>
-                        <TableHead className="w-[6%] p-2 text-center">Rcvd</TableHead>
-                        <TableHead className="w-[6%] p-2 text-center">Acc.</TableHead>
-                        <TableHead className="w-[6%] p-2 text-center">Rej.</TableHead>
+                        <TableHead className="w-[5%] p-2 text-center">Rcvd</TableHead>
+                        <TableHead className="w-[5%] p-2 text-center">Acc.</TableHead>
+                        <TableHead className="w-[5%] p-2 text-center">Rej.</TableHead>
                         <TableHead className="w-[8%] p-2">Status</TableHead>
-                        <TableHead className="w-[8%] p-2">CAPA</TableHead>
+                        <TableHead className="w-[8%] p-2">Report</TableHead>
+                        <TableHead className="w-[9%] p-2">CAPA</TableHead>
                         <TableHead className="w-[8%] p-2">Date</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -272,6 +284,13 @@ const IQC = () => {
                             <TableCell className="p-2 text-center">{item.accepted_quantity}</TableCell>
                             <TableCell className="p-2 text-center">{item.rejected_quantity || 0}</TableCell>
                             <TableCell className="p-2">{getItemStatusBadge(item.iqc_status)}</TableCell>
+                            <TableCell className="p-2">
+                              <IQCReportViewer
+                                reportUrl={item.iqc_report_url}
+                                itemId={item.id}
+                                materialName={item.raw_materials?.name || 'Unknown Material'}
+                              />
+                            </TableCell>
                             <TableCell className="p-2">
                               <div className="space-y-1">
                                 {needsCAPA ? getCAPAStatusBadge(capaData) : <Badge variant="secondary" className="text-xs">Not Req.</Badge>}
