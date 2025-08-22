@@ -237,6 +237,73 @@ export type Database = {
           },
         ]
       }
+      capa_implementation_checks: {
+        Row: {
+          capa_category: string
+          created_at: string
+          grn_item_id: string | null
+          id: string
+          implemented: boolean
+          raw_material_id: string | null
+          reference_id: string
+          remarks: string | null
+          updated_at: string
+          vendor_id: string | null
+          verified_at: string
+          verified_by: string | null
+        }
+        Insert: {
+          capa_category: string
+          created_at?: string
+          grn_item_id?: string | null
+          id?: string
+          implemented: boolean
+          raw_material_id?: string | null
+          reference_id: string
+          remarks?: string | null
+          updated_at?: string
+          vendor_id?: string | null
+          verified_at?: string
+          verified_by?: string | null
+        }
+        Update: {
+          capa_category?: string
+          created_at?: string
+          grn_item_id?: string | null
+          id?: string
+          implemented?: boolean
+          raw_material_id?: string | null
+          reference_id?: string
+          remarks?: string | null
+          updated_at?: string
+          vendor_id?: string | null
+          verified_at?: string
+          verified_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "capa_implementation_checks_grn_item_id_fkey"
+            columns: ["grn_item_id"]
+            isOneToOne: false
+            referencedRelation: "grn_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "capa_implementation_checks_raw_material_id_fkey"
+            columns: ["raw_material_id"]
+            isOneToOne: false
+            referencedRelation: "raw_materials"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "capa_implementation_checks_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       container_materials: {
         Row: {
           brand: string | null
@@ -3775,6 +3842,40 @@ export type Database = {
           vendor_name: string | null
         }
         Relationships: []
+      }
+      capa_tracking_with_links: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          capa_category: string | null
+          capa_document_url: string | null
+          created_at: string | null
+          id: string | null
+          implementation_assigned_to: string | null
+          implementation_completed_at: string | null
+          implementation_completed_by: string | null
+          implementation_deadline: string | null
+          implementation_remarks: string | null
+          implementation_status: string | null
+          part_or_process: string | null
+          raw_material_id: string | null
+          reference_id: string | null
+          remarks: string | null
+          status: string | null
+          submitted_at: string | null
+          submitted_by: string | null
+          vendor_id: string | null
+          vendor_name: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "iqc_vendor_capa_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       material_requirements_view: {
         Row: {

@@ -9,9 +9,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Calendar, CheckCircle, Clock, Users, AlertTriangle } from "lucide-react";
+import { Calendar, CheckCircle, Clock, Users, AlertTriangle, TrendingUp, XCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useCAPATracking } from "@/hooks/useCAPATracking";
 
 interface CAPATracking {
   id: string;
@@ -29,6 +30,13 @@ interface CAPATracking {
   implementation_completed_by: string | null;
 }
 
+interface ComplianceStats {
+  totalChecks: number;
+  implementedChecks: number;
+  lastCheckDate: string | null;
+  lastCheckResult: boolean | null;
+}
+
 const CAPATrackingTab = () => {
   const [capaTracking, setCAPATracking] = useState<CAPATracking[]>([]);
   const [loading, setLoading] = useState(true);
@@ -37,7 +45,9 @@ const CAPATrackingTab = () => {
   const [implementationRemarks, setImplementationRemarks] = useState("");
   const [assignedTo, setAssignedTo] = useState("");
   const [deadline, setDeadline] = useState("");
+  const [complianceData, setComplianceData] = useState<Record<string, ComplianceStats>>({});
   const { toast } = useToast();
+  const { fetchCAPAImplementationHistory } = useCAPATracking();
 
   useEffect(() => {
     fetchCAPATracking();
@@ -52,7 +62,13 @@ const CAPATrackingTab = () => {
         .order('approved_at', { ascending: false });
 
       if (error) throw error;
+      
       setCAPATracking(data || []);
+      
+      // Fetch compliance data for each CAPA
+      if (data) {
+        fetchComplianceData(data);
+      }
     } catch (error) {
       console.error('Error fetching CAPA tracking:', error);
       toast({
@@ -63,6 +79,47 @@ const CAPATrackingTab = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchComplianceData = async (capas: CAPATracking[]) => {
+    const compliancePromises = capas.map(async (capa) => {
+      const { data, error } = await supabase
+        .from('capa_implementation_checks')
+        .select('implemented, verified_at')
+        .eq('capa_category', capa.capa_category.toUpperCase())
+        .eq('reference_id', capa.id)
+        .order('verified_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching compliance data:', error);
+        return { capaId: capa.id, stats: null };
+      }
+
+      const totalChecks = data?.length || 0;
+      const implementedChecks = data?.filter(check => check.implemented).length || 0;
+      const lastCheck = data?.[0];
+
+      return {
+        capaId: capa.id,
+        stats: {
+          totalChecks,
+          implementedChecks,
+          lastCheckDate: lastCheck?.verified_at || null,
+          lastCheckResult: lastCheck?.implemented || null
+        }
+      };
+    });
+
+    const complianceResults = await Promise.all(compliancePromises);
+    const complianceMap: Record<string, ComplianceStats> = {};
+    
+    complianceResults.forEach(({ capaId, stats }) => {
+      if (stats) {
+        complianceMap[capaId] = stats;
+      }
+    });
+
+    setComplianceData(complianceMap);
   };
 
   const handleUpdateImplementation = async () => {
@@ -149,6 +206,50 @@ const CAPATrackingTab = () => {
     }
   };
 
+  const renderComplianceIndicator = (capaId: string) => {
+    const stats = complianceData[capaId];
+    
+    if (!stats || stats.totalChecks === 0) {
+      return (
+        <div className="flex items-center gap-1 text-gray-500">
+          <AlertTriangle className="h-3 w-3" />
+          <span className="text-xs">No checks yet</span>
+        </div>
+      );
+    }
+
+    const complianceRate = (stats.implementedChecks / stats.totalChecks) * 100;
+    const lastCheckIcon = stats.lastCheckResult ? 
+      <CheckCircle className="h-3 w-3 text-green-600" /> : 
+      <XCircle className="h-3 w-3 text-red-600" />;
+
+    return (
+      <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
+          {lastCheckIcon}
+          <span className="text-xs">
+            {stats.implementedChecks}/{stats.totalChecks}
+          </span>
+        </div>
+        <Badge 
+          variant="outline" 
+          className={`text-xs ${
+            complianceRate >= 80 ? 'bg-green-50 text-green-700 border-green-200' :
+            complianceRate >= 50 ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
+            'bg-red-50 text-red-700 border-red-200'
+          }`}
+        >
+          {Math.round(complianceRate)}%
+        </Badge>
+        {stats.lastCheckDate && (
+          <span className="text-xs text-muted-foreground">
+            {new Date(stats.lastCheckDate).toLocaleDateString()}
+          </span>
+        )}
+      </div>
+    );
+  };
+
   if (loading) {
     return <div className="p-4">Loading CAPA tracking...</div>;
   }
@@ -176,6 +277,7 @@ const CAPATrackingTab = () => {
                 <TableHead>Vendor</TableHead>
                 <TableHead>Approved Date</TableHead>
                 <TableHead>Implementation Status</TableHead>
+                <TableHead>IQC Compliance</TableHead>
                 <TableHead>Deadline</TableHead>
                 <TableHead>Assigned To</TableHead>
                 <TableHead>Actions</TableHead>
@@ -199,6 +301,9 @@ const CAPATrackingTab = () => {
                       {getImplementationIcon(capa.implementation_status)}
                       <span className="ml-1">{capa.implementation_status.replace('_', ' ')}</span>
                     </Badge>
+                  </TableCell>
+                  <TableCell>
+                    {renderComplianceIndicator(capa.id)}
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1">
@@ -273,6 +378,20 @@ const CAPATrackingTab = () => {
                               rows={4}
                             />
                           </div>
+
+                          {/* Show IQC compliance history */}
+                          {complianceData[selectedCapa?.id || ''] && (
+                            <div className="space-y-2">
+                              <Label>IQC Compliance Summary</Label>
+                              <div className="p-3 bg-muted rounded-lg">
+                                {renderComplianceIndicator(selectedCapa?.id || '')}
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  This CAPA has been verified during IQC inspections
+                                </p>
+                              </div>
+                            </div>
+                          )}
+
                           <div className="flex justify-end gap-2">
                             <Button variant="outline" onClick={() => setSelectedCapa(null)}>
                               Cancel
