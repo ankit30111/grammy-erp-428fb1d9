@@ -1,5 +1,7 @@
 import { useState, useRef } from "react";
+import { format } from "date-fns";
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
+import { StatusBadge } from "@/components/ui/custom/StatusBadge";
 import { 
   Card, CardContent, CardHeader, CardTitle 
 } from "@/components/ui/card";
@@ -771,6 +773,48 @@ const RawMaterialsManagement = () => {
                   <div className="space-y-2">
                     <Label className="text-sm font-medium text-muted-foreground">Unit</Label>
                     <p>{(viewMaterial as any).unit_of_measure || "N/A"}</p>
+                  </div>
+                </div>
+
+                {/* Sourcing Information */}
+                <div className="border-t pt-4 space-y-4">
+                  <h4 className="text-sm font-semibold text-foreground">Sourcing Information</h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium text-muted-foreground">Sourcing Type</Label>
+                      <div className="flex items-center gap-2">
+                        <StatusBadge 
+                          status={viewMaterial.sourcing_type === 'IMPORTED' ? 'pending' : 'approved'}
+                          withDot={false}
+                        >
+                          {viewMaterial.sourcing_type || 'Not specified'}
+                        </StatusBadge>
+                      </div>
+                    </div>
+                    {viewMaterial.sourcing_type === 'IMPORTED' && viewMaterial.supplier_country && (
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium text-muted-foreground">Supplier Country</Label>
+                        <p>{viewMaterial.supplier_country}</p>
+                      </div>
+                    )}
+                    {viewMaterial.unit_price && viewMaterial.currency && (
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium text-muted-foreground">Unit Price</Label>
+                        <p className="font-medium">{viewMaterial.currency} {viewMaterial.unit_price}</p>
+                      </div>
+                    )}
+                    {viewMaterial.sourcing_type === 'IMPORTED' && viewMaterial.cbm_per_unit && (
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium text-muted-foreground">CBM per Unit</Label>
+                        <p>{viewMaterial.cbm_per_unit} m³</p>
+                      </div>
+                    )}
+                    {viewMaterial.last_price_update && (
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium text-muted-foreground">Last Price Update</Label>
+                        <p>{format(new Date(viewMaterial.last_price_update), 'PPP')}</p>
+                      </div>
+                    )}
                   </div>
                 </div>
 
