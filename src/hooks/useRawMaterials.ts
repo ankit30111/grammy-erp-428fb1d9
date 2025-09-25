@@ -47,6 +47,11 @@ export const useRawMaterials = () => {
       material_code: string;
       category: string;
       specification?: string;
+      sourcing_type: 'IMPORTED' | 'LOCAL';
+      currency?: string;
+      unit_price?: number;
+      cbm_per_unit?: number;
+      supplier_country?: string;
       vendorIds?: string[]; // Made optional
       primaryVendorId?: string;
       specificationFile?: File;
@@ -85,6 +90,12 @@ export const useRawMaterials = () => {
           material_code: materialData.material_code,
           category: materialData.category,
           specification: materialData.specification || "",
+          sourcing_type: materialData.sourcing_type,
+          currency: materialData.currency,
+          unit_price: materialData.unit_price,
+          cbm_per_unit: materialData.cbm_per_unit,
+          supplier_country: materialData.supplier_country,
+          last_price_update: materialData.unit_price ? new Date().toISOString() : null,
           specification_sheet_url: specificationUrl,
           iqc_checklist_url: iqcChecklistUrl,
         })
@@ -147,6 +158,11 @@ export const useRawMaterials = () => {
       material_code: string;
       category: string;
       specification?: string;
+      sourcing_type?: 'IMPORTED' | 'LOCAL';
+      currency?: string;
+      unit_price?: number;
+      cbm_per_unit?: number;
+      supplier_country?: string;
       vendorIds?: string[]; // Made optional
       primaryVendorId?: string;
       specificationFile?: File;
@@ -209,8 +225,18 @@ export const useRawMaterials = () => {
           material_code: data.material_code,
           category: data.category,
           specification: data.specification || "",
+          sourcing_type: data.sourcing_type,
+          currency: data.currency,
+          unit_price: data.unit_price,
+          cbm_per_unit: data.cbm_per_unit,
+          supplier_country: data.supplier_country,
           updated_at: new Date().toISOString(),
         };
+
+        // Update last_price_update if unit_price is being changed
+        if (data.unit_price !== undefined) {
+          updateData.last_price_update = new Date().toISOString();
+        }
 
         if (specificationUrl) updateData.specification_sheet_url = specificationUrl;
         if (iqcChecklistUrl) updateData.iqc_checklist_url = iqcChecklistUrl;

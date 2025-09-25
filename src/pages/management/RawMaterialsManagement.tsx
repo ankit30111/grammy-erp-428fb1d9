@@ -80,7 +80,12 @@ const RawMaterialsManagement = () => {
     material_code: "",
     category: "",
     unit_of_measure: "",
-    specification: ""
+    specification: "",
+    sourcing_type: "LOCAL" as 'IMPORTED' | 'LOCAL',
+    currency: "",
+    unit_price: "",
+    cbm_per_unit: "",
+    supplier_country: ""
   });
 
   // Use the existing hooks
@@ -118,6 +123,11 @@ const RawMaterialsManagement = () => {
         material_code: newMaterial.material_code,
         category: newMaterial.category,
         specification: newMaterial.specification,
+        sourcing_type: newMaterial.sourcing_type,
+        currency: newMaterial.sourcing_type === 'IMPORTED' ? newMaterial.currency : undefined,
+        unit_price: newMaterial.unit_price ? parseFloat(newMaterial.unit_price) : undefined,
+        cbm_per_unit: newMaterial.cbm_per_unit ? parseFloat(newMaterial.cbm_per_unit) : undefined,
+        supplier_country: newMaterial.sourcing_type === 'IMPORTED' ? newMaterial.supplier_country : undefined,
         vendorIds: selectedVendors,
         primaryVendorId: primaryVendor,
         specificationFile: specificationFile || undefined,
@@ -125,7 +135,18 @@ const RawMaterialsManagement = () => {
       });
 
       // Reset form
-      setNewMaterial({ name: "", material_code: "", category: "", unit_of_measure: "", specification: "" });
+      setNewMaterial({ 
+        name: "", 
+        material_code: "", 
+        category: "", 
+        unit_of_measure: "", 
+        specification: "",
+        sourcing_type: "LOCAL",
+        currency: "",
+        unit_price: "",
+        cbm_per_unit: "",
+        supplier_country: ""
+      });
       setSelectedVendors([]);
       setPrimaryVendor("");
       setSpecificationFile(null);
@@ -146,7 +167,12 @@ const RawMaterialsManagement = () => {
       material_code: material.material_code || "",
       category: material.category,
       unit_of_measure: material.unit_of_measure || "",
-      specification: material.specification || ""
+      specification: material.specification || "",
+      sourcing_type: material.sourcing_type || "LOCAL",
+      currency: material.currency || "",
+      unit_price: material.unit_price?.toString() || "",
+      cbm_per_unit: material.cbm_per_unit?.toString() || "",
+      supplier_country: material.supplier_country || ""
     });
     setSelectedVendors(material.raw_material_vendors?.map((rv: any) => rv.vendors.id) || []);
     setPrimaryVendor(material.raw_material_vendors?.find((rv: any) => rv.is_primary)?.vendors.id || "");
@@ -166,6 +192,11 @@ const RawMaterialsManagement = () => {
         material_code: newMaterial.material_code,
         category: newMaterial.category,
         specification: newMaterial.specification,
+        sourcing_type: newMaterial.sourcing_type,
+        currency: newMaterial.sourcing_type === 'IMPORTED' ? newMaterial.currency : undefined,
+        unit_price: newMaterial.unit_price ? parseFloat(newMaterial.unit_price) : undefined,
+        cbm_per_unit: newMaterial.cbm_per_unit ? parseFloat(newMaterial.cbm_per_unit) : undefined,
+        supplier_country: newMaterial.sourcing_type === 'IMPORTED' ? newMaterial.supplier_country : undefined,
         vendorIds: selectedVendors,
         primaryVendorId: primaryVendor,
         specificationFile: specificationFile || undefined,
@@ -321,6 +352,96 @@ const RawMaterialsManagement = () => {
                       </SelectContent>
                     </Select>
                   </div>
+
+                  {/* Sourcing Type */}
+                  <div className="space-y-2">
+                    <Label htmlFor="sourcing_type">Sourcing Type *</Label>
+                    <Select 
+                      value={newMaterial.sourcing_type} 
+                      onValueChange={(value: 'IMPORTED' | 'LOCAL') => setNewMaterial({
+                        ...newMaterial, 
+                        sourcing_type: value,
+                        // Reset currency fields when switching to LOCAL
+                        currency: value === 'LOCAL' ? '' : newMaterial.currency,
+                        cbm_per_unit: value === 'LOCAL' ? '' : newMaterial.cbm_per_unit,
+                        supplier_country: value === 'LOCAL' ? '' : newMaterial.supplier_country
+                      })}
+                    >
+                      <SelectTrigger id="sourcing_type">
+                        <SelectValue placeholder="Select sourcing type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="LOCAL">Local</SelectItem>
+                        <SelectItem value="IMPORTED">Imported</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Currency - Only for imported materials */}
+                  {newMaterial.sourcing_type === 'IMPORTED' && (
+                    <div className="space-y-2">
+                      <Label htmlFor="currency">Currency *</Label>
+                      <Select 
+                        value={newMaterial.currency} 
+                        onValueChange={(value) => setNewMaterial({...newMaterial, currency: value})}
+                      >
+                        <SelectTrigger id="currency">
+                          <SelectValue placeholder="Select currency" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="USD">USD ($)</SelectItem>
+                          <SelectItem value="RMB">RMB (¥)</SelectItem>
+                          <SelectItem value="INR">INR (₹)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                  {/* Unit Price */}
+                  <div className="space-y-2">
+                    <Label htmlFor="unit_price">
+                      Unit Price {newMaterial.sourcing_type === 'IMPORTED' && newMaterial.currency && `(${newMaterial.currency})`}
+                    </Label>
+                    <Input 
+                      id="unit_price" 
+                      type="number"
+                      step="0.01"
+                      value={newMaterial.unit_price} 
+                      onChange={(e) => setNewMaterial({...newMaterial, unit_price: e.target.value})}
+                      placeholder="Enter unit price"
+                    />
+                  </div>
+
+                  {/* CBM per unit - Only for imported materials */}
+                  {newMaterial.sourcing_type === 'IMPORTED' && (
+                    <div className="space-y-2">
+                      <Label htmlFor="cbm_per_unit">CBM per Unit</Label>
+                      <Input 
+                        id="cbm_per_unit" 
+                        type="number"
+                        step="0.0001"
+                        value={newMaterial.cbm_per_unit} 
+                        onChange={(e) => setNewMaterial({...newMaterial, cbm_per_unit: e.target.value})}
+                        placeholder="Cubic meters per unit"
+                      />
+                      <p className="text-sm text-muted-foreground">
+                        Used for container space calculation and cost allocation
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Supplier Country - Only for imported materials */}
+                  {newMaterial.sourcing_type === 'IMPORTED' && (
+                    <div className="space-y-2">
+                      <Label htmlFor="supplier_country">Supplier Country</Label>
+                      <Input 
+                        id="supplier_country" 
+                        value={newMaterial.supplier_country} 
+                        onChange={(e) => setNewMaterial({...newMaterial, supplier_country: e.target.value})}
+                        placeholder="Enter supplier country"
+                      />
+                    </div>
+                  )}
 
                   <div className="space-y-2">
                     <Label>Vendors (Optional)</Label>
@@ -510,7 +631,8 @@ const RawMaterialsManagement = () => {
                   <TableHead>Part Code</TableHead>
                   <TableHead>Part Name</TableHead>
                   <TableHead>Category</TableHead>
-                  <TableHead>Unit</TableHead>
+                  <TableHead>Sourcing</TableHead>
+                  <TableHead>Price</TableHead>
                   <TableHead>Vendors</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -518,13 +640,13 @@ const RawMaterialsManagement = () => {
               <TableBody>
                 {isLoading ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-6">
+                    <TableCell colSpan={7} className="text-center py-6">
                       Loading materials...
                     </TableCell>
                   </TableRow>
                 ) : filteredMaterials.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-6 text-muted-foreground">
+                    <TableCell colSpan={7} className="text-center py-6 text-muted-foreground">
                       No materials found. Try adjusting your search or filter.
                     </TableCell>
                   </TableRow>
@@ -534,7 +656,37 @@ const RawMaterialsManagement = () => {
                       <TableCell className="font-medium">{material.material_code}</TableCell>
                       <TableCell>{material.name}</TableCell>
                       <TableCell>{material.category}</TableCell>
-                      <TableCell>{(material as any).unit_of_measure || "N/A"}</TableCell>
+                      <TableCell>
+                        <div className="flex flex-col gap-1">
+                          <Badge 
+                            variant={(material as any).sourcing_type === 'IMPORTED' ? "default" : "secondary"}
+                            className="w-fit text-xs"
+                          >
+                            {(material as any).sourcing_type || 'LOCAL'}
+                          </Badge>
+                          {(material as any).sourcing_type === 'IMPORTED' && (material as any).supplier_country && (
+                            <span className="text-xs text-muted-foreground">
+                              {(material as any).supplier_country}
+                            </span>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {(material as any).unit_price ? (
+                          <div className="text-sm">
+                            <span className="font-medium">
+                              {(material as any).currency || 'INR'} {(material as any).unit_price}
+                            </span>
+                            {(material as any).cbm_per_unit && (
+                              <div className="text-xs text-muted-foreground">
+                                CBM: {(material as any).cbm_per_unit}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground text-sm">No price</span>
+                        )}
+                      </TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-1">
                           {material.raw_material_vendors?.map((rv: any) => (
@@ -784,6 +936,96 @@ const RawMaterialsManagement = () => {
                   </SelectContent>
                 </Select>
               </div>
+
+              {/* Edit Sourcing Type */}
+              <div className="space-y-2">
+                <Label htmlFor="edit-sourcing_type">Sourcing Type *</Label>
+                <Select 
+                  value={newMaterial.sourcing_type} 
+                  onValueChange={(value: 'IMPORTED' | 'LOCAL') => setNewMaterial({
+                    ...newMaterial, 
+                    sourcing_type: value,
+                    // Reset currency fields when switching to LOCAL
+                    currency: value === 'LOCAL' ? '' : newMaterial.currency,
+                    cbm_per_unit: value === 'LOCAL' ? '' : newMaterial.cbm_per_unit,
+                    supplier_country: value === 'LOCAL' ? '' : newMaterial.supplier_country
+                  })}
+                >
+                  <SelectTrigger id="edit-sourcing_type">
+                    <SelectValue placeholder="Select sourcing type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="LOCAL">Local</SelectItem>
+                    <SelectItem value="IMPORTED">Imported</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Edit Currency - Only for imported materials */}
+              {newMaterial.sourcing_type === 'IMPORTED' && (
+                <div className="space-y-2">
+                  <Label htmlFor="edit-currency">Currency *</Label>
+                  <Select 
+                    value={newMaterial.currency} 
+                    onValueChange={(value) => setNewMaterial({...newMaterial, currency: value})}
+                  >
+                    <SelectTrigger id="edit-currency">
+                      <SelectValue placeholder="Select currency" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="USD">USD ($)</SelectItem>
+                      <SelectItem value="RMB">RMB (¥)</SelectItem>
+                      <SelectItem value="INR">INR (₹)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {/* Edit Unit Price */}
+              <div className="space-y-2">
+                <Label htmlFor="edit-unit_price">
+                  Unit Price {newMaterial.sourcing_type === 'IMPORTED' && newMaterial.currency && `(${newMaterial.currency})`}
+                </Label>
+                <Input 
+                  id="edit-unit_price" 
+                  type="number"
+                  step="0.01"
+                  value={newMaterial.unit_price} 
+                  onChange={(e) => setNewMaterial({...newMaterial, unit_price: e.target.value})}
+                  placeholder="Enter unit price"
+                />
+              </div>
+
+              {/* Edit CBM per unit - Only for imported materials */}
+              {newMaterial.sourcing_type === 'IMPORTED' && (
+                <div className="space-y-2">
+                  <Label htmlFor="edit-cbm_per_unit">CBM per Unit</Label>
+                  <Input 
+                    id="edit-cbm_per_unit" 
+                    type="number"
+                    step="0.0001"
+                    value={newMaterial.cbm_per_unit} 
+                    onChange={(e) => setNewMaterial({...newMaterial, cbm_per_unit: e.target.value})}
+                    placeholder="Cubic meters per unit"
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    Used for container space calculation and cost allocation
+                  </p>
+                </div>
+              )}
+
+              {/* Edit Supplier Country - Only for imported materials */}
+              {newMaterial.sourcing_type === 'IMPORTED' && (
+                <div className="space-y-2">
+                  <Label htmlFor="edit-supplier_country">Supplier Country</Label>
+                  <Input 
+                    id="edit-supplier_country" 
+                    value={newMaterial.supplier_country} 
+                    onChange={(e) => setNewMaterial({...newMaterial, supplier_country: e.target.value})}
+                    placeholder="Enter supplier country"
+                  />
+                </div>
+              )}
 
               <div className="space-y-2">
                 <Label>Vendors</Label>

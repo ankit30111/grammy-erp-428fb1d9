@@ -304,9 +304,51 @@ export type Database = {
           },
         ]
       }
+      container_cost_breakdown: {
+        Row: {
+          amount: number
+          container_id: string
+          cost_type: string
+          created_at: string | null
+          currency: string
+          description: string | null
+          id: string
+          updated_at: string | null
+        }
+        Insert: {
+          amount: number
+          container_id: string
+          cost_type: string
+          created_at?: string | null
+          currency?: string
+          description?: string | null
+          id?: string
+          updated_at?: string | null
+        }
+        Update: {
+          amount?: number
+          container_id?: string
+          cost_type?: string
+          created_at?: string | null
+          currency?: string
+          description?: string | null
+          id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "container_cost_breakdown_container_id_fkey"
+            columns: ["container_id"]
+            isOneToOne: false
+            referencedRelation: "import_containers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       container_materials: {
         Row: {
           brand: string | null
+          cbm_occupied: number | null
           container_id: string
           created_at: string
           id: string
@@ -314,11 +356,14 @@ export type Database = {
           model: string
           notes: string | null
           quantity: number
+          raw_material_id: string | null
           status: string
+          unit_cost_allocation: number | null
           updated_at: string
         }
         Insert: {
           brand?: string | null
+          cbm_occupied?: number | null
           container_id: string
           created_at?: string
           id?: string
@@ -326,11 +371,14 @@ export type Database = {
           model: string
           notes?: string | null
           quantity: number
+          raw_material_id?: string | null
           status?: string
+          unit_cost_allocation?: number | null
           updated_at?: string
         }
         Update: {
           brand?: string | null
+          cbm_occupied?: number | null
           container_id?: string
           created_at?: string
           id?: string
@@ -338,7 +386,9 @@ export type Database = {
           model?: string
           notes?: string | null
           quantity?: number
+          raw_material_id?: string | null
           status?: string
+          unit_cost_allocation?: number | null
           updated_at?: string
         }
         Relationships: [
@@ -347,6 +397,13 @@ export type Database = {
             columns: ["container_id"]
             isOneToOne: false
             referencedRelation: "import_containers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "container_materials_raw_material_id_fkey"
+            columns: ["raw_material_id"]
+            isOneToOne: false
+            referencedRelation: "raw_materials"
             referencedColumns: ["id"]
           },
         ]
@@ -3339,41 +3396,59 @@ export type Database = {
       raw_materials: {
         Row: {
           category: string
+          cbm_per_unit: number | null
           created_at: string
           created_by: string | null
+          currency: string | null
           id: string
           iqc_checklist_url: string | null
           is_active: boolean
+          last_price_update: string | null
           material_code: string
           name: string
+          sourcing_type: string | null
           specification: string | null
           specification_sheet_url: string | null
+          supplier_country: string | null
+          unit_price: number | null
           updated_at: string
         }
         Insert: {
           category: string
+          cbm_per_unit?: number | null
           created_at?: string
           created_by?: string | null
+          currency?: string | null
           id?: string
           iqc_checklist_url?: string | null
           is_active?: boolean
+          last_price_update?: string | null
           material_code: string
           name: string
+          sourcing_type?: string | null
           specification?: string | null
           specification_sheet_url?: string | null
+          supplier_country?: string | null
+          unit_price?: number | null
           updated_at?: string
         }
         Update: {
           category?: string
+          cbm_per_unit?: number | null
           created_at?: string
           created_by?: string | null
+          currency?: string | null
           id?: string
           iqc_checklist_url?: string | null
           is_active?: boolean
+          last_price_update?: string | null
           material_code?: string
           name?: string
+          sourcing_type?: string | null
           specification?: string | null
           specification_sheet_url?: string | null
+          supplier_country?: string | null
+          unit_price?: number | null
           updated_at?: string
         }
         Relationships: []
