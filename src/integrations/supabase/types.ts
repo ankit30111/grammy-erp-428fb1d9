@@ -114,7 +114,7 @@ export type Database = {
           action: string
           created_at: string
           id: string
-          ip_address: unknown | null
+          ip_address: unknown
           new_values: Json | null
           old_values: Json | null
           record_id: string | null
@@ -126,7 +126,7 @@ export type Database = {
           action: string
           created_at?: string
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           new_values?: Json | null
           old_values?: Json | null
           record_id?: string | null
@@ -138,7 +138,7 @@ export type Database = {
           action?: string
           created_at?: string
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           new_values?: Json | null
           old_values?: Json | null
           record_id?: string | null
@@ -4022,46 +4022,29 @@ export type Database = {
       }
     }
     Functions: {
+      can_access_projection: {
+        Args: { projection_id: string }
+        Returns: boolean
+      }
       create_complaints_from_batch: {
         Args: { p_batch_id: string }
         Returns: undefined
       }
-      generate_complaint_number: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      generate_dispatch_order_number: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      generate_grn_number: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      generate_kit_number: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
+      generate_complaint_number: { Args: never; Returns: string }
+      generate_dispatch_order_number: { Args: never; Returns: string }
+      generate_grn_number: { Args: never; Returns: string }
+      generate_kit_number: { Args: never; Returns: string }
       generate_material_code: {
         Args: { category_name: string }
         Returns: string
       }
-      generate_po_number: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      generate_spare_order_number: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
+      generate_po_number: { Args: never; Returns: string }
+      generate_spare_order_number: { Args: never; Returns: string }
       generate_temp_part_code: {
         Args: { part_category: string }
         Returns: string
       }
-      generate_vendor_code: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
+      generate_vendor_code: { Args: never; Returns: string }
       log_audit_event: {
         Args: {
           p_action: string
