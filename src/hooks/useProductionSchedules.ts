@@ -106,6 +106,28 @@ export const useCreateProductionSchedule = () => {
     mutationFn: async (scheduleData: any) => {
       console.log('🎯 Creating production schedule with data:', scheduleData);
       
+      // IMMEDIATE FIX: Fetch projection data BEFORE any mutations to avoid RLS conflicts
+      const { data: projection, error: projectionError } = await supabase
+        .from('projections')
+        .select('product_id, quantity, scheduled_quantity')
+        .eq('id', scheduleData.projection_id)
+        .maybeSingle();
+
+      if (projectionError) {
+        console.error('❌ Projection fetch error:', projectionError);
+        throw new Error(`Failed to fetch projection: ${projectionError.message}`);
+      }
+
+      if (!projection) {
+        throw new Error('Projection not found. Please ensure you have permission to access this projection.');
+      }
+
+      // Validate scheduling quantity
+      const remainingQuantity = projection.quantity - (projection.scheduled_quantity || 0);
+      if (scheduleData.quantity > remainingQuantity) {
+        throw new Error(`Cannot schedule ${scheduleData.quantity} units. Only ${remainingQuantity} units remaining.`);
+      }
+
       // Generate voucher number based on scheduled date
       const voucherNumber = await generateVoucherNumber(scheduleData.scheduled_date);
       console.log('📋 Generated voucher number:', voucherNumber);
@@ -117,7 +139,7 @@ export const useCreateProductionSchedule = () => {
           projection_id: scheduleData.projection_id,
           scheduled_date: scheduleData.scheduled_date,
           quantity: scheduleData.quantity,
-          production_line: scheduleData.production_line || null, // Make production line optional
+          production_line: scheduleData.production_line || null,
           status: 'SCHEDULED',
         })
         .select()
@@ -125,22 +147,10 @@ export const useCreateProductionSchedule = () => {
 
       if (scheduleError) {
         console.error('❌ Schedule creation error:', scheduleError);
-        throw scheduleError;
+        throw new Error(`Failed to create schedule: ${scheduleError.message}`);
       }
 
       console.log('✅ Schedule created:', schedule);
-
-      // Get product_id from projection
-      const { data: projection, error: projectionError } = await supabase
-        .from('projections')
-        .select('product_id')
-        .eq('id', scheduleData.projection_id)
-        .single();
-
-      if (projectionError) {
-        console.error('❌ Projection fetch error:', projectionError);
-        throw projectionError;
-      }
 
       // Create production order with voucher number and link to schedule
       const { data: productionOrder, error: orderError } = await supabase
@@ -159,7 +169,9 @@ export const useCreateProductionSchedule = () => {
 
       if (orderError) {
         console.error('❌ Production order creation error:', orderError);
-        throw orderError;
+        // Rollback the schedule if order creation fails
+        await supabase.from('production_schedules').delete().eq('id', schedule.id);
+        throw new Error(`Failed to create production order: ${orderError.message}`);
       }
 
       console.log('✅ Production order created:', productionOrder);
