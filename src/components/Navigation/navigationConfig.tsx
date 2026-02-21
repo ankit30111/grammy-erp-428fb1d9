@@ -1,5 +1,5 @@
 
-import { Home, Plus, Wrench, Calendar, Package, BarChart2, Layers, ClipboardCheck, DollarSign, Users, FileText, UserPlus, Building2, User, MessageSquare, CheckSquare, Lightbulb, Container } from "lucide-react";
+import { Home, Plus, Wrench, Calendar, Package, BarChart2, Layers, ClipboardCheck, DollarSign, Users, FileText, UserPlus, Building2, User, MessageSquare, CheckSquare, Lightbulb, Container, Speaker } from "lucide-react";
 
 interface NavigationSubItem {
   to: string;
@@ -29,7 +29,21 @@ export const navigationItems: NavigationItem[] = [
   { to: "/sales", icon: <DollarSign size={20} />, label: "Sales" },
   { to: "/customer-complaints", icon: <MessageSquare size={20} />, label: "Customer Complaints" },
   { to: "/container-tracking", icon: <Container size={20} />, label: "Container Tracking" },
-  { to: "/management/hr", icon: <Users size={20} />, label: "Human Resources" }
+  { to: "/management/hr", icon: <Users size={20} />, label: "Human Resources" },
+  { 
+    to: "/dash", icon: <Speaker size={20} />, label: "DASH Brand",
+    subItems: [
+      { to: "/dash", label: "Dashboard" },
+      { to: "/dash/products", label: "Products" },
+      { to: "/dash/factory-orders", label: "Factory Orders" },
+      { to: "/dash/inventory", label: "Inventory" },
+      { to: "/dash/sales", label: "Sales" },
+      { to: "/dash/customers", label: "Customers" },
+      { to: "/dash/service", label: "Service" },
+      { to: "/dash/spares", label: "Spares" },
+      { to: "/dash/tracking", label: "Order Tracking" },
+    ]
+  }
 ];
 
 export const managementItems: NavigationItem[] = [

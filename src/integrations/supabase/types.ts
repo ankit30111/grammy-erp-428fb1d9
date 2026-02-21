@@ -825,6 +825,721 @@ export type Database = {
         }
         Relationships: []
       }
+      dash_customers: {
+        Row: {
+          address: string | null
+          assigned_sales_manager: string | null
+          city: string | null
+          contact_person: string | null
+          created_at: string
+          credit_limit: number
+          customer_name: string
+          customer_type: Database["public"]["Enums"]["dash_customer_type"]
+          email: string | null
+          gst_number: string | null
+          id: string
+          is_active: boolean
+          outstanding_balance: number
+          phone: string | null
+          state: string | null
+          territory: string | null
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          assigned_sales_manager?: string | null
+          city?: string | null
+          contact_person?: string | null
+          created_at?: string
+          credit_limit?: number
+          customer_name: string
+          customer_type?: Database["public"]["Enums"]["dash_customer_type"]
+          email?: string | null
+          gst_number?: string | null
+          id?: string
+          is_active?: boolean
+          outstanding_balance?: number
+          phone?: string | null
+          state?: string | null
+          territory?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          assigned_sales_manager?: string | null
+          city?: string | null
+          contact_person?: string | null
+          created_at?: string
+          credit_limit?: number
+          customer_name?: string
+          customer_type?: Database["public"]["Enums"]["dash_customer_type"]
+          email?: string | null
+          gst_number?: string | null
+          id?: string
+          is_active?: boolean
+          outstanding_balance?: number
+          phone?: string | null
+          state?: string | null
+          territory?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      dash_factory_orders: {
+        Row: {
+          batch_number: string | null
+          cost_per_unit: number
+          created_at: string
+          created_by: string | null
+          dispatch_date: string | null
+          expected_production_date: string | null
+          factory_invoice_url: string | null
+          fo_number: string
+          id: string
+          notes: string | null
+          product_id: string
+          qc_status: Database["public"]["Enums"]["dash_qc_status"]
+          quantity_ordered: number
+          shipment_tracking_number: string | null
+          status: Database["public"]["Enums"]["dash_factory_order_status"]
+          total_cost: number
+          updated_at: string
+        }
+        Insert: {
+          batch_number?: string | null
+          cost_per_unit?: number
+          created_at?: string
+          created_by?: string | null
+          dispatch_date?: string | null
+          expected_production_date?: string | null
+          factory_invoice_url?: string | null
+          fo_number: string
+          id?: string
+          notes?: string | null
+          product_id: string
+          qc_status?: Database["public"]["Enums"]["dash_qc_status"]
+          quantity_ordered?: number
+          shipment_tracking_number?: string | null
+          status?: Database["public"]["Enums"]["dash_factory_order_status"]
+          total_cost?: number
+          updated_at?: string
+        }
+        Update: {
+          batch_number?: string | null
+          cost_per_unit?: number
+          created_at?: string
+          created_by?: string | null
+          dispatch_date?: string | null
+          expected_production_date?: string | null
+          factory_invoice_url?: string | null
+          fo_number?: string
+          id?: string
+          notes?: string | null
+          product_id?: string
+          qc_status?: Database["public"]["Enums"]["dash_qc_status"]
+          quantity_ordered?: number
+          shipment_tracking_number?: string | null
+          status?: Database["public"]["Enums"]["dash_factory_order_status"]
+          total_cost?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dash_factory_orders_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "dash_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dash_inventory: {
+        Row: {
+          batch_number: string | null
+          created_at: string
+          damaged_stock: number
+          id: string
+          in_transit_stock: number
+          location: string | null
+          low_stock_threshold: number
+          product_id: string
+          reserved_stock: number
+          total_stock: number
+          unit_cost: number
+          updated_at: string
+        }
+        Insert: {
+          batch_number?: string | null
+          created_at?: string
+          damaged_stock?: number
+          id?: string
+          in_transit_stock?: number
+          location?: string | null
+          low_stock_threshold?: number
+          product_id: string
+          reserved_stock?: number
+          total_stock?: number
+          unit_cost?: number
+          updated_at?: string
+        }
+        Update: {
+          batch_number?: string | null
+          created_at?: string
+          damaged_stock?: number
+          id?: string
+          in_transit_stock?: number
+          location?: string | null
+          low_stock_threshold?: number
+          product_id?: string
+          reserved_stock?: number
+          total_stock?: number
+          unit_cost?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dash_inventory_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "dash_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dash_inventory_movements: {
+        Row: {
+          batch_number: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          movement_type: Database["public"]["Enums"]["dash_movement_type"]
+          notes: string | null
+          product_id: string
+          quantity: number
+          reference_id: string | null
+          reference_type: string | null
+        }
+        Insert: {
+          batch_number?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          movement_type: Database["public"]["Enums"]["dash_movement_type"]
+          notes?: string | null
+          product_id: string
+          quantity: number
+          reference_id?: string | null
+          reference_type?: string | null
+        }
+        Update: {
+          batch_number?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          movement_type?: Database["public"]["Enums"]["dash_movement_type"]
+          notes?: string | null
+          product_id?: string
+          quantity?: number
+          reference_id?: string | null
+          reference_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dash_inventory_movements_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "dash_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dash_payments: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          customer_id: string
+          id: string
+          notes: string | null
+          payment_date: string
+          payment_mode: string | null
+          reference_number: string | null
+          sales_order_id: string | null
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          customer_id: string
+          id?: string
+          notes?: string | null
+          payment_date?: string
+          payment_mode?: string | null
+          reference_number?: string | null
+          sales_order_id?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string
+          id?: string
+          notes?: string | null
+          payment_date?: string
+          payment_mode?: string | null
+          reference_number?: string | null
+          sales_order_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dash_payments_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "dash_customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dash_payments_sales_order_id_fkey"
+            columns: ["sales_order_id"]
+            isOneToOne: false
+            referencedRelation: "dash_sales_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dash_product_artwork: {
+        Row: {
+          created_at: string
+          file_name: string
+          file_type: Database["public"]["Enums"]["dash_artwork_type"]
+          file_url: string
+          id: string
+          product_id: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          file_name: string
+          file_type: Database["public"]["Enums"]["dash_artwork_type"]
+          file_url: string
+          id?: string
+          product_id: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          file_name?: string
+          file_type?: Database["public"]["Enums"]["dash_artwork_type"]
+          file_url?: string
+          id?: string
+          product_id?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dash_product_artwork_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "dash_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dash_products: {
+        Row: {
+          barcode_ean: string | null
+          category: Database["public"]["Enums"]["dash_product_category"]
+          created_at: string
+          dealer_price: number
+          description: string | null
+          distributor_price: number
+          id: string
+          model_number: string
+          mrp: number
+          product_name: string
+          status: Database["public"]["Enums"]["dash_product_status"]
+          technical_specs: Json | null
+          updated_at: string
+          warranty_period_months: number
+        }
+        Insert: {
+          barcode_ean?: string | null
+          category?: Database["public"]["Enums"]["dash_product_category"]
+          created_at?: string
+          dealer_price?: number
+          description?: string | null
+          distributor_price?: number
+          id?: string
+          model_number: string
+          mrp?: number
+          product_name: string
+          status?: Database["public"]["Enums"]["dash_product_status"]
+          technical_specs?: Json | null
+          updated_at?: string
+          warranty_period_months?: number
+        }
+        Update: {
+          barcode_ean?: string | null
+          category?: Database["public"]["Enums"]["dash_product_category"]
+          created_at?: string
+          dealer_price?: number
+          description?: string | null
+          distributor_price?: number
+          id?: string
+          model_number?: string
+          mrp?: number
+          product_name?: string
+          status?: Database["public"]["Enums"]["dash_product_status"]
+          technical_specs?: Json | null
+          updated_at?: string
+          warranty_period_months?: number
+        }
+        Relationships: []
+      }
+      dash_sales_order_items: {
+        Row: {
+          batch_number: string | null
+          discount_percent: number
+          id: string
+          line_total: number
+          product_id: string
+          quantity: number
+          sales_order_id: string
+          unit_price: number
+        }
+        Insert: {
+          batch_number?: string | null
+          discount_percent?: number
+          id?: string
+          line_total?: number
+          product_id: string
+          quantity?: number
+          sales_order_id: string
+          unit_price?: number
+        }
+        Update: {
+          batch_number?: string | null
+          discount_percent?: number
+          id?: string
+          line_total?: number
+          product_id?: string
+          quantity?: number
+          sales_order_id?: string
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dash_sales_order_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "dash_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dash_sales_order_items_sales_order_id_fkey"
+            columns: ["sales_order_id"]
+            isOneToOne: false
+            referencedRelation: "dash_sales_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dash_sales_orders: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          customer_id: string
+          discount_amount: number
+          dispatch_status: Database["public"]["Enums"]["dash_dispatch_status"]
+          e_invoice_url: string | null
+          id: string
+          net_amount: number
+          notes: string | null
+          order_date: string
+          payment_status: Database["public"]["Enums"]["dash_payment_status"]
+          scheme_details: string | null
+          so_number: string
+          total_amount: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          customer_id: string
+          discount_amount?: number
+          dispatch_status?: Database["public"]["Enums"]["dash_dispatch_status"]
+          e_invoice_url?: string | null
+          id?: string
+          net_amount?: number
+          notes?: string | null
+          order_date?: string
+          payment_status?: Database["public"]["Enums"]["dash_payment_status"]
+          scheme_details?: string | null
+          so_number: string
+          total_amount?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string
+          discount_amount?: number
+          dispatch_status?: Database["public"]["Enums"]["dash_dispatch_status"]
+          e_invoice_url?: string | null
+          id?: string
+          net_amount?: number
+          notes?: string | null
+          order_date?: string
+          payment_status?: Database["public"]["Enums"]["dash_payment_status"]
+          scheme_details?: string | null
+          so_number?: string
+          total_amount?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dash_sales_orders_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "dash_customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dash_service_history: {
+        Row: {
+          action_type: string
+          created_at: string
+          description: string | null
+          id: string
+          performed_by: string | null
+          serial_number: string | null
+          ticket_id: string
+        }
+        Insert: {
+          action_type: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          performed_by?: string | null
+          serial_number?: string | null
+          ticket_id: string
+        }
+        Update: {
+          action_type?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          performed_by?: string | null
+          serial_number?: string | null
+          ticket_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dash_service_history_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "dash_service_tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dash_service_tickets: {
+        Row: {
+          assigned_engineer: string | null
+          closed_at: string | null
+          created_at: string
+          customer_name: string
+          customer_phone: string | null
+          id: string
+          issue_description: string
+          product_id: string
+          repair_status: Database["public"]["Enums"]["dash_repair_status"]
+          replacement_approval_notes: string | null
+          replacement_approved: boolean
+          serial_number: string | null
+          service_notes: string | null
+          ticket_number: string
+          updated_at: string
+          warranty_valid: boolean
+        }
+        Insert: {
+          assigned_engineer?: string | null
+          closed_at?: string | null
+          created_at?: string
+          customer_name: string
+          customer_phone?: string | null
+          id?: string
+          issue_description: string
+          product_id: string
+          repair_status?: Database["public"]["Enums"]["dash_repair_status"]
+          replacement_approval_notes?: string | null
+          replacement_approved?: boolean
+          serial_number?: string | null
+          service_notes?: string | null
+          ticket_number: string
+          updated_at?: string
+          warranty_valid?: boolean
+        }
+        Update: {
+          assigned_engineer?: string | null
+          closed_at?: string | null
+          created_at?: string
+          customer_name?: string
+          customer_phone?: string | null
+          id?: string
+          issue_description?: string
+          product_id?: string
+          repair_status?: Database["public"]["Enums"]["dash_repair_status"]
+          replacement_approval_notes?: string | null
+          replacement_approved?: boolean
+          serial_number?: string | null
+          service_notes?: string | null
+          ticket_number?: string
+          updated_at?: string
+          warranty_valid?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dash_service_tickets_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "dash_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dash_spare_consumption: {
+        Row: {
+          consumed_by: string | null
+          created_at: string
+          id: string
+          notes: string | null
+          quantity_used: number
+          spare_id: string
+          ticket_id: string | null
+        }
+        Insert: {
+          consumed_by?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          quantity_used?: number
+          spare_id: string
+          ticket_id?: string | null
+        }
+        Update: {
+          consumed_by?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          quantity_used?: number
+          spare_id?: string
+          ticket_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dash_spare_consumption_spare_id_fkey"
+            columns: ["spare_id"]
+            isOneToOne: false
+            referencedRelation: "dash_spare_parts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dash_spare_consumption_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "dash_service_tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dash_spare_dispatch_log: {
+        Row: {
+          created_at: string
+          dispatch_type: Database["public"]["Enums"]["dash_spare_dispatch_type"]
+          dispatched_by: string | null
+          dispatched_to: string | null
+          id: string
+          notes: string | null
+          quantity: number
+          reference_number: string | null
+          spare_id: string
+        }
+        Insert: {
+          created_at?: string
+          dispatch_type?: Database["public"]["Enums"]["dash_spare_dispatch_type"]
+          dispatched_by?: string | null
+          dispatched_to?: string | null
+          id?: string
+          notes?: string | null
+          quantity?: number
+          reference_number?: string | null
+          spare_id: string
+        }
+        Update: {
+          created_at?: string
+          dispatch_type?: Database["public"]["Enums"]["dash_spare_dispatch_type"]
+          dispatched_by?: string | null
+          dispatched_to?: string | null
+          id?: string
+          notes?: string | null
+          quantity?: number
+          reference_number?: string | null
+          spare_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dash_spare_dispatch_log_spare_id_fkey"
+            columns: ["spare_id"]
+            isOneToOne: false
+            referencedRelation: "dash_spare_parts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dash_spare_parts: {
+        Row: {
+          cost_price: number
+          created_at: string
+          description: string | null
+          id: string
+          linked_product_ids: Json | null
+          low_stock_threshold: number
+          selling_price: number
+          spare_code: string
+          spare_name: string
+          stock_quantity: number
+          updated_at: string
+        }
+        Insert: {
+          cost_price?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          linked_product_ids?: Json | null
+          low_stock_threshold?: number
+          selling_price?: number
+          spare_code: string
+          spare_name: string
+          stock_quantity?: number
+          updated_at?: string
+        }
+        Update: {
+          cost_price?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          linked_product_ids?: Json | null
+          low_stock_threshold?: number
+          selling_price?: number
+          spare_code?: string
+          spare_name?: string
+          stock_quantity?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       department_permissions: {
         Row: {
           created_at: string
@@ -4031,6 +4746,9 @@ export type Database = {
         Returns: undefined
       }
       generate_complaint_number: { Args: never; Returns: string }
+      generate_dash_fo_number: { Args: never; Returns: string }
+      generate_dash_so_number: { Args: never; Returns: string }
+      generate_dash_ticket_number: { Args: never; Returns: string }
       generate_dispatch_order_number: { Args: never; Returns: string }
       generate_grn_number: { Args: never; Returns: string }
       generate_kit_number: { Args: never; Returns: string }
@@ -4125,6 +4843,52 @@ export type Database = {
       batch_item_type: "PRODUCT" | "DATA" | "PART"
       bom_type: "main_assembly" | "sub_assembly" | "accessory"
       bom_type_enum: "main_assembly" | "sub_assembly" | "accessory"
+      dash_artwork_type:
+        | "box_artwork"
+        | "product_artwork"
+        | "marketing_creative"
+      dash_customer_type:
+        | "Distributor"
+        | "Dealer"
+        | "Retailer"
+        | "Institutional"
+      dash_dispatch_status: "Pending" | "Dispatched" | "Delivered"
+      dash_factory_order_status:
+        | "Draft"
+        | "Ordered"
+        | "In Production"
+        | "Dispatched"
+        | "Received"
+        | "QC Pending"
+        | "QC Done"
+      dash_movement_type:
+        | "GRN_RECEIPT"
+        | "SALES_DISPATCH"
+        | "DAMAGE"
+        | "RETURN"
+        | "ADJUSTMENT"
+        | "TRANSFER"
+      dash_payment_status: "Pending" | "Partial" | "Paid"
+      dash_product_category:
+        | "Party Speaker"
+        | "Tower Speaker"
+        | "Soundbar"
+        | "Multimedia Speaker"
+        | "Portable Speaker"
+        | "Home Theatre"
+        | "Subwoofer"
+        | "Other"
+      dash_product_status: "Active" | "Discontinued"
+      dash_qc_status: "Pending" | "Passed" | "Failed" | "Partial"
+      dash_repair_status:
+        | "Open"
+        | "Assigned"
+        | "In Progress"
+        | "Awaiting Parts"
+        | "Repaired"
+        | "Replaced"
+        | "Closed"
+      dash_spare_dispatch_type: "Service" | "Customer" | "Warehouse"
       employee_status: "active" | "inactive" | "terminated" | "on_leave"
       performance_rating:
         | "excellent"
@@ -4264,6 +5028,58 @@ export const Constants = {
       batch_item_type: ["PRODUCT", "DATA", "PART"],
       bom_type: ["main_assembly", "sub_assembly", "accessory"],
       bom_type_enum: ["main_assembly", "sub_assembly", "accessory"],
+      dash_artwork_type: [
+        "box_artwork",
+        "product_artwork",
+        "marketing_creative",
+      ],
+      dash_customer_type: [
+        "Distributor",
+        "Dealer",
+        "Retailer",
+        "Institutional",
+      ],
+      dash_dispatch_status: ["Pending", "Dispatched", "Delivered"],
+      dash_factory_order_status: [
+        "Draft",
+        "Ordered",
+        "In Production",
+        "Dispatched",
+        "Received",
+        "QC Pending",
+        "QC Done",
+      ],
+      dash_movement_type: [
+        "GRN_RECEIPT",
+        "SALES_DISPATCH",
+        "DAMAGE",
+        "RETURN",
+        "ADJUSTMENT",
+        "TRANSFER",
+      ],
+      dash_payment_status: ["Pending", "Partial", "Paid"],
+      dash_product_category: [
+        "Party Speaker",
+        "Tower Speaker",
+        "Soundbar",
+        "Multimedia Speaker",
+        "Portable Speaker",
+        "Home Theatre",
+        "Subwoofer",
+        "Other",
+      ],
+      dash_product_status: ["Active", "Discontinued"],
+      dash_qc_status: ["Pending", "Passed", "Failed", "Partial"],
+      dash_repair_status: [
+        "Open",
+        "Assigned",
+        "In Progress",
+        "Awaiting Parts",
+        "Repaired",
+        "Replaced",
+        "Closed",
+      ],
+      dash_spare_dispatch_type: ["Service", "Customer", "Warehouse"],
       employee_status: ["active", "inactive", "terminated", "on_leave"],
       performance_rating: [
         "excellent",
