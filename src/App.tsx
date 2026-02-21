@@ -44,6 +44,15 @@ import { AuthGuard } from "@/components/Auth/AuthGuard";
 import RnD from "./pages/RnD";
 import NPD from "./pages/rnd/NPD";
 import PreExisting from "./pages/rnd/PreExisting";
+import DashDashboard from "./pages/dash/DashDashboard";
+import DashProducts from "./pages/dash/DashProducts";
+import DashFactoryOrders from "./pages/dash/DashFactoryOrders";
+import DashInventory from "./pages/dash/DashInventory";
+import DashSales from "./pages/dash/DashSales";
+import DashCustomers from "./pages/dash/DashCustomers";
+import DashService from "./pages/dash/DashService";
+import DashSpares from "./pages/dash/DashSpares";
+import DashOrderTracking from "./pages/dash/DashOrderTracking";
 
 const queryClient = new QueryClient();
 
@@ -270,6 +279,17 @@ function App() {
                 <PreExisting />
               </AuthGuard>
             } />
+            
+            {/* DASH Brand Routes */}
+            <Route path="/dash" element={<AuthGuard><DashDashboard /></AuthGuard>} />
+            <Route path="/dash/products" element={<AuthGuard><DashProducts /></AuthGuard>} />
+            <Route path="/dash/factory-orders" element={<AuthGuard><DashFactoryOrders /></AuthGuard>} />
+            <Route path="/dash/inventory" element={<AuthGuard><DashInventory /></AuthGuard>} />
+            <Route path="/dash/sales" element={<AuthGuard><DashSales /></AuthGuard>} />
+            <Route path="/dash/customers" element={<AuthGuard><DashCustomers /></AuthGuard>} />
+            <Route path="/dash/service" element={<AuthGuard><DashService /></AuthGuard>} />
+            <Route path="/dash/spares" element={<AuthGuard><DashSpares /></AuthGuard>} />
+            <Route path="/dash/tracking" element={<AuthGuard><DashOrderTracking /></AuthGuard>} />
             
             {/* 404 Route */}
             <Route path="*" element={<NotFound />} />
