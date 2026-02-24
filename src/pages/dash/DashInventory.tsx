@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { DashboardLayout } from "@/components/Layout/DashboardLayout";
+import { DashLayout } from "@/components/Layout/DashLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -24,7 +24,7 @@ export default function DashInventory() {
   const lowStockItems = inventory?.filter((i: any) => (i.total_stock - i.reserved_stock - i.damaged_stock) <= i.low_stock_threshold) || [];
 
   return (
-    <DashboardLayout>
+    <DashLayout>
       <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">DASH Inventory</h1>
@@ -126,6 +126,6 @@ export default function DashInventory() {
           </TabsContent>
         </Tabs>
       </div>
-    </DashboardLayout>
+    </DashLayout>
   );
 }

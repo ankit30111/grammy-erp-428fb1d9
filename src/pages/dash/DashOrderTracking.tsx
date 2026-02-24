@@ -1,4 +1,4 @@
-import { DashboardLayout } from "@/components/Layout/DashboardLayout";
+import { DashLayout } from "@/components/Layout/DashLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useDashFactoryOrders } from "@/hooks/useDashFactoryOrders";
 import { useDashSalesOrders } from "@/hooks/useDashSales";
@@ -22,7 +22,7 @@ export default function DashOrderTracking() {
   ];
 
   return (
-    <DashboardLayout>
+    <DashLayout>
       <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Order Lifecycle Tracking</h1>
@@ -88,6 +88,6 @@ export default function DashOrderTracking() {
           </Card>
         </div>
       </div>
-    </DashboardLayout>
+    </DashLayout>
   );
 }
