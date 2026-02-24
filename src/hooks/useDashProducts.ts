@@ -20,19 +20,7 @@ export const useDashProductMutations = () => {
   const queryClient = useQueryClient();
 
   const addProduct = useMutation({
-    mutationFn: async (product: {
-      product_name: string;
-      model_number: string;
-      category: string;
-      description?: string;
-      technical_specs?: Record<string, unknown>;
-      mrp: number;
-      dealer_price: number;
-      distributor_price: number;
-      barcode_ean?: string;
-      warranty_period_months?: number;
-      status?: string;
-    }) => {
+    mutationFn: async (product: Record<string, unknown>) => {
       const { data, error } = await supabase
         .from("dash_products")
         .insert(product as any)
@@ -67,4 +55,222 @@ export const useDashProductMutations = () => {
   });
 
   return { addProduct, updateProduct };
+};
+
+// Documents hooks
+export const useDashProductDocuments = (productId: string | undefined) => {
+  return useQuery({
+    queryKey: ["dash-product-documents", productId],
+    enabled: !!productId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("dash_product_documents")
+        .select("*")
+        .eq("product_id", productId!)
+        .order("document_type")
+        .order("version", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+  });
+};
+
+export const useDashProductDocumentMutations = () => {
+  const queryClient = useQueryClient();
+
+  const uploadDocument = useMutation({
+    mutationFn: async ({
+      productId, documentType, file, uploadedBy,
+    }: { productId: string; documentType: string; file: File; uploadedBy?: string }) => {
+      // Mark old versions as not current
+      await supabase
+        .from("dash_product_documents")
+        .update({ is_current: false } as any)
+        .eq("product_id", productId)
+        .eq("document_type", documentType)
+        .eq("is_current", true);
+
+      // Get next version
+      const { data: existing } = await supabase
+        .from("dash_product_documents")
+        .select("version")
+        .eq("product_id", productId)
+        .eq("document_type", documentType)
+        .order("version", { ascending: false })
+        .limit(1);
+
+      const nextVersion = (existing?.[0]?.version || 0) + 1;
+
+      // Upload file
+      const filePath = `${productId}/${documentType}/${Date.now()}_${file.name}`;
+      const { error: uploadError } = await supabase.storage
+        .from("dash-documents")
+        .upload(filePath, file);
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage
+        .from("dash-documents")
+        .getPublicUrl(filePath);
+
+      // Insert record
+      const { data, error } = await supabase
+        .from("dash_product_documents")
+        .insert({
+          product_id: productId,
+          document_type: documentType,
+          file_name: file.name,
+          file_url: urlData.publicUrl,
+          version: nextVersion,
+          is_current: true,
+          uploaded_by: uploadedBy,
+        } as any)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (_, vars) => {
+      queryClient.invalidateQueries({ queryKey: ["dash-product-documents", vars.productId] });
+      toast.success("Document uploaded");
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
+  return { uploadDocument };
+};
+
+// Spares hooks
+export const useDashProductSpares = (productId: string | undefined) => {
+  return useQuery({
+    queryKey: ["dash-product-spares", productId],
+    enabled: !!productId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("dash_product_spares")
+        .select("*, dash_spare_parts(*)")
+        .eq("product_id", productId!);
+      if (error) throw error;
+      return data;
+    },
+  });
+};
+
+export const useDashProductSpareMutations = () => {
+  const queryClient = useQueryClient();
+
+  const linkSpare = useMutation({
+    mutationFn: async ({ productId, spareId }: { productId: string; spareId: string }) => {
+      const { data, error } = await supabase
+        .from("dash_product_spares")
+        .insert({ product_id: productId, spare_id: spareId } as any)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (_, vars) => {
+      queryClient.invalidateQueries({ queryKey: ["dash-product-spares", vars.productId] });
+      toast.success("Spare linked");
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
+  const unlinkSpare = useMutation({
+    mutationFn: async ({ id }: { id: string }) => {
+      const { error } = await supabase
+        .from("dash_product_spares")
+        .delete()
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["dash-product-spares"] });
+      toast.success("Spare unlinked");
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
+  return { linkSpare, unlinkSpare };
+};
+
+// Compliance hooks
+export const useDashProductCompliance = (productId: string | undefined) => {
+  return useQuery({
+    queryKey: ["dash-product-compliance", productId],
+    enabled: !!productId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("dash_product_compliance")
+        .select("*")
+        .eq("product_id", productId!)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+  });
+};
+
+export const useDashProductComplianceMutations = () => {
+  const queryClient = useQueryClient();
+
+  const upsertCompliance = useMutation({
+    mutationFn: async (compliance: Record<string, unknown>) => {
+      if ((compliance as any).id) {
+        const { id, ...updates } = compliance as any;
+        const { data, error } = await supabase
+          .from("dash_product_compliance")
+          .update(updates)
+          .eq("id", id)
+          .select()
+          .single();
+        if (error) throw error;
+        return data;
+      } else {
+        const { data, error } = await supabase
+          .from("dash_product_compliance")
+          .insert(compliance as any)
+          .select()
+          .single();
+        if (error) throw error;
+        return data;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["dash-product-compliance"] });
+      toast.success("Compliance saved");
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
+  return { upsertCompliance };
+};
+
+// Spare parts list
+export const useDashSpareParts = () => {
+  return useQuery({
+    queryKey: ["dash-spare-parts"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("dash_spare_parts")
+        .select("*")
+        .order("spare_name");
+      if (error) throw error;
+      return data;
+    },
+  });
+};
+
+// Grammy ERP products for model number dropdown
+export const useGrammyProducts = () => {
+  return useQuery({
+    queryKey: ["grammy-products-models"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("products")
+        .select("id, name, product_code")
+        .order("product_code");
+      if (error) throw error;
+      return data;
+    },
+  });
 };

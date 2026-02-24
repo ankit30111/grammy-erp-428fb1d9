@@ -1145,53 +1145,216 @@ export type Database = {
           },
         ]
       }
+      dash_product_compliance: {
+        Row: {
+          bis_certificate_number: string | null
+          bis_expiry_date: string | null
+          compliance_status: string
+          created_at: string
+          id: string
+          notes: string | null
+          product_id: string
+          updated_at: string
+        }
+        Insert: {
+          bis_certificate_number?: string | null
+          bis_expiry_date?: string | null
+          compliance_status?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          product_id: string
+          updated_at?: string
+        }
+        Update: {
+          bis_certificate_number?: string | null
+          bis_expiry_date?: string | null
+          compliance_status?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          product_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dash_product_compliance_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "dash_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dash_product_documents: {
+        Row: {
+          created_at: string
+          document_type: string
+          file_name: string
+          file_url: string
+          id: string
+          is_current: boolean
+          product_id: string
+          uploaded_by: string | null
+          version: number
+        }
+        Insert: {
+          created_at?: string
+          document_type: string
+          file_name: string
+          file_url: string
+          id?: string
+          is_current?: boolean
+          product_id: string
+          uploaded_by?: string | null
+          version?: number
+        }
+        Update: {
+          created_at?: string
+          document_type?: string
+          file_name?: string
+          file_url?: string
+          id?: string
+          is_current?: boolean
+          product_id?: string
+          uploaded_by?: string | null
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dash_product_documents_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "dash_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dash_product_spares: {
+        Row: {
+          created_at: string
+          id: string
+          product_id: string
+          spare_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          product_id: string
+          spare_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          product_id?: string
+          spare_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dash_product_spares_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "dash_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dash_product_spares_spare_id_fkey"
+            columns: ["spare_id"]
+            isOneToOne: false
+            referencedRelation: "dash_spare_parts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dash_products: {
         Row: {
           barcode_ean: string | null
+          branding_info: string | null
           category: Database["public"]["Enums"]["dash_product_category"]
           created_at: string
+          created_by: string | null
           dealer_price: number
           description: string | null
           distributor_price: number
+          dp: number | null
+          gross_weight: number | null
+          gst_percent: number | null
+          hsn_code: string | null
           id: string
           model_number: string
           mrp: number
+          net_weight: number | null
+          nlc: number | null
           product_name: string
+          purchase_price: number | null
+          qa_checklist: Json | null
+          serial_next_number: number | null
+          serial_prefix: string | null
+          software_button_details: string | null
           status: Database["public"]["Enums"]["dash_product_status"]
           technical_specs: Json | null
           updated_at: string
+          updated_by: string | null
           warranty_period_months: number
         }
         Insert: {
           barcode_ean?: string | null
+          branding_info?: string | null
           category?: Database["public"]["Enums"]["dash_product_category"]
           created_at?: string
+          created_by?: string | null
           dealer_price?: number
           description?: string | null
           distributor_price?: number
+          dp?: number | null
+          gross_weight?: number | null
+          gst_percent?: number | null
+          hsn_code?: string | null
           id?: string
           model_number: string
           mrp?: number
+          net_weight?: number | null
+          nlc?: number | null
           product_name: string
+          purchase_price?: number | null
+          qa_checklist?: Json | null
+          serial_next_number?: number | null
+          serial_prefix?: string | null
+          software_button_details?: string | null
           status?: Database["public"]["Enums"]["dash_product_status"]
           technical_specs?: Json | null
           updated_at?: string
+          updated_by?: string | null
           warranty_period_months?: number
         }
         Update: {
           barcode_ean?: string | null
+          branding_info?: string | null
           category?: Database["public"]["Enums"]["dash_product_category"]
           created_at?: string
+          created_by?: string | null
           dealer_price?: number
           description?: string | null
           distributor_price?: number
+          dp?: number | null
+          gross_weight?: number | null
+          gst_percent?: number | null
+          hsn_code?: string | null
           id?: string
           model_number?: string
           mrp?: number
+          net_weight?: number | null
+          nlc?: number | null
           product_name?: string
+          purchase_price?: number | null
+          qa_checklist?: Json | null
+          serial_next_number?: number | null
+          serial_prefix?: string | null
+          software_button_details?: string | null
           status?: Database["public"]["Enums"]["dash_product_status"]
           technical_specs?: Json | null
           updated_at?: string
+          updated_by?: string | null
           warranty_period_months?: number
         }
         Relationships: []
@@ -4878,7 +5041,12 @@ export type Database = {
         | "Home Theatre"
         | "Subwoofer"
         | "Other"
-      dash_product_status: "Active" | "Discontinued"
+        | "Accessories"
+      dash_product_status:
+        | "Active"
+        | "Discontinued"
+        | "Development"
+        | "Ready for Production"
       dash_qc_status: "Pending" | "Passed" | "Failed" | "Partial"
       dash_repair_status:
         | "Open"
@@ -5067,8 +5235,14 @@ export const Constants = {
         "Home Theatre",
         "Subwoofer",
         "Other",
+        "Accessories",
       ],
-      dash_product_status: ["Active", "Discontinued"],
+      dash_product_status: [
+        "Active",
+        "Discontinued",
+        "Development",
+        "Ready for Production",
+      ],
       dash_qc_status: ["Pending", "Passed", "Failed", "Partial"],
       dash_repair_status: [
         "Open",
