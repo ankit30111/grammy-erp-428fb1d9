@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -14,147 +14,139 @@ interface UserProfile {
   };
 }
 
+type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated';
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   userProfile: UserProfile | null;
   loading: boolean;
+  authStatus: AuthStatus;
   isAdmin: boolean;
   signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const AUTH_TIMEOUT_MS = 6000;
+const PROFILE_TIMEOUT_MS = 10000;
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [authStatus, setAuthStatus] = useState<AuthStatus>('loading');
   const [fetchingProfile, setFetchingProfile] = useState(false);
 
   const isAdmin = userProfile?.role === 'admin';
+  const loading = authStatus === 'loading';
 
-  const fetchUserProfile = async (userId: string) => {
-    // Prevent multiple simultaneous profile fetches
-    if (fetchingProfile) {
-      console.log('Profile fetch already in progress, skipping...');
-      return;
-    }
-
+  const fetchUserProfile = useCallback(async (userId: string) => {
+    if (fetchingProfile) return;
     setFetchingProfile(true);
-    console.log('Fetching user profile for:', userId);
-    
-    // Add safety timeout to prevent infinite loading
+    console.log('[Auth] Fetching profile for:', userId);
+
     const timeoutId = setTimeout(() => {
-      console.warn('Profile fetch timed out after 10 seconds');
+      console.warn('[Auth] Profile fetch timed out');
       setFetchingProfile(false);
-      setLoading(false);
-    }, 10000);
+      // Don't block auth – user is authenticated even without profile
+      setAuthStatus('authenticated');
+    }, PROFILE_TIMEOUT_MS);
 
     try {
       const { data, error } = await supabase
         .from('user_accounts')
-        .select(`
-          *,
-          departments (
-            name
-          )
-        `)
+        .select(`*, departments (name)`)
         .eq('id', userId)
         .maybeSingle();
 
       clearTimeout(timeoutId);
 
       if (error) {
-        console.error('Error fetching user profile:', error);
+        console.error('[Auth] Profile fetch error:', error);
         setUserProfile(null);
-      } else if (data) {
-        console.log('User profile found:', data);
-        setUserProfile(data);
       } else {
-        console.warn('No user profile found for user:', userId);
-        setUserProfile(null);
+        setUserProfile(data);
       }
     } catch (error) {
       clearTimeout(timeoutId);
-      console.error('Error fetching user profile:', error);
+      console.error('[Auth] Profile fetch exception:', error);
       setUserProfile(null);
     } finally {
       setFetchingProfile(false);
-      setLoading(false);
+      setAuthStatus('authenticated');
     }
-  };
+  }, [fetchingProfile]);
 
-  const signOut = async () => {
+  const signOut = useCallback(async () => {
     try {
       await supabase.auth.signOut();
-      setUser(null);
-      setSession(null);
-      setUserProfile(null);
     } catch (error) {
-      console.error('Error signing out:', error);
+      console.error('[Auth] Sign out error:', error);
     }
-  };
+    setUser(null);
+    setSession(null);
+    setUserProfile(null);
+    setAuthStatus('unauthenticated');
+  }, []);
 
   useEffect(() => {
     let mounted = true;
 
-    // Set up auth state listener - this will handle all auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        if (!mounted) return;
+    console.log('[Auth] Initializing...');
 
-        console.log(`Auth state change: ${event}`);
-        
-        if (event === 'SIGNED_OUT' || !session) {
+    // Safety timeout – always resolve loading
+    const safetyTimeout = setTimeout(() => {
+      if (mounted && authStatus === 'loading') {
+        console.warn('[Auth] Init timed out, forcing unauthenticated');
+        try { localStorage.removeItem('supabase.auth.token'); } catch (_) {}
+        setSession(null);
+        setUser(null);
+        setUserProfile(null);
+        setAuthStatus('unauthenticated');
+      }
+    }, AUTH_TIMEOUT_MS);
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, currentSession) => {
+        if (!mounted) return;
+        console.log(`[Auth] State change: ${event}`, currentSession?.user?.email || 'no user');
+
+        if (event === 'SIGNED_OUT' || !currentSession) {
           setSession(null);
           setUser(null);
           setUserProfile(null);
-          setLoading(false);
+          setAuthStatus('unauthenticated');
           return;
         }
 
-        // Valid session - set session and user immediately
-        setSession(session);
-        setUser(session.user);
-        
-        // Fetch user profile data asynchronously
-        if (session.user) {
-          // Use setTimeout to avoid blocking the auth state change
+        setSession(currentSession);
+        setUser(currentSession.user);
+
+        if (currentSession.user) {
           setTimeout(() => {
-            fetchUserProfile(session.user.id);
+            if (mounted) fetchUserProfile(currentSession.user.id);
           }, 0);
         } else {
-          setLoading(false);
+          setAuthStatus('unauthenticated');
         }
       }
     );
 
-    // Safety timeout: if auth doesn't resolve in 5s, force show login
-    const safetyTimeout = setTimeout(() => {
-      if (mounted && loading) {
-        console.warn('Auth initialization timed out after 5s, clearing stale data');
-        try {
-          localStorage.removeItem('supabase.auth.token');
-        } catch (_) { /* ignore */ }
-        setSession(null);
-        setUser(null);
-        setUserProfile(null);
-        setLoading(false);
+    // Kick off initial session check
+    supabase.auth.getSession().then(({ data: { session: s }, error }) => {
+      if (!mounted) return;
+      if (error) {
+        console.error('[Auth] getSession error:', error);
+        try { localStorage.removeItem('supabase.auth.token'); } catch (_) {}
+        setAuthStatus('unauthenticated');
       }
-    }, 5000);
-
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      // onAuthStateChange handler processes the session
+      // onAuthStateChange handles the rest
     }).catch((error) => {
-      console.error('getSession failed:', error);
-      if (mounted) {
-        try {
-          localStorage.removeItem('supabase.auth.token');
-        } catch (_) { /* ignore */ }
-        setLoading(false);
-      }
+      if (!mounted) return;
+      console.error('[Auth] getSession exception:', error);
+      try { localStorage.removeItem('supabase.auth.token'); } catch (_) {}
+      setAuthStatus('unauthenticated');
     });
 
     return () => {
@@ -164,17 +156,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  const value = {
-    user,
-    session,
-    userProfile,
-    loading,
-    isAdmin,
-    signOut,
-  };
-
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider value={{ user, session, userProfile, loading, authStatus, isAdmin, signOut }}>
       {children}
     </AuthContext.Provider>
   );
