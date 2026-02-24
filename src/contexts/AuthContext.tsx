@@ -130,14 +130,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     );
 
-    // Get initial session - this will trigger the auth state change event
+    // Safety timeout: if auth doesn't resolve in 5s, force show login
+    const safetyTimeout = setTimeout(() => {
+      if (mounted && loading) {
+        console.warn('Auth initialization timed out after 5s, clearing stale data');
+        try {
+          localStorage.removeItem('supabase.auth.token');
+        } catch (_) { /* ignore */ }
+        setSession(null);
+        setUser(null);
+        setUserProfile(null);
+        setLoading(false);
+      }
+    }, 5000);
+
+    // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
-      // The onAuthStateChange handler will take care of processing the session
-      // No need to duplicate logic here
+      // onAuthStateChange handler processes the session
+    }).catch((error) => {
+      console.error('getSession failed:', error);
+      if (mounted) {
+        try {
+          localStorage.removeItem('supabase.auth.token');
+        } catch (_) { /* ignore */ }
+        setLoading(false);
+      }
     });
 
     return () => {
       mounted = false;
+      clearTimeout(safetyTimeout);
       subscription.unsubscribe();
     };
   }, []);

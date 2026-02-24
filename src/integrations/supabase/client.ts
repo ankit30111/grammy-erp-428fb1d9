@@ -29,7 +29,10 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
 // Add error handling for auth state changes
 supabase.auth.onAuthStateChange((event, session) => {
   if (event === 'TOKEN_REFRESHED' && !session) {
-    console.warn('Token refresh failed, session cleared');
+    console.warn('Token refresh failed, clearing stale auth data');
+    try {
+      localStorage.removeItem('supabase.auth.token');
+    } catch (_) { /* ignore */ }
   }
   if (event === 'SIGNED_OUT') {
     console.log('User signed out, clearing local data');

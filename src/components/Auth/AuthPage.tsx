@@ -14,17 +14,33 @@ export function AuthPage() {
     let mounted = true;
 
     const checkAuth = async () => {
+      // Race getSession against a 5s timeout
+      const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 5000));
+      
       try {
-        const { data: { session }, error } = await supabase.auth.getSession();
-        
+        const result = await Promise.race([
+          supabase.auth.getSession(),
+          timeoutPromise
+        ]);
+
+        if (!mounted) return;
+
+        if (!result) {
+          // Timed out
+          console.warn('Auth check timed out, clearing stale data');
+          try { localStorage.removeItem('supabase.auth.token'); } catch (_) {}
+          setLoading(false);
+          return;
+        }
+
+        const { data: { session }, error } = result;
         console.log('Auth page - checking session:', session?.user?.id || 'no session');
         
         if (error) {
           console.error('Auth check error:', error);
-          // Clear any invalid session data
           if (error.message.includes('refresh_token_not_found') || 
               error.message.includes('Invalid Refresh Token')) {
-            await supabase.auth.signOut();
+            try { await supabase.auth.signOut(); } catch (_) {}
           }
         } else if (session && mounted) {
           navigate("/dashboard");
@@ -32,6 +48,7 @@ export function AuthPage() {
         }
       } catch (error) {
         console.error('Unexpected auth error:', error);
+        try { localStorage.removeItem('supabase.auth.token'); } catch (_) {}
       } finally {
         if (mounted) {
           setLoading(false);
