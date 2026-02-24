@@ -1,183 +1,90 @@
+# DASH Independent Workspace Architecture
 
+## What Changes
 
-# DASH Module - Complete Implementation Plan
+Currently, all DASH pages use `DashboardLayout` which renders the Grammy ERP sidebar. This plan replaces that with a dedicated `DashLayout` component that has its own sidebar, header, and visual identity -- making DASH feel like a separate application within the ERP.
 
-## Overview
-
-DASH is a fully independent brand management system within the Grammy ERP for managing Home Audio Products (speakers, party speakers, soundbars, etc.). It covers product master, factory orders, inventory, sales, service, spares, reporting, and order tracking -- all isolated from other ERP verticals.
-
----
-
-## Database Schema Design
-
-### Core Tables (14 new tables)
-
-**1. `dash_products`** - Product/SKU Master
-- id, product_name, model_number, category (enum: Party Speaker, Tower Speaker, Soundbar, Multimedia Speaker, Portable Speaker, etc.), description, technical_specs (JSONB), mrp, dealer_price, distributor_price, barcode_ean, warranty_period_months, status (Active/Discontinued), created_at, updated_at
-
-**2. `dash_product_artwork`** - Artwork files linked to products
-- id, product_id (FK), file_type (box_artwork, product_artwork, marketing_creative), file_url, file_name, uploaded_by, created_at
-
-**3. `dash_factory_orders`** - Factory Purchase Orders
-- id, fo_number (auto-generated), product_id (FK), quantity_ordered, cost_per_unit, total_cost, expected_production_date, dispatch_date, shipment_tracking_number, factory_invoice_url, status (Draft/Ordered/In Production/Dispatched/Received/QC Pending/QC Done), batch_number, qc_status (Pending/Passed/Failed/Partial), notes, created_by, created_at, updated_at
-
-**4. `dash_inventory`** - Warehouse Inventory (separate from main ERP)
-- id, product_id (FK), batch_number, total_stock, reserved_stock, damaged_stock, in_transit_stock, available_stock (computed), location, low_stock_threshold, unit_cost, created_at, updated_at
-
-**5. `dash_inventory_movements`** - All stock movements audit trail
-- id, product_id (FK), batch_number, movement_type (GRN_RECEIPT, SALES_DISPATCH, DAMAGE, RETURN, ADJUSTMENT, TRANSFER), quantity, reference_id, reference_type, notes, created_by, created_at
-
-**6. `dash_customers`** - Dealer/Distributor/Retailer network
-- id, customer_name, customer_type (enum: Distributor, Dealer, Retailer, Institutional), gst_number, credit_limit, outstanding_balance, contact_person, phone, email, address, city, state, territory, assigned_sales_manager, is_active, created_at, updated_at
-
-**7. `dash_sales_orders`** - Sales Orders
-- id, so_number (auto-generated), customer_id (FK), order_date, total_amount, discount_amount, net_amount, scheme_details, payment_status (Pending/Partial/Paid), dispatch_status (Pending/Dispatched/Delivered), e_invoice_url, notes, created_by, created_at, updated_at
-
-**8. `dash_sales_order_items`** - Line items for each sales order
-- id, sales_order_id (FK), product_id (FK), quantity, unit_price, discount_percent, line_total, batch_number
-
-**9. `dash_service_tickets`** - After-sales service
-- id, ticket_number (auto-generated), product_id (FK), serial_number, customer_name, customer_phone, warranty_valid (boolean), issue_description, assigned_engineer, repair_status (Open/Assigned/In Progress/Awaiting Parts/Repaired/Replaced/Closed), replacement_approved (boolean), replacement_approval_notes, service_notes, created_at, updated_at, closed_at
-
-**10. `dash_service_history`** - Service history per serial number
-- id, ticket_id (FK), serial_number, action_type, description, performed_by, created_at
-
-**11. `dash_spare_parts`** - Spare SKU Master
-- id, spare_code, spare_name, description, linked_product_ids (JSONB array), cost_price, selling_price, stock_quantity, low_stock_threshold, created_at, updated_at
-
-**12. `dash_spare_consumption`** - Spare parts usage tracking
-- id, spare_id (FK), ticket_id (FK), quantity_used, consumed_by, notes, created_at
-
-**13. `dash_spare_dispatch_log`** - Spare parts dispatch
-- id, spare_id (FK), quantity, dispatched_to, dispatch_type (Service/Customer/Warehouse), reference_number, notes, dispatched_by, created_at
-
-**14. `dash_payments`** - Payment tracking / ledger
-- id, customer_id (FK), sales_order_id (FK), amount, payment_date, payment_mode, reference_number, notes, created_by, created_at
-
-### Auto-generated Numbers
-- Database functions: `generate_dash_fo_number()`, `generate_dash_so_number()`, `generate_dash_ticket_number()`
-- Triggers on INSERT for each table
-
-### RLS Policies
-- All tables: authenticated users can SELECT, INSERT, UPDATE
-- DELETE restricted to specific tables where appropriate
-- Uses existing ERP auth system (user_accounts + departments)
-
----
-
-## Frontend Architecture
-
-### Navigation
-- New "DASH" entry in sidebar navigation with sub-items
-- Route prefix: `/dash/*`
-
-### Pages and Components Structure
+## Architecture
 
 ```text
-src/pages/dash/
-  DashDashboard.tsx          -- Main dashboard with KPIs & charts
-  DashProducts.tsx           -- Product master CRUD
-  DashFactoryOrders.tsx      -- Factory PO management
-  DashInventory.tsx          -- Warehouse inventory view
-  DashSales.tsx              -- Sales orders management
-  DashCustomers.tsx          -- Customer network management
-  DashService.tsx            -- Service tickets & tracking
-  DashSpares.tsx             -- Spare parts management
-  DashOrderTracking.tsx      -- Full lifecycle tracking
+Current:
+  All routes → DashboardLayout (Grammy sidebar + header)
 
-src/components/Dash/
-  ProductMasterPanel.tsx     -- Product CRUD form & table
-  AddProductDialog.tsx       -- Dialog for adding new product
-  EditProductDialog.tsx      -- Dialog for editing product
-  FactoryOrderForm.tsx       -- Create/edit factory PO
-  FactoryOrdersList.tsx      -- Factory orders table with filters
-  InventoryView.tsx          -- SKU-wise & batch-wise stock view
-  InventoryAlerts.tsx        -- Low stock alerts
-  CustomerForm.tsx           -- Customer CRUD
-  CustomersList.tsx          -- Customer table with filters
-  SalesOrderForm.tsx         -- Create sales order with auto-pricing
-  SalesOrdersList.tsx        -- Sales orders table
-  ServiceTicketForm.tsx      -- Create/manage service ticket
-  ServiceTicketsList.tsx     -- Service tickets table
-  SparePartsMaster.tsx       -- Spare parts CRUD
-  SpareConsumptionLog.tsx    -- Track spare usage
-  OrderLifecycleTracker.tsx  -- Visual flow tracker
-  DashKPICards.tsx           -- Dashboard KPI cards
-  DashCharts.tsx             -- Dashboard charts (recharts)
-  LedgerView.tsx             -- Customer payment ledger
-
-src/hooks/
-  useDashProducts.ts         -- CRUD hooks for products
-  useDashFactoryOrders.ts    -- Factory order hooks
-  useDashInventory.ts        -- Inventory query/mutation hooks
-  useDashSales.ts            -- Sales order hooks
-  useDashCustomers.ts        -- Customer hooks
-  useDashService.ts          -- Service ticket hooks
-  useDashSpares.ts           -- Spare parts hooks
+New:
+  /dashboard/* routes → DashboardLayout (Grammy sidebar)
+  /dash/* routes     → DashLayout (DASH sidebar + DASH header)
 ```
 
-### Routes (9 new routes)
-- `/dash` -- Dashboard
-- `/dash/products` -- Product Master
-- `/dash/factory-orders` -- Factory Orders
-- `/dash/inventory` -- Inventory Management
-- `/dash/sales` -- Sales Orders
-- `/dash/customers` -- Customer Network
-- `/dash/service` -- Service & After-Sales
-- `/dash/spares` -- Spare Parts
-- `/dash/tracking` -- Order Lifecycle Tracking
+## Files to Create
 
-### Key UI Features
-- Filters on every list page (status, date range, category, customer type)
-- Global search by SKU / Serial / Customer across DASH module
-- Export to Excel (CSV) and PDF on all data tables
-- Activity logs shown in dashboard feed
-- Tabs-based layout within pages (matching existing ERP pattern)
-- Recharts for dashboard visualizations
-- Toast notifications for all actions
+### 1. `src/components/Layout/DashLayout.tsx`
 
----
+A new full-page layout component for DASH brand workspace:
 
-## Implementation Sequence
+- Own sidebar with DASH-specific navigation (Dashboard, Product Master, Factory Orders, Inventory, Sales Orders, Customers, Dispatch Tracking, Service & Warranty, Spare Parts, Reports, Settings)
+- "Back to Grammy ERP" button at top of sidebar linking to `/dashboard`
+- DASH-branded header with logo text, search bar (SKU/Serial/Customer placeholder), notifications dropdown, user profile dropdown
+- Breadcrumb: Grammy ERP > DASH > Current Page
+- Slight brand accent color via a CSS class on the root container (e.g., purple/blue tint on sidebar)
+- Collapsible sidebar (matching the existing pattern)
 
-Due to the comprehensive scope, implementation will follow this order within a single build:
+### 2. `src/components/Navigation/DashSidebar.tsx`
 
-1. **Database migration** -- All 14 tables, enums, functions, triggers, RLS policies
-2. **Storage bucket** -- `dash-documents` for artwork & invoices
-3. **Navigation** -- Add DASH section to sidebar
-4. **Hooks** -- All 7 custom hooks for data operations
-5. **Product Master** -- Full CRUD with artwork upload
-6. **Factory Orders** -- PO creation, GRN, batch generation, QC
-7. **Inventory** -- Stock view, movements, alerts, valuation
-8. **Customers** -- Customer CRUD with types & territories
-9. **Sales Orders** -- Order creation with auto-pricing, dispatch
-10. **Service Module** -- Tickets, warranty, repairs, history
-11. **Spare Parts** -- Master, consumption, dispatch log
-12. **Dashboard** -- KPIs, charts, reports
-13. **Order Tracking** -- Lifecycle visualization
-14. **Routing** -- All routes in App.tsx with AuthGuard
+DASH-specific sidebar with these nav items:
 
----
+- ·       DASH Dashboard (`/dash`)
+  ·       Sales Orders (`/dash/sales`)
+  ·       Factory Orders (`/dash/factory-orders`)
+  ·       Inventory (`/dash/inventory`)
+  ·       Customers (`/dash/customers`)
+  ·       Dispatch Tracking (`/dash/tracking`)
+  ·       Product Master (`/dash/products`)
+  ·       Spare Parts (`/dash/spares`)
+  ·       Service & Warranty (`/dash/service`)
+  ·       Customer Registration
+  ·       Settings (placeholder)
+  ·       Divider + "Back to Grammy ERP" link at bottom
+
+### 3. `src/components/Navigation/DashNavItem.tsx`
+
+Simple nav item component for the DASH sidebar (reusable, simpler than the ERP NavItem since no sub-items needed at this level).
+
+## Files to Modify
+
+### 4. All 9 DASH pages (`src/pages/dash/*.tsx`)
+
+Replace `<DashboardLayout>` wrapper with `<DashLayout>` in:
+
+- DashDashboard.tsx
+- DashProducts.tsx
+- DashFactoryOrders.tsx
+- DashInventory.tsx
+- DashSales.tsx
+- DashCustomers.tsx
+- DashService.tsx
+- DashSpares.tsx
+- DashOrderTracking.tsx
+
+### 5. `src/components/Navigation/navigationConfig.tsx`
+
+Change the DASH entry from having sub-items to being a simple link (`/dash`) -- clicking it navigates to the DASH workspace rather than expanding a sub-menu.
+
+### 6. `src/index.css`
+
+Add a small set of DASH brand CSS variables (accent color for sidebar) under a `.dash-workspace` class.
+
+## Scalability for Future Brands
+
+The `DashLayout` pattern is generic enough to be duplicated for future brands (GOVO, etc.) by creating a `BrandLayout` wrapper that accepts brand config (name, logo, accent color, nav items). For now, we build it specifically for DASH and refactor to a generic `BrandWorkspaceLayout` when a second brand is added.
+
+## Performance
+
+No full-page reload when switching between ERP and DASH. React Router handles the transition client-side. Each workspace simply renders a different layout component based on the route prefix -- the QueryClient and auth state persist across both workspaces.
 
 ## Technical Details
 
-### Auto-Pricing Logic
-- When creating a sales order, selecting a customer auto-fills pricing based on customer_type
-- Distributor gets `distributor_price`, Dealer gets `dealer_price`, Retailer/Institutional gets `mrp`
-- Discount structure applied on top
-
-### Inventory Auto-Updates
-- Factory order GRN completion -> increases `dash_inventory`
-- Sales order dispatch -> decreases `dash_inventory`
-- Service spare consumption -> decreases `dash_spare_parts` stock
-- All movements logged to `dash_inventory_movements`
-
-### Data Isolation
-- All DASH tables are prefixed with `dash_` 
-- No foreign keys to existing ERP tables (products, inventory, etc.)
-- Completely independent data silo
-
-### Export Support
-- CSV export using browser-native Blob/download
-- PDF export using existing jspdf dependency
-
+- The DASH sidebar uses the same collapse/expand pattern as the Grammy sidebar (local state, CSS transition)
+- Header reuses `UserProfileDropdown` component from the existing ERP
+- Breadcrumb is computed from `useLocation()` with a mapping of route segments to labels
+- The "Back to Grammy ERP" button uses `useNavigate()` to go to `/dashboard`
+- Brand accent is applied via Tailwind classes (e.g., `bg-slate-900` for DASH sidebar vs `bg-sidebar` for ERP)
