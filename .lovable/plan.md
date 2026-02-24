@@ -1,90 +1,148 @@
-# DASH Independent Workspace Architecture
 
-## What Changes
 
-Currently, all DASH pages use `DashboardLayout` which renders the Grammy ERP sidebar. This plan replaces that with a dedicated `DashLayout` component that has its own sidebar, header, and visual identity -- making DASH feel like a separate application within the ERP.
+# Product Master Module - Complete Implementation Plan
 
-## Architecture
+## Current State
+
+The existing `dash_products` table has a basic schema: product_name, model_number, category, mrp, dealer_price, distributor_price, barcode_ean, warranty_period_months, status (Active/Discontinued), technical_specs (JSONB), description. The current page (`DashProducts.tsx`) is a simple CRUD table with a dialog form.
+
+The requirements call for a significantly richer system with pricing auto-calculation, document management with versioning, spare parts linking, compliance tracking, serial number series, and specifications -- requiring new database tables and a complete page rebuild.
+
+## Database Changes (Migration)
+
+### 1. Alter `dash_products` table -- add new columns
 
 ```text
-Current:
-  All routes → DashboardLayout (Grammy sidebar + header)
-
-New:
-  /dashboard/* routes → DashboardLayout (Grammy sidebar)
-  /dash/* routes     → DashLayout (DASH sidebar + DASH header)
++ hsn_code (text, nullable)
++ purchase_price (numeric, default 0)
++ gst_percent (numeric, default 18)
++ nlc (numeric, default 0)  -- auto-calculated
++ dp (numeric, default 0)   -- auto-calculated
++ serial_prefix (text, nullable)
++ serial_next_number (integer, default 1)
++ gross_weight (numeric, nullable)
++ net_weight (numeric, nullable)
++ software_button_details (text, nullable)
++ branding_info (text, nullable)
++ qa_checklist (jsonb, nullable)
++ created_by (text, nullable)
++ updated_by (text, nullable)
 ```
 
-## Files to Create
+Also update the `dash_product_status` enum to add: `Development`, `Ready for Production` (currently only has Active/Discontinued).
 
-### 1. `src/components/Layout/DashLayout.tsx`
+Update the `dash_product_category` enum to add: `Accessories` (currently missing from the enum).
 
-A new full-page layout component for DASH brand workspace:
+### 2. Create `dash_product_documents` table
 
-- Own sidebar with DASH-specific navigation (Dashboard, Product Master, Factory Orders, Inventory, Sales Orders, Customers, Dispatch Tracking, Service & Warranty, Spare Parts, Reports, Settings)
-- "Back to Grammy ERP" button at top of sidebar linking to `/dashboard`
-- DASH-branded header with logo text, search bar (SKU/Serial/Customer placeholder), notifications dropdown, user profile dropdown
-- Breadcrumb: Grammy ERP > DASH > Current Page
-- Slight brand accent color via a CSS class on the root container (e.g., purple/blue tint on sidebar)
-- Collapsible sidebar (matching the existing pattern)
+```text
+id (uuid PK)
+product_id (uuid FK → dash_products)
+document_type (text: QSG, Box Design Artwork, MRP Label Artwork, BIS Documents, Rating Label, Product Images)
+file_name (text)
+file_url (text)
+version (integer, default 1)
+is_current (boolean, default true)
+uploaded_by (text, nullable)
+created_at (timestamptz)
+```
 
-### 2. `src/components/Navigation/DashSidebar.tsx`
+### 3. Create `dash_product_spares` junction table
 
-DASH-specific sidebar with these nav items:
+```text
+id (uuid PK)
+product_id (uuid FK → dash_products)
+spare_id (uuid FK → dash_spare_parts)
+created_at (timestamptz)
+UNIQUE(product_id, spare_id)
+```
 
-- ·       DASH Dashboard (`/dash`)
-  ·       Sales Orders (`/dash/sales`)
-  ·       Factory Orders (`/dash/factory-orders`)
-  ·       Inventory (`/dash/inventory`)
-  ·       Customers (`/dash/customers`)
-  ·       Dispatch Tracking (`/dash/tracking`)
-  ·       Product Master (`/dash/products`)
-  ·       Spare Parts (`/dash/spares`)
-  ·       Service & Warranty (`/dash/service`)
-  ·       Customer Registration
-  ·       Settings (placeholder)
-  ·       Divider + "Back to Grammy ERP" link at bottom
+### 4. Create `dash_product_compliance` table
 
-### 3. `src/components/Navigation/DashNavItem.tsx`
+```text
+id (uuid PK)
+product_id (uuid FK → dash_products)
+bis_certificate_number (text)
+bis_expiry_date (date)
+compliance_status (text: Active, Expired, Pending)
+notes (text, nullable)
+created_at (timestamptz)
+updated_at (timestamptz)
+```
 
-Simple nav item component for the DASH sidebar (reusable, simpler than the ERP NavItem since no sub-items needed at this level).
+### 5. Database function for NLC/DP auto-calculation trigger
 
-## Files to Modify
+A trigger on `dash_products` INSERT/UPDATE that recalculates:
+- NLC = (purchase_price * 1.10) * (1 + gst_percent/100)
+- DP = (NLC * 1.10) * (1 + gst_percent/100)
 
-### 4. All 9 DASH pages (`src/pages/dash/*.tsx`)
+### 6. RLS policies
 
-Replace `<DashboardLayout>` wrapper with `<DashLayout>` in:
+All new tables: authenticated users can SELECT, INSERT, UPDATE. Standard pattern matching existing DASH tables.
 
-- DashDashboard.tsx
-- DashProducts.tsx
-- DashFactoryOrders.tsx
-- DashInventory.tsx
-- DashSales.tsx
-- DashCustomers.tsx
-- DashService.tsx
-- DashSpares.tsx
-- DashOrderTracking.tsx
+## Frontend Changes
 
-### 5. `src/components/Navigation/navigationConfig.tsx`
+### Route
+Keep existing `/dash/products` route (no change needed -- the sidebar already points to it).
 
-Change the DASH entry from having sub-items to being a simple link (`/dash`) -- clicking it navigates to the DASH workspace rather than expanding a sub-menu.
+### Page Rebuild: `src/pages/dash/DashProducts.tsx`
 
-### 6. `src/index.css`
+Complete rewrite with a tabbed layout at the top-level:
 
-Add a small set of DASH brand CSS variables (accent color for sidebar) under a `.dash-workspace` class.
+**List View** (default): Product table with search/filter by name, model, EAN, category, status. "+ Add Product" button opens the detail view.
 
-## Scalability for Future Brands
+**Detail/Edit View** (when adding or clicking a product): Multi-tab form:
+- **[Basic Info]** -- Product name, Model number (combobox: dropdown from Grammy ERP `products` table + "Create New" option), Category, HSN Code, EAN/Barcode, MRP, SR No. Series (prefix + auto-increment display), Status, Description
+- **[Pricing]** -- Purchase Price input, GST% input, auto-calculated NLC and DP shown as read-only with formula displayed
+- **[Specs]** -- Technical Specs (textarea, rich text later), Gross Weight, Net Weight, QA Checklist (JSONB checklist builder), Software & Button Details, Branding Positioning & Size
+- **[Spares]** -- Multi-select from `dash_spare_parts`, inline "Add New Spare" option, shows linked spares with remove ability
+- **[Documents]** -- Upload sections for each document type (QSG, Box Design, MRP Label, BIS Docs, Rating Label, Product Images). Each shows version history, upload date, uploaded by. Upload to `dash-documents` storage bucket.
+- **[Compliance]** -- BIS Certificate Number, BIS Expiry Date, Compliance Status. Shows alert if expiry is within 30 days.
 
-The `DashLayout` pattern is generic enough to be duplicated for future brands (GOVO, etc.) by creating a `BrandLayout` wrapper that accepts brand config (name, logo, accent color, nav items). For now, we build it specifically for DASH and refactor to a generic `BrandWorkspaceLayout` when a second brand is added.
+**Save as Draft**: Status = "Development" on initial save.
 
-## Performance
+**Export PDF**: Button to generate product profile PDF using existing jspdf dependency.
 
-No full-page reload when switching between ERP and DASH. React Router handles the transition client-side. Each workspace simply renders a different layout component based on the route prefix -- the QueryClient and auth state persist across both workspaces.
+### New/Modified Files
 
-## Technical Details
+| File | Action |
+|------|--------|
+| `supabase/migrations/...` | New migration for schema changes |
+| `src/hooks/useDashProducts.ts` | Expand with pricing hooks, document CRUD, spares linking, compliance CRUD |
+| `src/pages/dash/DashProducts.tsx` | Complete rewrite -- list view + tabbed detail view |
+| `src/components/Dash/ProductBasicInfoTab.tsx` | Create -- Basic Info form tab |
+| `src/components/Dash/ProductPricingTab.tsx` | Create -- Pricing with auto-calc display |
+| `src/components/Dash/ProductSpecsTab.tsx` | Create -- Specifications form tab |
+| `src/components/Dash/ProductSparesTab.tsx` | Create -- Spares linking tab |
+| `src/components/Dash/ProductDocumentsTab.tsx` | Create -- Document upload/versioning tab |
+| `src/components/Dash/ProductComplianceTab.tsx` | Create -- Compliance & regulatory tab |
+| `src/components/Dash/ProductListView.tsx` | Create -- Main product list with filters |
 
-- The DASH sidebar uses the same collapse/expand pattern as the Grammy sidebar (local state, CSS transition)
-- Header reuses `UserProfileDropdown` component from the existing ERP
-- Breadcrumb is computed from `useLocation()` with a mapping of route segments to labels
-- The "Back to Grammy ERP" button uses `useNavigate()` to go to `/dashboard`
-- Brand accent is applied via Tailwind classes (e.g., `bg-slate-900` for DASH sidebar vs `bg-sidebar` for ERP)
+### Pricing Auto-Calculation Logic (Frontend)
+
+When user types purchase_price or gst_percent:
+```text
+NLC = (purchase_price × 1.10) × (1 + gst_percent / 100)
+DP  = (NLC × 1.10) × (1 + gst_percent / 100)
+```
+Display formula text below each field (non-editable). Values update live as user types. Saved to DB on submit. Backend trigger also recalculates as safety net.
+
+### Model Number Dropdown
+
+Uses a combobox that fetches from the Grammy ERP `products` table for existing model numbers. Includes a "+ Create New Model" option at the bottom. If selected, shows inline inputs for the new model and saves to the ERP `products` table first, then uses the model number in the DASH product.
+
+### Document Versioning
+
+When uploading a replacement document for the same type:
+1. Set `is_current = false` on the existing document record
+2. Insert new record with `version = previous_version + 1`, `is_current = true`
+3. Old files remain in storage for history
+
+### Implementation Order
+
+1. Database migration (alter table + 3 new tables + trigger + RLS)
+2. Expand hooks (`useDashProducts.ts`)
+3. Build all 6 tab components
+4. Build `ProductListView` component
+5. Rewrite `DashProducts.tsx` page with list/detail views
+
