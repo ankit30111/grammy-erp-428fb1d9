@@ -41,9 +41,7 @@ import Approvals from "./pages/Approvals";
 import PurchaseDiscrepancies from "./pages/PurchaseDiscrepancies";
 import UserManagement from "./pages/UserManagement";
 import { AuthGuard } from "@/components/Auth/AuthGuard";
-import { AuthProvider } from "@/contexts/AuthContext";
 import RnD from "./pages/RnD";
-import ResetPassword from "./pages/ResetPassword";
 import NPD from "./pages/rnd/NPD";
 import PreExisting from "./pages/rnd/PreExisting";
 import DashDashboard from "./pages/dash/DashDashboard";
@@ -67,11 +65,9 @@ function App() {
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <AuthProvider>
           <Routes>
             {/* Login page - no authentication required */}
             <Route path="/" element={<Auth />} />
-            <Route path="/reset-password" element={<ResetPassword />} />
 
             {/* All other routes require authentication */}
             <Route path="/dashboard" element={
@@ -298,7 +294,6 @@ function App() {
             {/* 404 Route */}
             <Route path="*" element={<NotFound />} />
           </Routes>
-          </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>

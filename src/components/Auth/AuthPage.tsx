@@ -1,66 +1,81 @@
-import { useEffect, useState, useCallback } from "react";
+
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import { SignInForm } from "./SignInForm";
-import { ForgotPasswordForm } from "./ForgotPasswordForm";
-import { BackendUnreachable } from "./BackendUnreachable";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
-import { checkSupabaseConnectivity, ConnectivityResult } from "@/utils/supabaseConnectivity";
 
 export function AuthPage() {
-  const { authStatus } = useAuth();
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
-  const [showForgotPassword, setShowForgotPassword] = useState(false);
-  const [connectivity, setConnectivity] = useState<ConnectivityResult | null>(null);
-  const [checkingConnectivity, setCheckingConnectivity] = useState(true);
-
-  const runCheck = useCallback(async () => {
-    setCheckingConnectivity(true);
-    const result = await checkSupabaseConnectivity();
-    setConnectivity(result);
-    setCheckingConnectivity(false);
-  }, []);
 
   useEffect(() => {
-    runCheck();
-  }, [runCheck]);
+    let mounted = true;
 
-  useEffect(() => {
-    if (authStatus === 'authenticated') {
-      navigate("/dashboard", { replace: true });
-    }
-  }, [authStatus, navigate]);
+    const checkAuth = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        console.log('Auth page - checking session:', session?.user?.id || 'no session');
+        
+        if (error) {
+          console.error('Auth check error:', error);
+          // Clear any invalid session data
+          if (error.message.includes('refresh_token_not_found') || 
+              error.message.includes('Invalid Refresh Token')) {
+            await supabase.auth.signOut();
+          }
+        } else if (session && mounted) {
+          navigate("/dashboard");
+          return;
+        }
+      } catch (error) {
+        console.error('Unexpected auth error:', error);
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    };
 
-  if (authStatus === 'authenticated') return null;
+    checkAuth();
 
-  // Still running first connectivity check
-  if (checkingConnectivity && !connectivity) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-muted/30">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        <span className="ml-2 text-muted-foreground">Checking backend connectivity…</span>
-      </div>
+    // Listen for auth changes with error handling
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (!mounted) return;
+
+        console.log(`Auth page - Auth state change: ${event}`, session?.user?.id || 'no session');
+        
+        if (event === 'SIGNED_IN' && session) {
+          navigate("/dashboard");
+        } else if (event === 'TOKEN_REFRESHED' && !session) {
+          console.log('Token refresh failed on auth page');
+          setLoading(false);
+        } else if (event === 'SIGNED_OUT') {
+          setLoading(false);
+        }
+      }
     );
-  }
 
-  // Backend unreachable
-  if (connectivity && !connectivity.reachable) {
-    return <BackendUnreachable result={connectivity} onRetry={runCheck} retrying={checkingConnectivity} />;
-  }
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, [navigate]);
 
-  // Auth still loading (backend is reachable)
-  if (authStatus === 'loading') {
+  if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-muted/30">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        <span className="ml-2 text-muted-foreground">Loading…</span>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <Loader2 className="h-8 w-8 animate-spin" />
+        <span className="ml-2">Loading...</span>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-muted/30 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
           <img
@@ -68,26 +83,20 @@ export function AuthPage() {
             src="https://grammyelectronics.com/wp-content/uploads/2021/04/grammy-logo@2x-1-1.png"
             alt="Grammy Electronics"
           />
-          <h2 className="mt-6 text-3xl font-extrabold text-foreground">
+          <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
             Welcome to Grammy Electronics
           </h2>
-          <p className="mt-2 text-sm text-muted-foreground">
+          <p className="mt-2 text-sm text-gray-600">
             Manufacturing Management System
           </p>
         </div>
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-center">
-              {showForgotPassword ? "Reset Password" : "Sign In"}
-            </CardTitle>
+            <CardTitle className="text-center">Sign In</CardTitle>
           </CardHeader>
           <CardContent>
-            {showForgotPassword ? (
-              <ForgotPasswordForm onBack={() => setShowForgotPassword(false)} />
-            ) : (
-              <SignInForm onForgotPassword={() => setShowForgotPassword(true)} />
-            )}
+            <SignInForm />
           </CardContent>
         </Card>
       </div>
