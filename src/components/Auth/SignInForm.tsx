@@ -19,9 +19,13 @@ export function SignInForm() {
     setLoading(true);
 
     try {
-      // Clear any existing session first to prevent conflicts (ignore errors)
-      try { await supabase.auth.signOut(); } catch (_) { /* ignore */ }
-      
+      // Clear stale local auth cache without making a network request
+      try {
+        localStorage.removeItem('supabase.auth.token');
+      } catch (_) {
+        // ignore localStorage access issues
+      }
+
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -32,6 +36,8 @@ export function SignInForm() {
         if (error.message.includes('refresh_token_not_found') || 
             error.message.includes('Invalid Refresh Token')) {
           toast.error("Session expired. Please sign in again.");
+        } else if (error.message.toLowerCase().includes('failed to fetch')) {
+          toast.error("Network error reaching Supabase. Please disable VPN/ad-blockers or try another network.");
         } else {
           toast.error(error.message);
         }
