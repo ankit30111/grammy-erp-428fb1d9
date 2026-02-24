@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { DashboardLayout } from "@/components/Layout/DashboardLayout";
+import { DashLayout } from "@/components/Layout/DashLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useDashProducts } from "@/hooks/useDashProducts";
 import { useDashSalesOrders } from "@/hooks/useDashSales";
@@ -36,7 +36,7 @@ export default function DashDashboard() {
   ];
 
   return (
-    <DashboardLayout>
+    <DashLayout>
       <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">DASH Brand Dashboard</h1>
@@ -165,6 +165,6 @@ export default function DashDashboard() {
           </CardContent>
         </Card>
       </div>
-    </DashboardLayout>
+    </DashLayout>
   );
 }

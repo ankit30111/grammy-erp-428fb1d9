@@ -88,6 +88,13 @@
   }
 }
 
+/* DASH brand workspace accent tokens */
+.dash-workspace {
+  --dash-sidebar-bg: 222 47% 11%;
+  --dash-accent: 263 70% 58%;
+  --dash-accent-light: 263 70% 90%;
+}
+
 @layer components {
   .nav-link {
     @apply flex items-center gap-3 px-3 py-2 rounded-md hover:bg-[#255d65] hover:bg-opacity-90 transition-colors;
