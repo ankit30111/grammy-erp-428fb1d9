@@ -825,63 +825,152 @@ export type Database = {
         }
         Relationships: []
       }
+      dash_customer_documents: {
+        Row: {
+          created_at: string
+          customer_id: string
+          document_type: string
+          file_name: string
+          file_url: string
+          id: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          customer_id: string
+          document_type: string
+          file_name: string
+          file_url: string
+          id?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string
+          document_type?: string
+          file_name?: string
+          file_url?: string
+          id?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dash_customer_documents_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "dash_customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dash_customers: {
         Row: {
           address: string | null
           assigned_sales_manager: string | null
+          bank_account_number: string | null
+          bank_ifsc: string | null
+          bank_name: string | null
+          cancelled_cheque_url: string | null
           city: string | null
           contact_person: string | null
           created_at: string
+          created_by: string | null
           credit_limit: number
           customer_name: string
           customer_type: Database["public"]["Enums"]["dash_customer_type"]
           email: string | null
+          godown_address: string | null
+          gst_certificate_url: string | null
           gst_number: string | null
           id: string
           is_active: boolean
+          msme_certificate_url: string | null
+          msme_number: string | null
+          notes: string | null
           outstanding_balance: number
+          owner_name: string | null
+          owner_phone: string | null
+          pan_number: string | null
           phone: string | null
+          pincode: string | null
+          primary_address: string | null
+          salesman_name: string | null
           state: string | null
           territory: string | null
           updated_at: string
+          updated_by: string | null
         }
         Insert: {
           address?: string | null
           assigned_sales_manager?: string | null
+          bank_account_number?: string | null
+          bank_ifsc?: string | null
+          bank_name?: string | null
+          cancelled_cheque_url?: string | null
           city?: string | null
           contact_person?: string | null
           created_at?: string
+          created_by?: string | null
           credit_limit?: number
           customer_name: string
           customer_type?: Database["public"]["Enums"]["dash_customer_type"]
           email?: string | null
+          godown_address?: string | null
+          gst_certificate_url?: string | null
           gst_number?: string | null
           id?: string
           is_active?: boolean
+          msme_certificate_url?: string | null
+          msme_number?: string | null
+          notes?: string | null
           outstanding_balance?: number
+          owner_name?: string | null
+          owner_phone?: string | null
+          pan_number?: string | null
           phone?: string | null
+          pincode?: string | null
+          primary_address?: string | null
+          salesman_name?: string | null
           state?: string | null
           territory?: string | null
           updated_at?: string
+          updated_by?: string | null
         }
         Update: {
           address?: string | null
           assigned_sales_manager?: string | null
+          bank_account_number?: string | null
+          bank_ifsc?: string | null
+          bank_name?: string | null
+          cancelled_cheque_url?: string | null
           city?: string | null
           contact_person?: string | null
           created_at?: string
+          created_by?: string | null
           credit_limit?: number
           customer_name?: string
           customer_type?: Database["public"]["Enums"]["dash_customer_type"]
           email?: string | null
+          godown_address?: string | null
+          gst_certificate_url?: string | null
           gst_number?: string | null
           id?: string
           is_active?: boolean
+          msme_certificate_url?: string | null
+          msme_number?: string | null
+          notes?: string | null
           outstanding_balance?: number
+          owner_name?: string | null
+          owner_phone?: string | null
+          pan_number?: string | null
           phone?: string | null
+          pincode?: string | null
+          primary_address?: string | null
+          salesman_name?: string | null
           state?: string | null
           territory?: string | null
           updated_at?: string
+          updated_by?: string | null
         }
         Relationships: []
       }
