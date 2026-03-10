@@ -1,79 +1,74 @@
 
 
-# Enhanced DASH Customer Management
+# Wire Up Product Master to Supabase
 
-## Current State
-The `dash_customers` table has basic fields: customer_name, customer_type, gst_number, credit_limit, contact_person, phone, email, address, city, state, territory, assigned_sales_manager, outstanding_balance, is_active. Missing many fields the user needs.
+## Current State vs Requirements
 
-## Database Changes (Migration)
+**Already exists in DB:**
+- `dash_products` — has most fields but with different names (e.g. `barcode_ean` vs user's `ean_barcode`, `serial_prefix` vs `serial_no_prefix`). Missing some user-requested columns.
+- `dash_product_documents` — exists but schema differs (has `is_current`/`version` as int; user wants `version` as text, `doc_type`, `doc_name`, `uploaded_by` as uuid FK).
+- `dash_product_compliance` — exists with basic BIS fields; user wants expanded schema with label locations, branding, other certifications.
+- `dash_product_spares` — junction table linking to `dash_spare_parts`. User wants a new `dash_product_spare_parts` table with inline part details.
 
-**Alter `dash_customers`** — add columns:
-- `owner_name` (text) — business owner
-- `owner_phone` (text)
-- `primary_address` (text) — registered/primary address
-- `godown_address` (text) — warehouse/godown address
-- `pincode` (text)
-- `pan_number` (text)
-- `msme_certificate_url` (text) — file URL in storage
-- `msme_number` (text)
-- `cancelled_cheque_url` (text) — file URL in storage
-- `gst_certificate_url` (text) — file URL in storage
-- `bank_name` (text)
-- `bank_account_number` (text)
-- `bank_ifsc` (text)
-- `salesman_name` (text) — field salesman assigned
-- `notes` (text)
-- `created_by` (text)
-- `updated_by` (text)
+**Does NOT exist — needs creation:**
+- `dash_product_specs` (power_output, frequency_response, connectivity[], dimensions, weight, color_variants[], box_contents[], custom_specs)
+- `dash_product_qc_checklist` (parameter_name, parameter_category, expected_value, is_mandatory, sort_order)
+- `dash_product_spare_parts` (part_name, part_number, unit_cost, selling_price, current_stock, reorder_level)
+- Storage bucket `dash-product-docs`
 
-**Create `dash_customer_documents` table** for versioned document uploads:
-- `id` (uuid PK)
-- `customer_id` (uuid FK → dash_customers)
-- `document_type` (text: GST Certificate, MSME Certificate, Cancelled Cheque, PAN Card, Other)
-- `file_name` (text)
-- `file_url` (text)
-- `uploaded_by` (text)
-- `created_at` (timestamptz)
+## Database Migration
 
-RLS: authenticated users can SELECT, INSERT, UPDATE, DELETE.
+### 1. Create `dash_product_specs`
+New table with product_id FK, audio/connectivity/dimensions/weight fields, array columns for connectivity/color_variants/box_contents, custom_specs JSONB. RLS enabled.
+
+### 2. Create `dash_product_qc_checklist`
+New table with product_id FK, parameter_name, parameter_category (enum-like text), expected_value, is_mandatory, sort_order. RLS enabled.
+
+### 3. Create `dash_product_spare_parts`
+New standalone table (not a junction table) with product_id FK, part_name, part_number (unique), description, unit_cost, selling_price, current_stock, reorder_level. RLS enabled.
+
+### 4. Alter `dash_product_compliance`
+Add columns: `rating_label_location_product`, `rating_label_location_box`, `mrp_label_location_box`, `brand_logo_location`, `other_certifications` (jsonb), `compliance_notes`. Rename-safe approach: add new columns alongside existing ones.
+
+### 5. Alter `dash_product_documents`
+Add `doc_name` (text), `doc_type` (text) columns. Keep existing columns for backward compatibility.
+
+### 6. Create `dash-product-docs` storage bucket
+Public bucket for document uploads, with RLS policy for authenticated uploads.
+
+### 7. RLS Policies
+All new tables: authenticated users can SELECT. For INSERT/UPDATE/DELETE — since there's no `user_profiles` table with roles in this project (roles are on `user_accounts`), use authenticated access for all operations (matching existing DASH table patterns).
 
 ## Frontend Changes
 
-### Rewrite `src/pages/dash/DashCustomers.tsx`
-Replace simple dialog with a **list + detail view** pattern (same as Product Master):
+### `src/hooks/useDashProducts.ts`
+- Add `useDashProductSpecs` + `useDashProductSpecsMutations` hooks (CRUD for `dash_product_specs`)
+- Add `useDashProductQCChecklist` + mutations hooks (CRUD for `dash_product_qc_checklist`)
+- Add `useDashProductSpareParts` + mutations hooks (CRUD for `dash_product_spare_parts`)
+- Update compliance hooks to handle new columns
+- Update document hooks to use `dash-product-docs` bucket and new columns
 
-**List View**: Table with search by name/GST/phone/territory, filter by type & status. Columns: Name, Type, GST, Territory, Credit Limit, Outstanding, Salesman, Status, Actions.
+### `src/components/Dash/ProductSpecsTab.tsx`
+Rewrite to use `dash_product_specs` table instead of inline form fields. Add inputs for power_output, frequency_response, connectivity (multi-select/tag input), dimensions (L/W/H), weight, color_variants, box_contents, country_of_origin, custom_specs key-value editor.
 
-**Detail/Edit View** (tabbed form when adding/editing):
+### `src/components/Dash/ProductSparesTab.tsx`
+Rewrite to use `dash_product_spare_parts` table. Show inline add form for new spare parts with part_name, part_number, costs, stock. Table view with edit/delete.
 
-**[Basic Info]** tab:
-- Customer Name, Customer Type (dropdown), Owner Name, Owner Phone, Contact Person, Phone, Email, Territory, Salesman Name, Assigned Sales Manager, Credit Limit, Status (Active/Inactive)
+### `src/components/Dash/ProductDocumentsTab.tsx`
+Update DOCUMENT_TYPES to match new doc_type values (user_manual, service_manual, firmware, box_design, rating_label, mrp_label, bis_certificate, branding_guide, other). Update upload to use `dash-product-docs` bucket.
 
-**[Address]** tab:
-- Primary Address, City, State, Pincode, Godown Address
+### `src/components/Dash/ProductComplianceTab.tsx`
+Add fields for rating_label_location_product, rating_label_location_box, mrp_label_location_box, brand_logo_location, other_certifications, compliance_notes.
 
-**[Documents & KYC]** tab:
-- GST Number + GST Certificate upload
-- PAN Number
-- MSME Number + MSME Certificate upload
-- Cancelled Cheque upload
-- Bank Name, Account Number, IFSC
-- Each upload shows file name, upload date, with replace capability
+### `src/components/Dash/ProductBasicInfoTab.tsx`
+Minor — no structural changes needed, field names already map correctly to existing `dash_products` columns.
 
-**[Notes & History]** tab:
-- Notes textarea
-- Outstanding balance (read-only)
-- Created by / Updated by / timestamps
+### `src/pages/dash/DashProducts.tsx`
+Update form defaults and save logic to handle specs/QC as separate table saves (after product save).
 
-### Files to create/modify:
-| File | Action |
-|------|--------|
-| Migration | Alter dash_customers + create dash_customer_documents |
-| `src/hooks/useDashCustomers.ts` | Expand with document hooks |
-| `src/pages/dash/DashCustomers.tsx` | Complete rewrite with list+detail tabbed view |
-| `src/components/Dash/CustomerBasicInfoTab.tsx` | Create |
-| `src/components/Dash/CustomerAddressTab.tsx` | Create |
-| `src/components/Dash/CustomerDocumentsTab.tsx` | Create — uploads to `dash-documents` bucket |
-| `src/components/Dash/CustomerNotesTab.tsx` | Create |
-| `src/components/Dash/CustomerListView.tsx` | Create — searchable/filterable list |
+## Implementation Order
+1. Database migration (3 new tables + alter 2 existing + storage bucket + RLS)
+2. Expand hooks for new tables
+3. Rewrite Specs, Spares, Documents, Compliance tab components
+4. Update DashProducts page save flow
 
