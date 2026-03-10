@@ -101,15 +101,15 @@ export const useDashProductDocumentMutations = () => {
 
       const nextVersion = (existing?.[0]?.version || 0) + 1;
 
-      // Upload file
+      // Upload file to dash-product-docs bucket
       const filePath = `${productId}/${documentType}/${Date.now()}_${file.name}`;
       const { error: uploadError } = await supabase.storage
-        .from("dash-documents")
+        .from("dash-product-docs")
         .upload(filePath, file);
       if (uploadError) throw uploadError;
 
       const { data: urlData } = supabase.storage
-        .from("dash-documents")
+        .from("dash-product-docs")
         .getPublicUrl(filePath);
 
       // Insert record
@@ -118,6 +118,8 @@ export const useDashProductDocumentMutations = () => {
         .insert({
           product_id: productId,
           document_type: documentType,
+          doc_type: documentType,
+          doc_name: file.name,
           file_name: file.name,
           file_url: urlData.publicUrl,
           version: nextVersion,
@@ -139,7 +141,7 @@ export const useDashProductDocumentMutations = () => {
   return { uploadDocument };
 };
 
-// Spares hooks
+// Spares hooks (legacy junction table)
 export const useDashProductSpares = (productId: string | undefined) => {
   return useQuery({
     queryKey: ["dash-product-spares", productId],
@@ -191,6 +193,192 @@ export const useDashProductSpareMutations = () => {
   });
 
   return { linkSpare, unlinkSpare };
+};
+
+// Product Spare Parts (new standalone table)
+export const useDashProductSpareParts = (productId: string | undefined) => {
+  return useQuery({
+    queryKey: ["dash-product-spare-parts", productId],
+    enabled: !!productId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("dash_product_spare_parts")
+        .select("*")
+        .eq("product_id", productId!)
+        .order("part_name");
+      if (error) throw error;
+      return data;
+    },
+  });
+};
+
+export const useDashProductSparePartsMutations = () => {
+  const queryClient = useQueryClient();
+
+  const addSparePart = useMutation({
+    mutationFn: async (part: Record<string, unknown>) => {
+      const { data, error } = await supabase
+        .from("dash_product_spare_parts")
+        .insert(part as any)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (_, vars) => {
+      queryClient.invalidateQueries({ queryKey: ["dash-product-spare-parts"] });
+      toast.success("Spare part added");
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
+  const updateSparePart = useMutation({
+    mutationFn: async ({ id, ...updates }: { id: string } & Record<string, unknown>) => {
+      const { data, error } = await supabase
+        .from("dash_product_spare_parts")
+        .update(updates as any)
+        .eq("id", id)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["dash-product-spare-parts"] });
+      toast.success("Spare part updated");
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
+  const deleteSparePart = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("dash_product_spare_parts")
+        .delete()
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["dash-product-spare-parts"] });
+      toast.success("Spare part removed");
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
+  return { addSparePart, updateSparePart, deleteSparePart };
+};
+
+// Product Specs hooks
+export const useDashProductSpecs = (productId: string | undefined) => {
+  return useQuery({
+    queryKey: ["dash-product-specs", productId],
+    enabled: !!productId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("dash_product_specs")
+        .select("*")
+        .eq("product_id", productId!)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+};
+
+export const useDashProductSpecsMutations = () => {
+  const queryClient = useQueryClient();
+
+  const upsertSpecs = useMutation({
+    mutationFn: async (specs: Record<string, unknown>) => {
+      const productId = specs.product_id as string;
+      // Check if exists
+      const { data: existing } = await supabase
+        .from("dash_product_specs")
+        .select("id")
+        .eq("product_id", productId)
+        .maybeSingle();
+
+      if (existing) {
+        const { data, error } = await supabase
+          .from("dash_product_specs")
+          .update(specs as any)
+          .eq("id", existing.id)
+          .select()
+          .single();
+        if (error) throw error;
+        return data;
+      } else {
+        const { data, error } = await supabase
+          .from("dash_product_specs")
+          .insert(specs as any)
+          .select()
+          .single();
+        if (error) throw error;
+        return data;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["dash-product-specs"] });
+      toast.success("Specs saved");
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
+  return { upsertSpecs };
+};
+
+// QC Checklist hooks
+export const useDashProductQCChecklist = (productId: string | undefined) => {
+  return useQuery({
+    queryKey: ["dash-product-qc-checklist", productId],
+    enabled: !!productId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("dash_product_qc_checklist")
+        .select("*")
+        .eq("product_id", productId!)
+        .order("sort_order")
+        .order("parameter_name");
+      if (error) throw error;
+      return data;
+    },
+  });
+};
+
+export const useDashProductQCChecklistMutations = () => {
+  const queryClient = useQueryClient();
+
+  const addItem = useMutation({
+    mutationFn: async (item: Record<string, unknown>) => {
+      const { data, error } = await supabase
+        .from("dash_product_qc_checklist")
+        .insert(item as any)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["dash-product-qc-checklist"] });
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
+  const deleteItem = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("dash_product_qc_checklist")
+        .delete()
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["dash-product-qc-checklist"] });
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
+  return { addItem, deleteItem };
 };
 
 // Compliance hooks

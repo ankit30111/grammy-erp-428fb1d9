@@ -1238,31 +1238,49 @@ export type Database = {
         Row: {
           bis_certificate_number: string | null
           bis_expiry_date: string | null
+          brand_logo_location: string | null
+          compliance_notes: string | null
           compliance_status: string
           created_at: string
           id: string
+          mrp_label_location_box: string | null
           notes: string | null
+          other_certifications: Json | null
           product_id: string
+          rating_label_location_box: string | null
+          rating_label_location_product: string | null
           updated_at: string
         }
         Insert: {
           bis_certificate_number?: string | null
           bis_expiry_date?: string | null
+          brand_logo_location?: string | null
+          compliance_notes?: string | null
           compliance_status?: string
           created_at?: string
           id?: string
+          mrp_label_location_box?: string | null
           notes?: string | null
+          other_certifications?: Json | null
           product_id: string
+          rating_label_location_box?: string | null
+          rating_label_location_product?: string | null
           updated_at?: string
         }
         Update: {
           bis_certificate_number?: string | null
           bis_expiry_date?: string | null
+          brand_logo_location?: string | null
+          compliance_notes?: string | null
           compliance_status?: string
           created_at?: string
           id?: string
+          mrp_label_location_box?: string | null
           notes?: string | null
+          other_certifications?: Json | null
           product_id?: string
+          rating_label_location_box?: string | null
+          rating_label_location_product?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -1278,6 +1296,8 @@ export type Database = {
       dash_product_documents: {
         Row: {
           created_at: string
+          doc_name: string | null
+          doc_type: string | null
           document_type: string
           file_name: string
           file_url: string
@@ -1289,6 +1309,8 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          doc_name?: string | null
+          doc_type?: string | null
           document_type: string
           file_name: string
           file_url: string
@@ -1300,6 +1322,8 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          doc_name?: string | null
+          doc_type?: string | null
           document_type?: string
           file_name?: string
           file_url?: string
@@ -1312,6 +1336,97 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "dash_product_documents_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "dash_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dash_product_qc_checklist: {
+        Row: {
+          created_at: string | null
+          expected_value: string | null
+          id: string
+          is_mandatory: boolean | null
+          parameter_category: string | null
+          parameter_name: string
+          product_id: string
+          sort_order: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          expected_value?: string | null
+          id?: string
+          is_mandatory?: boolean | null
+          parameter_category?: string | null
+          parameter_name: string
+          product_id: string
+          sort_order?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          expected_value?: string | null
+          id?: string
+          is_mandatory?: boolean | null
+          parameter_category?: string | null
+          parameter_name?: string
+          product_id?: string
+          sort_order?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dash_product_qc_checklist_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "dash_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dash_product_spare_parts: {
+        Row: {
+          created_at: string | null
+          current_stock: number | null
+          description: string | null
+          id: string
+          part_name: string
+          part_number: string
+          product_id: string
+          reorder_level: number | null
+          selling_price: number | null
+          unit_cost: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          current_stock?: number | null
+          description?: string | null
+          id?: string
+          part_name: string
+          part_number: string
+          product_id: string
+          reorder_level?: number | null
+          selling_price?: number | null
+          unit_cost?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          current_stock?: number | null
+          description?: string | null
+          id?: string
+          part_name?: string
+          part_number?: string
+          product_id?: string
+          reorder_level?: number | null
+          selling_price?: number | null
+          unit_cost?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dash_product_spare_parts_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "dash_products"
@@ -1351,6 +1466,68 @@ export type Database = {
             columns: ["spare_id"]
             isOneToOne: false
             referencedRelation: "dash_spare_parts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dash_product_specs: {
+        Row: {
+          box_contents: string[] | null
+          color_variants: string[] | null
+          connectivity: string[] | null
+          country_of_origin: string | null
+          created_at: string | null
+          custom_specs: Json | null
+          dimensions_h: number | null
+          dimensions_l: number | null
+          dimensions_w: number | null
+          frequency_response: string | null
+          id: string
+          power_output: string | null
+          product_id: string
+          updated_at: string | null
+          weight_kg: number | null
+        }
+        Insert: {
+          box_contents?: string[] | null
+          color_variants?: string[] | null
+          connectivity?: string[] | null
+          country_of_origin?: string | null
+          created_at?: string | null
+          custom_specs?: Json | null
+          dimensions_h?: number | null
+          dimensions_l?: number | null
+          dimensions_w?: number | null
+          frequency_response?: string | null
+          id?: string
+          power_output?: string | null
+          product_id: string
+          updated_at?: string | null
+          weight_kg?: number | null
+        }
+        Update: {
+          box_contents?: string[] | null
+          color_variants?: string[] | null
+          connectivity?: string[] | null
+          country_of_origin?: string | null
+          created_at?: string | null
+          custom_specs?: Json | null
+          dimensions_h?: number | null
+          dimensions_l?: number | null
+          dimensions_w?: number | null
+          frequency_response?: string | null
+          id?: string
+          power_output?: string | null
+          product_id?: string
+          updated_at?: string | null
+          weight_kg?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dash_product_specs_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: true
+            referencedRelation: "dash_products"
             referencedColumns: ["id"]
           },
         ]
