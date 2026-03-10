@@ -73,22 +73,17 @@ export default function DashProducts() {
     const payload: any = { ...form, model_number: modelNumber };
     delete payload.new_model_number;
 
-    // Parse technical_specs if string
     if (typeof payload.technical_specs === "string" && payload.technical_specs.trim()) {
       try { payload.technical_specs = JSON.parse(payload.technical_specs); } catch { /* keep as string in jsonb */ }
     }
 
     if (selectedProduct) {
       updateProduct.mutate({ id: selectedProduct.id, ...payload }, {
-        onSuccess: (data) => {
-          setSelectedProduct(data);
-        },
+        onSuccess: (data) => { setSelectedProduct(data); },
       });
     } else {
       addProduct.mutate(payload, {
-        onSuccess: (data) => {
-          setSelectedProduct(data);
-        },
+        onSuccess: (data) => { setSelectedProduct(data); },
       });
     }
   };
@@ -160,7 +155,7 @@ export default function DashProducts() {
                     <ProductPricingTab form={form} setForm={setForm} />
                   </TabsContent>
                   <TabsContent value="specs">
-                    <ProductSpecsTab form={form} setForm={setForm} />
+                    <ProductSpecsTab form={form} setForm={setForm} productId={selectedProduct?.id} />
                   </TabsContent>
                   <TabsContent value="spares">
                     <ProductSparesTab productId={selectedProduct?.id} />
