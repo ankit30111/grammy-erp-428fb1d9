@@ -5269,6 +5269,7 @@ export type Database = {
       list_user_accounts_for_admin: {
         Args: never
         Returns: {
+          all_department_names: string
           created_at: string
           department_id: string
           department_name: string
@@ -5280,6 +5281,18 @@ export type Database = {
           updated_at: string
           username: string
         }[]
+      }
+      get_user_departments: {
+        Args: { p_user_id: string }
+        Returns: {
+          department_id: string
+          name: string
+          is_primary: boolean
+        }[]
+      }
+      set_user_departments: {
+        Args: { p_user_id: string; p_department_ids: string[] }
+        Returns: undefined
       }
       log_audit_event: {
         Args: {

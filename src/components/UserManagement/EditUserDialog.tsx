@@ -27,9 +27,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { Loader2, Trash2, Eye, EyeOff, RefreshCw } from "lucide-react";
+import { Loader2, Trash2, Eye, EyeOff, RefreshCw, Star } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface UserAccount {
@@ -62,6 +63,12 @@ export function EditUserDialog({ user, open, onOpenChange, onUserUpdated }: Edit
   const [loading, setLoading] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [departments, setDepartments] = useState<Department[]>([]);
+  // Set of selected department IDs. A user may belong to 0..N departments.
+  const [selectedDeptIds, setSelectedDeptIds] = useState<Set<string>>(new Set());
+  // ID of the "primary" department — shown in the Manage Users table's
+  // single-department column and stored in user_accounts.department_id.
+  // Must be one of selectedDeptIds (or empty if none are selected).
+  const [primaryDeptId, setPrimaryDeptId] = useState<string>("");
   const [showPasswordSection, setShowPasswordSection] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
@@ -69,7 +76,6 @@ export function EditUserDialog({ user, open, onOpenChange, onUserUpdated }: Edit
     email: "",
     role: "user",
     is_active: true,
-    department_id: "",
     password: "",
   });
 
@@ -80,12 +86,16 @@ export function EditUserDialog({ user, open, onOpenChange, onUserUpdated }: Edit
         email: user.email || "",
         role: user.role || "user",
         is_active: user.is_active,
-        department_id: user.department_id || "",
         password: "",
       });
       setShowPasswordSection(false);
       setShowPassword(false);
-      fetchDepartments();
+      // Reset selection so stale state from the previous user never bleeds
+      // into the next dialog open.
+      setSelectedDeptIds(new Set());
+      setPrimaryDeptId("");
+      void fetchDepartments();
+      void fetchUserDepartments(user.id);
     }
   }, [user, open]);
 
@@ -104,6 +114,46 @@ export function EditUserDialog({ user, open, onOpenChange, onUserUpdated }: Edit
     }
   };
 
+  const fetchUserDepartments = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .rpc("get_user_departments", { p_user_id: userId });
+
+      if (error) throw error;
+
+      const ids = new Set<string>(
+        (data || []).map((row: { department_id: string }) => row.department_id),
+      );
+      const primary = (data || []).find(
+        (row: { is_primary: boolean }) => row.is_primary,
+      )?.department_id as string | undefined;
+
+      setSelectedDeptIds(ids);
+      setPrimaryDeptId(primary ?? (ids.size > 0 ? Array.from(ids)[0] : ""));
+    } catch (error) {
+      console.error("Error fetching user departments:", error);
+      toast.error("Failed to load the user's current departments");
+    }
+  };
+
+  const toggleDepartment = (id: string, checked: boolean) => {
+    const next = new Set(selectedDeptIds);
+    if (checked) {
+      next.add(id);
+      // If nothing was primary yet, make this the primary.
+      if (!primaryDeptId) setPrimaryDeptId(id);
+    } else {
+      next.delete(id);
+      // If the primary was just unchecked, fall back to the first remaining
+      // selection (or clear it if none remain).
+      if (primaryDeptId === id) {
+        const fallback = Array.from(next)[0] ?? "";
+        setPrimaryDeptId(fallback);
+      }
+    }
+    setSelectedDeptIds(next);
+  };
+
   const generatePassword = () => {
     const length = 12;
     const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
@@ -117,10 +167,18 @@ export function EditUserDialog({ user, open, onOpenChange, onUserUpdated }: Edit
   const handleSave = async () => {
     if (!user) return;
 
+    // Basic client-side sanity: if anything is selected, a primary must be set.
+    if (selectedDeptIds.size > 0 && !primaryDeptId) {
+      toast.error("Pick a primary department (click the star)");
+      return;
+    }
+
     try {
       setLoading(true);
-      
-      // Update user_accounts table
+
+      // Update user_accounts for non-department fields. department_id is
+      // managed by the set_user_departments RPC below so we don't write it
+      // from two places.
       const { error: updateError } = await supabase
         .from("user_accounts")
         .update({
@@ -128,11 +186,28 @@ export function EditUserDialog({ user, open, onOpenChange, onUserUpdated }: Edit
           email: formData.email,
           role: formData.role,
           is_active: formData.is_active,
-          department_id: formData.department_id || null,
         })
         .eq("id", user.id);
 
       if (updateError) throw updateError;
+
+      // Replace the user_departments rows atomically via the admin-only RPC.
+      // The array is ordered so the primary is first — the RPC uses ids[1]
+      // (SQL 1-indexed) as the legacy user_accounts.department_id.
+      const orderedIds: string[] = primaryDeptId
+        ? [primaryDeptId, ...Array.from(selectedDeptIds).filter((id) => id !== primaryDeptId)]
+        : [];
+
+      const { error: deptError } = await supabase.rpc("set_user_departments", {
+        p_user_id: user.id,
+        p_department_ids: orderedIds,
+      });
+
+      if (deptError) {
+        console.error("Error saving departments:", deptError);
+        toast.error("Failed to save department assignments: " + deptError.message);
+        return;
+      }
 
       // Update password if provided
       if (formData.password) {
@@ -240,23 +315,64 @@ export function EditUserDialog({ user, open, onOpenChange, onUserUpdated }: Edit
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="department">Department</Label>
-              <Select
-                value={formData.department_id || "unassigned"}
-                onValueChange={(value) => setFormData({ ...formData, department_id: value === "unassigned" ? "" : value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select department" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="unassigned">Not assigned</SelectItem>
-                  {departments.map((dept) => (
-                    <SelectItem key={dept.id} value={dept.id}>
-                      {dept.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="flex items-center justify-between">
+                <Label>Departments</Label>
+                <span className="text-xs text-muted-foreground">
+                  {selectedDeptIds.size} selected
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Tick every department this user should belong to. Click the star to
+                mark one as the primary (shown in the user list).
+              </p>
+              <div className="max-h-48 overflow-y-auto rounded-md border divide-y">
+                {departments.length === 0 ? (
+                  <div className="p-3 text-sm text-muted-foreground">
+                    No departments defined yet.
+                  </div>
+                ) : (
+                  departments.map((dept) => {
+                    const checked = selectedDeptIds.has(dept.id);
+                    const isPrimary = primaryDeptId === dept.id;
+                    return (
+                      <div
+                        key={dept.id}
+                        className="flex items-center gap-2 px-3 py-2"
+                      >
+                        <Checkbox
+                          id={`dept-${dept.id}`}
+                          checked={checked}
+                          onCheckedChange={(val) =>
+                            toggleDepartment(dept.id, val === true)
+                          }
+                        />
+                        <Label
+                          htmlFor={`dept-${dept.id}`}
+                          className="flex-1 cursor-pointer text-sm font-normal"
+                        >
+                          {dept.name}
+                        </Label>
+                        {checked && (
+                          <Button
+                            type="button"
+                            variant={isPrimary ? "default" : "ghost"}
+                            size="sm"
+                            className="h-7 px-2"
+                            onClick={() => setPrimaryDeptId(dept.id)}
+                            title={isPrimary ? "Primary department" : "Make primary"}
+                          >
+                            <Star
+                              className={`h-3.5 w-3.5 ${
+                                isPrimary ? "fill-current" : ""
+                              }`}
+                            />
+                          </Button>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
             </div>
 
             <div className="flex items-center space-x-2">

@@ -24,9 +24,12 @@ interface UserAccount {
   is_active: boolean;
   created_at: string;
   department_id?: string;
+  /** Legacy single-department display (the "primary"). */
   departments?: {
     name: string;
   };
+  /** Comma-joined list of every department the user belongs to. */
+  all_department_names?: string;
 }
 
 export interface UsersListRef {
@@ -59,8 +62,9 @@ export const UsersList = forwardRef<UsersListRef>((props, ref) => {
         return;
       }
 
-      // RPC returns a flat shape with department_name; reshape so the
-      // existing render code (which reads `departments.name`) keeps working.
+      // RPC returns a flat shape with department_name + all_department_names;
+      // reshape so the existing render code (which reads `departments.name`)
+      // keeps working while the new multi-department list is also available.
       const reshaped = (data || []).map((u: any) => ({
         id: u.id,
         email: u.email,
@@ -70,6 +74,7 @@ export const UsersList = forwardRef<UsersListRef>((props, ref) => {
         created_at: u.created_at,
         department_id: u.department_id ?? undefined,
         departments: u.department_name ? { name: u.department_name } : undefined,
+        all_department_names: u.all_department_names ?? "",
       }));
       setUsers(reshaped);
     } catch (error) {
@@ -168,7 +173,7 @@ export const UsersList = forwardRef<UsersListRef>((props, ref) => {
                 <TableRow>
                   <TableHead>User Details</TableHead>
                   <TableHead>Role</TableHead>
-                  <TableHead>Department</TableHead>
+                  <TableHead>Departments</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Created</TableHead>
                   <TableHead>Actions</TableHead>
@@ -194,7 +199,19 @@ export const UsersList = forwardRef<UsersListRef>((props, ref) => {
                       {getRoleBadge(user.role)}
                     </TableCell>
                     <TableCell>
-                      {user.departments?.name || (
+                      {user.all_department_names ? (
+                        <div className="flex flex-col">
+                          <span className="text-sm">
+                            {user.all_department_names}
+                          </span>
+                          {user.departments?.name &&
+                            user.all_department_names.includes(",") && (
+                              <span className="text-xs text-muted-foreground">
+                                Primary: {user.departments.name}
+                              </span>
+                            )}
+                        </div>
+                      ) : (
                         <span className="text-muted-foreground">Not assigned</span>
                       )}
                     </TableCell>
