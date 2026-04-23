@@ -12,6 +12,7 @@ import { format } from "date-fns";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import CAPAUploadDialog from "@/components/quality/CAPAUploadDialog";
+import { SignedStorageLink } from "@/components/ui/signed-storage-link";
 
 const CAPA = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -408,12 +409,15 @@ const CAPA = () => {
                           </TableCell>
                           <TableCell>
                             {capa.capa_document_url ? (
-                              <Button variant="outline" size="sm" asChild>
-                                <a href={`https://oacdhvmpkuadlyvvvbpq.supabase.co/storage/v1/object/public/capa-documents/${capa.capa_document_url}`} target="_blank" rel="noopener noreferrer">
-                                  <FileText className="h-3 w-3 mr-1" />
-                                  View
-                                </a>
-                              </Button>
+                              <SignedStorageLink
+                                bucket="capa-documents"
+                                path={capa.capa_document_url}
+                                variant="outline"
+                                size="sm"
+                              >
+                                <FileText className="h-3 w-3 mr-1" />
+                                View
+                              </SignedStorageLink>
                             ) : (
                               <span className="text-muted-foreground text-sm">No document</span>
                             )}
@@ -421,8 +425,8 @@ const CAPA = () => {
                           <TableCell>
                             <div className="flex gap-1">
                               {capa.capa_status === 'AWAITED' && (
-                                <Button 
-                                  variant="outline" 
+                                <Button
+                                  variant="outline"
                                   size="sm"
                                   onClick={() => handleCAPAUpload(capa.id, 'vendor', {
                                     materialName: capa.grn_items?.raw_materials?.name,
@@ -516,12 +520,15 @@ const CAPA = () => {
                                   </Button>
                                 )}
                                 {rcaReport && rcaReport.rca_file_url && (
-                                  <Button variant="outline" size="sm" asChild>
-                                    <a href={`https://oacdhvmpkuadlyvvvbpq.supabase.co/storage/v1/object/public/capa-documents/${rcaReport.rca_file_url}`} target="_blank" rel="noopener noreferrer">
-                                      <FileText className="h-3 w-3 mr-1" />
-                                      View RCA
-                                    </a>
-                                  </Button>
+                                  <SignedStorageLink
+                                    bucket="capa-documents"
+                                    path={rcaReport.rca_file_url}
+                                    variant="outline"
+                                    size="sm"
+                                  >
+                                    <FileText className="h-3 w-3 mr-1" />
+                                    View RCA
+                                  </SignedStorageLink>
                                 )}
                                 <Button variant="outline" size="sm">
                                   View Details
@@ -583,20 +590,26 @@ const CAPA = () => {
                           <TableCell>
                             <div className="flex gap-1">
                               {part.rca_document_url && (
-                                <Button variant="outline" size="sm" asChild>
-                                  <a href={part.rca_document_url} target="_blank" rel="noopener noreferrer">
-                                    <FileText className="h-3 w-3 mr-1" />
-                                    RCA
-                                  </a>
-                                </Button>
+                                <SignedStorageLink
+                                  bucket="capa-documents"
+                                  path={part.rca_document_url}
+                                  variant="outline"
+                                  size="sm"
+                                >
+                                  <FileText className="h-3 w-3 mr-1" />
+                                  RCA
+                                </SignedStorageLink>
                               )}
                               {part.capa_document_url && (
-                                <Button variant="outline" size="sm" asChild>
-                                  <a href={part.capa_document_url} target="_blank" rel="noopener noreferrer">
-                                    <FileText className="h-3 w-3 mr-1" />
-                                    CAPA
-                                  </a>
-                                </Button>
+                                <SignedStorageLink
+                                  bucket="capa-documents"
+                                  path={part.capa_document_url}
+                                  variant="outline"
+                                  size="sm"
+                                >
+                                  <FileText className="h-3 w-3 mr-1" />
+                                  CAPA
+                                </SignedStorageLink>
                               )}
                             </div>
                           </TableCell>
@@ -682,12 +695,15 @@ const CAPA = () => {
                           </TableCell>
                           <TableCell>
                             {capa.capa_document_url ? (
-                              <Button variant="outline" size="sm" asChild>
-                                <a href={`https://oacdhvmpkuadlyvvvbpq.supabase.co/storage/v1/object/public/capa-documents/${capa.capa_document_url}`} target="_blank" rel="noopener noreferrer">
-                                  <FileText className="h-3 w-3 mr-1" />
-                                  View
-                                </a>
-                              </Button>
+                              <SignedStorageLink
+                                bucket="capa-documents"
+                                path={capa.capa_document_url}
+                                variant="outline"
+                                size="sm"
+                              >
+                                <FileText className="h-3 w-3 mr-1" />
+                                View
+                              </SignedStorageLink>
                             ) : (
                               <span className="text-muted-foreground text-sm">No document</span>
                             )}
@@ -695,8 +711,8 @@ const CAPA = () => {
                           <TableCell>
                             <div className="flex gap-1">
                               {capa.capa_status === 'AWAITED' && (
-                                <Button 
-                                  variant="outline" 
+                                <Button
+                                  variant="outline"
                                   size="sm"
                                   onClick={() => handleCAPAUpload(capa.id, 'production', {
                                     productionOrder: capa.production_orders?.voucher_number

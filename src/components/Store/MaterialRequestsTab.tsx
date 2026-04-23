@@ -12,6 +12,8 @@ import { format } from "date-fns";
 import { CheckCircle, XCircle, ArrowLeftRight, Package, RefreshCw, Send, Clock, ThumbsUp, ThumbsDown } from "lucide-react";
 import { toast } from "sonner";
 import { useInventoryMutations } from "@/hooks/inventory";
+import { isPermissionError, formatPermissionMessage, describeError } from "@/lib/permissions";
+import { AccessDenied } from "@/components/Auth/AccessDenied";
 
 interface SendingQuantities {
   [requestId: string]: number;
@@ -25,11 +27,9 @@ const MaterialRequestsTab = memo(() => {
   const [sendingQuantities, setSendingQuantities] = useState<SendingQuantities>({});
   const [activeTab, setActiveTab] = useState("all");
 
-  const { data: materialRequests = [], isLoading, refetch } = useQuery({
+  const { data: materialRequests = [], isLoading, refetch, error: requestsError } = useQuery({
     queryKey: ["material-requests"],
     queryFn: async () => {
-      console.log("🔍 Fetching material requests from production...");
-      
       const { data, error } = await supabase
         .from("material_requests")
         .select(`
@@ -58,16 +58,12 @@ const MaterialRequestsTab = memo(() => {
         `)
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error("❌ Error fetching material requests:", error);
-        throw error;
-      }
-      
-      console.log("📋 Material requests found:", data?.length || 0);
+      if (error) throw error;
       return data || [];
     },
     refetchInterval: 10000,
     staleTime: 5000,
+    retry: (failureCount, error) => !isPermissionError(error) && failureCount < 2,
   });
 
   // Fetch inventory data for available quantities
@@ -114,26 +110,24 @@ const MaterialRequestsTab = memo(() => {
         .select()
         .single();
 
-      if (error) {
-        console.error("❌ Database error:", error);
-        throw new Error(`Database error: ${error.message}`);
-      }
-
-      console.log("✅ Request updated successfully:", data);
+      if (error) throw error;
       return data;
     },
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["material-requests"] });
-      
+
       toast.success(
-        variables.action === 'APPROVE' 
-          ? `Material request approved - ${variables.approvedQuantity} units` 
+        variables.action === 'APPROVE'
+          ? `Material request approved - ${variables.approvedQuantity} units`
           : "Material request rejected"
       );
     },
-    onError: (error: Error) => {
-      console.error("❌ Error processing material request:", error);
-      toast.error(`Failed to process material request: ${error.message}`);
+    onError: (error: any) => {
+      if (isPermissionError(error)) {
+        toast.error(formatPermissionMessage("Material Requests", "modify"));
+      } else {
+        toast.error(`Failed to process material request: ${describeError(error)}`);
+      }
     },
   });
 
@@ -217,9 +211,12 @@ const MaterialRequestsTab = memo(() => {
       queryClient.invalidateQueries({ queryKey: ["inventory-real-time"] });
       queryClient.invalidateQueries({ queryKey: ["material-movements-logbook"] });
     },
-    onError: (error: Error) => {
-      console.error("❌ Failed to send material:", error);
-      toast.error(`Failed to send material: ${error.message}`);
+    onError: (error: any) => {
+      if (isPermissionError(error)) {
+        toast.error(formatPermissionMessage("Store / Send Material", "modify"));
+      } else {
+        toast.error(`Failed to send material: ${describeError(error)}`);
+      }
     },
   });
 
@@ -292,6 +289,10 @@ const MaterialRequestsTab = memo(() => {
     rejected: materialRequests.filter(r => r.status === 'REJECTED').length,
     sent: materialRequests.filter(r => r.status === 'SENT').length,
   };
+
+  if (isPermissionError(requestsError)) {
+    return <AccessDenied area="Material Requests" variant="inline" />;
+  }
 
   if (isLoading) {
     return (

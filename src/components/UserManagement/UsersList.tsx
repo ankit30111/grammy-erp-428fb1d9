@@ -47,22 +47,11 @@ export const UsersList = forwardRef<UsersListRef>((props, ref) => {
     try {
       setLoading(true);
       
-      // Query user_accounts table with department information
+      // Use the SECURITY DEFINER admin RPC. The role column is now revoked
+      // from direct table queries, and this RPC enforces admin-only access
+      // server-side.
       const { data, error } = await supabase
-        .from("user_accounts")
-        .select(`
-          id,
-          email,
-          full_name,
-          role,
-          is_active,
-          created_at,
-          department_id,
-          departments (
-            name
-          )
-        `)
-        .order("created_at", { ascending: false });
+        .rpc("list_user_accounts_for_admin");
 
       if (error) {
         console.error("Error fetching users:", error);
@@ -70,8 +59,19 @@ export const UsersList = forwardRef<UsersListRef>((props, ref) => {
         return;
       }
 
-      console.log("Fetched users:", data);
-      setUsers(data || []);
+      // RPC returns a flat shape with department_name; reshape so the
+      // existing render code (which reads `departments.name`) keeps working.
+      const reshaped = (data || []).map((u: any) => ({
+        id: u.id,
+        email: u.email,
+        full_name: u.full_name,
+        role: u.role,
+        is_active: u.is_active,
+        created_at: u.created_at,
+        department_id: u.department_id ?? undefined,
+        departments: u.department_name ? { name: u.department_name } : undefined,
+      }));
+      setUsers(reshaped);
     } catch (error) {
       console.error("Error fetching users:", error);
       toast.error("An unexpected error occurred while fetching users");

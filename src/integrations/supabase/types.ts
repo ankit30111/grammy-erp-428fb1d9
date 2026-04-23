@@ -4925,6 +4925,49 @@ export type Database = {
           },
         ]
       }
+      user_departments: {
+        Row: {
+          department_id: string
+          granted_at: string
+          granted_by: string | null
+          user_id: string
+        }
+        Insert: {
+          department_id: string
+          granted_at?: string
+          granted_by?: string | null
+          user_id: string
+        }
+        Update: {
+          department_id?: string
+          granted_at?: string
+          granted_by?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_departments_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_departments_granted_by_fkey"
+            columns: ["granted_by"]
+            isOneToOne: false
+            referencedRelation: "user_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_departments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vendor_capa: {
         Row: {
           capa_file_url: string | null
@@ -5166,6 +5209,12 @@ export type Database = {
       }
     }
     Functions: {
+      auth_is_admin: { Args: never; Returns: boolean }
+      auth_user_can_access_module: {
+        Args: { module_name: string }
+        Returns: boolean
+      }
+      auth_user_in_department: { Args: { dept_name: string }; Returns: boolean }
       can_access_projection: {
         Args: { projection_id: string }
         Returns: boolean
@@ -5192,6 +5241,46 @@ export type Database = {
         Returns: string
       }
       generate_vendor_code: { Args: never; Returns: string }
+      get_customer_finance: {
+        Args: { p_customer_id: string }
+        Returns: {
+          bank_account_number: string
+          brand_authorization_url: string
+          gst_certificate_url: string
+          id: string
+          ifsc_code: string
+          msme_certificate_url: string
+        }[]
+      }
+      get_my_profile: {
+        Args: never
+        Returns: {
+          created_at: string
+          department_id: string
+          department_name: string
+          email: string
+          full_name: string
+          id: string
+          is_active: boolean
+          role: string
+          updated_at: string
+        }[]
+      }
+      list_user_accounts_for_admin: {
+        Args: never
+        Returns: {
+          created_at: string
+          department_id: string
+          department_name: string
+          email: string
+          full_name: string
+          id: string
+          is_active: boolean
+          role: string
+          updated_at: string
+          username: string
+        }[]
+      }
       log_audit_event: {
         Args: {
           p_action: string

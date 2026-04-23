@@ -11,6 +11,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useIQCInspection } from "@/hooks/useIQCInspection";
 import { useCAPATracking, CAPAImplementationCheck } from "@/hooks/useCAPATracking";
 import CAPAImplementationSection from "./CAPAImplementationSection";
+import { SignedStorageLink } from "@/components/ui/signed-storage-link";
 import { useState } from "react";
 
 interface IQCInspectionDialogProps {
@@ -276,36 +277,26 @@ const IQCInspectionDialog = ({ grn, isOpen, onClose }: IQCInspectionDialogProps)
                     </div>
 
                     <div className="flex justify-end space-x-2">
-                      <Button 
+                      <SignedStorageLink
+                        bucket="raw-material-documents"
+                        path={item.raw_materials?.specification_sheet_url}
                         variant="outline"
                         size="sm"
                         className="gap-1"
-                        onClick={() => window.open(
-                          `https://oacdhvmpkuadlyvvvbpq.supabase.co/storage/v1/object/public/raw-material-documents/${
-                            item.raw_materials?.specification_sheet_url || ''
-                          }`, 
-                          '_blank'
-                        )}
-                        disabled={!item.raw_materials?.specification_sheet_url}
                       >
                         <File className="h-3 w-3" />
                         Spec Sheet
-                      </Button>
-                      <Button 
+                      </SignedStorageLink>
+                      <SignedStorageLink
+                        bucket="raw-material-documents"
+                        path={item.raw_materials?.iqc_checklist_url}
                         variant="outline"
                         size="sm"
                         className="gap-1"
-                        onClick={() => window.open(
-                          `https://oacdhvmpkuadlyvvvbpq.supabase.co/storage/v1/object/public/raw-material-documents/${
-                            item.raw_materials?.iqc_checklist_url || ''
-                          }`, 
-                          '_blank'
-                        )}
-                        disabled={!item.raw_materials?.iqc_checklist_url}
                       >
                         <FileText className="h-3 w-3" />
                         IQC Format
-                      </Button>
+                      </SignedStorageLink>
                     </div>
                     
                     <div>

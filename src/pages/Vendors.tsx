@@ -22,6 +22,7 @@ import {
 import { Search, Plus, Building2, Edit, Trash2, FileText } from "lucide-react";
 import { useVendors } from "@/hooks/useVendors";
 import { VendorForm } from "@/components/forms/VendorForm";
+import { SignedStorageLink } from "@/components/ui/signed-storage-link";
 
 const Vendors = () => {
   const { vendors, isLoading, deleteVendor } = useVendors();
@@ -252,26 +253,28 @@ const Vendors = () => {
                                   <h4 className="font-medium">Documents</h4>
                                   <div className="flex flex-col space-y-2">
                                     {vendor.gst_certificate_url && (
-                                      <a 
-                                        href={vendor.gst_certificate_url} 
-                                        target="_blank" 
-                                        rel="noopener noreferrer"
-                                        className="flex items-center space-x-2 text-blue-600 hover:text-blue-800"
+                                      <SignedStorageLink
+                                        bucket="vendor-documents"
+                                        path={vendor.gst_certificate_url}
+                                        variant="ghost"
+                                        size="sm"
+                                        className="flex items-center justify-start space-x-2 text-blue-600 hover:text-blue-800 px-0 h-auto"
                                       >
                                         <FileText className="h-4 w-4" />
                                         <span>GST Certificate</span>
-                                      </a>
+                                      </SignedStorageLink>
                                     )}
                                     {vendor.msme_certificate_url && (
-                                      <a 
-                                        href={vendor.msme_certificate_url} 
-                                        target="_blank" 
-                                        rel="noopener noreferrer"
-                                        className="flex items-center space-x-2 text-blue-600 hover:text-blue-800"
+                                      <SignedStorageLink
+                                        bucket="vendor-documents"
+                                        path={vendor.msme_certificate_url}
+                                        variant="ghost"
+                                        size="sm"
+                                        className="flex items-center justify-start space-x-2 text-blue-600 hover:text-blue-800 px-0 h-auto"
                                       >
                                         <FileText className="h-4 w-4" />
                                         <span>MSME/UDYAM Certificate</span>
-                                      </a>
+                                      </SignedStorageLink>
                                     )}
                                     {!vendor.gst_certificate_url && !vendor.msme_certificate_url && (
                                       <p className="text-muted-foreground">No documents uploaded</p>

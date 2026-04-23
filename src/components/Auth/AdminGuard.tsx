@@ -1,15 +1,25 @@
 import { ReactNode } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Shield, AlertTriangle } from 'lucide-react';
-import { Loader2 } from 'lucide-react';
+import { Shield, AlertTriangle, Loader2 } from 'lucide-react';
+import { AccessDenied } from '@/components/Auth/AccessDenied';
 
 interface AdminGuardProps {
   children: ReactNode;
+  /**
+   * If provided, the user must ALSO have permission for the named module
+   * (via department_permissions). Use this for pages where being "admin" by
+   * role isn't enough — a department-scoped admin shouldn't necessarily
+   * see another department's data. Leave undefined for pure role-only gates
+   * like global User Management.
+   */
+  requireModule?: string;
+  /** Friendly area name for AccessDenied if requireModule fails. */
+  moduleArea?: string;
 }
 
-export function AdminGuard({ children }: AdminGuardProps) {
-  const { loading, isAdmin, userProfile } = useAuth();
+export function AdminGuard({ children, requireModule, moduleArea }: AdminGuardProps) {
+  const { loading, isAdmin, userProfile, canAccessModule } = useAuth();
 
   if (loading) {
     return (
@@ -76,6 +86,12 @@ export function AdminGuard({ children }: AdminGuardProps) {
         </Card>
       </div>
     );
+  }
+
+  // Role passed; if a specific module is also required, defer to the
+  // department-permissions check (auth_user_can_access_module via context).
+  if (requireModule && !canAccessModule(requireModule)) {
+    return <AccessDenied area={moduleArea ?? requireModule} variant="page" />;
   }
 
   return <>{children}</>;

@@ -81,8 +81,11 @@ export const useCustomerForm = () => {
     return `CUST${numericPart.toString().padStart(3, '0')}`;
   };
 
+  // Stores the raw bucket path so readers can mint short-lived signed URLs
+  // via SignedStorageLink. Required because customer-documents (and the four
+  // other doc buckets being flipped in migration 003f) are private.
   const uploadFile = async (file: File, bucket: string, path: string) => {
-    const { data, error } = await supabase.storage
+    const { error } = await supabase.storage
       .from(bucket)
       .upload(path, file);
 
@@ -90,11 +93,7 @@ export const useCustomerForm = () => {
       throw error;
     }
 
-    const { data: { publicUrl } } = supabase.storage
-      .from(bucket)
-      .getPublicUrl(path);
-
-    return publicUrl;
+    return path;
   };
 
   const handleSubmit = async () => {

@@ -11,6 +11,8 @@ import { CheckCircle, XCircle, Package, Edit, Loader2, FileText, Download, Eye, 
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { generatePurchaseOrderPDF, generatePurchaseOrderFilename, type PurchaseOrderData } from "@/utils/pdfTemplates";
+import { isPermissionError, formatPermissionMessage, describeError } from "@/lib/permissions";
+import { AccessDenied } from "@/components/Auth/AccessDenied";
 
 interface PurchaseOrder {
   id: string;
@@ -36,6 +38,7 @@ interface POItem {
 const PurchaseOrderApprovalsEnhanced = () => {
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
   const [loading, setLoading] = useState(true);
+  const [accessDenied, setAccessDenied] = useState(false);
   const [selectedPO, setSelectedPO] = useState<PurchaseOrder | null>(null);
   const [poItems, setPOItems] = useState<POItem[]>([]);
   const [editingItems, setEditingItems] = useState(false);
@@ -92,12 +95,17 @@ const PurchaseOrderApprovalsEnhanced = () => {
 
       setPurchaseOrders(formattedData);
     } catch (error) {
-      console.error('Error fetching pending POs:', error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch pending purchase orders",
-        variant: "destructive"
-      });
+      if (isPermissionError(error)) {
+        // Department doesn't have 'approvals' module — show the proper UI
+        // instead of an empty table.
+        setAccessDenied(true);
+      } else {
+        toast({
+          title: "Error",
+          description: `Failed to fetch pending purchase orders: ${describeError(error)}`,
+          variant: "destructive"
+        });
+      }
     } finally {
       setLoading(false);
     }
@@ -273,6 +281,10 @@ const PurchaseOrderApprovalsEnhanced = () => {
 
   if (loading) {
     return <div className="p-4">Loading purchase order approvals...</div>;
+  }
+
+  if (accessDenied) {
+    return <AccessDenied area="Purchase Order Approvals" variant="inline" />;
   }
 
   return (
@@ -468,10 +480,12 @@ const PurchaseOrderApprovalsEnhanced = () => {
 
                                       fetchPendingPOs();
                                     } catch (error) {
-                                      console.error('Error approving PO:', error);
+                                      const isPerm = isPermissionError(error);
                                       toast({
-                                        title: "Error",
-                                        description: "Failed to approve purchase order",
+                                        title: isPerm ? "Access denied" : "Error",
+                                        description: isPerm
+                                          ? formatPermissionMessage("Approvals", "modify")
+                                          : `Failed to approve purchase order: ${describeError(error)}`,
                                         variant: "destructive"
                                       });
                                     } finally {
@@ -557,10 +571,12 @@ const PurchaseOrderApprovalsEnhanced = () => {
 
                                       fetchPendingPOs();
                                     } catch (error) {
-                                      console.error('Error rejecting PO:', error);
+                                      const isPerm = isPermissionError(error);
                                       toast({
-                                        title: "Error",
-                                        description: "Failed to reject purchase order",
+                                        title: isPerm ? "Access denied" : "Error",
+                                        description: isPerm
+                                          ? formatPermissionMessage("Approvals", "modify")
+                                          : `Failed to reject purchase order: ${describeError(error)}`,
                                         variant: "destructive"
                                       });
                                     } finally {

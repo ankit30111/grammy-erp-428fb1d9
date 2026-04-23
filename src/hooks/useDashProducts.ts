@@ -101,16 +101,14 @@ export const useDashProductDocumentMutations = () => {
 
       const nextVersion = (existing?.[0]?.version || 0) + 1;
 
-      // Upload file to dash-product-docs bucket
+      // Upload file to dash-product-docs bucket. Store the raw bucket path
+      // (not a public URL) so readers can sign it on demand — bucket is being
+      // flipped to private in migration 003f.
       const filePath = `${productId}/${documentType}/${Date.now()}_${file.name}`;
       const { error: uploadError } = await supabase.storage
         .from("dash-product-docs")
         .upload(filePath, file);
       if (uploadError) throw uploadError;
-
-      const { data: urlData } = supabase.storage
-        .from("dash-product-docs")
-        .getPublicUrl(filePath);
 
       // Insert record
       const { data, error } = await supabase
@@ -121,7 +119,7 @@ export const useDashProductDocumentMutations = () => {
           doc_type: documentType,
           doc_name: file.name,
           file_name: file.name,
-          file_url: urlData.publicUrl,
+          file_url: filePath,
           version: nextVersion,
           is_current: true,
           uploaded_by: uploadedBy,

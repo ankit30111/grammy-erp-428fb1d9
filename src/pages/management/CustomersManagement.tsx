@@ -84,11 +84,16 @@ const CustomersManagement = () => {
   }, [selectedCustomerId]);
 
   const fetchCustomers = async () => {
+    // Safe (non-financial) columns only. Banking + certificate URLs are
+    // revoked at the column level — fetched via get_customer_finance RPC
+    // on edit. See migration 003e.
     const { data, error } = await supabase
       .from('customers')
-      .select('*')
+      .select(
+        'id, customer_code, name, brand_name, contact_person_name, email, contact_number, address, gst_number, is_active, created_at, updated_at, created_by'
+      )
       .order('name');
-    
+
     if (error) {
       console.error('Error fetching customers:', error);
       toast({
@@ -97,7 +102,9 @@ const CustomersManagement = () => {
         variant: "destructive"
       });
     } else {
-      setCustomers(data || []);
+      // Cast to local Customer shape; financial fields default to undefined
+      // and are populated via RPC when the edit dialog opens.
+      setCustomers((data as Customer[]) || []);
     }
   };
 
@@ -204,8 +211,10 @@ const CustomersManagement = () => {
     }
   };
 
-  const openEditDialog = (customer: Customer) => {
+  const openEditDialog = async (customer: Customer) => {
     setEditingCustomer(customer);
+
+    // Pre-fill safe fields immediately so the dialog renders without delay.
     setFormData({
       name: customer.name,
       brand_name: customer.brand_name || "",
@@ -214,13 +223,34 @@ const CustomersManagement = () => {
       contact_number: customer.contact_number,
       address: customer.address,
       gst_number: customer.gst_number || "",
-      bank_account_number: customer.bank_account_number || "",
-      ifsc_code: customer.ifsc_code || "",
+      bank_account_number: "",
+      ifsc_code: "",
       gst_certificate: null,
       msme_certificate: null,
       brand_authorization: null
     });
     setIsEditingCustomer(true);
+
+    // Fetch admin-only financial fields via the SECURITY DEFINER RPC.
+    // Non-admin users will get a 42501 here — silently leave bank fields blank.
+    const { data: finance, error: financeError } = await supabase
+      .rpc("get_customer_finance", { p_customer_id: customer.id })
+      .maybeSingle();
+
+    if (financeError) {
+      // Most common: non-admin user opening the edit dialog. Don't toast — the
+      // edit dialog still works for the safe fields they can update.
+      console.warn("get_customer_finance not authorized:", financeError.message);
+      return;
+    }
+
+    if (finance) {
+      setFormData((prev) => ({
+        ...prev,
+        bank_account_number: finance.bank_account_number || "",
+        ifsc_code: finance.ifsc_code || "",
+      }));
+    }
   };
 
   const CustomerFormFields = () => (

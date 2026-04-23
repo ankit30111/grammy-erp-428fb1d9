@@ -5,6 +5,7 @@ import { useDashProductDocuments, useDashProductDocumentMutations } from "@/hook
 import { Upload, FileText, ExternalLink, Loader2 } from "lucide-react";
 import { useRef } from "react";
 import { format } from "date-fns";
+import { SignedStorageLink } from "@/components/ui/signed-storage-link";
 
 const DOCUMENT_TYPES = [
   { key: "user_manual", label: "User Manual / QSG" },
@@ -60,9 +61,15 @@ export default function ProductDocumentsTab({ productId }: ProductDocumentsTabPr
                   <div className="flex items-center gap-2 text-sm">
                     <FileText className="h-4 w-4 text-muted-foreground" />
                     <span className="truncate flex-1">{currentDoc.doc_name || currentDoc.file_name}</span>
-                    <a href={currentDoc.file_url} target="_blank" rel="noopener noreferrer">
+                    <SignedStorageLink
+                      bucket="dash-product-docs"
+                      path={currentDoc.file_url}
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                    >
                       <ExternalLink className="h-3 w-3" />
-                    </a>
+                    </SignedStorageLink>
                   </div>
                   <p className="text-xs text-muted-foreground">
                     Uploaded {format(new Date(currentDoc.created_at), "dd MMM yyyy")}
@@ -100,9 +107,15 @@ export default function ProductDocumentsTab({ productId }: ProductDocumentsTabPr
                     {docs.map((d: any) => (
                       <div key={d.id} className="flex items-center justify-between">
                         <span>v{d.version} — {d.doc_name || d.file_name}</span>
-                        <a href={d.file_url} target="_blank" rel="noopener noreferrer" className="text-primary">
+                        <SignedStorageLink
+                          bucket="dash-product-docs"
+                          path={d.file_url}
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 text-primary"
+                        >
                           <ExternalLink className="h-3 w-3" />
-                        </a>
+                        </SignedStorageLink>
                       </div>
                     ))}
                   </div>

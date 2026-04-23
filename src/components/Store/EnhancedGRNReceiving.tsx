@@ -12,6 +12,8 @@ import { AlertTriangle, CheckCircle, PackageOpen, Search, ShoppingCart, Truck, F
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { isPermissionError, formatPermissionMessage, describeError } from "@/lib/permissions";
+import { AccessDenied } from "@/components/Auth/AccessDenied";
 
 interface EnhancedGRNReceivingProps {
   onReceiveGRN?: (id: string, quantity: number) => void;
@@ -31,7 +33,7 @@ const EnhancedGRNReceiving = ({
   const [verifiedQuantities, setVerifiedQuantities] = useState<Record<string, number>>({});
 
   // Fetch GRNs that have passed IQC but not yet received by store
-  const { data: pendingGRNs = [] } = useQuery({
+  const { data: pendingGRNs = [], error: pendingError, isLoading: pendingLoading } = useQuery({
     queryKey: ["pending-store-grns"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -55,25 +57,23 @@ const EnhancedGRNReceiving = ({
         `)
         .eq("status", "IQC_COMPLETED")
         .order("received_date", { ascending: false });
-      
-      if (error) {
-        console.error("Error fetching pending store GRNs:", error);
-        throw error;
-      }
+
+      if (error) throw error;
 
       // Filter out GRNs where all items are already confirmed by store
-      return (data || []).filter(grn => 
-        grn.grn_items.some((item: any) => 
-          !item.store_confirmed && 
-          (item.iqc_status === 'APPROVED' || 
+      return (data || []).filter(grn =>
+        grn.grn_items.some((item: any) =>
+          !item.store_confirmed &&
+          (item.iqc_status === 'APPROVED' ||
            (item.iqc_status === 'SEGREGATED' && item.accepted_quantity > 0))
         )
       );
     },
+    retry: (failureCount, error) => !isPermissionError(error) && failureCount < 2,
   });
 
   // Fetch already confirmed GRNs
-  const { data: confirmedGRNs = [] } = useQuery({
+  const { data: confirmedGRNs = [], error: confirmedError } = useQuery({
     queryKey: ["confirmed-store-grns"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -98,15 +98,18 @@ const EnhancedGRNReceiving = ({
         .eq("status", "STORE_RECEIVED")
         .order("received_date", { ascending: false })
         .limit(20);
-      
-      if (error) {
-        console.error("Error fetching confirmed store GRNs:", error);
-        throw error;
-      }
+
+      if (error) throw error;
 
       return data || [];
     },
+    retry: (failureCount, error) => !isPermissionError(error) && failureCount < 2,
   });
+
+  // If RLS denied access (likely the user's department doesn't have the
+  // 'store' permission), surface a clear "Access Denied" card up front
+  // instead of leaving the table empty.
+  const accessDenied = isPermissionError(pendingError) || isPermissionError(confirmedError);
 
   // Filter GRNs based on search query
   const filteredPendingGRNs = useMemo(() => {
@@ -206,14 +209,20 @@ const EnhancedGRNReceiving = ({
       setVerifiedQuantities({});
     },
     onError: (error) => {
-      console.error("Error confirming GRN:", error);
+      const description = isPermissionError(error)
+        ? formatPermissionMessage("Store / GRN receiving", "modify")
+        : `Failed to confirm GRN reception: ${describeError(error)}`;
       toast({
-        title: "Error",
-        description: "Failed to confirm GRN reception",
+        title: isPermissionError(error) ? "Access denied" : "Error",
+        description,
         variant: "destructive",
       });
     },
   });
+
+  if (accessDenied) {
+    return <AccessDenied area="GRN Receiving" variant="inline" />;
+  }
 
   return (
     <div className="space-y-6">

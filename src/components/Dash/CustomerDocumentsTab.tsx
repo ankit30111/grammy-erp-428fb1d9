@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useDashCustomerDocuments, useDashCustomerDocumentMutations } from "@/hooks/useDashCustomers";
 import { Upload, FileText, Trash2, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
+import { SignedStorageLink } from "@/components/ui/signed-storage-link";
 
 const documentTypes = ["GST Certificate", "MSME Certificate", "Cancelled Cheque", "PAN Card", "Other"];
 
@@ -33,19 +34,19 @@ export function CustomerDocumentsTab({ form, onChange, customerId }: Props) {
       const { error: uploadError } = await supabase.storage.from("dash-documents").upload(filePath, file);
       if (uploadError) throw uploadError;
 
-      const { data: urlData } = supabase.storage.from("dash-documents").getPublicUrl(filePath);
-
+      // Store the raw bucket path. Bucket is being flipped to private (003f);
+      // readers use SignedStorageLink to mint short-lived signed URLs.
       await addDocument.mutateAsync({
         customer_id: customerId,
         document_type: docType,
         file_name: file.name,
-        file_url: urlData.publicUrl,
+        file_url: filePath,
       });
 
       // Also update the URL field on the customer record
-      if (docType === "GST Certificate") onChange({ gst_certificate_url: urlData.publicUrl });
-      else if (docType === "MSME Certificate") onChange({ msme_certificate_url: urlData.publicUrl });
-      else if (docType === "Cancelled Cheque") onChange({ cancelled_cheque_url: urlData.publicUrl });
+      if (docType === "GST Certificate") onChange({ gst_certificate_url: filePath });
+      else if (docType === "MSME Certificate") onChange({ msme_certificate_url: filePath });
+      else if (docType === "Cancelled Cheque") onChange({ cancelled_cheque_url: filePath });
     } catch (err: any) {
       toast.error(err.message);
     } finally {
@@ -133,9 +134,15 @@ export function CustomerDocumentsTab({ form, onChange, customerId }: Props) {
                             </Badge>
                           </div>
                           <div className="flex gap-1">
-                            <Button variant="ghost" size="icon" className="h-7 w-7" asChild>
-                              <a href={doc.file_url} target="_blank" rel="noopener noreferrer"><ExternalLink className="h-3 w-3" /></a>
-                            </Button>
+                            <SignedStorageLink
+                              bucket="dash-documents"
+                              path={doc.file_url}
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7"
+                            >
+                              <ExternalLink className="h-3 w-3" />
+                            </SignedStorageLink>
                             <Button
                               variant="ghost"
                               size="icon"

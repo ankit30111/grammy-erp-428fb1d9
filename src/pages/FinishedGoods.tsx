@@ -10,38 +10,79 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, LineChart, Line } 
 import { Package, TrendingUp, AlertTriangle, Clock } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { isPermissionError } from "@/lib/permissions";
+import { AccessDenied } from "@/components/Auth/AccessDenied";
+import { toast } from "sonner";
 
 const FinishedGoods = () => {
   const { data: finishedGoodsData, isLoading } = useQuery({
     queryKey: ['finished-goods-dashboard'],
     queryFn: async () => {
-      const [inventoryData, productionData, dispatchData] = await Promise.all([
+      // Run the three queries in parallel but tolerate partial failure: if
+      // one is RLS-denied (e.g. user lacks 'sales' for dispatch_orders) we
+      // still render whatever else loaded, and a toast tells them what was
+      // skipped — instead of the whole page going blank.
+      const today = new Date().toISOString().split('T')[0];
+
+      const [inventoryRes, productionRes, dispatchRes] = await Promise.allSettled([
         supabase.from('finished_goods_inventory').select(`
           *,
           products!inner(name, product_code)
         `),
-        supabase.from('production_orders').select('*').eq('status', 'COMPLETED').gte('updated_at', new Date().toISOString().split('T')[0]),
-        supabase.from('dispatch_orders').select('*').gte('created_at', new Date().toISOString().split('T')[0])
+        supabase.from('production_orders').select('*').eq('status', 'COMPLETED').gte('updated_at', today),
+        supabase.from('dispatch_orders').select('*').gte('created_at', today),
       ]);
 
-      const totalStock = inventoryData.data?.reduce((sum, item) => sum + item.quantity, 0) || 0;
-      const todayProduction = productionData.data?.reduce((sum, order) => sum + order.quantity, 0) || 0;
-      const todayDispatches = dispatchData.data?.length || 0;
+      const handle = (
+        res: PromiseSettledResult<{ data: any; error: any }>,
+        label: string,
+      ) => {
+        if (res.status === 'rejected') {
+          if (isPermissionError(res.reason)) {
+            return { data: null, denied: true };
+          }
+          toast.error(`Couldn't load ${label}`);
+          return { data: null, denied: false };
+        }
+        if (res.value.error) {
+          if (isPermissionError(res.value.error)) {
+            return { data: null, denied: true };
+          }
+          toast.error(`Couldn't load ${label}`);
+          return { data: null, denied: false };
+        }
+        return { data: res.value.data, denied: false };
+      };
 
-      // Calculate inventory age
-      const oldStock = inventoryData.data?.filter(item => {
-        const daysDiff = Math.floor((new Date().getTime() - new Date(item.production_date || item.created_at).getTime()) / (1000 * 3600 * 24));
+      const inventory = handle(inventoryRes, 'finished goods inventory');
+      const production = handle(productionRes, 'today\'s production');
+      const dispatch = handle(dispatchRes, 'today\'s dispatches');
+
+      const totalStock = inventory.data?.reduce((sum: number, item: any) => sum + item.quantity, 0) || 0;
+      const todayProduction = production.data?.reduce((sum: number, order: any) => sum + order.quantity, 0) || 0;
+      const todayDispatches = dispatch.data?.length || 0;
+
+      const oldStock = inventory.data?.filter((item: any) => {
+        const daysDiff = Math.floor(
+          (new Date().getTime() - new Date(item.production_date || item.created_at).getTime()) / (1000 * 3600 * 24),
+        );
         return daysDiff > 30;
       }).length || 0;
+
+      // If the *primary* query (inventory) was denied, treat the whole
+      // dashboard as inaccessible so the user sees the AccessDenied card.
+      const allDenied = inventory.denied && production.denied && dispatch.denied;
 
       return {
         totalStock,
         todayProduction,
         todayDispatches,
         oldStock,
-        inventory: inventoryData.data || []
+        inventory: inventory.data || [],
+        inventoryDenied: inventory.denied,
+        allDenied,
       };
-    }
+    },
   });
 
   const stockByProduct = finishedGoodsData?.inventory?.reduce((acc: any[], item) => {
@@ -64,6 +105,14 @@ const FinishedGoods = () => {
     { day: 'Thu', inflow: 200, outflow: 140 },
     { day: 'Fri', inflow: 160, outflow: 110 },
   ];
+
+  if (finishedGoodsData?.allDenied) {
+    return (
+      <DashboardLayout>
+        <AccessDenied area="Finished Goods" variant="page" />
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>

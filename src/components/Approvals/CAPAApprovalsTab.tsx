@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { ExternalLink, CheckCircle, XCircle, FileText } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { SignedStorageLink } from "@/components/ui/signed-storage-link";
 
 interface CAPAApproval {
   id: string;
@@ -220,16 +221,14 @@ const CAPAApprovalsTab = () => {
                   </TableCell>
                   <TableCell>
                     {capa.capa_document_url ? (
-                      <Button
+                      <SignedStorageLink
+                        bucket="capa-documents"
+                        path={capa.capa_document_url}
                         variant="ghost"
                         size="sm"
-                        onClick={() => window.open(
-                          `https://oacdhvmpkuadlyvvvbpq.supabase.co/storage/v1/object/public/capa-documents/${capa.capa_document_url}`, 
-                          '_blank'
-                        )}
                       >
                         <ExternalLink className="h-4 w-4" />
-                      </Button>
+                      </SignedStorageLink>
                     ) : (
                       '-'
                     )}

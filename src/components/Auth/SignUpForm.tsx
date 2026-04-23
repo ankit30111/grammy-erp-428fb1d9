@@ -46,7 +46,8 @@ export function SignUpForm() {
             email: email,
             full_name: name,
             role: "user",
-            password_hash: "managed_by_auth" // Placeholder since auth is handled by Supabase
+            // password_hash has a DB default of 'managed_by_auth' — Supabase
+            // Auth handles real credentials in auth.users.
           });
 
         if (accountError) {
