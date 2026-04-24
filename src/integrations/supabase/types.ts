@@ -5266,6 +5266,14 @@ export type Database = {
           updated_at: string
         }[]
       }
+      get_user_departments: {
+        Args: { p_user_id: string }
+        Returns: {
+          department_id: string
+          is_primary: boolean
+          name: string
+        }[]
+      }
       list_user_accounts_for_admin: {
         Args: never
         Returns: {
@@ -5281,18 +5289,6 @@ export type Database = {
           updated_at: string
           username: string
         }[]
-      }
-      get_user_departments: {
-        Args: { p_user_id: string }
-        Returns: {
-          department_id: string
-          name: string
-          is_primary: boolean
-        }[]
-      }
-      set_user_departments: {
-        Args: { p_user_id: string; p_department_ids: string[] }
-        Returns: undefined
       }
       log_audit_event: {
         Args: {
@@ -5367,6 +5363,10 @@ export type Database = {
           p_resolution_notes?: string
           p_resolved_by: string
         }
+        Returns: undefined
+      }
+      set_user_departments: {
+        Args: { p_department_ids: string[]; p_user_id: string }
         Returns: undefined
       }
     }

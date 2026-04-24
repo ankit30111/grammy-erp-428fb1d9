@@ -62,16 +62,16 @@ export const RawMaterialDropdown = ({
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-full p-0" align="start">
+      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
         <Command>
-          <CommandInput placeholder="Search materials..." />
+          <CommandInput placeholder="Search by part name or code..." />
           <CommandList>
             <CommandEmpty>No materials found.</CommandEmpty>
             <CommandGroup>
               {filteredMaterials.map((material) => (
                 <CommandItem
                   key={material.id}
-                  value={`${material.material_code} ${material.name}`}
+                  value={`${material.material_code} ${material.name} ${material.category}`}
                   onSelect={() => {
                     onValueChange(material.id);
                     setOpen(false);

@@ -53,8 +53,19 @@ serve(async (req) => {
       timeout: 30000,
     });
 
-    if (!scrapeResponse.success) {
-      console.error('Firecrawl scraping failed:', scrapeResponse.error);
+    const scrapeResult = scrapeResponse as {
+      success?: boolean;
+      error?: string;
+      markdown?: string;
+      html?: string;
+      data?: {
+        markdown?: string;
+        html?: string;
+      };
+    };
+
+    if (!scrapeResult.success) {
+      console.error('Firecrawl scraping failed:', scrapeResult.error);
       return new Response(JSON.stringify({
         success: false,
         containerNumber,
@@ -66,8 +77,8 @@ serve(async (req) => {
     }
 
     // Parse the scraped data to extract container information
-    const markdown = scrapeResponse.data?.markdown || '';
-    const html = scrapeResponse.data?.html || '';
+    const markdown = scrapeResult.markdown || scrapeResult.data?.markdown || '';
+    const html = scrapeResult.html || scrapeResult.data?.html || '';
 
     // Extract container status information from the scraped content
     const result = parseContainerData(containerNumber, markdown, html);
