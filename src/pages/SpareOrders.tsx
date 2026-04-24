@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Plus, Wrench, Package } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { RawMaterialDropdown } from "@/components/PPC/RawMaterialDropdown";
 
 interface Customer {
   id: string;
@@ -296,18 +297,11 @@ const SpareOrders = () => {
                   <div className="grid grid-cols-3 gap-4 mb-4">
                     <div className="space-y-2">
                       <Label>Raw Material / Spare Part *</Label>
-                      <Select value={currentItem.raw_material_id} onValueChange={(value) => setCurrentItem({...currentItem, raw_material_id: value})}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select spare part" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {rawMaterials.map((material) => (
-                            <SelectItem key={material.id} value={material.id}>
-                              {material.name} ({material.material_code})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <RawMaterialDropdown
+                        value={currentItem.raw_material_id}
+                        onValueChange={(value) => setCurrentItem({ ...currentItem, raw_material_id: value })}
+                        placeholder="Search by part name or code..."
+                      />
                     </div>
                     <div className="space-y-2">
                       <Label>Quantity *</Label>

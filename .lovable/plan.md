@@ -1,79 +1,43 @@
+# Plan: Search Raw Material / Spare Part by Name or Code
 
+## What will change
 
-# Enhanced DASH Customer Management
+On `https://erp.grammyelectronics.com/spare-orders`, the **Raw Material / Spare Part** selector inside **Create Spare Order** will be changed from the current basic dropdown to a searchable combobox.
 
-## Current State
-The `dash_customers` table has basic fields: customer_name, customer_type, gst_number, credit_limit, contact_person, phone, email, address, city, state, territory, assigned_sales_manager, outstanding_balance, is_active. Missing many fields the user needs.
+The same search bar will match both:
+- Spare/raw material name, e.g. `Woofer`, `Remote`, `PCB`
+- Part/material code, e.g. `RM-001`, `DASH-SPK-REMOTE`
 
-## Database Changes (Migration)
+The selected item will continue to show as:
+```text
+Part Name (Part Code)
+```
 
-**Alter `dash_customers`** — add columns:
-- `owner_name` (text) — business owner
-- `owner_phone` (text)
-- `primary_address` (text) — registered/primary address
-- `godown_address` (text) — warehouse/godown address
-- `pincode` (text)
-- `pan_number` (text)
-- `msme_certificate_url` (text) — file URL in storage
-- `msme_number` (text)
-- `cancelled_cheque_url` (text) — file URL in storage
-- `gst_certificate_url` (text) — file URL in storage
-- `bank_name` (text)
-- `bank_account_number` (text)
-- `bank_ifsc` (text)
-- `salesman_name` (text) — field salesman assigned
-- `notes` (text)
-- `created_by` (text)
-- `updated_by` (text)
+## Implementation
 
-**Create `dash_customer_documents` table** for versioned document uploads:
-- `id` (uuid PK)
-- `customer_id` (uuid FK → dash_customers)
-- `document_type` (text: GST Certificate, MSME Certificate, Cancelled Cheque, PAN Card, Other)
-- `file_name` (text)
-- `file_url` (text)
-- `uploaded_by` (text)
-- `created_at` (timestamptz)
+1. Update `src/pages/SpareOrders.tsx`
+   - Replace the current `Select` used for **Raw Material / Spare Part** with the existing `RawMaterialDropdown` component.
+   - Pass selected value through `currentItem.raw_material_id`.
+   - Keep all current order item logic unchanged.
 
-RLS: authenticated users can SELECT, INSERT, UPDATE, DELETE.
+2. Improve `src/components/PPC/RawMaterialDropdown.tsx`
+   - Make the search placeholder clearer: `Search by part name or code...`
+   - Keep the command item search value as both code + name so one input searches both fields.
+   - Optionally include category in the search value too, without changing the UI.
 
-## Frontend Changes
+3. Fix the current build blocker in `supabase/functions/ldb-scraper/index.ts`
+   - The current Firecrawl response type no longer exposes `scrapeResponse.data`.
+   - Update the scraper to read `markdown` and `html` from the response shape safely, while keeping runtime compatibility.
+   - This is needed because the project currently fails type-checking before the UI change can build cleanly.
 
-### Rewrite `src/pages/dash/DashCustomers.tsx`
-Replace simple dialog with a **list + detail view** pattern (same as Product Master):
+## Files to modify
 
-**List View**: Table with search by name/GST/phone/territory, filter by type & status. Columns: Name, Type, GST, Territory, Credit Limit, Outstanding, Salesman, Status, Actions.
-
-**Detail/Edit View** (tabbed form when adding/editing):
-
-**[Basic Info]** tab:
-- Customer Name, Customer Type (dropdown), Owner Name, Owner Phone, Contact Person, Phone, Email, Territory, Salesman Name, Assigned Sales Manager, Credit Limit, Status (Active/Inactive)
-
-**[Address]** tab:
-- Primary Address, City, State, Pincode, Godown Address
-
-**[Documents & KYC]** tab:
-- GST Number + GST Certificate upload
-- PAN Number
-- MSME Number + MSME Certificate upload
-- Cancelled Cheque upload
-- Bank Name, Account Number, IFSC
-- Each upload shows file name, upload date, with replace capability
-
-**[Notes & History]** tab:
-- Notes textarea
-- Outstanding balance (read-only)
-- Created by / Updated by / timestamps
-
-### Files to create/modify:
-| File | Action |
+| File | Change |
 |------|--------|
-| Migration | Alter dash_customers + create dash_customer_documents |
-| `src/hooks/useDashCustomers.ts` | Expand with document hooks |
-| `src/pages/dash/DashCustomers.tsx` | Complete rewrite with list+detail tabbed view |
-| `src/components/Dash/CustomerBasicInfoTab.tsx` | Create |
-| `src/components/Dash/CustomerAddressTab.tsx` | Create |
-| `src/components/Dash/CustomerDocumentsTab.tsx` | Create — uploads to `dash-documents` bucket |
-| `src/components/Dash/CustomerNotesTab.tsx` | Create |
-| `src/components/Dash/CustomerListView.tsx` | Create — searchable/filterable list |
+| `src/pages/SpareOrders.tsx` | Use searchable `RawMaterialDropdown` for spare part selection |
+| `src/components/PPC/RawMaterialDropdown.tsx` | Clarify search and ensure name/code search works |
+| `supabase/functions/ldb-scraper/index.ts` | Fix TypeScript error blocking build |
 
+## Expected result
+
+Users can open **Create Spare Order**, click **Raw Material / Spare Part**, and type either a part name or material/part code in the same search box to find the correct spare part quickly.
