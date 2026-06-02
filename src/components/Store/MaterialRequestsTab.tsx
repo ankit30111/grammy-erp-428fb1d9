@@ -69,10 +69,9 @@ const MaterialRequestsTab = memo(() => {
 
   // Fetch inventory data for available quantities
   const { data: inventoryData = [] } = useQuery({
-    queryKey: ["inventory-for-requests", usePlantId()],
-    enabled: !!usePlantId(),
+    queryKey: ["inventory-for-requests", useMaterialRequestsPlantId()],
+    enabled: !!useMaterialRequestsPlantId(),
     queryFn: async () => {
-      const plantId = usePlantId();
       const { data, error } = await supabase
         .from("inventory")
         .select(`
