@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 import { AdminGuard } from "@/components/Auth/AdminGuard";
 import { Button } from "@/components/ui/button";
@@ -289,11 +289,12 @@ function EditPlantDialog({
   const [name, setName] = useState(plant?.name ?? "");
   const [isActive, setIsActive] = useState(plant?.is_active ?? true);
 
-  // Sync when a new plant is opened
-  if (plant && (name === "" && plant.name !== "")) {
-    setName(plant.name);
-    setIsActive(plant.is_active);
-  }
+  useEffect(() => {
+    if (plant) {
+      setName(plant.name);
+      setIsActive(plant.is_active);
+    }
+  }, [plant?.id]);
 
   return (
     <Dialog
