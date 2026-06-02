@@ -1,4 +1,5 @@
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
+import { PageHeader } from "@/components/Layout/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -82,35 +83,33 @@ const PPC = () => {
   const pendingPOs = purchaseOrders?.filter(po => po.status === 'PENDING').length || 0;
   const unscheduledProjections = projections?.length ? projections.length - (schedules?.length || 0) : 0;
   return <DashboardLayout>
-      <div className="grid gap-4 md:gap-6">
-        
-        
-        <Tabs value={selectedTab} onValueChange={setSelectedTab}>
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="planning">Planning</TabsTrigger>
-            <TabsTrigger value="containers">Containers</TabsTrigger>
-            <TabsTrigger value="purchase">Purchase</TabsTrigger>
-            <TabsTrigger value="grn">GRN</TabsTrigger>
-            <TabsTrigger value="iqc-rejections">IQC</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="planning">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-3xl font-bold">PPC Dashboard</h1>
-                <p className="text-muted-foreground">Production Planning & Control Overview</p>
-              </div>
-              <div className="flex items-center gap-4">
-                <Button onClick={calculateShortages} disabled={isCalculating} variant="outline" className="gap-2">
-                  {isCalculating ? <RefreshCw className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-                  Refresh Shortages
-                </Button>
-                <div className="flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm text-muted-foreground">Last updated: Today, 14:35</span>
-                </div>
-              </div>
+      <PageHeader
+        title="PPC Dashboard"
+        description="Production Planning & Control overview"
+        actions={
+          <>
+            <Button onClick={calculateShortages} disabled={isCalculating} variant="outline" size="sm" className="gap-2">
+              <RefreshCw className={`h-4 w-4 ${isCalculating ? "animate-spin" : ""}`} />
+              Refresh Shortages
+            </Button>
+            <div className="hidden md:flex items-center gap-2 text-sm text-muted-foreground">
+              <Clock className="h-4 w-4" />
+              Today, 14:35
             </div>
+          </>
+        }
+      />
+      <div className="grid gap-4 md:gap-6">
+        <Tabs value={selectedTab} onValueChange={setSelectedTab} className="space-y-4">
+          <TabsList className="inline-flex h-10 items-center gap-1 rounded-xl bg-muted p-1 text-sm w-auto">
+            <TabsTrigger value="planning" className="px-3 py-1.5 rounded-lg text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm">Planning</TabsTrigger>
+            <TabsTrigger value="containers" className="px-3 py-1.5 rounded-lg text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm">Containers</TabsTrigger>
+            <TabsTrigger value="purchase" className="px-3 py-1.5 rounded-lg text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm">Purchase</TabsTrigger>
+            <TabsTrigger value="grn" className="px-3 py-1.5 rounded-lg text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm">GRN</TabsTrigger>
+            <TabsTrigger value="iqc-rejections" className="px-3 py-1.5 rounded-lg text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm">IQC</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="planning" className="space-y-6">
 
             {/* Department Navigation Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
