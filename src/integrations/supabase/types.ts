@@ -4070,6 +4070,53 @@ export type Database = {
           },
         ]
       }
+      production_lines: {
+        Row: {
+          code: string
+          created_at: string
+          id: string
+          is_active: boolean
+          line_type: Database["public"]["Enums"]["production_line_type"]
+          name: string
+          notes: string | null
+          plant_id: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          line_type?: Database["public"]["Enums"]["production_line_type"]
+          name: string
+          notes?: string | null
+          plant_id: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          line_type?: Database["public"]["Enums"]["production_line_type"]
+          name?: string
+          notes?: string | null
+          plant_id?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "production_lines_plant_id_fkey"
+            columns: ["plant_id"]
+            isOneToOne: false
+            referencedRelation: "plants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       production_material_discrepancies: {
         Row: {
           created_at: string
@@ -5178,6 +5225,49 @@ export type Database = {
           },
         ]
       }
+      user_plants: {
+        Row: {
+          granted_at: string
+          granted_by: string | null
+          plant_id: string
+          user_id: string
+        }
+        Insert: {
+          granted_at?: string
+          granted_by?: string | null
+          plant_id: string
+          user_id: string
+        }
+        Update: {
+          granted_at?: string
+          granted_by?: string | null
+          plant_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_plants_granted_by_fkey"
+            columns: ["granted_by"]
+            isOneToOne: false
+            referencedRelation: "user_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_plants_plant_id_fkey"
+            columns: ["plant_id"]
+            isOneToOne: false
+            referencedRelation: "plants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_plants_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vendor_capa: {
         Row: {
           capa_file_url: string | null
@@ -5420,11 +5510,21 @@ export type Database = {
     }
     Functions: {
       auth_is_admin: { Args: never; Returns: boolean }
+      auth_my_plants: {
+        Args: never
+        Returns: {
+          is_default: boolean
+          plant_code: string
+          plant_id: string
+          plant_name: string
+        }[]
+      }
       auth_user_can_access_module: {
         Args: { module_name: string }
         Returns: boolean
       }
       auth_user_in_department: { Args: { dept_name: string }; Returns: boolean }
+      auth_user_in_plant: { Args: { p_plant_id: string }; Returns: boolean }
       can_access_projection: {
         Args: { projection_id: string }
         Returns: boolean
@@ -5481,6 +5581,23 @@ export type Database = {
         Returns: {
           department_id: string
           is_primary: boolean
+          name: string
+        }[]
+      }
+      get_user_plants: {
+        Args: { p_user_id: string }
+        Returns: {
+          code: string
+          is_default: boolean
+          name: string
+          plant_id: string
+        }[]
+      }
+      list_departments_with_modules: {
+        Args: never
+        Returns: {
+          department_id: string
+          modules: string[]
           name: string
         }[]
       }
@@ -5575,8 +5692,16 @@ export type Database = {
         }
         Returns: undefined
       }
+      set_department_modules: {
+        Args: { p_department_id: string; p_modules: string[] }
+        Returns: undefined
+      }
       set_user_departments: {
         Args: { p_department_ids: string[]; p_user_id: string }
+        Returns: undefined
+      }
+      set_user_plants: {
+        Args: { p_plant_ids: string[]; p_user_id: string }
         Returns: undefined
       }
     }
@@ -5642,6 +5767,7 @@ export type Database = {
         | "satisfactory"
         | "needs_improvement"
         | "unsatisfactory"
+      production_line_type: "line" | "sub_assembly" | "cell"
       receipt_type: "COMPLETE_PRODUCTS" | "DATA_ONLY" | "FAULTY_PARTS_ONLY"
       skill_level: "beginner" | "intermediate" | "advanced" | "expert"
     }
@@ -5840,6 +5966,7 @@ export const Constants = {
         "needs_improvement",
         "unsatisfactory",
       ],
+      production_line_type: ["line", "sub_assembly", "cell"],
       receipt_type: ["COMPLETE_PRODUCTS", "DATA_ONLY", "FAULTY_PARTS_ONLY"],
       skill_level: ["beginner", "intermediate", "advanced", "expert"],
     },
