@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 import { AdminGuard } from "@/components/Auth/AdminGuard";
+import { PlantLinesDialog } from "@/components/Plants/PlantLinesDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -36,6 +37,7 @@ import {
   Phone,
   Mail,
   FileText,
+  Factory,
 } from "lucide-react";
 
 interface PlantRow {
@@ -132,6 +134,7 @@ const PlantsManagementInner = () => {
 
   const [addOpen, setAddOpen] = useState(false);
   const [editPlant, setEditPlant] = useState<PlantRow | null>(null);
+  const [linesPlant, setLinesPlant] = useState<PlantRow | null>(null);
 
   const { data: plants = [], isLoading } = useQuery({
     queryKey: ["plants-management"],
@@ -212,7 +215,12 @@ const PlantsManagementInner = () => {
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {plants.map((p) => (
-              <PlantCard key={p.id} plant={p} onEdit={() => setEditPlant(p)} />
+              <PlantCard
+                key={p.id}
+                plant={p}
+                onEdit={() => setEditPlant(p)}
+                onManageLines={() => setLinesPlant(p)}
+              />
             ))}
           </div>
         )}
@@ -235,11 +243,25 @@ const PlantsManagementInner = () => {
         }
         submitting={updatePlant.isPending}
       />
+      <PlantLinesDialog
+        plantId={linesPlant?.id ?? null}
+        plantName={linesPlant?.name}
+        open={!!linesPlant}
+        onOpenChange={(v) => !v && setLinesPlant(null)}
+      />
     </DashboardLayout>
   );
 };
 
-function PlantCard({ plant, onEdit }: { plant: PlantRow; onEdit: () => void }) {
+function PlantCard({
+  plant,
+  onEdit,
+  onManageLines,
+}: {
+  plant: PlantRow;
+  onEdit: () => void;
+  onManageLines: () => void;
+}) {
   const addressParts = [
     plant.address_line1,
     plant.address_line2,
@@ -263,9 +285,14 @@ function PlantCard({ plant, onEdit }: { plant: PlantRow; onEdit: () => void }) {
               Created {new Date(plant.created_at).toLocaleDateString()}
             </CardDescription>
           </div>
-          <Button variant="outline" size="sm" onClick={onEdit} className="gap-1 shrink-0">
-            <Pencil className="h-3.5 w-3.5" /> Edit
-          </Button>
+          <div className="flex gap-2 shrink-0">
+            <Button variant="outline" size="sm" onClick={onManageLines} className="gap-1">
+              <Factory className="h-3.5 w-3.5" /> Lines
+            </Button>
+            <Button variant="outline" size="sm" onClick={onEdit} className="gap-1">
+              <Pencil className="h-3.5 w-3.5" /> Edit
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
