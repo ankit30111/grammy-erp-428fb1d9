@@ -250,12 +250,6 @@ function App() {
               </AuthGuard>
             } />
 
-            <Route path="/user-management" element={
-              <AuthGuard>
-                <UserManagement />
-              </AuthGuard>
-            } />
-            
             {/* Dashboard Routes */}
             <Route path="/dashboards/store" element={
               <AuthGuard>
