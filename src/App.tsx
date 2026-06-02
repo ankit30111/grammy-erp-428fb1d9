@@ -45,6 +45,7 @@ import Approvals from "./pages/Approvals";
 import PurchaseDiscrepancies from "./pages/PurchaseDiscrepancies";
 import UserManagement from "./pages/UserManagement";
 import { AuthGuard } from "@/components/Auth/AuthGuard";
+import { ModuleGuard } from "@/components/Auth/ModuleGuard";
 import RnD from "./pages/RnD";
 import NPD from "./pages/rnd/NPD";
 import PreExisting from "./pages/rnd/PreExisting";
@@ -149,7 +150,9 @@ function App() {
             
             <Route path="/approvals" element={
               <AuthGuard>
-                <Approvals />
+                <ModuleGuard module="approvals" area="Approvals">
+                  <Approvals />
+                </ModuleGuard>
               </AuthGuard>
             } />
             
