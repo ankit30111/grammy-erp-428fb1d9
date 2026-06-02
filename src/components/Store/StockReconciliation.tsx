@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { usePlantId } from "@/hooks/usePlantId";
 import { useToast } from "@/hooks/use-toast";
 import { AlertTriangle, CheckCircle, Scale, Search, Filter } from "lucide-react";
 
@@ -50,9 +51,11 @@ const StockReconciliation = () => {
     "Wooden"
   ];
 
-  // Fetch current inventory
+  const plantId = usePlantId();
+  // Fetch current inventory for the active plant
   const { data: inventory = [], refetch } = useQuery({
-    queryKey: ["inventory-reconciliation"],
+    queryKey: ["inventory-reconciliation", plantId],
+    enabled: !!plantId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("inventory")
@@ -65,6 +68,7 @@ const StockReconciliation = () => {
             category
           )
         `)
+        .eq("plant_id", plantId!)
         .order("raw_materials(material_code)");
       
       if (error) throw error;

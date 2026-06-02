@@ -101,7 +101,7 @@ const ProductionFeedbackTab = () => {
         if (discrepancy.discrepancy_type === 'SHORTAGE') {
           const { data: currentInventory, error: invError } = await supabase
             .from("inventory")
-            .select("quantity")
+            .select("quantity, plant_id")
             .eq("raw_material_id", discrepancy.raw_material_id)
             .single();
 
@@ -119,7 +119,8 @@ const ProductionFeedbackTab = () => {
               quantity: newQuantity,
               last_updated: new Date().toISOString()
             })
-            .eq("raw_material_id", discrepancy.raw_material_id);
+            .eq("raw_material_id", discrepancy.raw_material_id)
+            .eq("plant_id", currentInventory.plant_id);
 
           if (invUpdateError) {
             console.error("❌ Error updating inventory:", invUpdateError);

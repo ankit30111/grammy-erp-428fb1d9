@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { usePlantId } from "@/hooks/usePlantId";
 import { format } from "date-fns";
 import { CheckCircle, XCircle, ArrowLeftRight, Package, RefreshCw, Send, Clock, ThumbsUp, ThumbsDown } from "lucide-react";
 import { toast } from "sonner";
@@ -68,13 +69,16 @@ const MaterialRequestsTab = memo(() => {
 
   // Fetch inventory data for available quantities
   const { data: inventoryData = [] } = useQuery({
-    queryKey: ["inventory-for-requests"],
+    queryKey: ["inventory-for-requests", usePlantId()],
+    enabled: !!usePlantId(),
     queryFn: async () => {
+      const plantId = usePlantId();
       const { data, error } = await supabase
         .from("inventory")
         .select(`
           raw_material_id,
           quantity,
+          plant_id,
           raw_materials!inner(
             material_code,
             name

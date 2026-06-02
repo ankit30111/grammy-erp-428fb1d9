@@ -97,7 +97,7 @@ const MaterialDispatchHistoryDialog = ({
           // Return excess to inventory
           const { data: currentInventory, error: invError } = await supabase
             .from("inventory")
-            .select("quantity")
+            .select("quantity, plant_id")
             .eq("raw_material_id", rawMaterialId)
             .single();
 
@@ -109,7 +109,8 @@ const MaterialDispatchHistoryDialog = ({
               quantity: currentInventory.quantity + difference,
               last_updated: new Date().toISOString()
             })
-            .eq("raw_material_id", rawMaterialId);
+            .eq("raw_material_id", rawMaterialId)
+            .eq("plant_id", currentInventory.plant_id);
 
           // Log return movement
           await supabase
