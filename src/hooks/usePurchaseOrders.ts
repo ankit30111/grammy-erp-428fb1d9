@@ -2,10 +2,13 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { usePlantId } from "@/hooks/usePlantId";
 
 export const usePurchaseOrders = () => {
+  const plantId = usePlantId();
   return useQuery({
-    queryKey: ['purchase_orders'],
+    queryKey: ['purchase_orders', plantId],
+    enabled: !!plantId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('purchase_orders')
@@ -24,6 +27,7 @@ export const usePurchaseOrders = () => {
             )
           )
         `)
+        .eq('plant_id', plantId!)
         .order('created_at', { ascending: false });
       
       if (error) throw error;
@@ -58,9 +62,11 @@ export const usePurchaseOrders = () => {
 export const useCreatePurchaseOrder = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const plantId = usePlantId();
 
   return useMutation({
     mutationFn: async (orderData: any) => {
+      if (!plantId) throw new Error('No active plant selected');
       // Insert purchase order with empty po_number (let trigger generate it)
       const { data: poData, error: poError } = await supabase
         .from('purchase_orders')
@@ -70,6 +76,7 @@ export const useCreatePurchaseOrder = () => {
           status: 'PENDING',
           notes: orderData.notes,
           expected_delivery_date: orderData.expected_delivery_date,
+          plant_id: plantId,
         })
         .select()
         .single();

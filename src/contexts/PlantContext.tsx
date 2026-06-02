@@ -14,6 +14,7 @@ interface PlantContextType {
   activePlant: Plant | null;
   setActivePlant: (plantId: string) => void;
   loading: boolean;
+  refresh: () => Promise<void>;
 }
 
 const PlantContext = createContext<PlantContextType | undefined>(undefined);
@@ -25,50 +26,46 @@ export function PlantProvider({ children }: { children: React.ReactNode }) {
   const [activePlant, setActivePlantState] = useState<Plant | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    let cancelled = false;
-    async function load() {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from("plants")
-        .select("id, code, name, is_active")
-        .eq("is_active", true)
-        .order("name");
-      if (cancelled) return;
-      if (error || !data) {
-        console.warn("PlantContext: failed to load plants", error);
-        setPlants([]);
-        setLoading(false);
-        return;
-      }
-      setPlants(data);
-
-      // Resolve active plant: localStorage → user.default_plant_id → first plant
-      const storedId = localStorage.getItem(STORAGE_KEY);
-      let chosen: Plant | undefined = data.find((p) => p.id === storedId);
-
-      if (!chosen && user?.id) {
-        const { data: ua } = await supabase
-          .from("user_accounts")
-          .select("default_plant_id")
-          .eq("id", user.id)
-          .maybeSingle();
-        if (ua?.default_plant_id) {
-          chosen = data.find((p) => p.id === ua.default_plant_id);
-        }
-      }
-      if (!chosen) chosen = data[0];
-      if (chosen) {
-        setActivePlantState(chosen);
-        localStorage.setItem(STORAGE_KEY, chosen.id);
-      }
+  const load = useCallback(async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("plants")
+      .select("id, code, name, is_active")
+      .eq("is_active", true)
+      .order("name");
+    if (error || !data) {
+      console.warn("PlantContext: failed to load plants", error);
+      setPlants([]);
       setLoading(false);
+      return;
     }
-    load();
-    return () => {
-      cancelled = true;
-    };
+    setPlants(data);
+
+    // Resolve active plant: localStorage → user.default_plant_id → first plant
+    const storedId = localStorage.getItem(STORAGE_KEY);
+    let chosen: Plant | undefined = data.find((p) => p.id === storedId);
+
+    if (!chosen && user?.id) {
+      const { data: ua } = await supabase
+        .from("user_accounts")
+        .select("default_plant_id")
+        .eq("id", user.id)
+        .maybeSingle();
+      if (ua?.default_plant_id) {
+        chosen = data.find((p) => p.id === ua.default_plant_id);
+      }
+    }
+    if (!chosen) chosen = data[0];
+    if (chosen) {
+      setActivePlantState((prev) => prev ?? chosen!);
+      localStorage.setItem(STORAGE_KEY, chosen.id);
+    }
+    setLoading(false);
   }, [user?.id]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const setActivePlant = useCallback(
     (plantId: string) => {
@@ -90,7 +87,7 @@ export function PlantProvider({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <PlantContext.Provider value={{ plants, activePlant, setActivePlant, loading }}>
+    <PlantContext.Provider value={{ plants, activePlant, setActivePlant, loading, refresh: load }}>
       {children}
     </PlantContext.Provider>
   );

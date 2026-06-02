@@ -1,7 +1,8 @@
 
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Settings as SettingsIcon } from "lucide-react";
+import { Settings as SettingsIcon, Building2, ChevronRight } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const Settings = () => {
   return (
@@ -15,6 +16,25 @@ const Settings = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <Link to="/settings/plants" className="block">
+            <Card className="hover:border-primary/60 transition-colors cursor-pointer h-full">
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <span className="flex items-center gap-2">
+                    <Building2 className="h-5 w-5 text-primary" />
+                    Plants
+                  </span>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground">
+                  Add, edit or deactivate manufacturing plants. Controls the plant switcher and scopes plant data.
+                </p>
+              </CardContent>
+            </Card>
+          </Link>
+
           <Card>
             <CardHeader>
               <CardTitle>System Settings</CardTitle>
