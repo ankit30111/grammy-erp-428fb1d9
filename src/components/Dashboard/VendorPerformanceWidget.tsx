@@ -4,13 +4,17 @@ import { supabase } from "@/integrations/supabase/client";
 import { Truck, Star, Clock, AlertCircle } from "lucide-react";
 import { useRealTimeQuery } from "@/hooks/useRealTimeQuery";
 import { useMultiTableRealTime } from "@/hooks/useMultiTableRealTime";
+import { useDashboardScope } from "@/contexts/DashboardScopeContext";
 
 export const VendorPerformanceWidget = () => {
+  const { scopePlantId } = useDashboardScope();
+  const scopeKey = scopePlantId ?? "all";
+
   // Vendor delivery performance with real-time updates
   const { data: vendorPerformance } = useRealTimeQuery({
-    queryKey: ['vendor-performance'],
+    queryKey: ['vendor-performance', scopeKey],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let q = supabase
         .from('purchase_orders')
         .select(`
           id,
@@ -19,7 +23,8 @@ export const VendorPerformanceWidget = () => {
           vendors (name),
           grn (received_date)
         `);
-      
+      if (scopePlantId) q = q.eq('plant_id', scopePlantId);
+      const { data, error } = await q;
       if (error) throw error;
       
       // Calculate on-time delivery by vendor
@@ -52,9 +57,9 @@ export const VendorPerformanceWidget = () => {
 
   // Vendor quality scores with real-time updates
   const { data: vendorQuality } = useRealTimeQuery({
-    queryKey: ['vendor-quality'],
+    queryKey: ['vendor-quality', scopeKey],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let q = supabase
         .from('grn_items')
         .select(`
           iqc_status,
@@ -64,7 +69,8 @@ export const VendorPerformanceWidget = () => {
             vendors (name)
           )
         `);
-      
+      if (scopePlantId) q = q.eq('plant_id', scopePlantId);
+      const { data, error } = await q;
       if (error) throw error;
       
       const vendorQuality = data?.reduce((acc: any, item: any) => {
