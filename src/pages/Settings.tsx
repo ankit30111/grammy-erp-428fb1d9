@@ -29,7 +29,7 @@ const Settings = () => {
               </CardHeader>
               <CardContent>
                 <p className="text-muted-foreground">
-                  Add, edit or deactivate manufacturing plants. Controls the plant switcher and scopes plant data.
+                  Manage manufacturing plants — address, contact, GST, factory license.
                 </p>
               </CardContent>
             </Card>
