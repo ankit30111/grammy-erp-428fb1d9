@@ -1,4 +1,5 @@
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
+import { PageHeader } from "@/components/Layout/PageHeader";
 import { Clock, Wifi, WifiOff } from "lucide-react";
 import { ProductionOverviewWidget } from "@/components/Dashboard/ProductionOverviewWidget";
 import { OrderFulfillmentWidget } from "@/components/Dashboard/OrderFulfillmentWidget";
@@ -29,59 +30,39 @@ const Index = () => {
     };
   }, []);
   return <DashboardLayout>
-      <div className="grid gap-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold">Factory Dashboard</h1>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              {isConnected ? <Wifi className="h-4 w-4 text-green-600" /> : <WifiOff className="h-4 w-4 text-red-600" />}
-              <Badge variant={isConnected ? "default" : "destructive"}>
-                {isConnected ? "LIVE" : "OFFLINE"}
-              </Badge>
-            </div>
-            <div className="flex items-center gap-2">
-              
-              
-              <Clock className="h-4 w-4 text-muted-foreground" />
-            </div>
+      <PageHeader
+        title="Factory Dashboard"
+        description="Real-time view across production, inventory, quality, and fulfillment"
+        actions={
+          <div className="flex items-center gap-2">
+            {isConnected ? (
+              <Wifi className="h-4 w-4 text-success" />
+            ) : (
+              <WifiOff className="h-4 w-4 text-destructive" />
+            )}
+            <Badge variant={isConnected ? "default" : "destructive"}>
+              {isConnected ? "LIVE" : "OFFLINE"}
+            </Badge>
+            <Clock className="h-4 w-4 text-muted-foreground ml-2" />
           </div>
-        </div>
-
-        {/* Order & Fulfillment KPIs */}
-        <div className="space-y-4">
-          <h2 className="text-xl font-semibold">📦 Order & Fulfillment</h2>
-          <OrderFulfillmentWidget />
-        </div>
-
-        {/* Production Overview */}
-        <div className="space-y-4">
-          <h2 className="text-xl font-semibold">🏭 Production Overview</h2>
-          <ProductionOverviewWidget />
-        </div>
-
-        {/* Production Status */}
-        <div className="space-y-4">
-          <h2 className="text-xl font-semibold">📌 Production Status</h2>
-          <ProductionStatusWidget />
-        </div>
-
-        {/* Inventory & Material Movement */}
-        <div className="space-y-4">
-          <h2 className="text-xl font-semibold">📈 Inventory & Materials</h2>
-          <InventoryWidget />
-        </div>
-
-        {/* Quality Metrics */}
-        <div className="space-y-4">
-          <h2 className="text-xl font-semibold">🔍 Quality Metrics</h2>
-          <QualityMetricsWidget />
-        </div>
-
-        {/* Vendor Performance */}
-        <div className="space-y-4">
-          <h2 className="text-xl font-semibold">🤝 Vendor Performance</h2>
-          <VendorPerformanceWidget />
-        </div>
+        }
+      />
+      <div className="grid gap-6">
+        {[
+          { title: "Order & Fulfillment", node: <OrderFulfillmentWidget /> },
+          { title: "Production Overview", node: <ProductionOverviewWidget /> },
+          { title: "Production Status", node: <ProductionStatusWidget /> },
+          { title: "Inventory & Materials", node: <InventoryWidget /> },
+          { title: "Quality Metrics", node: <QualityMetricsWidget /> },
+          { title: "Vendor Performance", node: <VendorPerformanceWidget /> },
+        ].map((section) => (
+          <section key={section.title} className="page-card p-5">
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-4">
+              {section.title}
+            </h2>
+            {section.node}
+          </section>
+        ))}
       </div>
     </DashboardLayout>;
 };
