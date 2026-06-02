@@ -5,20 +5,24 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CheckSquare, Package, FileText, TrendingUp, ArrowRight } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useDashboardScope } from "@/contexts/DashboardScopeContext";
 
 export function PendingApprovalsWidget() {
   const { isAdmin, canAccessModule } = useAuth();
+  const { scopePlantId } = useDashboardScope();
   const visible = isAdmin || canAccessModule("approvals");
 
   const { data: counts } = useQuery({
     enabled: visible,
-    queryKey: ["pending-approvals-counts"],
+    queryKey: ["pending-approvals-counts", scopePlantId ?? "all"],
     queryFn: async () => {
+      let poQ = supabase
+        .from("purchase_orders")
+        .select("id", { count: "exact", head: true })
+        .in("status", ["pending_approval", "PENDING_APPROVAL", "PENDING"]);
+      if (scopePlantId) poQ = poQ.eq("plant_id", scopePlantId);
       const [po, capa] = await Promise.all([
-        supabase
-          .from("purchase_orders")
-          .select("id", { count: "exact", head: true })
-          .in("status", ["pending_approval", "PENDING_APPROVAL", "PENDING"]),
+        poQ,
         supabase
           .from("iqc_vendor_capa")
           .select("id", { count: "exact", head: true })
