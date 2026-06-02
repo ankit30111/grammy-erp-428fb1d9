@@ -1,50 +1,85 @@
+## Confirmed Architecture
 
-# Phase 2 — Sky Blue palette + Operations chrome
+**Universal (shared across all plants):**
+- Products, Raw Materials, BOMs, R&D / NPD
+- Customers, Vendors
+- Departments, Users, Permissions
+- Master data (categories, units, etc.)
 
-## 1. Repalette to Sky Blue
+**Plant-scoped (separate per plant):**
+- Store / Inventory (raw material stock)
+- GRN receiving + IQC quality
+- Production orders, schedules, vouchers
+- PQC, OQC quality records
+- Sales orders, dispatch
+- Material movements, discrepancies, CAPAs
 
-Update `src/index.css` tokens (light + dark). Functionality and components untouched.
+Plants: **Grammy Electronics**, **Grammy Acoustics**
 
-**Light:**
-- `--background: 210 33% 99%` (`#fafbfc`)
-- `--card: 0 0% 100%`
-- `--foreground: 222 22% 14%`
-- `--muted: 210 38% 96%` (`#eef4fb`)
-- `--muted-foreground: 215 14% 45%`
-- `--border: 214 32% 91%`
-- `--primary: 213 94% 68%` (sky `#60a5fa`)
-- `--primary-foreground: 222 22% 12%` (deep slate — sky is too light for white text)
-- `--accent: 213 100% 96%` (very light sky tint for active states)
-- `--accent-foreground: 213 80% 38%`
-- `--ring: 213 94% 68%`
-- Sidebar mirrors these (white bg, sky-tint active pill)
+---
 
-**Dark:** keep current charcoal but swap primary to `213 94% 72%` so it stays readable.
+## Phased Rollout (one phase per turn, verify before next)
 
-**DASH workspace** keeps its purple accent (no change).
+### Phase A — Foundation (this turn, safe)
+1. Migration: create `public.plants` table, seed both plants. Add `default_plant_id uuid` (nullable) to `user_accounts`.
+2. Build `PlantContext` (React) + `usePlant()` hook. Reads `default_plant_id`, falls back to first plant, persists selection to `localStorage` and writes back to `user_accounts.default_plant_id`.
+3. Add **plant switcher dropdown** in `DashboardLayout` header (next to ThemeToggle).
+4. **No query filtering yet.** Switcher is live but every page still reads global data exactly as today. Zero breakage risk.
 
-## 2. Apply Operations chrome (presentation only)
+### Phase B — Add plant_id columns (next turn)
+- Add nullable `plant_id uuid references public.plants(id)` to:
+  - `inventory`, `grn`, `grn_items`, `purchase_orders`
+  - `production_schedules`, `production_orders`, `material_movements`
+  - `material_requests`, `store_discrepancies`, `production_discrepancies`
+  - `sales_orders`, `dispatch_orders`, `spare_orders`
+  - IQC/PQC/OQC tables
+- Backfill all existing rows → **Grammy Electronics**.
+- Keep columns nullable for safety; no RLS changes yet.
 
-I will only touch JSX className/layout. Hooks, queries, and props are untouched.
+### Phase C — Wire reads page-by-page (subsequent turns)
+- One module per turn: Store → Inventory → PPC/GRN → Production → Quality (IQC/PQC) → Sales/Dispatch.
+- Update each hook to filter `.eq('plant_id', activePlantId)`.
+- Update inserts to stamp `activePlantId`.
+- Verify each module before moving to the next.
 
-| File | Change |
-|------|--------|
-| `src/pages/Index.tsx` | Replace inline header with `PageHeader`, wrap each section in a `page-card` with a tighter `text-sm font-semibold text-muted-foreground uppercase tracking-wide` subheader, drop emoji headings, keep all widgets as-is. |
-| `src/pages/Production.tsx` | Use `PageHeader`, wrap content in `page-card`, swap `TabsList` styling to the `pill-tabs` look (`bg-muted p-1 rounded-xl`, active pill = primary). Keep all 5 tabs and their content unchanged. |
-| `src/pages/PPC.tsx` | Same: `PageHeader` + `page-card` wrapper + pill tabs, preserve every Tab/Card child. |
-| `src/pages/FinishedGoods.tsx` | Wrap the KPI row + charts + tables in `page-card`, give the page a `PageHeader`. No data/logic changes. |
-| `src/pages/Store.tsx` & `src/pages/Inventory.tsx` | Both currently just render `<StoreDashboard />` inside `DashboardLayout`. Add a `PageHeader` ("Store" / "Inventory") above it and wrap the inner dashboard in a `page-card`. `StoreDashboard` itself is left untouched. |
+### Phase D — Lock down (final turn)
+- Make `plant_id` NOT NULL on all plant-scoped tables.
+- Optional: tighten RLS to enforce plant access via user's allowed plants.
 
-## 3. Reusable pill-tab style
+---
 
-I'll add a small `<TabsList>` className recipe used inline on each page:
-`"inline-flex h-10 items-center gap-1 rounded-xl bg-muted p-1 text-sm"` with each `<TabsTrigger>` getting `"px-3 py-1.5 rounded-lg data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm text-muted-foreground"`. No changes to the underlying primitive.
+## What I'll deliver this turn (Phase A only)
 
-## Guardrails
+**Migration:**
+```sql
+CREATE TABLE public.plants (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  code text UNIQUE NOT NULL,
+  name text NOT NULL,
+  is_active boolean DEFAULT true,
+  created_at timestamptz DEFAULT now()
+);
+GRANT SELECT ON public.plants TO authenticated;
+GRANT ALL ON public.plants TO service_role;
+ALTER TABLE public.plants ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "auth read plants" ON public.plants FOR SELECT TO authenticated USING (true);
 
-- Zero changes to data hooks, queries, navigation, or routing.
-- Only `src/index.css` + the six Operations page files are touched.
-- Subcomponents (widgets, ProductionLinesOverview, StoreDashboard, etc.) stay as-is — they already inherit the new tokens automatically.
-- No new dependencies.
+INSERT INTO public.plants (code, name) VALUES
+  ('GE', 'Grammy Electronics'),
+  ('GA', 'Grammy Acoustics');
 
-Approve to ship Phase 2.
+ALTER TABLE public.user_accounts
+  ADD COLUMN default_plant_id uuid REFERENCES public.plants(id);
+```
+
+**Code:**
+- `src/contexts/PlantContext.tsx` — provider + `usePlant()` hook
+- Wrap app in `<PlantProvider>` in `App.tsx`
+- `src/components/Layout/PlantSwitcher.tsx` — dropdown in header
+- Mount switcher in `DashboardLayout.tsx`
+
+**Zero functional changes to any existing page.** Sidebar/theme already blue from previous turn.
+
+---
+
+Confirm and I'll execute Phase A. After you verify the switcher works on the dashboard, say "Phase B" and I'll add the `plant_id` columns + backfill.
