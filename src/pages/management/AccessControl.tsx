@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
@@ -219,13 +219,20 @@ function UserAccessEditor({
 
   const [selectedPlantIds, setSelectedPlantIds] = useState<Set<string>>(new Set());
   const [selectedDeptIds, setSelectedDeptIds] = useState<Set<string>>(new Set());
-  const [hydrated, setHydrated] = useState(false);
 
-  if (!hydrated && !plantsLoading && !deptsLoading) {
-    setSelectedPlantIds(new Set(userPlants.map((p: any) => p.plant_id)));
-    setSelectedDeptIds(new Set(userDepts.map((d: any) => d.department_id)));
-    setHydrated(true);
-  }
+  useEffect(() => {
+    if (!plantsLoading) {
+      setSelectedPlantIds(new Set(userPlants.map((p: any) => p.plant_id)));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plantsLoading, userPlants]);
+
+  useEffect(() => {
+    if (!deptsLoading) {
+      setSelectedDeptIds(new Set(userDepts.map((d: any) => d.department_id)));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deptsLoading, userDepts]);
 
   const togglePlant = (id: string) => {
     setSelectedPlantIds((s) => {
