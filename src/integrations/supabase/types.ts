@@ -2071,6 +2071,7 @@ export type Database = {
           dispatch_order_number: string
           id: string
           notes: string | null
+          plant_id: string | null
           status: string
           updated_at: string
         }
@@ -2083,6 +2084,7 @@ export type Database = {
           dispatch_order_number: string
           id?: string
           notes?: string | null
+          plant_id?: string | null
           status?: string
           updated_at?: string
         }
@@ -2095,6 +2097,7 @@ export type Database = {
           dispatch_order_number?: string
           id?: string
           notes?: string | null
+          plant_id?: string | null
           status?: string
           updated_at?: string
         }
@@ -2111,6 +2114,13 @@ export type Database = {
             columns: ["customer_warehouse_id"]
             isOneToOne: false
             referencedRelation: "customer_warehouses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dispatch_orders_plant_id_fkey"
+            columns: ["plant_id"]
+            isOneToOne: false
+            referencedRelation: "plants"
             referencedColumns: ["id"]
           },
         ]
@@ -2349,6 +2359,7 @@ export type Database = {
           grn_number: string
           id: string
           notes: string | null
+          plant_id: string | null
           purchase_order_id: string | null
           received_by: string | null
           received_date: string
@@ -2361,6 +2372,7 @@ export type Database = {
           grn_number: string
           id?: string
           notes?: string | null
+          plant_id?: string | null
           purchase_order_id?: string | null
           received_by?: string | null
           received_date?: string
@@ -2373,6 +2385,7 @@ export type Database = {
           grn_number?: string
           id?: string
           notes?: string | null
+          plant_id?: string | null
           purchase_order_id?: string | null
           received_by?: string | null
           received_date?: string
@@ -2381,6 +2394,13 @@ export type Database = {
           vendor_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "grn_plant_id_fkey"
+            columns: ["plant_id"]
+            isOneToOne: false
+            referencedRelation: "plants"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "grn_purchase_order_id_fkey"
             columns: ["purchase_order_id"]
@@ -2411,6 +2431,7 @@ export type Database = {
           iqc_status: string | null
           physical_verification_date: string | null
           physical_verified_by: string | null
+          plant_id: string | null
           po_quantity: number
           raw_material_id: string
           received_quantity: number
@@ -2436,6 +2457,7 @@ export type Database = {
           iqc_status?: string | null
           physical_verification_date?: string | null
           physical_verified_by?: string | null
+          plant_id?: string | null
           po_quantity: number
           raw_material_id: string
           received_quantity?: number
@@ -2461,6 +2483,7 @@ export type Database = {
           iqc_status?: string | null
           physical_verification_date?: string | null
           physical_verified_by?: string | null
+          plant_id?: string | null
           po_quantity?: number
           raw_material_id?: string
           received_quantity?: number
@@ -2479,6 +2502,13 @@ export type Database = {
             columns: ["grn_id"]
             isOneToOne: false
             referencedRelation: "grn"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "grn_items_plant_id_fkey"
+            columns: ["plant_id"]
+            isOneToOne: false
+            referencedRelation: "plants"
             referencedColumns: ["id"]
           },
           {
@@ -2614,6 +2644,7 @@ export type Database = {
           last_updated: string
           location: string | null
           minimum_stock: number | null
+          plant_id: string | null
           quantity: number
           raw_material_id: string
         }
@@ -2624,6 +2655,7 @@ export type Database = {
           last_updated?: string
           location?: string | null
           minimum_stock?: number | null
+          plant_id?: string | null
           quantity?: number
           raw_material_id: string
         }
@@ -2634,10 +2666,18 @@ export type Database = {
           last_updated?: string
           location?: string | null
           minimum_stock?: number | null
+          plant_id?: string | null
           quantity?: number
           raw_material_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "inventory_plant_id_fkey"
+            columns: ["plant_id"]
+            isOneToOne: false
+            referencedRelation: "plants"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "inventory_raw_material_id_fkey"
             columns: ["raw_material_id"]
@@ -2666,6 +2706,7 @@ export type Database = {
           implemented_by: string | null
           initiated_at: string
           initiated_by: string | null
+          plant_id: string | null
           received_at: string | null
           rejection_reason: string | null
           remarks: string | null
@@ -2690,6 +2731,7 @@ export type Database = {
           implemented_by?: string | null
           initiated_at?: string
           initiated_by?: string | null
+          plant_id?: string | null
           received_at?: string | null
           rejection_reason?: string | null
           remarks?: string | null
@@ -2714,6 +2756,7 @@ export type Database = {
           implemented_by?: string | null
           initiated_at?: string
           initiated_by?: string | null
+          plant_id?: string | null
           received_at?: string | null
           rejection_reason?: string | null
           remarks?: string | null
@@ -2726,6 +2769,13 @@ export type Database = {
             columns: ["grn_item_id"]
             isOneToOne: false
             referencedRelation: "grn_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "iqc_vendor_capa_plant_id_fkey"
+            columns: ["plant_id"]
+            isOneToOne: false
+            referencedRelation: "plants"
             referencedColumns: ["id"]
           },
           {
@@ -2931,6 +2981,7 @@ export type Database = {
           issued_to: string | null
           movement_type: string
           notes: string | null
+          plant_id: string | null
           quantity: number
           raw_material_id: string
           reference_id: string
@@ -2945,6 +2996,7 @@ export type Database = {
           issued_to?: string | null
           movement_type: string
           notes?: string | null
+          plant_id?: string | null
           quantity: number
           raw_material_id: string
           reference_id: string
@@ -2959,6 +3011,7 @@ export type Database = {
           issued_to?: string | null
           movement_type?: string
           notes?: string | null
+          plant_id?: string | null
           quantity?: number
           raw_material_id?: string
           reference_id?: string
@@ -2966,6 +3019,13 @@ export type Database = {
           reference_type?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "material_movements_plant_id_fkey"
+            columns: ["plant_id"]
+            isOneToOne: false
+            referencedRelation: "plants"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "material_movements_raw_material_id_fkey"
             columns: ["raw_material_id"]
@@ -2981,6 +3041,7 @@ export type Database = {
           approved_quantity: number | null
           created_at: string
           id: string
+          plant_id: string | null
           production_order_id: string
           raw_material_id: string
           reason: string | null
@@ -2993,6 +3054,7 @@ export type Database = {
           approved_quantity?: number | null
           created_at?: string
           id?: string
+          plant_id?: string | null
           production_order_id: string
           raw_material_id: string
           reason?: string | null
@@ -3005,6 +3067,7 @@ export type Database = {
           approved_quantity?: number | null
           created_at?: string
           id?: string
+          plant_id?: string | null
           production_order_id?: string
           raw_material_id?: string
           reason?: string | null
@@ -3013,6 +3076,13 @@ export type Database = {
           status?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "material_requests_plant_id_fkey"
+            columns: ["plant_id"]
+            isOneToOne: false
+            referencedRelation: "plants"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "material_requests_production_order_id_fkey"
             columns: ["production_order_id"]
@@ -3847,6 +3917,7 @@ export type Database = {
           discrepancy_quantity: number
           discrepancy_type: string
           id: string
+          plant_id: string | null
           production_order_id: string
           raw_material_id: string
           reason: string | null
@@ -3865,6 +3936,7 @@ export type Database = {
           discrepancy_quantity: number
           discrepancy_type: string
           id?: string
+          plant_id?: string | null
           production_order_id: string
           raw_material_id: string
           reason?: string | null
@@ -3883,6 +3955,7 @@ export type Database = {
           discrepancy_quantity?: number
           discrepancy_type?: string
           id?: string
+          plant_id?: string | null
           production_order_id?: string
           raw_material_id?: string
           reason?: string | null
@@ -3909,6 +3982,13 @@ export type Database = {
             columns: ["raw_material_id"]
             isOneToOne: false
             referencedRelation: "raw_materials"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "production_discrepancies_plant_id_fkey"
+            columns: ["plant_id"]
+            isOneToOne: false
+            referencedRelation: "plants"
             referencedColumns: ["id"]
           },
         ]
@@ -4038,6 +4118,7 @@ export type Database = {
           discrepancy_type: string | null
           id: string
           notes: string | null
+          plant_id: string | null
           production_order_id: string
           quantity_received: number
           raw_material_id: string
@@ -4056,6 +4137,7 @@ export type Database = {
           discrepancy_type?: string | null
           id?: string
           notes?: string | null
+          plant_id?: string | null
           production_order_id: string
           quantity_received?: number
           raw_material_id: string
@@ -4074,6 +4156,7 @@ export type Database = {
           discrepancy_type?: string | null
           id?: string
           notes?: string | null
+          plant_id?: string | null
           production_order_id?: string
           quantity_received?: number
           raw_material_id?: string
@@ -4100,6 +4183,13 @@ export type Database = {
             referencedRelation: "raw_materials"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "production_material_receipts_plant_id_fkey"
+            columns: ["plant_id"]
+            isOneToOne: false
+            referencedRelation: "plants"
+            referencedColumns: ["id"]
+          },
         ]
       }
       production_orders: {
@@ -4107,6 +4197,7 @@ export type Database = {
           created_at: string
           id: string
           kit_status: string | null
+          plant_id: string | null
           product_id: string
           production_lines: Json | null
           production_schedule_id: string
@@ -4120,6 +4211,7 @@ export type Database = {
           created_at?: string
           id?: string
           kit_status?: string | null
+          plant_id?: string | null
           product_id: string
           production_lines?: Json | null
           production_schedule_id: string
@@ -4133,6 +4225,7 @@ export type Database = {
           created_at?: string
           id?: string
           kit_status?: string | null
+          plant_id?: string | null
           product_id?: string
           production_lines?: Json | null
           production_schedule_id?: string
@@ -4143,6 +4236,13 @@ export type Database = {
           voucher_number?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "production_orders_plant_id_fkey"
+            columns: ["plant_id"]
+            isOneToOne: false
+            referencedRelation: "plants"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "production_orders_product_id_fkey"
             columns: ["product_id"]
@@ -4164,6 +4264,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           id: string
+          plant_id: string | null
           production_line: string | null
           projection_id: string
           quantity: number
@@ -4175,6 +4276,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
+          plant_id?: string | null
           production_line?: string | null
           projection_id: string
           quantity: number
@@ -4186,6 +4288,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
+          plant_id?: string | null
           production_line?: string | null
           projection_id?: string
           quantity?: number
@@ -4194,6 +4297,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "production_schedules_plant_id_fkey"
+            columns: ["plant_id"]
+            isOneToOne: false
+            referencedRelation: "plants"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "production_schedules_projection_id_fkey"
             columns: ["projection_id"]
@@ -4433,6 +4543,7 @@ export type Database = {
           expected_delivery_date: string | null
           id: string
           notes: string | null
+          plant_id: string | null
           po_date: string
           po_number: string
           rejection_reason: string | null
@@ -4448,6 +4559,7 @@ export type Database = {
           expected_delivery_date?: string | null
           id?: string
           notes?: string | null
+          plant_id?: string | null
           po_date?: string
           po_number: string
           rejection_reason?: string | null
@@ -4463,6 +4575,7 @@ export type Database = {
           expected_delivery_date?: string | null
           id?: string
           notes?: string | null
+          plant_id?: string | null
           po_date?: string
           po_number?: string
           rejection_reason?: string | null
@@ -4472,6 +4585,13 @@ export type Database = {
           vendor_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "purchase_orders_plant_id_fkey"
+            columns: ["plant_id"]
+            isOneToOne: false
+            referencedRelation: "plants"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "purchase_orders_vendor_id_fkey"
             columns: ["vendor_id"]
@@ -4741,6 +4861,7 @@ export type Database = {
           id: string
           notes: string | null
           order_date: string
+          plant_id: string | null
           spare_order_number: string
           status: string
           updated_at: string
@@ -4751,6 +4872,7 @@ export type Database = {
           id?: string
           notes?: string | null
           order_date?: string
+          plant_id?: string | null
           spare_order_number: string
           status?: string
           updated_at?: string
@@ -4761,6 +4883,7 @@ export type Database = {
           id?: string
           notes?: string | null
           order_date?: string
+          plant_id?: string | null
           spare_order_number?: string
           status?: string
           updated_at?: string
@@ -4771,6 +4894,13 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "spare_orders_plant_id_fkey"
+            columns: ["plant_id"]
+            isOneToOne: false
+            referencedRelation: "plants"
             referencedColumns: ["id"]
           },
         ]
@@ -4784,6 +4914,7 @@ export type Database = {
           grn_item_id: string
           id: string
           iqc_accepted_quantity: number
+          plant_id: string | null
           raw_material_id: string
           reported_at: string
           reported_by: string | null
@@ -4804,6 +4935,7 @@ export type Database = {
           grn_item_id: string
           id?: string
           iqc_accepted_quantity: number
+          plant_id?: string | null
           raw_material_id: string
           reported_at?: string
           reported_by?: string | null
@@ -4824,6 +4956,7 @@ export type Database = {
           grn_item_id?: string
           id?: string
           iqc_accepted_quantity?: number
+          plant_id?: string | null
           raw_material_id?: string
           reported_at?: string
           reported_by?: string | null
@@ -4849,6 +4982,13 @@ export type Database = {
             columns: ["grn_item_id"]
             isOneToOne: false
             referencedRelation: "grn_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "store_discrepancies_plant_id_fkey"
+            columns: ["plant_id"]
+            isOneToOne: false
+            referencedRelation: "plants"
             referencedColumns: ["id"]
           },
           {
