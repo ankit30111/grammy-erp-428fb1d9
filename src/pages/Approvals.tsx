@@ -1,5 +1,6 @@
 
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
+import { useSearchParams } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CheckSquare, Clock, Package, FileText, Users, TrendingUp } from "lucide-react";
 import PurchaseOrderApprovalsEnhanced from "@/components/Approvals/PurchaseOrderApprovalsEnhanced";
@@ -7,6 +8,11 @@ import CAPAApprovalsTab from "@/components/Approvals/CAPAApprovalsTab";
 import CAPATrackingTab from "@/components/Approvals/CAPATrackingTab";
 
 const Approvals = () => {
+  const [searchParams] = useSearchParams();
+  const tabParam = searchParams.get("tab");
+  const validTabs = ["purchase-orders", "capa-approvals", "capa-tracking"];
+  const defaultTab = tabParam && validTabs.includes(tabParam) ? tabParam : "purchase-orders";
+
   return (
     <DashboardLayout>
       <div className="grid gap-4 md:gap-6">
@@ -19,7 +25,7 @@ const Approvals = () => {
           </div>
         </div>
 
-        <Tabs defaultValue="purchase-orders" className="w-full">
+        <Tabs defaultValue={defaultTab} className="w-full">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="purchase-orders" className="flex items-center gap-2">
               <Package className="h-4 w-4" />

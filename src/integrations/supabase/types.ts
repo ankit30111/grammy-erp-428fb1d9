@@ -4077,6 +4077,9 @@ export type Database = {
           id: string
           is_active: boolean
           line_type: Database["public"]["Enums"]["production_line_type"]
+          location_bay: string | null
+          location_building: string | null
+          location_floor: string | null
           name: string
           notes: string | null
           plant_id: string
@@ -4089,6 +4092,9 @@ export type Database = {
           id?: string
           is_active?: boolean
           line_type?: Database["public"]["Enums"]["production_line_type"]
+          location_bay?: string | null
+          location_building?: string | null
+          location_floor?: string | null
           name: string
           notes?: string | null
           plant_id: string
@@ -4101,6 +4107,9 @@ export type Database = {
           id?: string
           is_active?: boolean
           line_type?: Database["public"]["Enums"]["production_line_type"]
+          location_bay?: string | null
+          location_building?: string | null
+          location_floor?: string | null
           name?: string
           notes?: string | null
           plant_id?: string

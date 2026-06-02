@@ -32,7 +32,6 @@ import RawMaterialsManagement from "./pages/management/RawMaterialsManagement";
 import Settings from "./pages/Settings";
 import PlantsManagement from "./pages/management/PlantsManagement";
 import AccessControl from "./pages/management/AccessControl";
-import ProductionLinesManagement from "./pages/management/ProductionLinesManagement";
 import NotFound from "./pages/NotFound";
 import PPCDashboard from "@/pages/dashboards/PPCDashboard";
 import SerialNumberManagement from "./pages/SerialNumberManagement";
@@ -252,12 +251,6 @@ function App() {
               </AuthGuard>
             } />
 
-            <Route path="/management/production-lines" element={
-              <AuthGuard>
-                <ProductionLinesManagement />
-              </AuthGuard>
-            } />
-            
             <Route path="/user-management" element={
               <AuthGuard>
                 <UserManagement />

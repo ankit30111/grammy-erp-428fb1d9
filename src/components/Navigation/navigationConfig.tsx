@@ -22,6 +22,7 @@ export interface NavigationItem {
 
 export const navigationItems: NavigationItem[] = [
   { to: "/dashboard", icon: <Home size={18} />, label: "Dashboard", group: "OVERVIEW" },
+  { to: "/approvals", icon: <CheckSquare size={18} />, label: "Approvals", group: "OVERVIEW", module: "approvals" },
   // Commerce bundle: purchase + planning + sales + imports
   { to: "/projection", icon: <Plus size={18} />, label: "Add Projection", group: "COMMERCE", module: "commerce" },
   { to: "/dashboard/ppc", icon: <Calendar size={18} />, label: "PPC", group: "COMMERCE", module: "commerce" },
@@ -49,9 +50,7 @@ export const managementItems: NavigationItem[] = [
   { to: "/management/customers", icon: <UserPlus size={18} />, label: "Customers", adminOnly: true },
   { to: "/vendors", icon: <Building2 size={18} />, label: "Vendors", adminOnly: true },
   { to: "/management/plants", icon: <Building2 size={18} />, label: "Plants", adminOnly: true },
-  { to: "/management/production-lines", icon: <Factory size={18} />, label: "Production Lines", adminOnly: true },
   { to: "/management/hr", icon: <Users size={18} />, label: "Human Resources", module: "hr" },
-  { to: "/approvals", icon: <CheckSquare size={18} />, label: "Approvals", module: "approvals" },
   { to: "/management/access-control", icon: <ShieldCheck size={18} />, label: "Access Control", adminOnly: true },
   { to: "/user-management", icon: <User size={18} />, label: "User Management", adminOnly: true },
 ];
