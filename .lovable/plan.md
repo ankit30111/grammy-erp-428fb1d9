@@ -1,54 +1,68 @@
-# Approvals relocation + Plant-scoped Production Lines
 
-## 1. Approvals → Overview (sidebar) + Dashboard widget
+## Problem
 
-**Sidebar (`navigationConfig.tsx`)**
-- Remove the Approvals entry from `managementItems`.
-- Add it to `navigationItems` directly after Dashboard, in the `OVERVIEW` group, keeping `module: "approvals"` so visibility is unchanged (admins + Approvals module).
+The schema already has `plant_id` on the operational tables (`inventory`, `production_schedules`, `production_orders`, `material_movements`, `grn`, `grn_items`, `material_requests`, `purchase_orders`, `dispatch_orders`), but most front-end queries do **not** filter by the active plant. That's why both plants' scheduled productions, stock and store data appear together. `projections`, `products` and `raw_materials` do **not** have `plant_id` — those stay shared (projections common, masters shared), as you described.
 
-**Dashboard widget (`src/pages/Index.tsx`)**
-- Add a new `PendingApprovalsWidget` card at the top of the dashboard, visible only when `canAccessModule('approvals') || isAdmin`.
-- Shows three counters — Purchase Orders pending, CAPAs pending, CAPA tracking open — each linking to `/approvals` with the matching tab preselected.
-- Counts come from existing tables: `purchase_orders` (status pending approval), `iqc_vendor_capa` (status AWAITED), and CAPA tracking source already used in `CAPATrackingTab`. Read via the same hooks those tabs already use, so no new RPCs.
-- `Approvals.tsx` accepts a `?tab=purchase-orders|capa-approvals|capa-tracking` query param to drive `defaultValue`.
+## Design
 
-## 2. Production Lines managed from Plants page
+```text
+Common (shared)     : projections, products, raw_materials, vendors, customers, BOM
+Plant-scoped        : production_schedules, production_orders, inventory,
+                      material_movements, material_requests,
+                      grn + grn_items, purchase_orders, dispatch_orders,
+                      finished_goods stock
 
-**UI (`src/pages/management/PlantsManagement.tsx`)**
-- Add a "Manage Lines" button on each plant row that opens a new `<PlantLinesDialog plantId=… />`.
-- Dialog lists that plant's lines/sub-assemblies/cells with inline add / edit / delete and an active toggle.
-- Remove the standalone `/management/production-lines` sidebar entry and route (the page is no longer the entry point — keep the page file as the dialog's internals, or delete it; plan deletes it to avoid two ways in).
+Dashboard           : toggle [ All plants ▾ | Plant A | Plant B ]
+                      - "All plants" = company-wide rollup (no plant filter)
+                      - Single plant   = uses activePlant filter
+```
 
-**Schema additions (single migration)**
-- `ALTER TABLE public.production_lines` add:
-  - `location_building text`
-  - `location_floor text`
-  - `location_bay text`
-- No data backfill needed; existing rows get NULLs.
-- Keep existing RLS/grants intact.
+## What I'll change
 
-**Form fields in the dialog**
-- Code, Name, Type (line / sub_assembly / cell), Sort order, Active.
-- Location group: Building, Floor, Bay (three text inputs side by side).
-- Notes.
+### 1. Plant-scope every operational read/write
 
-**Validation**
-- `(plant_id, code)` uniqueness already enforced — surface as inline error.
-- Building/Floor/Bay optional but if any one is filled the others stay optional (no required combo).
+Add `.eq('plant_id', plantId)` on selects and stamp `plant_id: plantId` on inserts in:
 
-## 3. Routing & cleanup
+- `src/hooks/inventory/useInventoryQuery.ts`, `useInventoryMutations.ts`, `useInventorySync.ts`, `useInventoryDiagnostics.ts`
+- `src/hooks/useInventorySync.ts`, `src/hooks/useKitManagement.ts`
+- `src/hooks/useGRN.ts` (verify), `src/hooks/useDispatchOrders.ts` (verify), `src/hooks/usePurchaseOrders.ts` (verify)
+- All `from("inventory")` call-sites in `src/components/Production/*`, `src/components/Store/*`
+- `src/components/Production/ProductionQueueDashboard.tsx` — currently fetches all `production_orders` without plant filter; add filter and use dynamic lines from `useProductionLinesList`
+- `src/hooks/useDashboardData.ts` — `useStoreDashboardData`, `useProductionDashboardData`, `useQualityDashboardData` all unfiltered; add plant filter (with "all plants" override — see step 3)
 
-- `App.tsx`: remove the `/management/production-lines` route (replaced by dialog). Approvals route unchanged.
-- Sidebar groups end up: OVERVIEW (Dashboard, Approvals), COMMERCE, STORE, PRODUCTION, QUALITY, R&D, WORKSPACES, MANAGEMENT (Products, Raw Materials, Customers, Vendors, Plants, HR, Access Control, User Management).
+Guard every hook: if `plantId` is undefined, return empty/disabled query rather than leaking cross-plant rows.
 
-## Technical notes
+### 2. Finished goods / store stock per plant
 
-- New file: `src/components/Plants/PlantLinesDialog.tsx` (uses existing shadcn Dialog + Table; mirrors current CRUD logic from `ProductionLinesManagement.tsx`).
-- New file: `src/components/Dashboard/PendingApprovalsWidget.tsx`.
-- Migration file under `supabase/migrations/` adding the three location columns; no GRANT/RLS changes required.
-- Types regenerate after migration runs.
+`finished_goods` has no `plant_id` today. Add it via migration (nullable, backfill with default plant for existing rows), then filter the FG views/hooks the same way.
 
-## Out of scope
+### 3. Consolidated vs per-plant dashboard
 
-- No changes to permission model, plant assignment, or department×module matrix.
-- No structured "locations" lookup table (deferred until you want dropdowns).
+- New context value `dashboardScope: 'all' | <plantId>` (separate from `activePlant`, so operational pages keep using `activePlant` and only the dashboard widgets read `dashboardScope`).
+- New `<DashboardScopeSwitcher />` in `src/pages/Index.tsx` header: "All plants" + each permitted plant.
+- Update dashboard widgets (`InventoryWidget`, `PendingApprovalsWidget`, `ProductionOverviewWidget`, `ProductionStatusWidget`, `QualityMetricsWidget`, `OrderFulfillmentWidget`, `VendorPerformanceWidget`, `useDashboardData` hooks) to:
+  - When scope is a plant → `.eq('plant_id', scopePlantId)`
+  - When scope is "all" → no plant filter (rollup)
+- Same toggle reused on PPC dashboard (`/dashboard/ppc`) so you can see one plant or both.
+
+### 4. RLS sanity (defence in depth)
+
+Confirm existing RLS on plant-scoped tables uses `auth_user_in_plant(plant_id)` so even if a UI bug forgets the filter, users only see plants they're permitted on. If any of these tables are missing that policy I'll add it in a migration.
+
+### 5. Backfill
+
+One-time migration to set `plant_id` on existing rows in plant-scoped tables that are currently NULL → assign to the default/primary plant so historical data stays visible after filters are enforced.
+
+## Out of scope (intentionally)
+
+- Projections stay common — no schema change there.
+- Products / raw materials / vendors / customers / BOM stay shared masters.
+- No change to Plants → Lines management you already built.
+
+## Result
+
+- PPC's "scheduled productions" list only shows the active plant's vouchers.
+- Stock, GRN, dispatch, material movements stay strictly per plant — no more cross-plant mess-ups.
+- Dashboard has one switcher: pick a plant to see that plant's KPIs, or "All plants" for the company rollup.
+
+Approve and I'll implement.
