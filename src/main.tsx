@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Toaster } from "@/components/ui/toaster"
 import { AuthProvider } from '@/contexts/AuthContext'
+import { PlantProvider } from '@/contexts/PlantContext'
 import App from './App.tsx'
 import './index.css'
 
@@ -23,8 +24,10 @@ const root = createRoot(container);
 root.render(
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
-      <App />
-      <Toaster />
+      <PlantProvider>
+        <App />
+        <Toaster />
+      </PlantProvider>
     </AuthProvider>
   </QueryClientProvider>
 );
