@@ -5,76 +5,91 @@
 
 @layer base {
   :root {
-    /* Updated color scheme for ERP application */
-    --background: 210 40% 98%;
-    --foreground: 222 47% 11%;
+    /* Makoro-inspired warm sand + emerald palette */
+    --background: 40 33% 97%;
+    --foreground: 220 14% 14%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    --card-foreground: 220 14% 14%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
+    --popover-foreground: 220 14% 14%;
 
-    --primary: 221 83% 53%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 162 80% 26%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222 47% 11%;
+    --secondary: 38 25% 94%;
+    --secondary-foreground: 220 14% 14%;
 
-    --muted: 210 40% 96%;
-    --muted-foreground: 215 16% 47%;
+    --muted: 38 25% 92%;
+    --muted-foreground: 220 9% 42%;
 
-    --accent: 221 83% 95%;
-    --accent-foreground: 222 47% 11%;
+    --accent: 162 40% 94%;
+    --accent-foreground: 162 80% 22%;
 
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
-    --ring: 221 83% 53%;
+    --success: 162 80% 26%;
+    --warning: 38 92% 50%;
 
-    --radius: 0.5rem;
+    --border: 38 18% 88%;
+    --input: 38 18% 88%;
+    --ring: 162 80% 26%;
 
-    /* Custom sidebar colors */
-    --sidebar-background: 0 0% 100%; /* Light background for readability */
-    --sidebar-foreground: 215 28% 17%;
-    --sidebar-primary: 186 44% 27%; /* #255d65 */
+    --radius: 0.75rem;
+
+    /* Sidebar */
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 220 14% 25%;
+    --sidebar-primary: 162 80% 26%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 186 44% 22%; /* Slightly darker for hover */
-    --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 210 40% 96%;
-    --sidebar-ring: 186 44% 27%;
+    --sidebar-accent: 162 40% 94%;
+    --sidebar-accent-foreground: 162 80% 22%;
+    --sidebar-border: 38 18% 90%;
+    --sidebar-ring: 162 80% 26%;
   }
 
   .dark {
-    --background: 222 47% 11%;
-    --foreground: 210 40% 98%;
+    --background: 220 13% 9%;
+    --foreground: 38 25% 94%;
 
-    --card: 223 47% 15%;
-    --card-foreground: 210 40% 98%;
+    --card: 220 13% 12%;
+    --card-foreground: 38 25% 94%;
 
-    --popover: 223 47% 15%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 220 13% 12%;
+    --popover-foreground: 38 25% 94%;
 
-    --primary: 221 83% 53%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 162 70% 42%;
+    --primary-foreground: 220 13% 9%;
 
-    --secondary: 222 47% 20%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 220 10% 16%;
+    --secondary-foreground: 38 25% 94%;
 
-    --muted: 222 47% 20%;
-    --muted-foreground: 215 20% 65%;
+    --muted: 220 10% 16%;
+    --muted-foreground: 220 8% 65%;
 
-    --accent: 222 47% 20%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 162 40% 18%;
+    --accent-foreground: 162 70% 75%;
 
-    --destructive: 0 62% 30%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 62% 45%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 222 47% 20%;
-    --input: 222 47% 20%;
-    --ring: 224 76% 48%;
+    --success: 162 70% 42%;
+    --warning: 38 92% 55%;
+
+    --border: 220 8% 20%;
+    --input: 220 8% 20%;
+    --ring: 162 70% 42%;
+
+    --sidebar-background: 220 13% 11%;
+    --sidebar-foreground: 38 20% 85%;
+    --sidebar-primary: 162 70% 42%;
+    --sidebar-primary-foreground: 220 13% 9%;
+    --sidebar-accent: 162 40% 18%;
+    --sidebar-accent-foreground: 162 70% 75%;
+    --sidebar-border: 220 8% 18%;
+    --sidebar-ring: 162 70% 42%;
   }
 }
 
@@ -84,31 +99,49 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "cv11", "ss01";
   }
 }
 
 /* DASH brand workspace accent tokens */
 .dash-workspace {
-  --dash-sidebar-bg: 222 47% 11%;
+  --dash-sidebar-bg: 220 13% 11%;
   --dash-accent: 263 70% 58%;
   --dash-accent-light: 263 70% 90%;
 }
 
 @layer components {
   .nav-link {
-    @apply flex items-center gap-3 px-3 py-2 rounded-md hover:bg-[#255d65] hover:bg-opacity-90 transition-colors;
+    @apply flex items-center gap-3 px-3 py-2 rounded-lg text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors text-sm font-medium;
   }
-  
+
   .nav-link.active {
-    @apply bg-[#255d65] font-medium;
+    @apply bg-sidebar-accent text-sidebar-accent-foreground font-semibold;
   }
 
   .card-hover {
-    @apply transition-all hover:shadow-md hover:-translate-y-0.5;
+    @apply transition-all hover:shadow-sm hover:border-foreground/10;
   }
-  
+
   .status-badge {
     @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  .page-card {
+    @apply rounded-2xl border border-border bg-card shadow-[0_1px_2px_rgba(15,23,42,0.04)];
+  }
+
+  .pill-tabs {
+    @apply inline-flex items-center gap-1 rounded-xl bg-muted p-1;
+  }
+
+  .pill-tab {
+    @apply inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors;
+  }
+
+  .pill-tab[data-state="active"],
+  .pill-tab.active {
+    @apply bg-primary text-primary-foreground shadow-sm;
   }
 }
