@@ -39,5 +39,6 @@ export const managementItems: NavigationItem[] = [
   { to: "/management/raw-materials", icon: <Layers size={18} />, label: "Raw Materials" },
   { to: "/management/customers", icon: <UserPlus size={18} />, label: "Customers" },
   { to: "/vendors", icon: <Building2 size={18} />, label: "Vendors" },
+  { to: "/management/plants", icon: <Building2 size={18} />, label: "Plants" },
   { to: "/user-management", icon: <User size={18} />, label: "User Management" },
 ];
