@@ -2,10 +2,13 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { usePlantId } from "@/hooks/usePlantId";
 
 export const useGRN = () => {
+  const plantId = usePlantId();
   return useQuery({
-    queryKey: ['grn'],
+    queryKey: ['grn', plantId],
+    enabled: !!plantId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('grn')
@@ -28,6 +31,7 @@ export const useGRN = () => {
             )
           )
         `)
+        .eq('plant_id', plantId!)
         .order('created_at', { ascending: false });
       
       if (error) throw error;
@@ -39,10 +43,12 @@ export const useGRN = () => {
 export const useCreateGRN = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const plantId = usePlantId();
 
   return useMutation({
     mutationFn: async (grnData: any) => {
       try {
+        if (!plantId) throw new Error('No active plant selected');
         console.log('Creating GRN with data:', grnData);
         
         // Insert GRN with empty grn_number (let trigger generate it)
@@ -55,6 +61,7 @@ export const useCreateGRN = () => {
             status: 'RECEIVED', // Set to RECEIVED for both PO and non-PO GRNs
             notes: grnData.notes,
             received_date: grnData.received_date || new Date().toISOString().split('T')[0],
+            plant_id: plantId,
           })
           .select()
           .single();
@@ -73,6 +80,7 @@ export const useCreateGRN = () => {
         po_quantity: item.po_quantity || item.expected_quantity, // Use expected_quantity for non-PO GRNs
         received_quantity: item.received_quantity,
         iqc_status: 'PENDING',
+        plant_id: plantId,
       }));
 
       const { error: itemsError } = await supabase

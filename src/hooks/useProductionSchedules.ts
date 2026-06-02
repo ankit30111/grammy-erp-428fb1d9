@@ -1,10 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { usePlantId } from "@/hooks/usePlantId";
 
 export const useProductionSchedules = () => {
+  const plantId = usePlantId();
   return useQuery({
-    queryKey: ['production_schedules'],
+    queryKey: ['production_schedules', plantId],
+    enabled: !!plantId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('production_schedules')
@@ -29,6 +32,7 @@ export const useProductionSchedules = () => {
             kit_status
           )
         `)
+        .eq('plant_id', plantId!)
         .order('scheduled_date', { ascending: true });
       
       if (error) throw error;
@@ -101,9 +105,11 @@ const generateVoucherNumber = async (scheduledDate: string) => {
 export const useCreateProductionSchedule = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const plantId = usePlantId();
 
   return useMutation({
     mutationFn: async (scheduleData: any) => {
+      if (!plantId) throw new Error('No active plant selected');
       console.log('🎯 Creating production schedule with data:', scheduleData);
       
       // IMMEDIATE FIX: Fetch projection data BEFORE any mutations to avoid RLS conflicts
@@ -141,6 +147,7 @@ export const useCreateProductionSchedule = () => {
           quantity: scheduleData.quantity,
           production_line: scheduleData.production_line || null,
           status: 'SCHEDULED',
+          plant_id: plantId,
         })
         .select()
         .single();
@@ -162,7 +169,8 @@ export const useCreateProductionSchedule = () => {
           scheduled_date: scheduleData.scheduled_date,
           voucher_number: voucherNumber,
           status: 'SCHEDULED',
-          kit_status: 'NOT_PREPARED'
+          kit_status: 'NOT_PREPARED',
+          plant_id: plantId,
         })
         .select()
         .single();

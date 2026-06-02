@@ -1,10 +1,13 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { usePlantId } from "@/hooks/usePlantId";
 
 export const useProductionOrders = () => {
+  const plantId = usePlantId();
   return useQuery({
-    queryKey: ["production-orders"],
+    queryKey: ["production-orders", plantId],
+    enabled: !!plantId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("production_orders")
@@ -18,6 +21,7 @@ export const useProductionOrders = () => {
             )
           )
         `)
+        .eq('plant_id', plantId!)
         .order("created_at", { ascending: false });
       
       if (error) throw error;
