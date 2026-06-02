@@ -1,6 +1,7 @@
 
 import { useState } from "react";
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
+import { PageHeader } from "@/components/Layout/PageHeader";
 import { KPICard } from "@/components/Dashboard/KPICard";
 import { ChartWidget } from "@/components/Dashboard/ChartWidget";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -116,13 +117,13 @@ const FinishedGoods = () => {
 
   return (
     <DashboardLayout>
+      <PageHeader
+        title="Finished Goods"
+        description="Stock levels, daily flow and aging across the FG store"
+      />
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold">Finished Goods Dashboard</h1>
-        </div>
-
         {/* KPI Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <KPICard
             title="Total Finished Goods Stock"
             value={finishedGoodsData?.totalStock?.toLocaleString() || 0}
@@ -155,31 +156,35 @@ const FinishedGoods = () => {
         </div>
 
         {/* Charts */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <ChartWidget title="Product-wise Stock Levels" description="Current inventory by product">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="page-card p-5">
+            <ChartWidget title="Product-wise Stock Levels" description="Current inventory by product">
             <BarChart data={stockByProduct.slice(0, 8)}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="product" angle={-45} textAnchor="end" height={80} />
               <YAxis />
               <Tooltip />
-              <Bar dataKey="quantity" fill="#0088FE" />
+              <Bar dataKey="quantity" fill="hsl(var(--primary))" />
             </BarChart>
-          </ChartWidget>
+            </ChartWidget>
+          </div>
 
-          <ChartWidget title="Daily Inflow vs Outflow" description="Production inflow vs sales outflow">
+          <div className="page-card p-5">
+            <ChartWidget title="Daily Inflow vs Outflow" description="Production inflow vs sales outflow">
             <LineChart data={mockFlowData}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="day" />
               <YAxis />
               <Tooltip />
-              <Line type="monotone" dataKey="inflow" stroke="#0088FE" name="Inflow" />
-              <Line type="monotone" dataKey="outflow" stroke="#FFBB28" name="Outflow" />
+              <Line type="monotone" dataKey="inflow" stroke="hsl(var(--primary))" name="Inflow" />
+              <Line type="monotone" dataKey="outflow" stroke="hsl(var(--warning))" name="Outflow" />
             </LineChart>
-          </ChartWidget>
+            </ChartWidget>
+          </div>
         </div>
 
         {/* Inventory Table */}
-        <Card>
+        <Card className="page-card border-none shadow-none">
           <CardHeader>
             <CardTitle>Current Finished Goods Inventory</CardTitle>
           </CardHeader>
