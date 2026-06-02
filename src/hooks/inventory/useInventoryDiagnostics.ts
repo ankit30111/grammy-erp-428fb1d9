@@ -1,10 +1,13 @@
 
 import { useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { usePlantId } from "@/hooks/usePlantId";
 
 export const useCheckMaterialInventory = () => {
+  const plantId = usePlantId();
   return useMutation({
     mutationFn: async (materialCode: string) => {
+      if (!plantId) throw new Error("No active plant selected");
       console.log(`🔍 Checking enhanced inventory for material: ${materialCode}`);
       
       // Get material details
@@ -19,7 +22,7 @@ export const useCheckMaterialInventory = () => {
         throw materialError;
       }
 
-      // Get all GRN items for this material (store confirmed only)
+      // Get all GRN items for this material in this plant (store confirmed only)
       const { data: grnItems, error: grnError } = await supabase
         .from("grn_items")
         .select(`
@@ -29,15 +32,17 @@ export const useCheckMaterialInventory = () => {
           grn!inner(grn_number, received_date)
         `)
         .eq("raw_material_id", material.id)
-        .eq("store_confirmed", true);
+        .eq("store_confirmed", true)
+        .eq("plant_id", plantId);
 
       if (grnError) throw grnError;
 
-      // Get current inventory
+      // Get current inventory for this plant
       const { data: inventory, error: invError } = await supabase
         .from("inventory")
         .select("quantity")
         .eq("raw_material_id", material.id)
+        .eq("plant_id", plantId)
         .maybeSingle();
 
       if (invError) throw invError;
