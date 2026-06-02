@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { NavLink } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { ChevronRight, ChevronLeft } from "lucide-react";
+import { ChevronDown, ChevronRight } from "lucide-react";
 
 interface NavItemProps {
   to: string;
@@ -47,31 +47,31 @@ export const NavItem = ({
       <NavLink
         to={to}
         className={({ isActive }) =>
-          cn("nav-link", isActive && !filteredSubItems?.length && "active")
+          cn("nav-link group", isActive && !filteredSubItems?.length && "active", collapsed && "justify-center")
         }
         onClick={filteredSubItems?.length ? handleExpandClick : undefined}
         end={!filteredSubItems?.length}
       >
-        <span className="text-sidebar-foreground">{icon}</span>
+        <span className="shrink-0">{icon}</span>
         {!collapsed && (
           <>
-            <span className="text-sidebar-foreground">{label}</span>
+            <span className="truncate">{label}</span>
             {filteredSubItems?.length && (
-              <span className="ml-auto">
-                {expanded ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+              <span className="ml-auto text-sidebar-foreground/40">
+                {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
               </span>
             )}
           </>
         )}
         {!collapsed && badge !== undefined && (
-          <span className="ml-auto bg-sidebar-primary text-sidebar-primary-foreground text-xs rounded-full px-2 py-0.5">
+          <span className="ml-auto bg-primary/10 text-primary text-[10px] font-semibold rounded-full px-2 py-0.5">
             {badge > 99 ? "99+" : badge}
           </span>
         )}
       </NavLink>
       
       {!collapsed && expanded && filteredSubItems?.length && (
-        <ul className="ml-8 space-y-1 mt-1">
+        <ul className="ml-7 space-y-0.5 mt-1 border-l border-sidebar-border pl-2">
           {filteredSubItems.map((item, index) => (
             <li key={index}>
               <NavLink
@@ -80,10 +80,10 @@ export const NavItem = ({
                   cn("nav-link text-sm py-1.5", isActive && "active")
                 }
               >
-                <div className="w-1 h-1 rounded-full bg-current" />
-                <span className="text-sidebar-foreground">{item.label}</span>
+                <div className="w-1 h-1 rounded-full bg-current opacity-50" />
+                <span className="truncate">{item.label}</span>
                 {item.badge !== undefined && (
-                  <span className="ml-auto bg-sidebar-primary text-sidebar-primary-foreground text-xs rounded-full px-2 py-0.5">
+                  <span className="ml-auto bg-primary/10 text-primary text-[10px] font-semibold rounded-full px-2 py-0.5">
                     {item.badge > 99 ? "99+" : item.badge}
                   </span>
                 )}
