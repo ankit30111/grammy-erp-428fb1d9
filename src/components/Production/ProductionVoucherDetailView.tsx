@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Package, Settings } from "lucide-react";
 import EnhancedDispatchVerificationRow from "./EnhancedDispatchVerificationRow";
+import { useProductionLinesList } from "@/hooks/useProductionLinesList";
 
 interface ProductionVoucherDetailViewProps {
   production: any;
@@ -22,8 +23,7 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
   const [lineAssignments, setLineAssignments] = useState<Record<string, string>>({});
   const { toast } = useToast();
   const queryClient = useQueryClient();
-
-  const productionLines = ["Line 1", "Line 2", "Sub Assembly 1", "Sub Assembly 2"];
+  const { names: productionLines } = useProductionLinesList();
 
   // Fetch BOM data for the product
   const { data: bomData = [] } = useQuery({

@@ -8,21 +8,16 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Clock, Factory, List } from "lucide-react";
+import { useProductionLinesList } from "@/hooks/useProductionLinesList";
 
 interface ProductionLineManagerProps {
   productionOrderId: string;
 }
 
-const PRODUCTION_LINES = [
-  "Line 1",
-  "Line 2", 
-  "Sub Assembly 1",
-  "Sub Assembly 2"
-];
-
 const ProductionLineManager = ({ productionOrderId }: ProductionLineManagerProps) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { names: PRODUCTION_LINES } = useProductionLinesList();
   const [lineAssignments, setLineAssignments] = useState({
     main_assembly: '',
     sub_assembly: '',

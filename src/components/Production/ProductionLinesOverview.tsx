@@ -6,16 +6,11 @@ import { Factory, Clock, Users, ArrowRight } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import ProductionLineDetailView from "./ProductionLineDetailView";
+import { useProductionLinesList } from "@/hooks/useProductionLinesList";
 
 const ProductionLinesOverview = () => {
   const [selectedLine, setSelectedLine] = useState<string | null>(null);
-
-  const productionLines = [
-    { id: "line-1", name: "Line 1", type: "Main Assembly" },
-    { id: "line-2", name: "Line 2", type: "Main Assembly" },
-    { id: "sub-assembly-1", name: "Sub Assembly 1", type: "Sub Assembly" },
-    { id: "sub-assembly-2", name: "Sub Assembly 2", type: "Sub Assembly" }
-  ];
+  const { withType: productionLines } = useProductionLinesList();
 
   // Fetch production orders that have line assignments
   const { data: lineData = [] } = useQuery({
