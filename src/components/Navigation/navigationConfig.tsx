@@ -1,5 +1,5 @@
 
-import { Home, Plus, Wrench, Calendar, Package, BarChart2, Layers, ClipboardCheck, DollarSign, Users, FileText, UserPlus, Building2, User, MessageSquare, CheckSquare, Lightbulb, Container, Speaker, Factory, ShieldCheck } from "lucide-react";
+import { Home, Plus, Wrench, Calendar, Package, BarChart2, Layers, ClipboardCheck, DollarSign, Users, FileText, UserPlus, Building2, MessageSquare, CheckSquare, Lightbulb, Container, Speaker, ShieldCheck } from "lucide-react";
 
 interface NavigationSubItem {
   to: string;
@@ -51,6 +51,5 @@ export const managementItems: NavigationItem[] = [
   { to: "/vendors", icon: <Building2 size={18} />, label: "Vendors", adminOnly: true },
   { to: "/management/plants", icon: <Building2 size={18} />, label: "Plants", adminOnly: true },
   { to: "/management/hr", icon: <Users size={18} />, label: "Human Resources", module: "hr" },
-  { to: "/management/access-control", icon: <ShieldCheck size={18} />, label: "Access Control", adminOnly: true },
-  { to: "/user-management", icon: <User size={18} />, label: "User Management", adminOnly: true },
+  { to: "/management/access-control", icon: <ShieldCheck size={18} />, label: "Users & Access", adminOnly: true },
 ];
