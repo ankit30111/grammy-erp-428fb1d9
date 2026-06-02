@@ -42,7 +42,6 @@ import HRDashboard from "@/pages/dashboards/HRDashboard";
 import GRN from "./pages/GRN";
 import Approvals from "./pages/Approvals";
 import PurchaseDiscrepancies from "./pages/PurchaseDiscrepancies";
-import UserManagement from "./pages/UserManagement";
 import { AuthGuard } from "@/components/Auth/AuthGuard";
 import { ModuleGuard } from "@/components/Auth/ModuleGuard";
 import RnD from "./pages/RnD";
