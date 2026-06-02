@@ -3624,6 +3624,30 @@ export type Database = {
           },
         ]
       }
+      plants: {
+        Row: {
+          code: string
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+        }
+        Relationships: []
+      }
       pqc_reports: {
         Row: {
           created_at: string
@@ -4879,6 +4903,7 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string | null
+          default_plant_id: string | null
           department_id: string | null
           email: string
           full_name: string | null
@@ -4892,6 +4917,7 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by?: string | null
+          default_plant_id?: string | null
           department_id?: string | null
           email: string
           full_name?: string | null
@@ -4905,6 +4931,7 @@ export type Database = {
         Update: {
           created_at?: string
           created_by?: string | null
+          default_plant_id?: string | null
           department_id?: string | null
           email?: string
           full_name?: string | null
@@ -4916,6 +4943,13 @@ export type Database = {
           username?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "user_accounts_default_plant_id_fkey"
+            columns: ["default_plant_id"]
+            isOneToOne: false
+            referencedRelation: "plants"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "user_accounts_department_id_fkey"
             columns: ["department_id"]
