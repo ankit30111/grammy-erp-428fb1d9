@@ -24,7 +24,7 @@ interface CreateUserFormData {
 }
 
 interface CreateUserFormProps {
-  onUserCreated?: () => void;
+  onUserCreated?: (userId?: string) => void;
 }
 
 export function CreateUserForm({ onUserCreated }: CreateUserFormProps) {
@@ -89,7 +89,7 @@ export function CreateUserForm({ onUserCreated }: CreateUserFormProps) {
       
       // Notify parent component to refresh user list
       if (onUserCreated) {
-        onUserCreated();
+        onUserCreated(result?.user?.id);
       }
     } catch (error) {
       console.error("Error creating user:", error);
