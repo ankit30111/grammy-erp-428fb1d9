@@ -21,7 +21,7 @@ const PlantContext = createContext<PlantContextType | undefined>(undefined);
 const STORAGE_KEY = "active_plant_id";
 
 export function PlantProvider({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth();
+  const { user, permittedPlants, isAdmin } = useAuth();
   const [plants, setPlants] = useState<Plant[]>([]);
   const [activePlant, setActivePlantState] = useState<Plant | null>(null);
   const [loading, setLoading] = useState(true);
@@ -39,11 +39,15 @@ export function PlantProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
       return;
     }
-    setPlants(data);
+    // Intersect with permitted plants (admins see all).
+    const filtered = isAdmin
+      ? data
+      : data.filter((p) => permittedPlants.has(p.id));
+    setPlants(filtered);
 
     // Resolve active plant: localStorage → user.default_plant_id → first plant
     const storedId = localStorage.getItem(STORAGE_KEY);
-    let chosen: Plant | undefined = data.find((p) => p.id === storedId);
+    let chosen: Plant | undefined = filtered.find((p) => p.id === storedId);
 
     if (!chosen && user?.id) {
       const { data: ua } = await supabase
@@ -52,16 +56,18 @@ export function PlantProvider({ children }: { children: React.ReactNode }) {
         .eq("id", user.id)
         .maybeSingle();
       if (ua?.default_plant_id) {
-        chosen = data.find((p) => p.id === ua.default_plant_id);
+        chosen = filtered.find((p) => p.id === ua.default_plant_id);
       }
     }
-    if (!chosen) chosen = data[0];
+    if (!chosen) chosen = filtered[0];
     if (chosen) {
-      setActivePlantState((prev) => prev ?? chosen!);
+      setActivePlantState(chosen);
       localStorage.setItem(STORAGE_KEY, chosen.id);
+    } else {
+      setActivePlantState(null);
     }
     setLoading(false);
-  }, [user?.id]);
+  }, [user?.id, isAdmin, permittedPlants]);
 
   useEffect(() => {
     load();

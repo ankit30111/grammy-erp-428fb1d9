@@ -33,6 +33,7 @@ export const KNOWN_MODULES = [
   'imports',
   'approvals',
   'dash',
+  'commerce',
 ] as const;
 
 export type ModuleName = (typeof KNOWN_MODULES)[number];
@@ -47,6 +48,10 @@ interface AuthContextType {
   permittedModules: Set<string>;
   /** True if the user can access the given module (admin always true). */
   canAccessModule: (module: string) => boolean;
+  /** Plant IDs this user can access. Empty set while loading. Admins see all. */
+  permittedPlants: Set<string>;
+  /** True if the user can access the given plant (admin always true). */
+  canAccessPlant: (plantId: string) => boolean;
   signOut: () => Promise<void>;
 }
 
@@ -60,6 +65,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [permittedModules, setPermittedModules] = useState<Set<string>>(new Set());
+  const [permittedPlants, setPermittedPlants] = useState<Set<string>>(new Set());
   const fetchingProfileRef = useRef(false);
 
   const isAdmin = userProfile?.role === 'admin';
@@ -164,6 +170,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const fetchPermittedPlants = useCallback(async () => {
+    try {
+      const { data, error } = await supabase.rpc('auth_my_plants');
+      if (error) {
+        if (isDev) console.warn('Failed to load permitted plants:', error.message);
+        setPermittedPlants(new Set());
+        return;
+      }
+      const ids = new Set<string>((data ?? []).map((r: any) => r.plant_id as string));
+      setPermittedPlants(ids);
+    } catch (error) {
+      if (isDev) console.error('Failed to load permitted plants:', error);
+      setPermittedPlants(new Set());
+    }
+  }, []);
+
   const canAccessModule = useCallback(
     (module: string): boolean => {
       // Admin role short-circuit — matches the DB's auth_is_admin() behavior.
@@ -171,6 +193,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return permittedModules.has(module);
     },
     [userProfile?.role, permittedModules],
+  );
+
+  const canAccessPlant = useCallback(
+    (plantId: string): boolean => {
+      if (userProfile?.role === 'admin') return true;
+      return permittedPlants.has(plantId);
+    },
+    [userProfile?.role, permittedPlants],
   );
 
   const signOut = useCallback(async () => {
@@ -183,6 +213,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession(null);
       setUserProfile(null);
       setPermittedModules(new Set());
+        setPermittedPlants(new Set());
     }
   }, []);
 
@@ -203,6 +234,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUser(null);
           setUserProfile(null);
           setPermittedModules(new Set());
+          setPermittedPlants(new Set());
           setLoading(false);
           return;
         }
@@ -212,6 +244,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUser(null);
           setUserProfile(null);
           setPermittedModules(new Set());
+          setPermittedPlants(new Set());
           setLoading(false);
           return;
         }
@@ -225,6 +258,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setTimeout(() => {
             void fetchUserProfile(nextSession.user.id);
             void fetchPermittedModules();
+            void fetchPermittedPlants();
           }, 0);
         } else {
           setLoading(false);
@@ -240,7 +274,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, [fetchUserProfile, fetchPermittedModules]);
+  }, [fetchUserProfile, fetchPermittedModules, fetchPermittedPlants]);
 
   const value: AuthContextType = {
     user,
@@ -250,6 +284,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isAdmin,
     permittedModules,
     canAccessModule,
+    permittedPlants,
+    canAccessPlant,
     signOut,
   };
 

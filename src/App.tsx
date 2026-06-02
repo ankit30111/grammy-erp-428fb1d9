@@ -31,6 +31,8 @@ import ProductsManagement from "./pages/management/ProductsManagement";
 import RawMaterialsManagement from "./pages/management/RawMaterialsManagement";
 import Settings from "./pages/Settings";
 import PlantsManagement from "./pages/management/PlantsManagement";
+import AccessControl from "./pages/management/AccessControl";
+import ProductionLinesManagement from "./pages/management/ProductionLinesManagement";
 import NotFound from "./pages/NotFound";
 import PPCDashboard from "@/pages/dashboards/PPCDashboard";
 import SerialNumberManagement from "./pages/SerialNumberManagement";
@@ -43,6 +45,7 @@ import Approvals from "./pages/Approvals";
 import PurchaseDiscrepancies from "./pages/PurchaseDiscrepancies";
 import UserManagement from "./pages/UserManagement";
 import { AuthGuard } from "@/components/Auth/AuthGuard";
+import { ModuleGuard } from "@/components/Auth/ModuleGuard";
 import RnD from "./pages/RnD";
 import NPD from "./pages/rnd/NPD";
 import PreExisting from "./pages/rnd/PreExisting";
@@ -147,7 +150,9 @@ function App() {
             
             <Route path="/approvals" element={
               <AuthGuard>
-                <Approvals />
+                <ModuleGuard module="approvals" area="Approvals">
+                  <Approvals />
+                </ModuleGuard>
               </AuthGuard>
             } />
             
@@ -238,6 +243,18 @@ function App() {
             <Route path="/management/plants" element={
               <AuthGuard>
                 <PlantsManagement />
+              </AuthGuard>
+            } />
+
+            <Route path="/management/access-control" element={
+              <AuthGuard>
+                <AccessControl />
+              </AuthGuard>
+            } />
+
+            <Route path="/management/production-lines" element={
+              <AuthGuard>
+                <ProductionLinesManagement />
               </AuthGuard>
             } />
             
