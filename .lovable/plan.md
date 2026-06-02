@@ -1,68 +1,54 @@
+## Current state (the duplication)
 
-## Problem
+Right now there are two admin-only pages that both manage users:
 
-The schema already has `plant_id` on the operational tables (`inventory`, `production_schedules`, `production_orders`, `material_movements`, `grn`, `grn_items`, `material_requests`, `purchase_orders`, `dispatch_orders`), but most front-end queries do **not** filter by the active plant. That's why both plants' scheduled productions, stock and store data appear together. `projections`, `products` and `raw_materials` do **not** have `plant_id` — those stay shared (projections common, masters shared), as you described.
+1. **`/user-management`** (`src/pages/UserManagement.tsx` → `UserManagementPage`)
+   - Tab 1: Create User (calls `admin-create-user` edge function)
+   - Tab 2: Manage Users (list + `EditUserDialog` for name/role/active/department)
 
-## Design
+2. **`/management/access-control`** (`src/pages/management/AccessControl.tsx`)
+   - Users tab: pick a user → assign plants + departments (multi)
+   - Departments × Modules matrix
+   - Plants hint tab
 
-```text
-Common (shared)     : projections, products, raw_materials, vendors, customers, BOM
-Plant-scoped        : production_schedules, production_orders, inventory,
-                      material_movements, material_requests,
-                      grn + grn_items, purchase_orders, dispatch_orders,
-                      finished_goods stock
+Both show in the sidebar (`User Management` and `Access Control`), both list the same users via `list_user_accounts_for_admin`, and editing a user is split across the two pages — you create here, you set plants/modules there. There is also an orphan `src/pages/Resources.tsx` rendering the same `UserManagementPage` (no route, no nav).
 
-Dashboard           : toggle [ All plants ▾ | Plant A | Plant B ]
-                      - "All plants" = company-wide rollup (no plant filter)
-                      - Single plant   = uses activePlant filter
-```
+## Plan: one page, one workflow
 
-## What I'll change
+Make **Access Control** the single home for everything user/permission related, and retire the separate User Management page.
 
-### 1. Plant-scope every operational read/write
+### 1. Fold "Create user" into Access Control
+- Add a primary `+ New user` button in the Users tab header of `AccessControl.tsx`.
+- Clicking it opens a dialog that wraps the existing `CreateUserForm` (already calls the secure `admin-create-user` edge function). On success: close dialog, invalidate `ac-users`, auto-select the new user so admin can immediately assign plants/departments.
 
-Add `.eq('plant_id', plantId)` on selects and stamp `plant_id: plantId` on inserts in:
+### 2. Fold "Edit user basics" into Access Control
+- Extend the right-hand `UserAccessEditor` with an "Account" section at the top showing:
+  - Full name (editable)
+  - Role (user / admin)
+  - Active toggle
+  - "Reset password" button → calls existing `admin-update-user-password` edge function via a small dialog.
+- Save uses the same `Save` button already in the editor (single call: updates `user_accounts` + `set_user_plants` + `set_user_departments`).
+- This replaces what `EditUserDialog` does today.
 
-- `src/hooks/inventory/useInventoryQuery.ts`, `useInventoryMutations.ts`, `useInventorySync.ts`, `useInventoryDiagnostics.ts`
-- `src/hooks/useInventorySync.ts`, `src/hooks/useKitManagement.ts`
-- `src/hooks/useGRN.ts` (verify), `src/hooks/useDispatchOrders.ts` (verify), `src/hooks/usePurchaseOrders.ts` (verify)
-- All `from("inventory")` call-sites in `src/components/Production/*`, `src/components/Store/*`
-- `src/components/Production/ProductionQueueDashboard.tsx` — currently fetches all `production_orders` without plant filter; add filter and use dynamic lines from `useProductionLinesList`
-- `src/hooks/useDashboardData.ts` — `useStoreDashboardData`, `useProductionDashboardData`, `useQualityDashboardData` all unfiltered; add plant filter (with "all plants" override — see step 3)
+### 3. Remove the duplicate surface
+- Delete the `/user-management` route from `src/App.tsx`.
+- Remove the `User Management` entry from `navigationConfig.tsx` (keep only `Access Control`).
+- Delete now-unused files:
+  - `src/pages/UserManagement.tsx`
+  - `src/pages/Resources.tsx` (already orphaned)
+  - `src/components/UserManagement/UserManagementPage.tsx`
+  - `src/components/UserManagement/CreateUserForm.tsx` → keep, but move under `src/components/AccessControl/` and import from the dialog above (or leave path, just stop exporting the page wrapper).
+  - `src/components/UserManagement/UsersList.tsx` (superseded by Access Control users list)
+  - `src/components/UserManagement/EditUserDialog.tsx` (superseded by inline editor)
 
-Guard every hook: if `plantId` is undefined, return empty/disabled query rather than leaking cross-plant rows.
+### 4. Small polish
+- Rename sidebar label from "Access Control" to **"Users & Access"** so it's obvious this is where you create users too.
+- Keep the existing tabs inside: `Users` · `Departments × Modules` · `Plants`.
 
-### 2. Finished goods / store stock per plant
-
-`finished_goods` has no `plant_id` today. Add it via migration (nullable, backfill with default plant for existing rows), then filter the FG views/hooks the same way.
-
-### 3. Consolidated vs per-plant dashboard
-
-- New context value `dashboardScope: 'all' | <plantId>` (separate from `activePlant`, so operational pages keep using `activePlant` and only the dashboard widgets read `dashboardScope`).
-- New `<DashboardScopeSwitcher />` in `src/pages/Index.tsx` header: "All plants" + each permitted plant.
-- Update dashboard widgets (`InventoryWidget`, `PendingApprovalsWidget`, `ProductionOverviewWidget`, `ProductionStatusWidget`, `QualityMetricsWidget`, `OrderFulfillmentWidget`, `VendorPerformanceWidget`, `useDashboardData` hooks) to:
-  - When scope is a plant → `.eq('plant_id', scopePlantId)`
-  - When scope is "all" → no plant filter (rollup)
-- Same toggle reused on PPC dashboard (`/dashboard/ppc`) so you can see one plant or both.
-
-### 4. RLS sanity (defence in depth)
-
-Confirm existing RLS on plant-scoped tables uses `auth_user_in_plant(plant_id)` so even if a UI bug forgets the filter, users only see plants they're permitted on. If any of these tables are missing that policy I'll add it in a migration.
-
-### 5. Backfill
-
-One-time migration to set `plant_id` on existing rows in plant-scoped tables that are currently NULL → assign to the default/primary plant so historical data stays visible after filters are enforced.
-
-## Out of scope (intentionally)
-
-- Projections stay common — no schema change there.
-- Products / raw materials / vendors / customers / BOM stay shared masters.
-- No change to Plants → Lines management you already built.
+## Out of scope
+- No changes to the underlying RPCs (`list_user_accounts_for_admin`, `set_user_plants`, `set_user_departments`, `admin-create-user`, `admin-update-user-password`) — they already cover everything we need.
+- No schema changes.
+- No change to `AdminGuard` behavior.
 
 ## Result
-
-- PPC's "scheduled productions" list only shows the active plant's vouchers.
-- Stock, GRN, dispatch, material movements stay strictly per plant — no more cross-plant mess-ups.
-- Dashboard has one switcher: pick a plant to see that plant's KPIs, or "All plants" for the company rollup.
-
-Approve and I'll implement.
+One page (`/management/access-control`, sidebar "Users & Access") where an admin can: create a user → set role/active → assign plants → assign departments → manage department→module access. The duplicate `/user-management` page and its components are gone.
