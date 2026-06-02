@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
@@ -272,8 +272,9 @@ function LineDialog({
 }) {
   const [form, setForm] = useState<FormState>(initial ?? emptyForm);
 
-  // Reset when opening
-  if (open && !form && initial) setForm(initial);
+  useEffect(() => {
+    if (open) setForm(initial ?? emptyForm);
+  }, [open, initial?.code]);
 
   const set = <K extends keyof FormState>(k: K, v: FormState[K]) =>
     setForm((f) => ({ ...f, [k]: v }));
@@ -283,10 +284,7 @@ function LineDialog({
   return (
     <Dialog
       open={open}
-      onOpenChange={(v) => {
-        if (v) setForm(initial ?? emptyForm);
-        onOpenChange(v);
-      }}
+      onOpenChange={onOpenChange}
     >
       <DialogContent className="max-w-lg">
         <DialogHeader>
