@@ -88,6 +88,7 @@ export default function AccessControl() {
 function UsersTab() {
   const qc = useQueryClient();
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
 
   const { data: users = [], isLoading: usersLoading } = useQuery({
     queryKey: ["ac-users"],
@@ -140,8 +141,15 @@ function UsersTab() {
       {/* Users list */}
       <Card className="h-fit">
         <CardHeader>
-          <CardTitle className="text-base">All users</CardTitle>
-          <CardDescription>Select a user to edit their access.</CardDescription>
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <CardTitle className="text-base">All users</CardTitle>
+              <CardDescription>Select a user to edit their access.</CardDescription>
+            </div>
+            <Button size="sm" className="gap-1.5" onClick={() => setCreateOpen(true)}>
+              <UserPlus className="h-4 w-4" /> New user
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="p-0">
           <ul className="divide-y">
@@ -195,6 +203,25 @@ function UsersTab() {
           </CardContent>
         </Card>
       )}
+
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Create new user</DialogTitle>
+            <DialogDescription>
+              The new user appears in the list immediately. Select them to
+              assign plants, departments and role.
+            </DialogDescription>
+          </DialogHeader>
+          <CreateUserForm
+            onUserCreated={async (userId) => {
+              setCreateOpen(false);
+              await qc.invalidateQueries({ queryKey: ["ac-users"] });
+              if (userId) setSelectedUserId(userId);
+            }}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
