@@ -9,8 +9,18 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
+} from "@/components/ui/dialog";
+import { CreateUserForm } from "@/components/UserManagement/CreateUserForm";
 import { toast } from "sonner";
-import { ShieldCheck, Users, Building2, Loader2, Save, AlertTriangle } from "lucide-react";
+import { ShieldCheck, Users, Building2, Loader2, Save, AlertTriangle, UserPlus, KeyRound } from "lucide-react";
 
 /**
  * Modules surfaced in the UI. Keep aligned with KNOWN_MODULES in AuthContext
@@ -35,11 +45,11 @@ export default function AccessControl() {
           <div>
             <h1 className="text-3xl font-bold flex items-center gap-2">
               <ShieldCheck className="h-7 w-7" />
-              Access Control
+              Users &amp; Access
             </h1>
             <p className="text-muted-foreground mt-1 max-w-2xl">
-              Decide who can see what. Users belong to plants and departments;
-              departments unlock modules.
+              Create users and decide who can see what. Users belong to plants
+              and departments; departments unlock modules.
             </p>
           </div>
 
