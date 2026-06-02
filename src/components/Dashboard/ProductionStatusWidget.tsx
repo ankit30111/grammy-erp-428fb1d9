@@ -5,15 +5,21 @@ import { Activity, Pause, Play, Clock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useRealTimeQuery } from "@/hooks/useRealTimeQuery";
 import { useMultiTableRealTime } from "@/hooks/useMultiTableRealTime";
+import { useDashboardScope } from "@/contexts/DashboardScopeContext";
+import { useProductionLinesList } from "@/hooks/useProductionLinesList";
 
 export const ProductionStatusWidget = () => {
+  const { scopePlantId } = useDashboardScope();
+  const scopeKey = scopePlantId ?? "all";
+  const { names: dynamicLines } = useProductionLinesList(scopePlantId ?? undefined);
+
   // Current production line status with real-time updates
   const { data: lineStatus } = useRealTimeQuery({
-    queryKey: ['production-line-status'],
+    queryKey: ['production-line-status', scopeKey, dynamicLines.join('|')],
     queryFn: async () => {
       const today = new Date().toISOString().split('T')[0];
       
-      const { data, error } = await supabase
+      let q = supabase
         .from('production_orders')
         .select(`
           production_lines,
@@ -23,11 +29,12 @@ export const ProductionStatusWidget = () => {
         `)
         .eq('scheduled_date', today)
         .in('status', ['PENDING', 'IN_PROGRESS']);
-      
+      if (scopePlantId) q = q.eq('plant_id', scopePlantId);
+      const { data, error } = await q;
       if (error) throw error;
       
-      // Extract unique production lines and their status
-      const lines = ['Line 1', 'Line 2', 'Sub Assembly 1', 'Sub Assembly 2'];
+      // Use dynamic lines from the active plant (or all known if rollup).
+      const lines = dynamicLines.length > 0 ? dynamicLines : ['Line 1', 'Line 2', 'Sub Assembly 1', 'Sub Assembly 2'];
       const lineStatuses = lines.map(line => {
         const activeOrders = data?.filter(order => 
           order.production_lines && Object.keys(order.production_lines).includes(line)
@@ -50,9 +57,9 @@ export const ProductionStatusWidget = () => {
 
   // Pending IQC lots with real-time updates
   const { data: pendingIQC } = useRealTimeQuery({
-    queryKey: ['pending-iqc-lots'],
+    queryKey: ['pending-iqc-lots', scopeKey],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let q = supabase
         .from('grn_items')
         .select(`
           id,
@@ -60,7 +67,8 @@ export const ProductionStatusWidget = () => {
           grn (grn_number)
         `)
         .eq('iqc_status', 'PENDING');
-      
+      if (scopePlantId) q = q.eq('plant_id', scopePlantId);
+      const { data, error } = await q;
       if (error) throw error;
       return data?.length || 0;
     },

@@ -5,18 +5,23 @@ import { Package, Clock, CheckCircle, AlertCircle } from "lucide-react";
 import { format, startOfMonth, endOfMonth, isPast } from "date-fns";
 import { useRealTimeQuery } from "@/hooks/useRealTimeQuery";
 import { useMultiTableRealTime } from "@/hooks/useMultiTableRealTime";
+import { useDashboardScope } from "@/contexts/DashboardScopeContext";
 
 export const OrderFulfillmentWidget = () => {
+  const { scopePlantId } = useDashboardScope();
+  const scopeKey = scopePlantId ?? "all";
+
   // Monthly orders with real-time updates
   const { data: monthlyOrders } = useRealTimeQuery({
-    queryKey: ['monthly-orders'],
+    queryKey: ['monthly-orders', scopeKey],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let q = supabase
         .from('production_orders')
         .select('*')
         .gte('created_at', startOfMonth(new Date()).toISOString())
         .lte('created_at', endOfMonth(new Date()).toISOString());
-      
+      if (scopePlantId) q = q.eq('plant_id', scopePlantId);
+      const { data, error } = await q;
       if (error) throw error;
       return data?.length || 0;
     },
@@ -25,14 +30,15 @@ export const OrderFulfillmentWidget = () => {
 
   // Order completion rate with real-time updates
   const { data: completionRate } = useRealTimeQuery({
-    queryKey: ['order-completion-rate'],
+    queryKey: ['order-completion-rate', scopeKey],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let q = supabase
         .from('production_orders')
         .select('status')
         .gte('created_at', startOfMonth(new Date()).toISOString())
         .lte('created_at', endOfMonth(new Date()).toISOString());
-      
+      if (scopePlantId) q = q.eq('plant_id', scopePlantId);
+      const { data, error } = await q;
       if (error) throw error;
       
       const total = data?.length || 0;
@@ -45,13 +51,14 @@ export const OrderFulfillmentWidget = () => {
 
   // Delayed orders with real-time updates
   const { data: delayedOrders } = useRealTimeQuery({
-    queryKey: ['delayed-orders'],
+    queryKey: ['delayed-orders', scopeKey],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let q = supabase
         .from('production_orders')
         .select('scheduled_date, status')
         .in('status', ['PENDING', 'IN_PROGRESS']);
-      
+      if (scopePlantId) q = q.eq('plant_id', scopePlantId);
+      const { data, error } = await q;
       if (error) throw error;
       
       const delayed = data?.filter(order => 
