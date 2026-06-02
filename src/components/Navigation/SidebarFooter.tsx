@@ -32,14 +32,17 @@ export const SidebarFooter = ({ collapsed }: SidebarFooterProps) => {
   };
 
   return (
-    <div className="p-2 mt-auto border-t border-sidebar-border space-y-2">
+    <div className="p-2 mt-auto border-t border-sidebar-border">
       <Button
         variant="ghost"
         size="sm"
         onClick={handleSignOut}
-        className={cn("w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent", collapsed && "justify-center px-2")}
+        className={cn(
+          "w-full justify-start text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground font-medium",
+          collapsed && "justify-center px-2"
+        )}
       >
-        <LogOut size={20} />
+        <LogOut size={16} />
         {!collapsed && <span className="ml-2">Sign Out</span>}
       </Button>
     </div>
