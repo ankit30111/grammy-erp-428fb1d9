@@ -22,9 +22,9 @@ const TYPE_LABEL: Record<LineTypeKey, string> = {
  * Active-plant-scoped list of production lines/sub-assemblies/cells.
  * Single source of truth — managed from /management/plants → Lines dialog.
  */
-export function useProductionLinesList() {
+export function useProductionLinesList(overridePlantId?: string) {
   const { activePlant } = usePlant();
-  const plantId = activePlant?.id;
+  const plantId = overridePlantId ?? activePlant?.id;
 
   const query = useQuery({
     enabled: !!plantId,

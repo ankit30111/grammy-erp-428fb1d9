@@ -4,16 +4,19 @@ import { supabase } from "@/integrations/supabase/client";
 import { Shield, FileText, XCircle, CheckCircle } from "lucide-react";
 import { useRealTimeQuery } from "@/hooks/useRealTimeQuery";
 import { useMultiTableRealTime } from "@/hooks/useMultiTableRealTime";
+import { useDashboardScope } from "@/contexts/DashboardScopeContext";
 
 export const QualityMetricsWidget = () => {
+  const { scopePlantId } = useDashboardScope();
+  const scopeKey = scopePlantId ?? "all";
+
   // IQC Status Distribution with real-time updates
   const { data: iqcStatus } = useRealTimeQuery({
-    queryKey: ['iqc-status'],
+    queryKey: ['iqc-status', scopeKey],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('grn_items')
-        .select('iqc_status');
-      
+      let q = supabase.from('grn_items').select('iqc_status');
+      if (scopePlantId) q = q.eq('plant_id', scopePlantId);
+      const { data, error } = await q;
       if (error) throw error;
       
       const statusCount = data?.reduce((acc: any, item) => {
@@ -35,7 +38,7 @@ export const QualityMetricsWidget = () => {
 
   // PQC Report Upload Rate with real-time updates
   const { data: pqcRate } = useRealTimeQuery({
-    queryKey: ['pqc-upload-rate'],
+    queryKey: ['pqc-upload-rate', scopeKey],
     queryFn: async () => {
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
@@ -45,11 +48,13 @@ export const QualityMetricsWidget = () => {
         .select('id')
         .gte('created_at', sevenDaysAgo.toISOString());
       
-      const { data: orders, error: ordersError } = await supabase
+      let ordersQ = supabase
         .from('production_orders')
         .select('id')
         .gte('created_at', sevenDaysAgo.toISOString())
         .eq('status', 'COMPLETED');
+      if (scopePlantId) ordersQ = ordersQ.eq('plant_id', scopePlantId);
+      const { data: orders, error: ordersError } = await ordersQ;
       
       if (reportsError || ordersError) throw reportsError || ordersError;
       
@@ -63,7 +68,7 @@ export const QualityMetricsWidget = () => {
 
   // Line Rejection Rate with real-time updates
   const { data: rejectionRate } = useRealTimeQuery({
-    queryKey: ['line-rejection-rate'],
+    queryKey: ['line-rejection-rate', scopeKey],
     queryFn: async () => {
       const { data: rejections, error: rejError } = await supabase
         .from('line_rejections')

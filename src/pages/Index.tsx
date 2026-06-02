@@ -1,6 +1,7 @@
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 import { PageHeader } from "@/components/Layout/PageHeader";
 import { Clock, Wifi, WifiOff } from "lucide-react";
+import { DashboardScopeSwitcher } from "@/components/Dashboard/DashboardScopeSwitcher";
 import { ProductionOverviewWidget } from "@/components/Dashboard/ProductionOverviewWidget";
 import { OrderFulfillmentWidget } from "@/components/Dashboard/OrderFulfillmentWidget";
 import { InventoryWidget } from "@/components/Dashboard/InventoryWidget";
@@ -36,6 +37,7 @@ const Index = () => {
         description="Real-time view across production, inventory, quality, and fulfillment"
         actions={
           <div className="flex items-center gap-2">
+            <DashboardScopeSwitcher />
             {isConnected ? (
               <Wifi className="h-4 w-4 text-success" />
             ) : (

@@ -1,15 +1,19 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useDashboardScope } from "@/contexts/DashboardScopeContext";
 
 export const usePPCDashboardData = () => {
+  const { scopePlantId } = useDashboardScope();
   return useQuery({
-    queryKey: ['ppc-dashboard'],
+    queryKey: ['ppc-dashboard', scopePlantId ?? 'all'],
     queryFn: async () => {
+      let schedulesQ = supabase.from('production_schedules').select('*');
+      if (scopePlantId) schedulesQ = schedulesQ.eq('plant_id', scopePlantId);
       const [projectionsData, shortagesData, schedulesData] = await Promise.all([
         supabase.from('projections').select('*').gte('created_at', new Date(new Date().setDate(1)).toISOString()),
         supabase.from('material_shortages_calculated').select('*').gt('shortage_quantity', 0),
-        supabase.from('production_schedules').select('*')
+        schedulesQ
       ]);
 
       return {
@@ -23,13 +27,20 @@ export const usePPCDashboardData = () => {
 };
 
 export const useStoreDashboardData = () => {
+  const { scopePlantId } = useDashboardScope();
   return useQuery({
-    queryKey: ['store-dashboard'],
+    queryKey: ['store-dashboard', scopePlantId ?? 'all'],
     queryFn: async () => {
+      let invQ = supabase.from('inventory').select('quantity').eq('location', 'Main Store');
+      let grnQ = supabase.from('grn').select('*').eq('status', 'RECEIVED');
+      let movQ = supabase.from('material_movements').select('*').eq('movement_type', 'OUT').gte('created_at', new Date().toISOString().split('T')[0]);
+      if (scopePlantId) {
+        invQ = invQ.eq('plant_id', scopePlantId);
+        grnQ = grnQ.eq('plant_id', scopePlantId);
+        movQ = movQ.eq('plant_id', scopePlantId);
+      }
       const [inventoryData, grnData, movementsData] = await Promise.all([
-        supabase.from('inventory').select('quantity').eq('location', 'Main Store'),
-        supabase.from('grn').select('*').eq('status', 'RECEIVED'),
-        supabase.from('material_movements').select('*').eq('movement_type', 'OUT').gte('created_at', new Date().toISOString().split('T')[0])
+        invQ, grnQ, movQ
       ]);
 
       const totalStock = inventoryData.data?.reduce((sum, item) => sum + item.quantity, 0) || 0;
@@ -44,11 +55,14 @@ export const useStoreDashboardData = () => {
 };
 
 export const useProductionDashboardData = () => {
+  const { scopePlantId } = useDashboardScope();
   return useQuery({
-    queryKey: ['production-dashboard'],
+    queryKey: ['production-dashboard', scopePlantId ?? 'all'],
     queryFn: async () => {
+      let ordersQ = supabase.from('production_orders').select('*');
+      if (scopePlantId) ordersQ = ordersQ.eq('plant_id', scopePlantId);
       const [ordersData, hourlyData] = await Promise.all([
-        supabase.from('production_orders').select('*'),
+        ordersQ,
         supabase.from('hourly_production').select('*').gte('created_at', new Date().toISOString().split('T')[0])
       ]);
 
@@ -67,11 +81,14 @@ export const useProductionDashboardData = () => {
 };
 
 export const useQualityDashboardData = () => {
+  const { scopePlantId } = useDashboardScope();
   return useQuery({
-    queryKey: ['quality-dashboard'],
+    queryKey: ['quality-dashboard', scopePlantId ?? 'all'],
     queryFn: async () => {
+      let itemsQ = supabase.from('grn_items').select('iqc_status');
+      if (scopePlantId) itemsQ = itemsQ.eq('plant_id', scopePlantId);
       const [grnItemsData, lineRejectionsData] = await Promise.all([
-        supabase.from('grn_items').select('iqc_status'),
+        itemsQ,
         supabase.from('line_rejections').select('*')
       ]);
 

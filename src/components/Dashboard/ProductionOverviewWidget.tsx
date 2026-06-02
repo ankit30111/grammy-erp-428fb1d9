@@ -6,13 +6,17 @@ import { Factory, TrendingUp, AlertTriangle } from "lucide-react";
 import { format, startOfMonth, endOfMonth } from "date-fns";
 import { useRealTimeQuery } from "@/hooks/useRealTimeQuery";
 import { useMultiTableRealTime } from "@/hooks/useMultiTableRealTime";
+import { useDashboardScope } from "@/contexts/DashboardScopeContext";
 
 export const ProductionOverviewWidget = () => {
+  const { scopePlantId } = useDashboardScope();
+  const scopeKey = scopePlantId ?? "all";
+
   // Monthly production by category with real-time updates
   const { data: monthlyProduction } = useRealTimeQuery({
-    queryKey: ['monthly-production'],
+    queryKey: ['monthly-production', scopeKey],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let q = supabase
         .from('production_orders')
         .select(`
           quantity,
@@ -23,7 +27,8 @@ export const ProductionOverviewWidget = () => {
         .eq('status', 'COMPLETED')
         .gte('scheduled_date', startOfMonth(new Date()).toISOString())
         .lte('scheduled_date', endOfMonth(new Date()).toISOString());
-      
+      if (scopePlantId) q = q.eq('plant_id', scopePlantId);
+      const { data, error } = await q;
       if (error) throw error;
       
       // Group by category

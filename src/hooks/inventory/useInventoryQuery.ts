@@ -1,14 +1,16 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { usePlantId } from "@/hooks/usePlantId";
 
 export const useInventory = () => {
+  const plantId = usePlantId();
   return useQuery({
-    queryKey: ["inventory"],
+    queryKey: ["inventory", plantId],
+    enabled: !!plantId,
     queryFn: async () => {
       console.log("🔍 Fetching inventory data...");
       
-      // Get the current inventory data with material details
       const { data: inventoryData, error: inventoryError } = await supabase
         .from("inventory")
         .select(`
@@ -19,6 +21,7 @@ export const useInventory = () => {
             category
           )
         `)
+        .eq("plant_id", plantId!)
         .order("last_updated", { ascending: false });
       
       if (inventoryError) {
@@ -33,8 +36,10 @@ export const useInventory = () => {
 };
 
 export const useRealTimeInventory = () => {
+  const plantId = usePlantId();
   return useQuery({
-    queryKey: ["inventory-real-time"],
+    queryKey: ["inventory-real-time", plantId],
+    enabled: !!plantId,
     queryFn: async () => {
       console.log("🔍 Fetching ENHANCED real-time inventory data...");
       
@@ -49,6 +54,7 @@ export const useRealTimeInventory = () => {
             category
           )
         `)
+        .eq("plant_id", plantId!)
         .order("last_updated", { ascending: false });
       
       if (error) {

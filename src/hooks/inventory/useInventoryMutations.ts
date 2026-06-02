@@ -2,10 +2,12 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { usePlantId } from "@/hooks/usePlantId";
 
 export const useInventoryMutations = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const plantId = usePlantId();
 
   const updateInventoryQuantity = useMutation({
     mutationFn: async ({ 
@@ -21,20 +23,23 @@ export const useInventoryMutations = () => {
       referenceNumber?: string;
       notes?: string;
     }) => {
+      if (!plantId) throw new Error("No active plant selected");
       console.log(`🔧 INVENTORY UPDATE: ${operation.toUpperCase()}`, { 
         materialId, 
         newQuantity, 
-        referenceNumber 
+        referenceNumber,
+        plantId,
       });
 
-      // Update inventory quantity directly - NO MANUAL LOGGING
+      // Update inventory quantity directly — scoped to the active plant.
       const { error: updateError } = await supabase
         .from("inventory")
         .update({ 
           quantity: newQuantity,
           last_updated: new Date().toISOString()
         })
-        .eq("raw_material_id", materialId);
+        .eq("raw_material_id", materialId)
+        .eq("plant_id", plantId);
 
       if (updateError) {
         console.error("❌ Error updating inventory:", updateError);

@@ -73,6 +73,7 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
             category
           )
         `)
+        .eq("plant_id", (await supabase.from("production_schedules").select("plant_id").eq("id", voucherId).maybeSingle()).data?.plant_id ?? "")
         .order("last_updated", { ascending: false });
       
       if (error) {
@@ -229,6 +230,7 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
               last_updated: new Date().toISOString()
             })
             .eq("raw_material_id", plan.materialId)
+            .eq("plant_id", plan.plantId ?? (inventoryData.find((i: any) => i.raw_materials?.id === plan.materialId)?.plant_id))
             .select("quantity")
             .single();
 

@@ -116,10 +116,10 @@ const ProductionFeedbackDialog = ({ productionOrderId, voucherNumber, isOpen, on
         if (excessQuantity > 0) {
           console.log(`🔄 RETURNING EXCESS TO INVENTORY: ${excessQuantity} units`);
           
-          // Get current inventory
+          // Get current inventory (plant-scoped)
           const { data: currentInventory, error: invFetchError } = await supabase
             .from("inventory")
-            .select("quantity")
+            .select("quantity, plant_id")
             .eq("raw_material_id", feedback.materialId)
             .single();
 
@@ -137,7 +137,8 @@ const ProductionFeedbackDialog = ({ productionOrderId, voucherNumber, isOpen, on
               quantity: newQuantity,
               last_updated: new Date().toISOString()
             })
-            .eq("raw_material_id", feedback.materialId);
+            .eq("raw_material_id", feedback.materialId)
+            .eq("plant_id", currentInventory.plant_id);
 
           if (invUpdateError) {
             console.error("❌ Error updating inventory:", invUpdateError);

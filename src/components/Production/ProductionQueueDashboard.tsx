@@ -4,18 +4,17 @@ import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Clock, Factory, Calendar, AlertCircle } from "lucide-react";
-
-const PRODUCTION_LINES = [
-  "Line 1",
-  "Line 2", 
-  "Sub Assembly 1",
-  "Sub Assembly 2"
-];
+import { usePlantId } from "@/hooks/usePlantId";
+import { useProductionLinesList } from "@/hooks/useProductionLinesList";
 
 const ProductionQueueDashboard = () => {
-  // Fetch all production orders with line assignments
+  const plantId = usePlantId();
+  const { names: PRODUCTION_LINES } = useProductionLinesList();
+
+  // Fetch active-plant production orders with line assignments
   const { data: productionOrders = [] } = useQuery({
-    queryKey: ["production-queue"],
+    queryKey: ["production-queue", plantId],
+    enabled: !!plantId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("production_orders")
@@ -23,6 +22,7 @@ const ProductionQueueDashboard = () => {
           *,
           products!product_id (name)
         `)
+        .eq("plant_id", plantId!)
         .in("status", ["IN_PROGRESS", "SCHEDULED"])
         .order("scheduled_date");
 

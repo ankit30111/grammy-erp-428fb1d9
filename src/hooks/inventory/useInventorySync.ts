@@ -1,15 +1,18 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { usePlantId } from "@/hooks/usePlantId";
 
 export const useManualInventorySync = () => {
   const queryClient = useQueryClient();
+  const plantId = usePlantId();
   
   return useMutation({
     mutationFn: async () => {
+      if (!plantId) throw new Error("No active plant selected");
       console.log("🔧 Starting enhanced manual inventory sync with store physical quantities...");
       
-      // Get all store confirmed GRN items with their physical quantities
+      // Get all store confirmed GRN items for THIS PLANT with their physical quantities
       const { data: confirmedItems, error } = await supabase
         .from("grn_items")
         .select(`
@@ -20,7 +23,8 @@ export const useManualInventorySync = () => {
           grn!inner(grn_number),
           raw_materials(material_code, name)
         `)
-        .eq("store_confirmed", true);
+        .eq("store_confirmed", true)
+        .eq("plant_id", plantId);
 
       if (error) {
         console.error("❌ Error fetching confirmed items:", error);
@@ -29,10 +33,11 @@ export const useManualInventorySync = () => {
 
       console.log("📋 Store confirmed items to sync:", confirmedItems);
 
-      // Get current inventory to check for existing records
+      // Get current inventory for this plant
       const { data: currentInventory, error: invError } = await supabase
         .from("inventory")
-        .select("raw_material_id, quantity");
+        .select("raw_material_id, quantity")
+        .eq("plant_id", plantId);
 
       if (invError) {
         console.error("❌ Error fetching current inventory:", invError);
@@ -78,9 +83,10 @@ export const useManualInventorySync = () => {
               raw_material_id: materialId,
               quantity: correctQuantity,
               location: 'Main Store',
-              last_updated: new Date().toISOString()
+              last_updated: new Date().toISOString(),
+              plant_id: plantId,
             }, {
-              onConflict: 'raw_material_id'
+              onConflict: 'plant_id,raw_material_id'
             });
 
           if (upsertError) {
