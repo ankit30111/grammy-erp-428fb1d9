@@ -237,6 +237,16 @@ function UserAccessEditor({
   departments: any[];
   onSaved: () => void;
 }) {
+  // Local editable account fields.
+  const [fullName, setFullName] = useState<string>(user.full_name ?? "");
+  const [role, setRole] = useState<string>(user.role ?? "user");
+  const [isActive, setIsActive] = useState<boolean>(user.is_active ?? true);
+
+  // Reset password dialog state.
+  const [pwOpen, setPwOpen] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [pwSaving, setPwSaving] = useState(false);
+
   const { data: userPlants = [], isLoading: plantsLoading } = useQuery({
     queryKey: ["ac-user-plants", user.id],
     queryFn: async () => {
@@ -290,19 +300,49 @@ function UserAccessEditor({
     mutationFn: async () => {
       const plantIds = Array.from(selectedPlantIds);
       const deptIds = Array.from(selectedDeptIds);
-      const [p, d] = await Promise.all([
+      const [acct, p, d] = await Promise.all([
+        supabase
+          .from("user_accounts")
+          .update({
+            full_name: fullName,
+            role,
+            is_active: isActive,
+          })
+          .eq("id", user.id),
         supabase.rpc("set_user_plants", { p_user_id: user.id, p_plant_ids: plantIds }),
         supabase.rpc("set_user_departments", { p_user_id: user.id, p_department_ids: deptIds }),
       ]);
+      if (acct.error) throw acct.error;
       if (p.error) throw p.error;
       if (d.error) throw d.error;
     },
     onSuccess: () => {
-      toast.success("Access updated");
+      toast.success("User updated");
       onSaved();
     },
     onError: (e: any) => toast.error(e?.message ?? "Failed to update access"),
   });
+
+  const handleResetPassword = async () => {
+    if (newPassword.length < 6) {
+      toast.error("Password must be at least 6 characters");
+      return;
+    }
+    setPwSaving(true);
+    try {
+      const { error } = await supabase.functions.invoke("admin-update-user-password", {
+        body: { userId: user.id, newPassword },
+      });
+      if (error) throw error;
+      toast.success("Password updated");
+      setPwOpen(false);
+      setNewPassword("");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Failed to update password");
+    } finally {
+      setPwSaving(false);
+    }
+  };
 
   return (
     <Card>
@@ -313,7 +353,7 @@ function UserAccessEditor({
             <CardDescription>{user.email}</CardDescription>
           </div>
           <div className="flex items-center gap-2">
-            {user.role === "admin" && <Badge>Admin</Badge>}
+            {role === "admin" && <Badge>Admin</Badge>}
             <Button
               onClick={() => save.mutate()}
               disabled={save.isPending}
@@ -330,7 +370,7 @@ function UserAccessEditor({
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
-        {user.role === "admin" && (
+        {role === "admin" && (
           <div className="rounded-md border border-amber-500/30 bg-amber-50 dark:bg-amber-950/20 p-3 text-sm flex gap-2">
             <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
             <span>
@@ -340,6 +380,52 @@ function UserAccessEditor({
             </span>
           </div>
         )}
+
+        <section className="space-y-4">
+          <h3 className="font-semibold flex items-center gap-2">
+            <Users className="h-4 w-4" /> Account
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="ac-full-name">Full name</Label>
+              <Input
+                id="ac-full-name"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                placeholder="Full name"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="ac-role">Role</Label>
+              <Select value={role} onValueChange={setRole}>
+                <SelectTrigger id="ac-role">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="user">User</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-6">
+            <div className="flex items-center gap-2">
+              <Switch id="ac-active" checked={isActive} onCheckedChange={setIsActive} />
+              <Label htmlFor="ac-active">Active</Label>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => setPwOpen(true)}
+            >
+              <KeyRound className="h-4 w-4" /> Reset password
+            </Button>
+          </div>
+        </section>
+
+        <Separator />
 
         <section>
           <h3 className="font-semibold mb-2 flex items-center gap-2">
@@ -394,6 +480,36 @@ function UserAccessEditor({
           </div>
         </section>
       </CardContent>
+
+      <Dialog open={pwOpen} onOpenChange={setPwOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Reset password</DialogTitle>
+            <DialogDescription>
+              Set a new password for {user.full_name || user.email}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            <Label htmlFor="ac-new-pw">New password</Label>
+            <Input
+              id="ac-new-pw"
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              placeholder="Minimum 6 characters"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPwOpen(false)} disabled={pwSaving}>
+              Cancel
+            </Button>
+            <Button onClick={handleResetPassword} disabled={pwSaving}>
+              {pwSaving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              Update password
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
