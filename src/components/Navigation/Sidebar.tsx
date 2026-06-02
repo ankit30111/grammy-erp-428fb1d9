@@ -5,23 +5,37 @@ import { NavItem } from "./NavItem";
 import { SidebarHeader } from "./SidebarHeader";
 import { SidebarFooter } from "./SidebarFooter";
 import { navigationItems, managementItems, NavigationItem } from "./navigationConfig";
+import { useAuth } from "@/contexts/AuthContext";
 
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
+  const { isAdmin, canAccessModule } = useAuth();
 
   const allowedTabs: string[] = [];
   const userPermissions = null;
   const isLoading = false;
 
+  const itemVisible = (item: NavigationItem) => {
+    if (item.adminOnly) return isAdmin;
+    if (item.module) return canAccessModule(item.module);
+    return true;
+  };
+
   const grouped = useMemo(() => {
     const groups = new Map<string, NavigationItem[]>();
     for (const item of navigationItems) {
+      if (!itemVisible(item)) continue;
       const key = item.group ?? "OTHER";
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key)!.push(item);
     }
     return Array.from(groups.entries());
-  }, []);
+  }, [isAdmin, canAccessModule]);
+
+  const visibleManagement = useMemo(
+    () => managementItems.filter(itemVisible),
+    [isAdmin, canAccessModule],
+  );
 
   return (
     <div
@@ -57,25 +71,27 @@ export function Sidebar() {
           </div>
         ))}
 
-        <div className="space-y-0.5">
-          {!collapsed && (
-            <div className="text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/50 px-3 py-1.5">
-              MANAGEMENT
-            </div>
-          )}
-          <ul className="space-y-0.5">
-            {managementItems.map((item) => (
-              <NavItem
-                key={item.to}
-                to={item.to}
-                icon={item.icon}
-                label={item.label}
-                collapsed={collapsed}
-                allowedTabs={allowedTabs}
-              />
-            ))}
-          </ul>
-        </div>
+        {visibleManagement.length > 0 && (
+          <div className="space-y-0.5">
+            {!collapsed && (
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/50 px-3 py-1.5">
+                MANAGEMENT
+              </div>
+            )}
+            <ul className="space-y-0.5">
+              {visibleManagement.map((item) => (
+                <NavItem
+                  key={item.to}
+                  to={item.to}
+                  icon={item.icon}
+                  label={item.label}
+                  collapsed={collapsed}
+                  allowedTabs={allowedTabs}
+                />
+              ))}
+            </ul>
+          </div>
+        )}
       </nav>
 
       <SidebarFooter 
