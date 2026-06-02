@@ -27,6 +27,7 @@ const MaterialRequestsTab = memo(() => {
   const { updateInventoryQuantity } = useInventoryMutations();
   const [sendingQuantities, setSendingQuantities] = useState<SendingQuantities>({});
   const [activeTab, setActiveTab] = useState("all");
+  const plantId = usePlantId();
 
   const { data: materialRequests = [], isLoading, refetch, error: requestsError } = useQuery({
     queryKey: ["material-requests"],
@@ -69,8 +70,8 @@ const MaterialRequestsTab = memo(() => {
 
   // Fetch inventory data for available quantities
   const { data: inventoryData = [] } = useQuery({
-    queryKey: ["inventory-for-requests", useMaterialRequestsPlantId()],
-    enabled: !!useMaterialRequestsPlantId(),
+    queryKey: ["inventory-for-requests", plantId],
+    enabled: !!plantId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("inventory")
@@ -82,7 +83,8 @@ const MaterialRequestsTab = memo(() => {
             material_code,
             name
           )
-        `);
+        `)
+        .eq("plant_id", plantId!);
       
       if (error) throw error;
       return data || [];
