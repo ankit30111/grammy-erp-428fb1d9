@@ -1,54 +1,60 @@
-## Current state (the duplication)
+## Goal
 
-Right now there are two admin-only pages that both manage users:
+Make scheduled production editable/deletable only **before the kit is sent from store**. After that, block edit/delete with a clear reason. Admins bypass the block. Completed orders disappear from "Scheduled Production".
 
-1. **`/user-management`** (`src/pages/UserManagement.tsx` → `UserManagementPage`)
-   - Tab 1: Create User (calls `admin-create-user` edge function)
-   - Tab 2: Manage Users (list + `EditUserDialog` for name/role/active/department)
+## Rules
 
-2. **`/management/access-control`** (`src/pages/management/AccessControl.tsx`)
-   - Users tab: pick a user → assign plants + departments (multi)
-   - Departments × Modules matrix
-   - Plants hint tab
+A schedule is **locked** when its linked `production_orders` row has any of:
+- `kit_status` in (`KIT SCHEDULED`, `KIT PREPARING`, `KIT READY`, `KIT VERIFIED`, `KIT SENT`, `KIT SHORTAGE`) — i.e. anything past `NOT_PREPARED`
+- `status` in (`MATERIALS_SENT`, `IN_PROGRESS`, `PENDING_OQC`, `COMPLETED`)
 
-Both show in the sidebar (`User Management` and `Access Control`), both list the same users via `list_user_accounts_for_admin`, and editing a user is split across the two pages — you create here, you set plants/modules there. There is also an orphan `src/pages/Resources.tsx` rendering the same `UserManagementPage` (no route, no nav).
+Admin (`auth_is_admin()`) ignores the lock.
 
-## Plan: one page, one workflow
+A schedule is **completed** when production_order `status = 'COMPLETED'` → hidden from Scheduled Production list, shown under Completed Production.
 
-Make **Access Control** the single home for everything user/permission related, and retire the separate User Management page.
+## Database changes (single migration)
 
-### 1. Fold "Create user" into Access Control
-- Add a primary `+ New user` button in the Users tab header of `AccessControl.tsx`.
-- Clicking it opens a dialog that wraps the existing `CreateUserForm` (already calls the secure `admin-create-user` edge function). On success: close dialog, invalidate `ac-users`, auto-select the new user so admin can immediately assign plants/departments.
+1. **Helper function** `public.production_schedule_locked(p_schedule_id uuid) returns text` — returns NULL if free to modify, otherwise a human reason like `"Kit already sent to production (voucher PROD_06_03)"` or `"Production already in progress"`. Used by both triggers and RPCs so the message is identical everywhere.
 
-### 2. Fold "Edit user basics" into Access Control
-- Extend the right-hand `UserAccessEditor` with an "Account" section at the top showing:
-  - Full name (editable)
-  - Role (user / admin)
-  - Active toggle
-  - "Reset password" button → calls existing `admin-update-user-password` edge function via a small dialog.
-- Save uses the same `Save` button already in the editor (single call: updates `user_accounts` + `set_user_plants` + `set_user_departments`).
-- This replaces what `EditUserDialog` does today.
+2. **BEFORE UPDATE/DELETE triggers** on `production_schedules` and on `production_orders` that:
+   - Skip if `public.auth_is_admin()` is true.
+   - Call the helper and `RAISE EXCEPTION '%', reason USING ERRCODE = 'P0001'` when locked.
+   - Allow the cascade path from the RPC below (detected via a `set_config('app.cascade_delete','1', true)` flag set inside the RPC).
 
-### 3. Remove the duplicate surface
-- Delete the `/user-management` route from `src/App.tsx`.
-- Remove the `User Management` entry from `navigationConfig.tsx` (keep only `Access Control`).
-- Delete now-unused files:
-  - `src/pages/UserManagement.tsx`
-  - `src/pages/Resources.tsx` (already orphaned)
-  - `src/components/UserManagement/UserManagementPage.tsx`
-  - `src/components/UserManagement/CreateUserForm.tsx` → keep, but move under `src/components/AccessControl/` and import from the dialog above (or leave path, just stop exporting the page wrapper).
-  - `src/components/UserManagement/UsersList.tsx` (superseded by Access Control users list)
-  - `src/components/UserManagement/EditUserDialog.tsx` (superseded by inline editor)
+3. **RPC** `public.delete_production_schedule_cascade(p_schedule_id uuid)` — SECURITY DEFINER, runs inside a transaction:
+   - Checks lock (with admin override).
+   - Sets the cascade flag.
+   - Deletes child rows in the correct order (`material_blocking`, `kit_preparation`, `material_requests`, `line_rejections`, `hourly_production`, `pqc_reports`, `production_capa`, `production_material_discrepancies`, `finished_goods_inventory`) — these are the non-cascading FKs blocking delete today.
+   - Deletes `production_orders`, then `production_schedules`.
+   - Returns void; raises with friendly message on failure.
 
-### 4. Small polish
-- Rename sidebar label from "Access Control" to **"Users & Access"** so it's obvious this is where you create users too.
-- Keep the existing tabs inside: `Users` · `Departments × Modules` · `Plants`.
+4. **Align RLS** on `production_schedules` and `production_orders` DELETE/UPDATE policies to allow `auth_user_can_access_module('planning')` OR `'production'` OR admin (currently production-only, which silently blocks Planning users).
+
+## Frontend changes
+
+1. **`useProductionSchedules.ts`**
+   - Rewrite `useDeleteProductionSchedule` to call `supabase.rpc('delete_production_schedule_cascade', { p_schedule_id })`. Surface the Postgres error message verbatim in the toast (e.g. "Kit already sent to production").
+   - Same handling in `useUpdateProductionSchedule` — let the trigger reject and show its message.
+
+2. **`useProductionSchedules` query**
+   - Filter out schedules whose production_order `status = 'COMPLETED'` so they leave the Scheduled list. (Completed view already exists separately.)
+
+3. **Lock-aware UI** in the schedules table / `EditScheduleDialog` / `DeleteScheduleDialog`:
+   - Compute `isLocked` from the joined `production_orders` (`status !== 'SCHEDULED'` or `kit_status !== 'NOT_PREPARED'`).
+   - If locked and user is not admin: disable Edit/Delete buttons and show a tooltip "Kit already sent — cannot modify". Admin sees the buttons enabled.
+   - `DeleteScheduleDialog` displays the lock reason (if any) instead of the confirm button when non-admin.
+
+4. **Admin detection** — read from `AuthContext` (existing `profile.role === 'admin'`); no new fetch.
+
+## Technical notes
+
+- All triggers/functions schema-qualified, `SET search_path = public, pg_catalog`, per project memory.
+- The `set_config('app.cascade_delete',...,true)` flag is transaction-local; trigger checks `current_setting('app.cascade_delete', true) = '1'`.
+- Toast wording uses Postgres `MESSAGE`; the RPC raises with `USING MESSAGE = ...` so the frontend gets the exact string.
+- Completed orders already exist in `ProductionVoucherList`/Completed views — no new screen needed, just filter the scheduled query.
 
 ## Out of scope
-- No changes to the underlying RPCs (`list_user_accounts_for_admin`, `set_user_plants`, `set_user_departments`, `admin-create-user`, `admin-update-user-password`) — they already cover everything we need.
-- No schema changes.
-- No change to `AdminGuard` behavior.
 
-## Result
-One page (`/management/access-control`, sidebar "Users & Access") where an admin can: create a user → set role/active → assign plants → assign departments → manage department→module access. The duplicate `/user-management` page and its components are gone.
+- Restoring deleted child rows (delete is final once unlocked).
+- Reworking kit status enum or store→production workflow.
+- Edits to OQC/PQC/CAPA modules.
