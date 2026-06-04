@@ -36,7 +36,12 @@ export const useProductionSchedules = () => {
         .order('scheduled_date', { ascending: true });
       
       if (error) throw error;
-      return data;
+      // Hide schedules whose production is already completed — they belong in Completed Production
+      return (data || []).filter((s: any) => {
+        const orders = Array.isArray(s.production_orders) ? s.production_orders : [];
+        if (orders.length === 0) return true;
+        return !orders.every((o: any) => o.status === 'COMPLETED');
+      });
     },
   });
 };
@@ -216,21 +221,10 @@ export const useDeleteProductionSchedule = () => {
 
   return useMutation({
     mutationFn: async (scheduleId: string) => {
-      // First delete related production orders
-      const { error: orderError } = await supabase
-        .from('production_orders')
-        .delete()
-        .eq('production_schedule_id', scheduleId);
-
-      if (orderError) throw orderError;
-
-      // Then delete the production schedule
-      const { error: scheduleError } = await supabase
-        .from('production_schedules')
-        .delete()
-        .eq('id', scheduleId);
-
-      if (scheduleError) throw scheduleError;
+      const { error } = await supabase.rpc('delete_production_schedule_cascade', {
+        p_schedule_id: scheduleId,
+      });
+      if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['production_schedules'] });
@@ -242,10 +236,10 @@ export const useDeleteProductionSchedule = () => {
         description: "Production schedule deleted successfully",
       });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast({
-        title: "Error",
-        description: "Failed to delete production schedule",
+        title: "Cannot delete schedule",
+        description: error?.message || "Failed to delete production schedule",
         variant: "destructive",
       });
     },
@@ -285,10 +279,10 @@ export const useUpdateProductionSchedule = () => {
         description: "Production schedule updated successfully",
       });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast({
-        title: "Error",
-        description: "Failed to update production schedule",
+        title: "Cannot update schedule",
+        description: error?.message || "Failed to update production schedule",
         variant: "destructive",
       });
     },
