@@ -5542,6 +5542,10 @@ export type Database = {
         Args: { p_batch_id: string }
         Returns: undefined
       }
+      delete_production_schedule_cascade: {
+        Args: { p_schedule_id: string }
+        Returns: undefined
+      }
       generate_complaint_number: { Args: never; Returns: string }
       generate_dash_fo_number: { Args: never; Returns: string }
       generate_dash_so_number: { Args: never; Returns: string }
@@ -5677,6 +5681,10 @@ export type Database = {
           p_received_quantity: number
           p_sent_quantity: number
         }
+        Returns: string
+      }
+      production_schedule_locked: {
+        Args: { p_schedule_id: string }
         Returns: string
       }
       renumber_vouchers_after_deletion: {
