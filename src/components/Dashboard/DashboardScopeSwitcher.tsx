@@ -4,14 +4,16 @@ import { usePlant } from "@/contexts/PlantContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 /**
- * Dashboard-only scope toggle. Lets the user see consolidated company KPIs
- * or drill into a single plant without changing the active operational plant.
+ * Dashboard-only scope toggle. Offers exactly two options:
+ *   1. The plant currently active in the header Plant Switcher
+ *   2. "All plants (company)" — consolidated rollup
+ * To view a different single plant, switch it via the header first.
  */
 export function DashboardScopeSwitcher() {
   const { scopePlantId, setScopePlantId } = useDashboardScope();
-  const { plants } = usePlant();
+  const { activePlant } = usePlant();
 
-  if (plants.length <= 1) return null;
+  if (!activePlant) return null;
 
   return (
     <div className="flex items-center gap-2">
@@ -24,12 +26,8 @@ export function DashboardScopeSwitcher() {
           <SelectValue placeholder="Scope" />
         </SelectTrigger>
         <SelectContent>
+          <SelectItem value={activePlant.id}>{activePlant.name}</SelectItem>
           <SelectItem value="__all__">All plants (company)</SelectItem>
-          {plants.map((p) => (
-            <SelectItem key={p.id} value={p.id}>
-              {p.name}
-            </SelectItem>
-          ))}
         </SelectContent>
       </Select>
     </div>
