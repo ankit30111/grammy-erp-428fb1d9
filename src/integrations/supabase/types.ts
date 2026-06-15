@@ -5596,6 +5596,35 @@ export type Database = {
           msme_certificate_url: string
         }[]
       }
+      get_dash_customer_finance: {
+        Args: { p_customer_id: string }
+        Returns: {
+          bank_account_number: string
+          bank_ifsc: string
+          bank_name: string
+          cancelled_cheque_url: string
+          gst_certificate_url: string
+          id: string
+          msme_certificate_url: string
+          msme_number: string
+          pan_number: string
+        }[]
+      }
+      get_employee_sensitive: {
+        Args: { p_employee_id: string }
+        Returns: {
+          aadhar_number: string
+          bank_account_number: string
+          bank_name: string
+          date_of_birth: string
+          esic_number: string
+          id: string
+          ifsc_code: string
+          pan_number: string
+          phone_number: string
+          salary: number
+        }[]
+      }
       get_my_profile: {
         Args: never
         Returns: {
@@ -5625,6 +5654,16 @@ export type Database = {
           is_default: boolean
           name: string
           plant_id: string
+        }[]
+      }
+      get_vendor_finance: {
+        Args: { p_vendor_id: string }
+        Returns: {
+          bank_account_number: string
+          gst_certificate_url: string
+          id: string
+          ifsc_code: string
+          msme_certificate_url: string
         }[]
       }
       list_departments_with_modules: {
