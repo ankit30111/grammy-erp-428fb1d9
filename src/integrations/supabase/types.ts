@@ -5539,6 +5539,16 @@ export type Database = {
       }
     }
     Functions: {
+      admin_list_active_employee_salaries: {
+        Args: never
+        Returns: {
+          employee_code: string
+          first_name: string
+          id: string
+          last_name: string
+          salary: number
+        }[]
+      }
       auth_is_admin: { Args: never; Returns: boolean }
       auth_my_plants: {
         Args: never

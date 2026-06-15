@@ -2,6 +2,12 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
+// Safe columns only. Bank account number, IFSC and certificate URLs are
+// admin-only (column-level grants); fetch them on demand via the
+// get_vendor_finance(uuid) RPC from the edit dialog when the caller is admin.
+const VENDOR_SAFE_COLS =
+  "id, vendor_code, name, email, contact_number, address, gst_number, is_active, created_at, updated_at, created_by, contact_person_name";
+
 export const useVendors = () => {
   const queryClient = useQueryClient();
 
@@ -12,7 +18,7 @@ export const useVendors = () => {
       
       const { data, error } = await supabase
         .from("vendors")
-        .select("*")
+        .select(VENDOR_SAFE_COLS)
         .eq("is_active", true)
         .order("created_at", { ascending: false });
       
@@ -98,7 +104,7 @@ export const useVendors = () => {
       const { data, error } = await supabase
         .from("vendors")
         .insert(insertData)
-        .select()
+        .select(VENDOR_SAFE_COLS)
         .single();
 
       if (error) {
