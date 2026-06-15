@@ -76,11 +76,11 @@ serve(async (req) => {
     // Check if user is admin
     const { data: userAccount, error: userError } = await supabase
       .from('user_accounts')
-      .select('role')
+      .select('role, is_active')
       .eq('id', user.id)
       .single()
 
-    if (userError || !userAccount || userAccount.role !== 'admin') {
+    if (userError || !userAccount || userAccount.role !== 'admin' || !userAccount.is_active) {
       console.error('Admin check failed:', userError, userAccount)
       return new Response(
         JSON.stringify({ error: 'Admin access required' }),
