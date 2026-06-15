@@ -673,12 +673,39 @@ const RawMaterialsManagement = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Part Code</TableHead>
+                  <TableHead>
+                    <button
+                      type="button"
+                      onClick={() => handleSort('material_code')}
+                      className="inline-flex items-center hover:text-foreground"
+                    >
+                      Part Code
+                      <SortIcon column="material_code" />
+                    </button>
+                  </TableHead>
                   <TableHead>Part Name</TableHead>
-                  <TableHead>Category</TableHead>
+                  <TableHead>
+                    <button
+                      type="button"
+                      onClick={() => handleSort('category')}
+                      className="inline-flex items-center hover:text-foreground"
+                    >
+                      Category
+                      <SortIcon column="category" />
+                    </button>
+                  </TableHead>
                   <TableHead>Sourcing</TableHead>
                   <TableHead>Price</TableHead>
-                  <TableHead>Vendors</TableHead>
+                  <TableHead>
+                    <button
+                      type="button"
+                      onClick={() => handleSort('vendors')}
+                      className="inline-flex items-center hover:text-foreground"
+                    >
+                      Vendors
+                      <SortIcon column="vendors" />
+                    </button>
+                  </TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
