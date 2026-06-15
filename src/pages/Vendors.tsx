@@ -20,9 +20,73 @@ import {
   AlertDialogTitle, AlertDialogTrigger 
 } from "@/components/ui/alert-dialog";
 import { Search, Plus, Building2, Edit, Trash2, FileText } from "lucide-react";
-import { useVendors } from "@/hooks/useVendors";
+import { useVendors, useVendorFinance } from "@/hooks/useVendors";
 import { VendorForm } from "@/components/forms/VendorForm";
 import { SignedStorageLink } from "@/components/ui/signed-storage-link";
+import { useAuth } from "@/contexts/AuthContext";
+
+/** Admin-only finance section. Fetches bank + certificate URLs via RPC. */
+const VendorFinanceSection = ({ vendorId }: { vendorId: string }) => {
+  const { isAdmin } = useAuth();
+  const { data: finance, isLoading, error } = useVendorFinance(vendorId, isAdmin);
+
+  if (!isAdmin) {
+    return (
+      <p className="text-sm text-muted-foreground">
+        Bank details and certificates are visible to administrators only.
+      </p>
+    );
+  }
+  if (isLoading) return <p className="text-sm text-muted-foreground">Loading…</p>;
+  if (error) return <p className="text-sm text-destructive">Unable to load sensitive details.</p>;
+
+  return (
+    <>
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <span className="text-muted-foreground text-sm">Bank Account:</span>
+          <p>{finance?.bank_account_number || '-'}</p>
+        </div>
+        <div>
+          <span className="text-muted-foreground text-sm">IFSC Code:</span>
+          <p>{finance?.ifsc_code || '-'}</p>
+        </div>
+      </div>
+      <div className="space-y-2">
+        <h4 className="font-medium">Documents</h4>
+        <div className="flex flex-col space-y-2">
+          {finance?.gst_certificate_url && (
+            <SignedStorageLink
+              bucket="vendor-documents"
+              path={finance.gst_certificate_url}
+              variant="ghost"
+              size="sm"
+              className="flex items-center justify-start space-x-2 text-blue-600 hover:text-blue-800 px-0 h-auto"
+            >
+              <FileText className="h-4 w-4" />
+              <span>GST Certificate</span>
+            </SignedStorageLink>
+          )}
+          {finance?.msme_certificate_url && (
+            <SignedStorageLink
+              bucket="vendor-documents"
+              path={finance.msme_certificate_url}
+              variant="ghost"
+              size="sm"
+              className="flex items-center justify-start space-x-2 text-blue-600 hover:text-blue-800 px-0 h-auto"
+            >
+              <FileText className="h-4 w-4" />
+              <span>MSME/UDYAM Certificate</span>
+            </SignedStorageLink>
+          )}
+          {!finance?.gst_certificate_url && !finance?.msme_certificate_url && (
+            <p className="text-muted-foreground">No documents uploaded</p>
+          )}
+        </div>
+      </div>
+    </>
+  );
+};
 
 const Vendors = () => {
   const { vendors, isLoading, deleteVendor } = useVendors();
@@ -236,51 +300,8 @@ const Vendors = () => {
                                   <span className="text-muted-foreground text-sm">Address:</span>
                                   <p className="mt-1">{vendor.address || '-'}</p>
                                 </div>
-                                
-                                <div className="grid grid-cols-2 gap-4">
-                                  <div>
-                                    <span className="text-muted-foreground text-sm">Bank Account:</span>
-                                    <p>{vendor.bank_account_number || '-'}</p>
-                                  </div>
-                                  <div>
-                                    <span className="text-muted-foreground text-sm">IFSC Code:</span>
-                                    <p>{vendor.ifsc_code || '-'}</p>
-                                  </div>
-                                </div>
 
-                                {/* Document Links */}
-                                <div className="space-y-2">
-                                  <h4 className="font-medium">Documents</h4>
-                                  <div className="flex flex-col space-y-2">
-                                    {vendor.gst_certificate_url && (
-                                      <SignedStorageLink
-                                        bucket="vendor-documents"
-                                        path={vendor.gst_certificate_url}
-                                        variant="ghost"
-                                        size="sm"
-                                        className="flex items-center justify-start space-x-2 text-blue-600 hover:text-blue-800 px-0 h-auto"
-                                      >
-                                        <FileText className="h-4 w-4" />
-                                        <span>GST Certificate</span>
-                                      </SignedStorageLink>
-                                    )}
-                                    {vendor.msme_certificate_url && (
-                                      <SignedStorageLink
-                                        bucket="vendor-documents"
-                                        path={vendor.msme_certificate_url}
-                                        variant="ghost"
-                                        size="sm"
-                                        className="flex items-center justify-start space-x-2 text-blue-600 hover:text-blue-800 px-0 h-auto"
-                                      >
-                                        <FileText className="h-4 w-4" />
-                                        <span>MSME/UDYAM Certificate</span>
-                                      </SignedStorageLink>
-                                    )}
-                                    {!vendor.gst_certificate_url && !vendor.msme_certificate_url && (
-                                      <p className="text-muted-foreground">No documents uploaded</p>
-                                    )}
-                                  </div>
-                                </div>
+                                <VendorFinanceSection vendorId={vendor.id} />
                               </div>
                               <SheetFooter className="pt-2">
                                 <SheetClose asChild>

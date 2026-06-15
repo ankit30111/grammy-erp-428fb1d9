@@ -2,6 +2,39 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
+// Safe columns only. Bank account number, IFSC and certificate URLs are
+// admin-only (column-level grants); fetch them on demand via the
+// get_vendor_finance(uuid) RPC from the edit dialog when the caller is admin.
+const VENDOR_SAFE_COLS =
+  "id, vendor_code, name, email, contact_number, address, gst_number, is_active, created_at, updated_at, created_by, contact_person_name";
+
+export type VendorFinance = {
+  id: string;
+  bank_account_number: string | null;
+  ifsc_code: string | null;
+  gst_certificate_url: string | null;
+  msme_certificate_url: string | null;
+};
+
+/**
+ * Admin-only fetch for sensitive vendor finance fields (bank, IFSC,
+ * certificate URLs). Backed by the get_vendor_finance(uuid) RPC, which
+ * raises 42501 for non-admin callers.
+ */
+export const useVendorFinance = (vendorId: string | undefined, enabled = true) => {
+  return useQuery({
+    queryKey: ["vendor-finance", vendorId],
+    enabled: !!vendorId && enabled,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_vendor_finance", {
+        p_vendor_id: vendorId,
+      });
+      if (error) throw error;
+      return (Array.isArray(data) ? data[0] : data) as VendorFinance | undefined;
+    },
+  });
+};
+
 export const useVendors = () => {
   const queryClient = useQueryClient();
 
@@ -12,7 +45,7 @@ export const useVendors = () => {
       
       const { data, error } = await supabase
         .from("vendors")
-        .select("*")
+        .select(VENDOR_SAFE_COLS)
         .eq("is_active", true)
         .order("created_at", { ascending: false });
       
@@ -98,7 +131,7 @@ export const useVendors = () => {
       const { data, error } = await supabase
         .from("vendors")
         .insert(insertData)
-        .select()
+        .select(VENDOR_SAFE_COLS)
         .single();
 
       if (error) {

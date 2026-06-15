@@ -99,13 +99,9 @@ export function PayrollManagement() {
 
   const generatePayrollMutation = useMutation({
     mutationFn: async ({ month, year }: { month: number; year: number }) => {
-      // This would calculate payroll based on attendance data
-      // For demo purposes, we'll create sample payroll entries
-      
+      // Salary is an admin-only column; load via secure RPC.
       const { data: employees, error: empError } = await supabase
-        .from('employees')
-        .select('id, salary')
-        .eq('status', 'active');
+        .rpc('admin_list_active_employee_salaries');
 
       if (empError) throw empError;
 
