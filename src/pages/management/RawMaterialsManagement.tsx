@@ -673,6 +673,7 @@ const RawMaterialsManagement = () => {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-12">S.No.</TableHead>
                   <TableHead>
                     <button
                       type="button"
@@ -712,19 +713,20 @@ const RawMaterialsManagement = () => {
               <TableBody>
                 {isLoading ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-6">
+                    <TableCell colSpan={8} className="text-center py-6">
                       Loading materials...
                     </TableCell>
                   </TableRow>
                 ) : filteredMaterials.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-6 text-muted-foreground">
+                    <TableCell colSpan={8} className="text-center py-6 text-muted-foreground">
                       No materials found. Try adjusting your search or filter.
                     </TableCell>
                   </TableRow>
                 ) : (
-                  sortedMaterials.map((material) => (
+                  sortedMaterials.map((material, index) => (
                     <TableRow key={material.id}>
+                      <TableCell className="text-muted-foreground text-sm">{index + 1}</TableCell>
                       <TableCell className="font-medium">{material.material_code}</TableCell>
                       <TableCell>{material.name}</TableCell>
                       <TableCell>{material.category}</TableCell>
