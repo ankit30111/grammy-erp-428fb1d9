@@ -9,11 +9,13 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 import { Plus, Edit } from "lucide-react";
 
 export function EmployeeManagement() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<any>(null);
+  const { isAdmin } = useAuth();
   const [formData, setFormData] = useState({
     employee_code: "",
     first_name: "",
@@ -50,17 +52,8 @@ export function EmployeeManagement() {
           first_name,
           last_name,
           email,
-          phone_number,
-          date_of_birth,
           position,
           department,
-          salary,
-          aadhar_number,
-          pan_number,
-          esic_number,
-          bank_name,
-          bank_account_number,
-          ifsc_code,
           address,
           city,
           state,
@@ -193,24 +186,34 @@ export function EmployeeManagement() {
     }
   };
 
-  const handleEdit = (employee: any) => {
+  const handleEdit = async (employee: any) => {
     setEditingEmployee(employee);
+    // Sensitive fields (salary, Aadhar, PAN, bank, DOB, phone) are admin-only.
+    let sensitive: any = {};
+    if (isAdmin) {
+      const { data, error } = await supabase.rpc('get_employee_sensitive', {
+        p_employee_id: employee.id,
+      });
+      if (!error) {
+        sensitive = Array.isArray(data) ? (data[0] ?? {}) : (data ?? {});
+      }
+    }
     setFormData({
       employee_code: employee.employee_code,
       first_name: employee.first_name,
       last_name: employee.last_name,
       email: employee.email,
-      phone_number: employee.phone_number,
-      date_of_birth: employee.date_of_birth || "",
+      phone_number: sensitive.phone_number || "",
+      date_of_birth: sensitive.date_of_birth || "",
       position: employee.position,
       department: employee.department,
-      salary: employee.salary?.toString() || "",
-      aadhar_number: employee.aadhar_number || "",
-      pan_number: employee.pan_number || "",
-      esic_number: employee.esic_number || "",
-      bank_name: employee.bank_name || "",
-      bank_account_number: employee.bank_account_number || "",
-      ifsc_code: employee.ifsc_code || "",
+      salary: sensitive.salary?.toString() || "",
+      aadhar_number: sensitive.aadhar_number || "",
+      pan_number: sensitive.pan_number || "",
+      esic_number: sensitive.esic_number || "",
+      bank_name: sensitive.bank_name || "",
+      bank_account_number: sensitive.bank_account_number || "",
+      ifsc_code: sensitive.ifsc_code || "",
       address: employee.address || "",
       city: employee.city || "",
       state: employee.state || "",
