@@ -209,14 +209,27 @@ const PurchaseOrderApprovalsEnhanced = () => {
       // Open PDF in new tab
       const newWindow = window.open();
       if (newWindow) {
-        newWindow.document.write(`
-          <html>
-            <head><title>Purchase Order - ${po.po_number}</title></head>
-            <body style="margin:0;">
-              <iframe src="${dataUrl}" width="100%" height="100%" style="border:none;"></iframe>
-            </body>
-          </html>
-        `);
+        // HTML-encode untrusted DB values before injecting into document
+        const escapeHtml = (s: string) =>
+          String(s).replace(/[&<>"']/g, (c) => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#39;',
+          }[c] as string));
+        const safePoNumber = escapeHtml(po.po_number ?? '');
+        const doc = newWindow.document;
+        doc.open();
+        doc.write('<!doctype html><html><head><title></title></head><body style="margin:0;"></body></html>');
+        doc.close();
+        doc.title = `Purchase Order - ${safePoNumber}`;
+        const iframe = doc.createElement('iframe');
+        iframe.src = dataUrl;
+        iframe.width = '100%';
+        iframe.height = '100%';
+        iframe.style.border = 'none';
+        doc.body.appendChild(iframe);
       }
     } catch (error) {
       console.error('Error generating PDF:', error);
