@@ -98,7 +98,7 @@ Deno.serve(async (req) => {
       return new Response(
         JSON.stringify({ 
           success: false, 
-          message: 'Admin privileges required. Current role: ' + (userAccount?.role || 'none') 
+          message: 'Admin privileges required'
         }),
         { 
           status: 403, 
@@ -258,11 +258,7 @@ Deno.serve(async (req) => {
       return new Response(
         JSON.stringify({ 
           success: false, 
-          message: errorMessage,
-          error_details: {
-            code: userAccountError.code,
-            database_message: userAccountError.message
-          }
+          message: errorMessage
         }),
         { 
           status: 400, 
