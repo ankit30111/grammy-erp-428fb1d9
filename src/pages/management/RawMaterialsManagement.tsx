@@ -723,7 +723,7 @@ const RawMaterialsManagement = () => {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredMaterials.map((material) => (
+                  sortedMaterials.map((material) => (
                     <TableRow key={material.id}>
                       <TableCell className="font-medium">{material.material_code}</TableCell>
                       <TableCell>{material.name}</TableCell>
