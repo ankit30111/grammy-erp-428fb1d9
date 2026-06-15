@@ -87,13 +87,13 @@ Deno.serve(async (req) => {
     // Use admin client to check user role (bypassing RLS)
     const { data: userAccount, error: accountError } = await supabaseAdmin
       .from('user_accounts')
-      .select('role')
+      .select('role, is_active')
       .eq('id', user.id)
       .single()
 
     console.log('User account query result:', { userAccount, accountError })
 
-    if (accountError || !userAccount || userAccount.role !== 'admin') {
+    if (accountError || !userAccount || userAccount.role !== 'admin' || !userAccount.is_active) {
       console.error('Admin verification failed:', { accountError, userAccount, userId: user.id })
       return new Response(
         JSON.stringify({ 

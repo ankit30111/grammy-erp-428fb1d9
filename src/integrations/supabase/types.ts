@@ -5649,6 +5649,16 @@ export type Database = {
           updated_at: string
         }[]
       }
+      get_plant_sensitive: {
+        Args: { p_plant_id: string }
+        Returns: {
+          email: string
+          factory_license_no: string
+          gstin: string
+          id: string
+          phone: string
+        }[]
+      }
       get_user_departments: {
         Args: { p_user_id: string }
         Returns: {
