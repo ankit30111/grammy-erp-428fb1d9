@@ -38,7 +38,7 @@ export const ManualPOCreationDialog = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('vendors')
-        .select('*')
+        .select('id, vendor_code, name, email, contact_number, address, gst_number, is_active, contact_person_name')
         .eq('is_active', true)
         .order('name');
       
