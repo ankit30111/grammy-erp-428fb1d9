@@ -2567,6 +2567,27 @@ export type Database = {
           },
         ]
       }
+      ht_store: {
+        Row: {
+          account_key: string
+          store_key: string
+          updated_at: string
+          value: Json
+        }
+        Insert: {
+          account_key: string
+          store_key: string
+          updated_at?: string
+          value: Json
+        }
+        Update: {
+          account_key?: string
+          store_key?: string
+          updated_at?: string
+          value?: Json
+        }
+        Relationships: []
+      }
       import_containers: {
         Row: {
           arrived_date: string | null
