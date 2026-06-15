@@ -30,7 +30,7 @@ import {
   Popover, PopoverContent, PopoverTrigger 
 } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
-import { Search, Plus, Layers, FileText, Package, Upload, Edit, Trash2, Download, Eye, ExternalLink, Loader2, Check, ChevronsUpDown } from "lucide-react";
+import { Search, Plus, Layers, FileText, Package, Upload, Edit, Trash2, Download, Eye, ExternalLink, Loader2, Check, ChevronsUpDown, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import { useRawMaterials } from "@/hooks/useRawMaterials";
 import { useVendors } from "@/hooks/useVendors";
 import { toast } from "sonner";
@@ -63,6 +63,7 @@ const MATERIAL_CATEGORIES = [
 const RawMaterialsManagement = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterCategory, setFilterCategory] = useState("all");
+  const [sortConfig, setSortConfig] = useState<{ key: 'material_code' | 'category' | 'vendors' | null; direction: 'asc' | 'desc' }>({ key: null, direction: 'asc' });
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
@@ -101,6 +102,48 @@ const RawMaterialsManagement = () => {
     const matchesCategory = filterCategory === "all" || material.category === filterCategory;
     return matchesSearch && matchesCategory;
   });
+
+  const getVendorSortValue = (material: any) => {
+    const rels = material.raw_material_vendors || [];
+    const primary = rels.find((rv: any) => rv.is_primary);
+    const name = primary?.vendors?.name || rels[0]?.vendors?.name || "";
+    return name.toLowerCase();
+  };
+
+  const sortedMaterials = [...filteredMaterials];
+  if (sortConfig.key) {
+    sortedMaterials.sort((a, b) => {
+      let av = "";
+      let bv = "";
+      if (sortConfig.key === 'material_code') {
+        av = (a.material_code || "").toLowerCase();
+        bv = (b.material_code || "").toLowerCase();
+      } else if (sortConfig.key === 'category') {
+        av = (a.category || "").toLowerCase();
+        bv = (b.category || "").toLowerCase();
+      } else if (sortConfig.key === 'vendors') {
+        av = getVendorSortValue(a);
+        bv = getVendorSortValue(b);
+      }
+      const cmp = av.localeCompare(bv);
+      return sortConfig.direction === 'asc' ? cmp : -cmp;
+    });
+  }
+
+  const handleSort = (key: 'material_code' | 'category' | 'vendors') => {
+    setSortConfig((prev) => {
+      if (prev.key !== key) return { key, direction: 'asc' };
+      if (prev.direction === 'asc') return { key, direction: 'desc' };
+      return { key: null, direction: 'asc' };
+    });
+  };
+
+  const SortIcon = ({ column }: { column: 'material_code' | 'category' | 'vendors' }) => {
+    if (sortConfig.key !== column) return <ArrowUpDown className="ml-1 h-3.5 w-3.5 opacity-50" />;
+    return sortConfig.direction === 'asc'
+      ? <ArrowUp className="ml-1 h-3.5 w-3.5" />
+      : <ArrowDown className="ml-1 h-3.5 w-3.5" />;
+  };
 
   const handleAddMaterial = async () => {
     if (!newMaterial.name.trim()) {
