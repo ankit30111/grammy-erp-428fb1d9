@@ -10,9 +10,9 @@ import CompletedProduction from "@/components/Production/CompletedProduction";
 import { Factory } from "lucide-react";
 
 const tabListCls =
-  "inline-flex h-10 items-center gap-1 rounded-xl bg-muted p-1 text-sm w-auto";
+  "flex h-10 items-center gap-1 rounded-xl bg-muted p-1 text-sm w-full";
 const tabTriggerCls =
-  "px-3 py-1.5 rounded-lg text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm transition-colors";
+  "flex-1 px-3 py-1.5 rounded-lg text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm transition-colors text-center";
 
 export default function Production() {
   return (
