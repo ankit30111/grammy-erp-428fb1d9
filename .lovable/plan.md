@@ -1,42 +1,64 @@
-## Why `/management/plants` is empty
+## Root cause (short version)
 
-The page issues a plain `supabase.from("plants").select("*")`. The two plants (GE, GA) exist in the DB, but the query returns nothing because **the `plants` table has no Data-API GRANTs at all** — confirmed:
+Per project rule, every DB function is created with `SET search_path TO ''` so it can't accidentally resolve to a malicious object. The cost of that rule: **every identifier inside the function body must be schema-qualified** (`public.foo`, `nextval('public.foo_seq')`). When a function forgets the `public.` prefix, it works in isolation (because the dev's session has `public` on the path) but blows up the moment it's invoked by another `search_path=''` function or trigger — exactly what just happened with `set_kit_number()` calling `generate_kit_number()`.
 
-```
-has_table_privilege('authenticated', 'public.plants', 'SELECT') → false
-information_schema.role_table_grants WHERE table_name='plants'  → 0 rows
-```
+A scan of the database found this same latent bug in three places:
 
-The RLS policies on `plants` are correct (admin OR assigned user can SELECT), but PostgREST checks the table-level GRANT first. With no GRANT, every authenticated request is rejected before RLS is even consulted, so the page renders the "No plants yet" empty state.
+| Function | Bad call | Will break |
+|---|---|---|
+| `public.generate_kit_number` | `nextval('kit_number_seq')` | kit creation on dispatch (today's bug) |
+| `public.generate_dispatch_order_number` | `nextval('dispatch_order_seq')` | first dispatch order creation |
+| `public.generate_spare_order_number` | `nextval('spare_order_seq')` | first spare order creation |
 
-The same gap exists on two sibling tables used elsewhere in the plant flow:
+Plus the trigger wrappers (`set_kit_number`, `set_dispatch_order_number`, `set_spare_order_number`) call these generators unqualified.
 
-- `public.production_lines` — no grants
-- `public.user_plants` — no grants
+## Long-run fix — two parts
 
-These weren't reported yet, but they're behind the "Lines" dialog and the plant-permissions UI and will fail the same way.
+### Part 1 — Fix all three pairs now (one migration)
 
-## Fix
-
-One migration adding the standard Data-API grants. RLS is already enabled and policies already enforce per-user scoping, so this only restores reachability — it does not widen who can see what.
+Recreate the six functions with fully-qualified identifiers:
 
 ```sql
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.plants          TO authenticated;
-GRANT ALL                              ON public.plants          TO service_role;
+-- KIT
+CREATE OR REPLACE FUNCTION public.generate_kit_number() ...
+  RETURN 'KIT-' || LPAD(nextval('public.kit_number_seq')::text, 6, '0');
 
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.production_lines TO authenticated;
-GRANT ALL                              ON public.production_lines TO service_role;
+CREATE OR REPLACE FUNCTION public.set_kit_number() ...
+  NEW.kit_number := public.generate_kit_number();
 
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.user_plants      TO authenticated;
-GRANT ALL                              ON public.user_plants      TO service_role;
+-- DISPATCH ORDER
+CREATE OR REPLACE FUNCTION public.generate_dispatch_order_number() ...
+  RETURN 'DO-' || LPAD(nextval('public.dispatch_order_seq')::text, 6, '0');
+
+CREATE OR REPLACE FUNCTION public.set_dispatch_order_number() ...
+  NEW.dispatch_order_number := public.generate_dispatch_order_number();
+
+-- SPARE ORDER
+CREATE OR REPLACE FUNCTION public.generate_spare_order_number() ...
+  RETURN 'SO-' || LPAD(nextval('public.spare_order_seq')::text, 6, '0');
+
+CREATE OR REPLACE FUNCTION public.set_spare_order_number() ...
+  NEW.spare_order_number := public.generate_spare_order_number();
 ```
 
-No `anon` grants — every policy on these tables scopes to authenticated users (admin check or `auth.uid()` match).
+All other `search_path=''` functions in the codebase were checked — they already qualify `public.` correctly. This migration closes every currently known gap.
 
-No frontend changes needed.
+### Part 2 — Prevent recurrence
+
+1. **Guardrail migration**: add a one-time DO block that scans `pg_proc` for any `public` function with empty `search_path` whose body contains an unqualified `nextval(...)` call or unqualified call to another `public` function, and `RAISE EXCEPTION` if found. Run it at the end of every new migration we ship from now on (or as a CI check) so a regression fails loud at migration time, not at runtime.
+2. **Promote the rule to a Core memory entry** that is more explicit than today's one-liner:
+   > Any function with `SET search_path TO ''` must schema-qualify *every* table, sequence, type, and function call (`public.foo`, `nextval('public.foo_seq')`). Trigger wrappers calling generators must also use `public.<fn>()`.
+3. **Standard template** for sequence-backed number generators (kit/PO/GRN/DO/SO/etc.) stored in `mem://database/secure-functions` so future generators are copied from a known-good shape.
+
+## Scope of changes
+
+- 1 migration file (six `CREATE OR REPLACE FUNCTION` statements + optional guardrail DO block).
+- 1 memory update (`mem://database/secure-functions`) — text only, no code.
+- **No frontend changes**, no schema changes, no RLS changes, no GRANT changes.
 
 ## Verification
 
-- Refresh `/management/plants` → both plants (GE, GA) render as cards.
-- Header PlantSwitcher continues to list both plants.
-- Open a plant's "Lines" dialog → production lines load.
+1. `/store` → Production Voucher → View Details → Dispatch Material → succeeds, `kit_preparation` row gets `KIT-000001`.
+2. Create a dispatch order from Sales → succeeds with `DO-000001`.
+3. Create a spare order → succeeds with `SO-000001`.
+4. Re-run the guardrail scan query → returns zero rows.
