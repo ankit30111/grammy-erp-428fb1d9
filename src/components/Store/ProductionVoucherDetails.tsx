@@ -58,10 +58,11 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
 
   // Fetch real-time inventory data with auto-refresh
   const { data: inventoryData = [], refetch: refetchInventory } = useQuery({
-    queryKey: ["inventory-real-time", voucherId],
+    queryKey: ["inventory-real-time", voucherId, productionOrder?.plant_id],
+    enabled: !!productionOrder?.plant_id,
     queryFn: async () => {
-      console.log("🔍 Fetching real-time inventory data...");
-      
+      console.log("🔍 Fetching real-time inventory data for plant:", productionOrder?.plant_id);
+
       const { data, error } = await supabase
         .from("inventory")
         .select(`
@@ -73,9 +74,9 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
             category
           )
         `)
-        .eq("plant_id", (await supabase.from("production_schedules").select("plant_id").eq("id", voucherId).maybeSingle()).data?.plant_id ?? "")
+        .eq("plant_id", productionOrder!.plant_id)
         .order("last_updated", { ascending: false });
-      
+
       if (error) {
         console.error("❌ Error fetching inventory:", error);
         throw error;
@@ -181,7 +182,8 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
           currentStock,
           quantityToSend,
           newStock: currentStock - quantityToSend,
-          requiredQuantity: material.quantity * productionOrder.quantity
+          requiredQuantity: material.quantity * productionOrder.quantity,
+          plantId: productionOrder.plant_id as string,
         });
       }
 
@@ -230,7 +232,7 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
               last_updated: new Date().toISOString()
             })
             .eq("raw_material_id", plan.materialId)
-            .eq("plant_id", plan.plantId ?? (inventoryData.find((i: any) => i.raw_materials?.id === plan.materialId)?.plant_id))
+            .eq("plant_id", plan.plantId)
             .select("quantity")
             .single();
 
