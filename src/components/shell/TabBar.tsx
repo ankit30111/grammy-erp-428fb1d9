@@ -64,14 +64,14 @@ export function TabBar({
   };
 
   return (
-    <div className={cn("pill-tabs", className)} role="tablist">
+    <div className={cn("pill-tabs w-full", className)} role="tablist">
       {tabs.map((tab) => {
         const isActive = tab.to ? isRouteActive(tab.to) : tab.id === value;
         const inner = (
           <>
             <span>{tab.label}</span>
             {(tab.count ?? 0) > 0 && (
-              <span className="rounded-[3px] bg-destructive-wash px-1 font-mono text-[9.5px] font-semibold text-destructive">
+              <span className="rounded-[3px] bg-destructive-wash px-1 font-mono text-[11.5px] font-semibold text-destructive">
                 {tab.count}
               </span>
             )}
@@ -85,7 +85,7 @@ export function TabBar({
               to={tab.to}
               role="tab"
               aria-selected={isActive}
-              className={cn("pill-tab shrink-0", isActive && "active")}
+              className={cn("pill-tab", isActive && "active")}
             >
               {inner}
             </Link>
@@ -98,7 +98,7 @@ export function TabBar({
             type="button"
             role="tab"
             aria-selected={isActive}
-            className={cn("pill-tab shrink-0", isActive && "active")}
+            className={cn("pill-tab", isActive && "active")}
             onClick={() => handleSelect(tab.id)}
           >
             {inner}

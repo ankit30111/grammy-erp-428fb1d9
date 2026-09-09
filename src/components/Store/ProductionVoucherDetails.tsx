@@ -599,7 +599,7 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
 
       <section className="flex min-h-14 flex-wrap items-center gap-x-4 gap-y-2 border-y border-hairline bg-surface-2 px-3 py-2" aria-label="Voucher summary">
         <div className="flex min-w-0 items-center gap-3">
-          <span className="font-mono text-[15px] font-semibold text-foreground">{productionOrder.voucher_number}</span>
+          <span className="font-mono text-[17px] font-semibold text-foreground">{productionOrder.voucher_number}</span>
           <StatePill state={statusState}>{productionOrder.status?.replace("_", " ")}</StatePill>
         </div>
         <div className="ml-auto grid grid-cols-4 gap-x-6">
@@ -610,8 +610,8 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
             ["Short lines", shortLines],
           ].map(([label, value]) => (
             <div key={String(label)} className="min-w-0 text-right">
-              <div className="font-mono text-[9px] font-medium uppercase tracking-[0.09em] text-muted-foreground">{label}</div>
-              <div className="max-w-40 truncate font-mono text-[15px] font-medium tabular-nums text-foreground" title={String(value)}>{value}</div>
+              <div className="font-mono text-[11px] font-medium uppercase tracking-[0.09em] text-muted-foreground">{label}</div>
+              <div className="max-w-40 truncate font-mono text-[17px] font-medium tabular-nums text-foreground" title={String(value)}>{value}</div>
             </div>
           ))}
         </div>
@@ -654,7 +654,7 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
                   max={Math.min(row.stock ?? 0, Math.max(0, (row.required ?? 0) - (row.received ?? 0)))}
                   value={value || ""}
                   onChange={(event) => handleQuantityChange(row.id, event.target.value)}
-                  className={`ml-auto h-[26px] w-[62px] rounded-[3px] px-1.5 text-right font-mono text-[12.5px] tabular-nums shadow-none ring-offset-0 hover:border-input focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/15 focus-visible:ring-offset-0 ${value > 0 ? "border-input bg-background" : "border-transparent bg-transparent"} ${row.hasInsufficientStock ? "border-destructive" : ""}`}
+                  className={`ml-auto h-[26px] w-[62px] rounded-[3px] px-1.5 text-right font-mono text-[14.5px] tabular-nums shadow-none ring-offset-0 hover:border-input focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/15 focus-visible:ring-offset-0 ${value > 0 ? "border-input bg-background" : "border-transparent bg-transparent"} ${row.hasInsufficientStock ? "border-destructive" : ""}`}
                   placeholder="0"
                   disabled={row.isFullyReceived}
                 />
@@ -665,7 +665,7 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
           }
         }}
         renderExpanded={(row) => (
-          <div className="grid grid-cols-4 gap-4 text-[11px]">
+          <div className="grid grid-cols-4 gap-4 text-[13px]">
             <div><span className="text-muted-foreground">Category</span><div className="mt-0.5 font-medium text-foreground">{row.category || "Uncategorised"}</div></div>
             <div><span className="text-muted-foreground">Available stock</span><div className="mt-0.5 font-mono tabular-nums text-foreground">{(row.stock ?? 0).toLocaleString()}</div></div>
             <div><span className="text-muted-foreground">In motion</span><div className="mt-0.5 font-mono tabular-nums text-warning">{(row.pending ?? 0).toLocaleString()}</div></div>
@@ -683,7 +683,7 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
       />
 
       <div className="sticky bottom-0 z-20 flex min-h-12 flex-wrap items-center gap-3 border-t border-border bg-background/95 py-2 backdrop-blur-sm">
-        <p className="mr-auto text-[12px] text-muted-foreground">
+        <p className="mr-auto text-[14px] text-muted-foreground">
           Dispatching <span className="font-mono font-semibold text-foreground">{totals.toSend.toLocaleString()}</span> units across <span className="font-mono font-semibold text-foreground">{selectedLines}</span> lines · <span className="font-mono font-semibold text-destructive">{shortLines}</span> lines still short
         </p>
         <Button variant="ghost" onClick={() => setQuantities({})} disabled={selectedLines === 0}>Clear entries</Button>

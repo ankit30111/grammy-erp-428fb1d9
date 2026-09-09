@@ -28,7 +28,7 @@ export function PageHeader({
   return (
     <header className={cn("w-full pb-4", className)}>
       {breadcrumb && breadcrumb.length > 0 && (
-        <nav aria-label="Breadcrumb" className="mb-2 flex min-w-0 items-center gap-2 text-[12.5px] text-muted-foreground">
+        <nav aria-label="Breadcrumb" className="mb-2 flex min-w-0 items-center gap-2 text-[14.5px] text-muted-foreground">
           {breadcrumb.map((item, index) => {
             const isLast = index === breadcrumb.length - 1;
             return (
@@ -51,12 +51,12 @@ export function PageHeader({
 
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="truncate text-[16px] font-semibold uppercase tracking-[0.085em] text-foreground">{title}</h1>
+          <h1 className="truncate text-[18px] font-semibold uppercase tracking-[0.085em] text-foreground">{title}</h1>
 
         </div>
         {(meta || actions) && (
           <div className="flex flex-wrap items-center justify-end gap-3">
-            {meta && <div className="text-[11px] text-muted-foreground">{meta}</div>}
+            {meta && <div className="text-[13px] text-muted-foreground">{meta}</div>}
             {actions}
           </div>
         )}

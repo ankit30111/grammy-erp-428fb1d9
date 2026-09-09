@@ -71,7 +71,7 @@ export function DataTable<Row extends Record<string, unknown>>({
                 key={column.key}
                 scope="col"
                 className={cn(
-                  "sticky top-0 z-30 h-8 whitespace-nowrap border-b border-border bg-surface-2 px-[11px] font-mono text-[9.5px] font-medium uppercase tracking-[0.09em] text-muted-foreground",
+                  "sticky top-0 z-30 h-8 whitespace-nowrap border-b border-border bg-surface-2 px-[11px] font-mono text-[11.5px] font-medium uppercase tracking-[0.09em] text-muted-foreground",
                   column.align === "right" ? "text-right" : "text-left",
                 )}
               >
@@ -87,7 +87,7 @@ export function DataTable<Row extends Record<string, unknown>>({
             if (isGroup) {
               return (
                 <tr key={key} className="h-7 bg-sunken">
-                  <td colSpan={columns.length} className="px-[11px] font-mono text-[9.5px] font-semibold uppercase tracking-[0.11em] text-foreground">
+                  <td colSpan={columns.length} className="px-[11px] font-mono text-[11.5px] font-semibold uppercase tracking-[0.11em] text-foreground">
                     <div className="flex items-center justify-between gap-3">
                       <span>{String(row.label ?? "")}</span>
                       <span className="text-muted-foreground">{String(row.count ?? "")}</span>
@@ -120,7 +120,7 @@ export function DataTable<Row extends Record<string, unknown>>({
                         key={column.key}
                         title={title}
                         className={cn(
-                          "h-[38px] border-b border-hairline px-[11px] text-[12.5px] text-foreground",
+                          "h-[38px] border-b border-hairline px-[11px] text-[14.5px] text-foreground",
                           column.align === "right" && "text-right font-mono tabular-nums",
                           column.truncate && "overflow-hidden text-ellipsis whitespace-nowrap",
                           columnIndex === 0 && rowState && stripeClasses[rowState],
@@ -150,7 +150,7 @@ export function DataTable<Row extends Record<string, unknown>>({
                 <td
                   key={column.key}
                   className={cn(
-                    "px-[11px] text-[12.5px]",
+                    "px-[11px] text-[14.5px]",
                     column.align === "right" && "text-right font-mono tabular-nums",
                   )}
                 >
