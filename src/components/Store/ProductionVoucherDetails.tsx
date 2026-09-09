@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ChevronDown, ChevronRight, FileDown, Package, RefreshCw } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronRight, FileDown, Package, RefreshCw } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -80,7 +80,9 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
     queryKey: ["inventory-real-time", voucherId, productionOrder?.plant_id],
     enabled: !!productionOrder?.plant_id,
     queryFn: async () => {
-      console.log("🔍 Fetching real-time inventory data for plant:", productionOrder?.plant_id);
+      const plantId = productionOrder?.plant_id;
+      if (!plantId) return [];
+      console.log("🔍 Fetching real-time inventory data for plant:", plantId);
 
       const { data, error } = await supabase
         .from("inventory")
@@ -93,7 +95,7 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
             category
           )
         `)
-        .eq("plant_id", productionOrder!.plant_id)
+        .eq("plant_id", plantId)
         .order("last_updated", { ascending: false });
 
       if (error) {
@@ -544,7 +546,7 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
       };
     });
     return [
-      { id: `group-${group.label}`, __group: true, label: group.label, count: `${materialRows.length} lines` },
+      { id: `group-${group.label}`, __group: true, label: group.label, count: materialRows.length },
       ...materialRows,
     ];
   });
