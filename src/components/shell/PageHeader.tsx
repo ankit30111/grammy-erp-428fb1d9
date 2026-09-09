@@ -1,0 +1,66 @@
+import type { ReactNode } from "react";
+import { Link } from "react-router-dom";
+
+import { cn } from "@/lib/utils";
+
+export interface PageHeaderBreadcrumb {
+  label: string;
+  to?: string;
+}
+
+interface PageHeaderProps {
+  title: string;
+  subtitle?: string;
+  breadcrumb?: PageHeaderBreadcrumb[];
+  actions?: ReactNode;
+  meta?: ReactNode;
+  className?: string;
+}
+
+export function PageHeader({
+  title,
+  subtitle,
+  breadcrumb,
+  actions,
+  meta,
+  className,
+}: PageHeaderProps) {
+  return (
+    <header className={cn("w-full pb-4", className)}>
+      {breadcrumb && breadcrumb.length > 0 && (
+        <nav aria-label="Breadcrumb" className="mb-2 flex min-w-0 items-center gap-2 text-[12.5px] text-muted-foreground">
+          {breadcrumb.map((item, index) => {
+            const isLast = index === breadcrumb.length - 1;
+            return (
+              <div key={`${item.label}-${index}`} className="flex min-w-0 items-center gap-2">
+                {index > 0 && <span className="opacity-45" aria-hidden="true">/</span>}
+                {item.to && !isLast ? (
+                  <Link className="truncate transition-colors hover:text-foreground" to={item.to}>
+                    {item.label}
+                  </Link>
+                ) : (
+                  <span className={cn("truncate", isLast && "font-mono text-foreground")} aria-current={isLast ? "page" : undefined}>
+                    {item.label}
+                  </span>
+                )}
+              </div>
+            );
+          })}
+        </nav>
+      )}
+
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="truncate text-[20px] font-semibold text-foreground">{title}</h1>
+          {subtitle && <p className="mt-0.5 text-[12px] text-muted-foreground">{subtitle}</p>}
+        </div>
+        {(meta || actions) && (
+          <div className="flex flex-wrap items-center justify-end gap-3">
+            {meta && <div className="text-[11px] text-muted-foreground">{meta}</div>}
+            {actions}
+          </div>
+        )}
+      </div>
+    </header>
+  );
+}
