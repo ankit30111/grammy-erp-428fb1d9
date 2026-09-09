@@ -71,7 +71,7 @@ export function TabBar({
           <>
             <span>{tab.label}</span>
             {(tab.count ?? 0) > 0 && (
-              <span className="rounded-[3px] bg-destructive-wash px-1 font-mono text-[9.5px] font-semibold text-destructive">
+              <span className="rounded-[3px] bg-destructive-wash px-1 font-mono text-[11.5px] font-semibold text-destructive">
                 {tab.count}
               </span>
             )}

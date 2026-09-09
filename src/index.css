@@ -133,7 +133,7 @@
 
 @layer components {
   .nav-link {
-    @apply flex items-center gap-3 border-l-2 border-l-transparent px-3 py-2 rounded-[5px] text-[12.5px] font-medium text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground;
+    @apply flex items-center gap-3 border-l-2 border-l-transparent px-3 py-2 rounded-[5px] text-[14.5px] font-medium text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground;
   }
 
   .nav-link.active {
@@ -145,7 +145,7 @@
   }
 
   .status-badge {
-    @apply inline-flex h-[19px] items-center justify-center rounded-[3px] px-[7px] font-mono text-[9.5px] font-semibold uppercase tracking-[0.07em];
+    @apply inline-flex h-[19px] items-center justify-center rounded-[3px] px-[7px] font-mono text-[11.5px] font-semibold uppercase tracking-[0.07em];
   }
 
   .page-card {
@@ -177,7 +177,7 @@
     border-radius: 7px;
     background: transparent;
     padding: 6px 13px;
-    font-size: 12.5px;
+    font-size: 14.5px;
     font-weight: 500;
     line-height: 1.35;
     white-space: nowrap;

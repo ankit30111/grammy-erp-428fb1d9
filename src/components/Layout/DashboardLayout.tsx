@@ -36,7 +36,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="relative text-muted-foreground hover:text-foreground">
                   <Bell className="h-4 w-4" />
-                  <span className="absolute top-1.5 right-1.5 bg-primary text-primary-foreground text-[9px] font-semibold rounded-full h-4 w-4 flex items-center justify-center">
+                  <span className="absolute top-1.5 right-1.5 bg-primary text-primary-foreground text-[11px] font-semibold rounded-full h-4 w-4 flex items-center justify-center">
                     3
                   </span>
                 </Button>

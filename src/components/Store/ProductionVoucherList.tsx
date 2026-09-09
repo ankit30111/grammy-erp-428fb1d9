@@ -141,7 +141,7 @@ const ProductionVoucherList = memo(({ onSelectVoucher }: ProductionVoucherListPr
         }
       }}
       renderExpanded={(row) => (
-        <div className="flex flex-wrap items-center gap-x-8 gap-y-3 text-[11px]">
+        <div className="flex flex-wrap items-center gap-x-8 gap-y-3 text-[13px]">
           <div><span className="text-muted-foreground">Customer</span><div className="mt-0.5 font-medium text-foreground">{row.customer}</div></div>
           <div><span className="text-muted-foreground">Kit status</span><div className="mt-0.5"><StatePill state={row.kitStatus === "PREPARED" ? "ok" : row.kitStatus === "PARTIAL" ? "warn" : row.kitStatus === "NOT_PREPARED" ? "bad" : "idle"}>{row.kitStatus.replace(/_/g, " ")}</StatePill></div></div>
           <Button variant="outline" size="sm" className="ml-auto" onClick={() => onSelectVoucher(row.id)}>
