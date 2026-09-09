@@ -50,7 +50,7 @@ export function Sidebar() {
         {grouped.map(([group, items]) => (
           <div key={group} className="space-y-0.5">
             {!collapsed && (
-              <div className="text-[12px] font-semibold uppercase tracking-wider text-sidebar-foreground/50 px-3 py-1.5">
+              <div className="text-[14px] font-semibold uppercase tracking-wider text-sidebar-foreground/50 px-3 py-1.5">
                 {group}
               </div>
             )}
@@ -74,7 +74,7 @@ export function Sidebar() {
         {visibleManagement.length > 0 && (
           <div className="space-y-0.5">
             {!collapsed && (
-              <div className="text-[12px] font-semibold uppercase tracking-wider text-sidebar-foreground/50 px-3 py-1.5">
+              <div className="text-[14px] font-semibold uppercase tracking-wider text-sidebar-foreground/50 px-3 py-1.5">
                 MANAGEMENT
               </div>
             )}

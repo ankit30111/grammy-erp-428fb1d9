@@ -610,7 +610,7 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
             ["Short lines", shortLines],
           ].map(([label, value]) => (
             <div key={String(label)} className="min-w-0 text-right">
-              <div className="font-mono text-[11px] font-medium uppercase tracking-[0.09em] text-muted-foreground">{label}</div>
+              <div className="font-mono text-[15px] font-medium uppercase tracking-[0.09em] text-muted-foreground">{label}</div>
               <div className="max-w-40 truncate font-mono text-[17px] font-medium tabular-nums text-foreground" title={String(value)}>{value}</div>
             </div>
           ))}
@@ -665,7 +665,7 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
           }
         }}
         renderExpanded={(row) => (
-          <div className="grid grid-cols-4 gap-4 text-[13px]">
+          <div className="grid grid-cols-4 gap-4 text-[15px]">
             <div><span className="text-muted-foreground">Category</span><div className="mt-0.5 font-medium text-foreground">{row.category || "Uncategorised"}</div></div>
             <div><span className="text-muted-foreground">Available stock</span><div className="mt-0.5 font-mono tabular-nums text-foreground">{(row.stock ?? 0).toLocaleString()}</div></div>
             <div><span className="text-muted-foreground">In motion</span><div className="mt-0.5 font-mono tabular-nums text-warning">{(row.pending ?? 0).toLocaleString()}</div></div>
@@ -683,7 +683,7 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
       />
 
       <div className="sticky bottom-0 z-20 flex min-h-12 flex-wrap items-center gap-3 border-t border-border bg-background/95 py-2 backdrop-blur-sm">
-        <p className="mr-auto text-[14px] text-muted-foreground">
+        <p className="mr-auto text-[16px] text-muted-foreground">
           Dispatching <span className="font-mono font-semibold text-foreground">{totals.toSend.toLocaleString()}</span> units across <span className="font-mono font-semibold text-foreground">{selectedLines}</span> lines · <span className="font-mono font-semibold text-destructive">{shortLines}</span> lines still short
         </p>
         <Button variant="ghost" onClick={() => setQuantities({})} disabled={selectedLines === 0}>Clear entries</Button>
