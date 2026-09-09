@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 export interface PageHeaderBreadcrumb {
   label: string;
   to?: string;
+  onClick?: () => void;
 }
 
 interface PageHeaderProps {
@@ -35,7 +36,7 @@ export function PageHeader({
               <div key={`${item.label}-${index}`} className="flex min-w-0 items-center gap-2">
                 {index > 0 && <span className="opacity-45" aria-hidden="true">/</span>}
                 {item.to && !isLast ? (
-                  <Link className="truncate transition-colors hover:text-foreground" to={item.to}>
+                  <Link className="truncate transition-colors hover:text-foreground" to={item.to} onClick={item.onClick}>
                     {item.label}
                   </Link>
                 ) : (

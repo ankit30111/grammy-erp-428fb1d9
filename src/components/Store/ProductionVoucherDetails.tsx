@@ -512,227 +512,188 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
   const bom = productionOrder.products?.bom || [];
   const orderQuantity = productionOrder.quantity;
 
-  // Group BOM items by category
-  const groupedBOM = {
-    'Sub Assembly': bom.filter(item => item.bom_type === 'sub_assembly'),
-    'Main Assembly': bom.filter(item => item.bom_type === 'main_assembly'),
-    'Accessory': bom.filter(item => item.bom_type === 'accessory')
-  };
+  const groupedBOM = [
+    { label: "Sub Assembly", items: bom.filter((item) => item.bom_type === "sub_assembly") },
+    { label: "Main Assembly", items: bom.filter((item) => item.bom_type === "main_assembly") },
+    { label: "Accessory", items: bom.filter((item) => item.bom_type === "accessory") },
+  ];
 
-  // Helper function to render material rows for a category
-  const renderMaterialRows = (items: any[]) => {
-    return items.map((item) => {
-      const requiredQty = item.quantity * orderQuantity;
-      const currentStock = getCurrentStock(item.raw_materials.id);
-      const totalDispatched = getDispatchedQuantity(item.raw_materials.id);
-      const actualReceived = getActualReceivedQuantity(item.raw_materials.id);
-      const qtyToDispatch = quantities[item.raw_materials.id] || 0;
-      
-      // Enhanced balance calculation: Required - Actual Received by Production
-      const balanceNeeded = Math.max(0, requiredQty - actualReceived - qtyToDispatch);
-      
-      const hasInsufficientStock = qtyToDispatch > currentStock;
-      const isFullyReceived = actualReceived >= requiredQty;
-      const hasPendingMaterial = totalDispatched > actualReceived; // Material in transit
-
-      return (
-        <TableRow key={item.raw_materials.id} className={hasInsufficientStock ? "bg-red-50" : ""}>
-          <TableCell className="font-mono">{item.raw_materials.material_code}</TableCell>
-          <TableCell>{item.raw_materials.name}</TableCell>
-          <TableCell>
-            <Badge variant="outline">{item.raw_materials.category}</Badge>
-          </TableCell>
-          <TableCell className="font-semibold">{requiredQty}</TableCell>
-          <TableCell className={`font-medium ${currentStock > 0 ? 'text-green-600' : 'text-red-600'}`}>
-            {currentStock}
-            <div className="text-xs text-muted-foreground">Live Stock</div>
-          </TableCell>
-          <TableCell className="text-blue-600 font-medium">
-            {totalDispatched}
-            <div className="text-xs text-muted-foreground">Total Sent</div>
-          </TableCell>
-          <TableCell className="text-green-600 font-medium">
-            {actualReceived}
-            <div className="text-xs text-muted-foreground">
-              {hasPendingMaterial ? `(+${totalDispatched - actualReceived} pending)` : 'Confirmed'}
-            </div>
-          </TableCell>
-          <TableCell>
-            <Input
-              type="number"
-              min="0"
-              max={Math.min(currentStock, balanceNeeded)}
-              value={quantities[item.raw_materials.id] || ""}
-              onChange={(e) => handleQuantityChange(item.raw_materials.id, e.target.value)}
-              className={`w-24 ${hasInsufficientStock ? 'border-red-500' : ''}`}
-              placeholder="0"
-              disabled={isFullyReceived}
-            />
-            {hasInsufficientStock && (
-              <p className="text-xs text-red-500 mt-1">
-                Insufficient stock ({currentStock} available)
-              </p>
-            )}
-          </TableCell>
-          <TableCell className="font-medium">
-            {balanceNeeded > 0 ? (
-              <span className="text-orange-600">{balanceNeeded}</span>
-            ) : (
-              <span className="text-green-600">Complete</span>
-            )}
-          </TableCell>
-          <TableCell>
-            {isFullyReceived ? (
-              <Badge variant="default">Complete</Badge>
-            ) : currentStock === 0 ? (
-              <Badge variant="destructive">Out of Stock</Badge>
-            ) : hasInsufficientStock ? (
-              <Badge variant="destructive" className="gap-1">
-                <AlertTriangle className="h-3 w-3" />
-                Insufficient Stock
-              </Badge>
-            ) : qtyToDispatch > 0 ? (
-              <Badge variant="secondary">Ready to Dispatch</Badge>
-            ) : (
-              <Badge variant="outline">Available</Badge>
-            )}
-          </TableCell>
-        </TableRow>
-      );
+  const tableRows: VoucherTableRow[] = groupedBOM.flatMap((group) => {
+    if (group.items.length === 0) return [];
+    const materialRows = group.items.map((item): VoucherTableRow => {
+      const materialId = item.raw_materials.id;
+      const required = item.quantity * orderQuantity;
+      const stock = getCurrentStock(materialId);
+      const sent = getDispatchedQuantity(materialId);
+      const received = getActualReceivedQuantity(materialId);
+      const toSend = quantities[materialId] || 0;
+      return {
+        id: materialId,
+        materialCode: item.raw_materials.material_code,
+        description: item.raw_materials.name,
+        category: item.raw_materials.category,
+        required,
+        stock,
+        sent,
+        received,
+        toSend,
+        balance: Math.max(0, required - received - toSend),
+        pending: Math.max(0, sent - received),
+        isFullyReceived: received >= required,
+        hasInsufficientStock: toSend > stock,
+      };
     });
-  };
+    return [
+      { id: `group-${group.label}`, __group: true, label: group.label, count: `${materialRows.length} lines` },
+      ...materialRows,
+    ];
+  });
 
-  // Helper function to render category header
-  const renderCategoryHeader = (categoryName: string, itemCount: number) => {
-    if (itemCount === 0) return null;
-    
-    return (
-      <TableRow className="bg-muted/30 hover:bg-muted/30">
-        <TableCell colSpan={10} className="font-semibold text-primary py-3">
-          <div className="flex items-center gap-2">
-            <Package className="h-4 w-4" />
-            {categoryName} ({itemCount} materials)
-          </div>
-        </TableCell>
-      </TableRow>
-    );
-  };
+  const materialRows = tableRows.filter((row) => !row.__group);
+  const columns: DataTableColumn<VoucherTableRow>[] = [
+    { key: "material", header: "Material", width: 96 },
+    { key: "description", header: "Description", width: "auto", truncate: true },
+    { key: "required", header: "Req.", width: 76, align: "right" },
+    { key: "stock", header: "Stock", width: 76, align: "right" },
+    { key: "movement", header: "Sent → Recd.", width: 104, align: "right" },
+    { key: "toSend", header: "To send", width: 92, align: "right" },
+    { key: "balance", header: "Balance", width: 84, align: "right" },
+  ];
+
+  const totals = materialRows.reduce(
+    (sum, row) => ({
+      required: sum.required + (row.required ?? 0),
+      stock: sum.stock + (row.stock ?? 0),
+      sent: sum.sent + (row.sent ?? 0),
+      received: sum.received + (row.received ?? 0),
+      toSend: sum.toSend + (row.toSend ?? 0),
+      balance: sum.balance + (row.balance ?? 0),
+    }),
+    { required: 0, stock: 0, sent: 0, received: 0, toSend: 0, balance: 0 },
+  );
+  const selectedLines = materialRows.filter((row) => (row.toSend ?? 0) > 0).length;
+  const shortLines = materialRows.filter((row) => (row.balance ?? 0) > 0).length;
+  const syncSeconds = inventoryUpdatedAt ? Math.max(0, Math.floor((Date.now() - inventoryUpdatedAt) / 1000)) : 0;
+  const syncLabel = syncSeconds < 5 ? "Synced just now" : `Synced ${syncSeconds}s ago`;
+  const statusState = productionOrder.status === "COMPLETED" ? "ok" : productionOrder.status === "IN_PROGRESS" ? "warn" : "idle";
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <Button variant="outline" onClick={onBack}>
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Production Vouchers
-        </Button>
-        <div className="flex items-center gap-4">
-          <Button 
-            variant="outline" 
-            onClick={() => refetchInventory()}
-            size="sm"
-          >
-            Refresh Inventory
+    <div className="min-w-0 space-y-3">
+      <PageHeader
+        title={`Production Voucher ${productionOrder.voucher_number}`}
+        subtitle="Material issue and production receipt status"
+        breadcrumb={[
+          { label: "Store", to: "/store", onClick: onBack },
+          { label: "Production Vouchers", to: "/store", onClick: onBack },
+          { label: productionOrder.voucher_number },
+        ]}
+        meta={syncLabel}
+        actions={(
+          <Button variant="outline" size="sm" onClick={() => refetchInventory()}>
+            <RefreshCw className="h-3.5 w-3.5" />
+            Refresh inventory
           </Button>
-          <div className="text-sm text-muted-foreground">
-            Real-time sync: {new Date().toLocaleTimeString()}
-          </div>
+        )}
+      />
+
+      <section className="flex min-h-14 flex-wrap items-center gap-x-4 gap-y-2 border-y border-hairline bg-surface-2 px-3 py-2" aria-label="Voucher summary">
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="font-mono text-[15px] font-semibold text-foreground">{productionOrder.voucher_number}</span>
+          <StatePill state={statusState}>{productionOrder.status?.replace("_", " ")}</StatePill>
         </div>
+        <div className="ml-auto grid grid-cols-4 gap-x-6">
+          {[
+            ["Product", productionOrder.products?.name || "—"],
+            ["Order qty", orderQuantity],
+            ["BOM lines", materialRows.length],
+            ["Short lines", shortLines],
+          ].map(([label, value]) => (
+            <div key={String(label)} className="min-w-0 text-right">
+              <div className="font-mono text-[9px] font-medium uppercase tracking-[0.09em] text-muted-foreground">{label}</div>
+              <div className="max-w-40 truncate font-mono text-[15px] font-medium tabular-nums text-foreground" title={String(value)}>{value}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <DataTable<VoucherTableRow>
+        columns={columns}
+        rows={tableRows}
+        getRowKey={(row) => row.id}
+        getRowState={(row) => {
+          if (row.hasInsufficientStock || ((row.stock ?? 0) === 0 && (row.balance ?? 0) > 0)) return "bad";
+          if ((row.pending ?? 0) > 0 || (row.toSend ?? 0) > 0) return "warn";
+          if (row.isFullyReceived) return "ok";
+          return null;
+        }}
+        renderCell={(row, column, { expanded, toggleExpanded }) => {
+          switch (column.key) {
+            case "material":
+              return (
+                <button type="button" onClick={toggleExpanded} className="flex w-full items-center gap-1.5 text-left font-mono font-semibold text-foreground" aria-expanded={expanded}>
+                  {expanded ? <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" /> : <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
+                  <span className="truncate">{row.materialCode}</span>
+                </button>
+              );
+            case "description": return row.description ?? "—";
+            case "required": return (row.required ?? 0).toLocaleString();
+            case "stock": return <span className={(row.stock ?? 0) === 0 ? "text-muted-foreground" : "text-foreground"}>{(row.stock ?? 0).toLocaleString()}</span>;
+            case "movement":
+              return row.sent === row.received ? (
+                <span className={(row.sent ?? 0) > 0 ? "font-semibold text-success" : "text-muted-foreground"}>{(row.sent ?? 0).toLocaleString()}</span>
+              ) : (
+                <span><span>{(row.sent ?? 0).toLocaleString()}</span><span className="mx-1 text-muted-foreground">→</span><span>{(row.received ?? 0).toLocaleString()}</span></span>
+              );
+            case "toSend": {
+              const value = row.toSend ?? 0;
+              return (
+                <Input
+                  type="number"
+                  min="0"
+                  max={Math.min(row.stock ?? 0, Math.max(0, (row.required ?? 0) - (row.received ?? 0)))}
+                  value={value || ""}
+                  onChange={(event) => handleQuantityChange(row.id, event.target.value)}
+                  className={`ml-auto h-[26px] w-[62px] rounded-[3px] px-1.5 text-right font-mono text-[12.5px] tabular-nums shadow-none ring-offset-0 hover:border-input focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/15 focus-visible:ring-offset-0 ${value > 0 ? "border-input bg-background" : "border-transparent bg-transparent"} ${row.hasInsufficientStock ? "border-destructive" : ""}`}
+                  placeholder="0"
+                  disabled={row.isFullyReceived}
+                />
+              );
+            }
+            case "balance": return (row.balance ?? 0) > 0 ? <span className="font-semibold text-destructive">{(row.balance ?? 0).toLocaleString()}</span> : <span className="text-muted-foreground">0</span>;
+            default: return null;
+          }
+        }}
+        renderExpanded={(row) => (
+          <div className="grid grid-cols-4 gap-4 text-[11px]">
+            <div><span className="text-muted-foreground">Category</span><div className="mt-0.5 font-medium text-foreground">{row.category || "Uncategorised"}</div></div>
+            <div><span className="text-muted-foreground">Available stock</span><div className="mt-0.5 font-mono tabular-nums text-foreground">{(row.stock ?? 0).toLocaleString()}</div></div>
+            <div><span className="text-muted-foreground">In motion</span><div className="mt-0.5 font-mono tabular-nums text-warning">{(row.pending ?? 0).toLocaleString()}</div></div>
+            <div><span className="text-muted-foreground">Line condition</span><div className="mt-0.5"><StatePill state={row.hasInsufficientStock ? "bad" : row.isFullyReceived ? "ok" : (row.pending ?? 0) > 0 ? "warn" : "idle"}>{row.hasInsufficientStock ? "Insufficient stock" : row.isFullyReceived ? "Confirmed" : (row.pending ?? 0) > 0 ? "In motion" : "Available"}</StatePill></div></div>
+          </div>
+        )}
+        footer={{
+          material: "Totals",
+          required: totals.required.toLocaleString(),
+          stock: totals.stock.toLocaleString(),
+          movement: <span>{totals.sent.toLocaleString()}<span className="mx-1 text-muted-foreground">→</span>{totals.received.toLocaleString()}</span>,
+          toSend: totals.toSend.toLocaleString(),
+          balance: <span className={totals.balance > 0 ? "text-destructive" : "text-muted-foreground"}>{totals.balance.toLocaleString()}</span>,
+        }}
+      />
+
+      <div className="sticky bottom-0 z-20 flex min-h-12 flex-wrap items-center gap-3 border-t border-border bg-background/95 py-2 backdrop-blur-sm">
+        <p className="mr-auto text-[12px] text-muted-foreground">
+          Dispatching <span className="font-mono font-semibold text-foreground">{totals.toSend.toLocaleString()}</span> units across <span className="font-mono font-semibold text-foreground">{selectedLines}</span> lines · <span className="font-mono font-semibold text-destructive">{shortLines}</span> lines still short
+        </p>
+        <Button variant="ghost" onClick={() => setQuantities({})} disabled={selectedLines === 0}>Clear entries</Button>
+        <Button variant="outline" onClick={handleGeneratePDF} disabled={dispatchedItems.length === 0}>
+          <FileDown className="h-4 w-4" />
+          Generate PDF
+        </Button>
+        <Button onClick={handleSendMaterials} disabled={sendMaterialsMutation.isPending}>
+          {sendMaterialsMutation.isPending ? "Dispatching…" : "Dispatch materials"}
+        </Button>
       </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Package className="h-5 w-5" />
-            Production Voucher: {productionOrder.voucher_number}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-3 gap-4 mb-6">
-            <div>
-              <p className="text-sm text-muted-foreground">Product</p>
-              <p className="font-medium">{productionOrder.products?.name}</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Order Quantity</p>
-              <p className="font-medium">{orderQuantity}</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Status</p>
-              <Badge variant={productionOrder.status === "COMPLETED" ? "default" : "secondary"}>
-                {productionOrder.status?.replace('_', ' ')}
-              </Badge>
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold">ENHANCED Material Dispatch - Real-time Inventory Deduction</h3>
-              <div className="flex items-center gap-4">
-                <Button 
-                  variant="outline" 
-                  onClick={() => refetchInventory()}
-                  size="sm"
-                >
-                  Refresh Inventory
-                </Button>
-                <div className="text-sm text-muted-foreground">
-                  Real-time sync: {new Date().toLocaleTimeString()}
-                </div>
-              </div>
-            </div>
-            
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Material Code</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Required Qty</TableHead>
-                  <TableHead>Current Stock</TableHead>
-                  <TableHead>Total Dispatched</TableHead>
-                  <TableHead>Actual Received</TableHead>
-                  <TableHead>Qty to Dispatch</TableHead>
-                  <TableHead>Balance Needed</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {/* Sub Assembly Section */}
-                {renderCategoryHeader("Sub Assembly", groupedBOM['Sub Assembly'].length)}
-                {renderMaterialRows(groupedBOM['Sub Assembly'])}
-                
-                {/* Main Assembly Section */}
-                {renderCategoryHeader("Main Assembly", groupedBOM['Main Assembly'].length)}
-                {renderMaterialRows(groupedBOM['Main Assembly'])}
-                
-                {/* Accessory Section */}
-                {renderCategoryHeader("Accessory", groupedBOM['Accessory'].length)}
-                {renderMaterialRows(groupedBOM['Accessory'])}
-              </TableBody>
-            </Table>
-
-            <div className="flex justify-end gap-4 pt-4 border-t">
-              {dispatchedItems.length > 0 && (
-                <Button
-                  variant="outline"
-                  onClick={handleGeneratePDF}
-                  className="gap-2"
-                >
-                  <FileDown className="h-4 w-4" />
-                  Generate PDF
-                </Button>
-              )}
-              <Button
-                onClick={handleSendMaterials}
-                disabled={sendMaterialsMutation.isPending}
-                className="bg-blue-600 hover:bg-blue-700"
-              >
-                {sendMaterialsMutation.isPending ? "Dispatching Materials..." : "Dispatch Materials to Production"}
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 };
