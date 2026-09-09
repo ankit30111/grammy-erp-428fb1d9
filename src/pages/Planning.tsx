@@ -77,8 +77,7 @@ const Planning: React.FC = () => {
   return (
     <DashboardLayout>
       <PageHeader
-        title="Production Planning"
-        subtitle="Schedules, material requirements and shortages"
+        title="Planning"
         actions={
           <Button onClick={calculateShortages} disabled={isCalculating} variant="outline" size="sm" className="gap-2">
             <Calculator className="h-4 w-4" />

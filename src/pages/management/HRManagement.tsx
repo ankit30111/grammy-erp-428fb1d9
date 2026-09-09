@@ -24,7 +24,7 @@ const HRManagement = () => {
 
   return (
     <DashboardLayout>
-      <PageHeader title="Human Resources" subtitle="Employees, skills, training, payroll and reviews" />
+      <PageHeader title="Human Resources" />
       <TabBar tabs={hrTabs} value={activeTab} onChange={setActiveTab} />
       <div className="space-y-6 pt-4">
         {activeTab === "dashboard" && <HRDashboard />}

@@ -84,8 +84,7 @@ const PPC = () => {
   const unscheduledProjections = projections?.length ? projections.length - (schedules?.length || 0) : 0;
   return <DashboardLayout>
       <PageHeader
-        title="PPC Dashboard"
-        subtitle="Production Planning & Control overview"
+        title="PPC"
         actions={
           <Button onClick={calculateShortages} disabled={isCalculating} variant="outline" size="sm" className="gap-2">
             <RefreshCw className={`h-4 w-4 ${isCalculating ? "animate-spin" : ""}`} />

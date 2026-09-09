@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { DashLayout } from "@/components/Layout/DashLayout";
+import { TabBar } from "@/components/shell/TabBar";
+import { PageHeader } from "@/components/shell/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,12 +9,12 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useDashSpareParts, useDashSpareConsumption, useDashSpareMutations } from "@/hooks/useDashSpares";
 import { Plus, Search } from "lucide-react";
 import { format } from "date-fns";
 
 export default function DashSpares() {
+  const [dashTab, setDashTab] = useState("master");
   const { data: spares, isLoading } = useDashSpareParts();
   const { data: consumption } = useDashSpareConsumption();
   const { addSpare, updateSpare } = useDashSpareMutations();
@@ -34,15 +36,18 @@ export default function DashSpares() {
   return (
     <DashLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div><h1 className="text-3xl font-bold tracking-tight">Spare Parts</h1><p className="text-muted-foreground">Spare SKU master & consumption tracking</p></div>
-          <Button onClick={openAdd}><Plus className="h-4 w-4 mr-2" />Add Spare</Button>
-        </div>
+        <PageHeader
+          title="Spares"
+          actions={<Button size="sm" onClick={openAdd}><Plus className="h-4 w-4 mr-2" />Add Spare</Button>}
+        />
 
-        <Tabs defaultValue="master">
-          <TabsList><TabsTrigger value="master">Spare Master</TabsTrigger><TabsTrigger value="consumption">Consumption Log</TabsTrigger></TabsList>
+        <>
+<TabBar tabs={[{ id: "master", label: "Spare Master" }, { id: "consumption", label: "Consumption Log" }]} value={dashTab} onChange={setDashTab} syncToUrl={false} />
 
-          <TabsContent value="master">
+          
+
+          {dashTab === "master" && (
+<div>
             <Card><CardContent className="pt-6">
               <div className="relative mb-4"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Search spares..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" /></div>
               <Table>
@@ -64,9 +69,11 @@ export default function DashSpares() {
                 </TableBody>
               </Table>
             </CardContent></Card>
-          </TabsContent>
+          </div>
+)}
 
-          <TabsContent value="consumption">
+          {dashTab === "consumption" && (
+<div>
             <Card><CardContent className="pt-6">
               <Table>
                 <TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Spare</TableHead><TableHead>Code</TableHead><TableHead>Ticket#</TableHead><TableHead>Qty Used</TableHead><TableHead>By</TableHead><TableHead>Notes</TableHead></TableRow></TableHeader>
@@ -86,8 +93,9 @@ export default function DashSpares() {
                 </TableBody>
               </Table>
             </CardContent></Card>
-          </TabsContent>
-        </Tabs>
+          </div>
+)}
+        </>
 
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogContent>

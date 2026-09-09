@@ -11,7 +11,6 @@ export interface PageHeaderBreadcrumb {
 
 interface PageHeaderProps {
   title: string;
-  subtitle?: string;
   breadcrumb?: PageHeaderBreadcrumb[];
   actions?: ReactNode;
   meta?: ReactNode;
@@ -20,12 +19,12 @@ interface PageHeaderProps {
 
 export function PageHeader({
   title,
-  subtitle,
   breadcrumb,
   actions,
   meta,
   className,
 }: PageHeaderProps) {
+
   return (
     <header className={cn("w-full pb-4", className)}>
       {breadcrumb && breadcrumb.length > 0 && (
@@ -52,8 +51,8 @@ export function PageHeader({
 
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="truncate text-[20px] font-semibold text-foreground">{title}</h1>
-          {subtitle && <p className="mt-0.5 text-[12px] text-muted-foreground">{subtitle}</p>}
+          <h1 className="truncate text-[16px] font-semibold uppercase tracking-[0.085em] text-foreground">{title}</h1>
+
         </div>
         {(meta || actions) && (
           <div className="flex flex-wrap items-center justify-end gap-3">

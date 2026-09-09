@@ -407,7 +407,7 @@ const CustomersManagement = () => {
 
   return (
     <DashboardLayout>
-      <PageHeader title="Customers" subtitle="Customer master records and contact details" />
+      <PageHeader title="Customers" />
       <div className="space-y-6 pt-4">
         <div className="flex justify-end items-center">
 

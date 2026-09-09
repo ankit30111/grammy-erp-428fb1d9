@@ -1,5 +1,7 @@
 
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
+import { PageHeader } from "@/components/shell/PageHeader";
+
 import { KPICard } from "@/components/Dashboard/KPICard";
 import { ChartWidget } from "@/components/Dashboard/ChartWidget";
 import { Button } from "@/components/ui/button";
@@ -54,15 +56,9 @@ const PPCDashboard = () => {
 
   return (
     <DashboardLayout>
+      <PageHeader title="PPC" />
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold">PPC Dashboard</h1>
-            <p className="text-muted-foreground">Production Planning & Control Overview</p>
-          </div>
-        </div>
 
-        {/* KPI Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <KPICard
             title="Total Projections"

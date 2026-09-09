@@ -119,7 +119,6 @@ const FinishedGoods = () => {
     <DashboardLayout>
       <PageHeader
         title="Finished Goods"
-        subtitle="Stock levels, daily flow and aging across the FG store"
       />
       <div className="space-y-6">
         {/* KPI Cards */}

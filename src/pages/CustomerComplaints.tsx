@@ -18,7 +18,6 @@ const CustomerComplaints = () => {
     <DashboardLayout>
       <PageHeader
         title="Customer Complaints"
-        subtitle="Complaint receipts and individual complaint processing"
       />
       <TabBar tabs={complaintTabs} value={activeTab} onChange={setActiveTab} />
       <div className="space-y-6 pt-4">

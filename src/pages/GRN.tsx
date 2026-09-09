@@ -131,7 +131,7 @@ const GRN = () => {
 
   return (
     <DashboardLayout>
-      <PageHeader title="Goods Receipt" subtitle="Create and track goods receipt notes against purchase orders" />
+      <PageHeader title="GRN" />
       <TabBar tabs={grnTabs} value={activeTab} onChange={setActiveTab} />
       <div className="grid gap-4 pt-4 md:gap-6">
           {activeTab === "create" && (

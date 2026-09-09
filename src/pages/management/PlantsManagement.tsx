@@ -188,7 +188,6 @@ const PlantsManagementInner = () => {
     <DashboardLayout>
       <PageHeader
         title="Plants"
-        subtitle="Manage manufacturing units and their production lines"
         actions={
           <Button onClick={() => setAddOpen(true)} className="gap-2">
             <Plus className="h-4 w-4" /> Add plant

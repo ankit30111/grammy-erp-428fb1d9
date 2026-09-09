@@ -302,7 +302,7 @@ const ProductsManagement = () => {
 
   return (
     <DashboardLayout>
-      <PageHeader title="Products" subtitle="Product master with bills of material and documents" />
+      <PageHeader title="Products" />
       <div className="pt-4">
         <div className="flex items-center justify-end mb-6">
 

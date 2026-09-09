@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { DashLayout } from "@/components/Layout/DashLayout";
+import { TabBar } from "@/components/shell/TabBar";
+import { PageHeader } from "@/components/shell/PageHeader";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { useDashProducts, useDashProductMutations } from "@/hooks/useDashProducts";
 import { ArrowLeft, Save, Loader2 } from "lucide-react";
@@ -25,6 +26,7 @@ const defaultForm = (): Record<string, any> => ({
 });
 
 export default function DashProducts() {
+  const [dashTab, setDashTab] = useState("basic");
   const { data: products, isLoading } = useDashProducts();
   const { addProduct, updateProduct } = useDashProductMutations();
   const [view, setView] = useState<"list" | "detail">("list");
@@ -93,10 +95,7 @@ export default function DashProducts() {
       <div className="space-y-6">
         {view === "list" ? (
           <>
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight">Product Master</h1>
-              <p className="text-muted-foreground">DASH SKU catalog — pricing, specs, compliance & documents</p>
-            </div>
+            <PageHeader title="Products" />
             <ProductListView
               products={products}
               isLoading={isLoading}
@@ -112,12 +111,7 @@ export default function DashProducts() {
                   <ArrowLeft className="h-5 w-5" />
                 </Button>
                 <div>
-                  <h1 className="text-2xl font-bold tracking-tight">
-                    {selectedProduct ? `Edit: ${selectedProduct.product_name}` : "New Product"}
-                  </h1>
-                  <p className="text-sm text-muted-foreground">
-                    {selectedProduct ? selectedProduct.model_number : "Fill in product details across all tabs"}
-                  </p>
+                  <PageHeader title={selectedProduct ? selectedProduct.product_name : "New Product"} />
                 </div>
               </div>
               <div className="flex gap-2">
@@ -138,35 +132,42 @@ export default function DashProducts() {
 
             <Card>
               <CardContent className="pt-6">
-                <Tabs value={activeTab} onValueChange={setActiveTab}>
-                  <TabsList className="mb-6 flex-wrap h-auto gap-1">
-                    <TabsTrigger value="basic">Basic Info</TabsTrigger>
-                    <TabsTrigger value="pricing">Pricing</TabsTrigger>
-                    <TabsTrigger value="specs">Specs</TabsTrigger>
-                    <TabsTrigger value="spares">Spares</TabsTrigger>
-                    <TabsTrigger value="documents">Documents</TabsTrigger>
-                    <TabsTrigger value="compliance">Compliance</TabsTrigger>
-                  </TabsList>
+                <>
+<TabBar tabs={[{ id: "basic", label: "Basic Info" }, { id: "pricing", label: "Pricing" }, { id: "specs", label: "Specs" }, { id: "spares", label: "Spares" }, { id: "documents", label: "Documents" }, { id: "compliance", label: "Compliance" }]} value={dashTab} onChange={setDashTab} syncToUrl={false} />
 
-                  <TabsContent value="basic">
+                  
+
+                  {dashTab === "basic" && (
+<div>
                     <ProductBasicInfoTab form={form} setForm={setForm} isEditing={!!selectedProduct} />
-                  </TabsContent>
-                  <TabsContent value="pricing">
+                  </div>
+)}
+                  {dashTab === "pricing" && (
+<div>
                     <ProductPricingTab form={form} setForm={setForm} />
-                  </TabsContent>
-                  <TabsContent value="specs">
+                  </div>
+)}
+                  {dashTab === "specs" && (
+<div>
                     <ProductSpecsTab form={form} setForm={setForm} productId={selectedProduct?.id} />
-                  </TabsContent>
-                  <TabsContent value="spares">
+                  </div>
+)}
+                  {dashTab === "spares" && (
+<div>
                     <ProductSparesTab productId={selectedProduct?.id} />
-                  </TabsContent>
-                  <TabsContent value="documents">
+                  </div>
+)}
+                  {dashTab === "documents" && (
+<div>
                     <ProductDocumentsTab productId={selectedProduct?.id} />
-                  </TabsContent>
-                  <TabsContent value="compliance">
+                  </div>
+)}
+                  {dashTab === "compliance" && (
+<div>
                     <ProductComplianceTab productId={selectedProduct?.id} />
-                  </TabsContent>
-                </Tabs>
+                  </div>
+)}
+                </>
               </CardContent>
             </Card>
           </>

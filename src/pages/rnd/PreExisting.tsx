@@ -188,7 +188,7 @@ const PreExisting = () => {
 
   return (
     <DashboardLayout>
-      <PageHeader title="Pre-Existing" subtitle="Brand customisation projects for existing products" />
+      <PageHeader title="Pre-Existing" />
       <TabBar tabs={rndRouteTabs} />
       <div className="grid gap-6 pt-4">
         <div className="flex items-center justify-end">

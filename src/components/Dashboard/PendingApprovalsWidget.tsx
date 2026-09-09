@@ -60,7 +60,7 @@ export function PendingApprovalsWidget() {
   ];
 
   return (
-    <section className="page-card p-5">
+    <section>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
           <CheckSquare className="h-3.5 w-3.5" />

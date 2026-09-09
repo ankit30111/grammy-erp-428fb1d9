@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { DashLayout } from "@/components/Layout/DashLayout";
+import { PageHeader } from "@/components/shell/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useDashProducts } from "@/hooks/useDashProducts";
 import { useDashSalesOrders } from "@/hooks/useDashSales";
@@ -38,10 +39,7 @@ export default function DashDashboard() {
   return (
     <DashLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">DASH Brand Dashboard</h1>
-          <p className="text-muted-foreground">Home Audio Products — Brand Management Overview</p>
-        </div>
+        <PageHeader title="Dashboard" />
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
           <Card>

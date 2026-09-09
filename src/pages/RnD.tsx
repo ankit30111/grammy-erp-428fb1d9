@@ -56,7 +56,7 @@ const RnD = () => {
 
   return (
     <DashboardLayout>
-      <PageHeader title="R&D" subtitle="New product development and pre-existing product customisation" />
+      <PageHeader title="R&D" />
       <TabBar tabs={rndRouteTabs} />
       <div className="grid gap-6 pt-4">
 

@@ -241,7 +241,7 @@ const SpareOrders = () => {
 
   return (
     <DashboardLayout>
-      <PageHeader title="Spare Orders" subtitle="Spare part orders and their dispatch status" />
+      <PageHeader title="Spare Orders" />
       <div className="space-y-6 pt-4">
         <div className="flex justify-end items-center">
 

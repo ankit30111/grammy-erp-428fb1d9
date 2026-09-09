@@ -173,7 +173,7 @@ const NPD = () => {
 
   return (
     <DashboardLayout>
-      <PageHeader title="NPD" subtitle="New product development projects from concept to approval" />
+      <PageHeader title="NPD" />
       <TabBar tabs={rndRouteTabs} />
       <div className="grid gap-6 pt-4">
         <div className="flex items-center justify-end">

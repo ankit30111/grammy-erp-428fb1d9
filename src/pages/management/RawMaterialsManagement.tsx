@@ -320,7 +320,7 @@ const RawMaterialsManagement = () => {
 
   return (
     <DashboardLayout>
-      <PageHeader title="Raw Materials" subtitle="Part master, categories and vendor sourcing" />
+      <PageHeader title="Raw Materials" />
       <div className="pt-4">
         <div className="flex items-center justify-end mb-6">
 

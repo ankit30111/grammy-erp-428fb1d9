@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { DashLayout } from "@/components/Layout/DashLayout";
+import { TabBar } from "@/components/shell/TabBar";
+import { PageHeader } from "@/components/shell/PageHeader";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useDashCustomers, useDashCustomerMutations } from "@/hooks/useDashCustomers";
 import { CustomerListView } from "@/components/Dash/CustomerListView";
 import { CustomerBasicInfoTab } from "@/components/Dash/CustomerBasicInfoTab";
@@ -39,6 +40,7 @@ const emptyForm = (): Record<string, any> => ({
 });
 
 export default function DashCustomers() {
+  const [dashTab, setDashTab] = useState("basic");
   const { data: customers, isLoading } = useDashCustomers();
   const { addCustomer, updateCustomer } = useDashCustomerMutations();
   const [view, setView] = useState<"list" | "detail">("list");
@@ -124,10 +126,7 @@ export default function DashCustomers() {
                 <ArrowLeft className="h-5 w-5" />
               </Button>
               <div>
-                <h1 className="text-2xl font-bold">{editing ? "Edit Customer" : "Add Customer"}</h1>
-                <p className="text-muted-foreground text-sm">
-                  {editing ? editing.customer_name : "Fill in the details below"}
-                </p>
+                <PageHeader title={editing ? editing.customer_name || "Customer" : "New Customer"} />
               </div>
             </div>
             <div className="flex gap-2">
@@ -138,26 +137,31 @@ export default function DashCustomers() {
             </div>
           </div>
 
-          <Tabs defaultValue="basic" className="w-full">
-            <TabsList>
-              <TabsTrigger value="basic">Basic Info</TabsTrigger>
-              <TabsTrigger value="address">Address</TabsTrigger>
-              <TabsTrigger value="documents">Documents & KYC</TabsTrigger>
-              <TabsTrigger value="notes">Notes & History</TabsTrigger>
-            </TabsList>
-            <TabsContent value="basic" className="mt-4">
+          <>
+<TabBar tabs={[{ id: "basic", label: "Basic Info" }, { id: "address", label: "Address" }, { id: "documents", label: "Documents & KYC" }, { id: "notes", label: "Notes & History" }]} value={dashTab} onChange={setDashTab} syncToUrl={false} />
+
+            
+            {dashTab === "basic" && (
+<div className="mt-4">
               <CustomerBasicInfoTab form={form} onChange={handleChange} />
-            </TabsContent>
-            <TabsContent value="address" className="mt-4">
+            </div>
+)}
+            {dashTab === "address" && (
+<div className="mt-4">
               <CustomerAddressTab form={form} onChange={handleChange} />
-            </TabsContent>
-            <TabsContent value="documents" className="mt-4">
+            </div>
+)}
+            {dashTab === "documents" && (
+<div className="mt-4">
               <CustomerDocumentsTab form={form} onChange={handleChange} customerId={editing?.id} />
-            </TabsContent>
-            <TabsContent value="notes" className="mt-4">
+            </div>
+)}
+            {dashTab === "notes" && (
+<div className="mt-4">
               <CustomerNotesTab form={form} onChange={handleChange} customer={editing} />
-            </TabsContent>
-          </Tabs>
+            </div>
+)}
+          </>
         </div>
       )}
     </DashLayout>

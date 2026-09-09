@@ -18,7 +18,6 @@ const PurchaseDiscrepancies = () => {
     <DashboardLayout>
       <PageHeader
         title="Purchase Discrepancies"
-        subtitle="Monitor and resolve material receiving discrepancies"
       />
       <TabBar tabs={discrepancyTabs} value={activeTab} onChange={setActiveTab} />
       <div className="grid gap-4 pt-4 md:gap-6">

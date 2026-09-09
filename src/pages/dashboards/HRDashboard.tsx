@@ -1,5 +1,7 @@
 
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
+import { PageHeader } from "@/components/shell/PageHeader";
+
 import { KPICard } from "@/components/Dashboard/KPICard";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -49,18 +51,17 @@ const HRDashboard = () => {
 
   return (
     <DashboardLayout>
+      <PageHeader
+        title="Human Resources"
+        actions={
+          <Button onClick={() => navigate('/management/hr')} variant="outline" size="sm">
+            <Users className="h-4 w-4 mr-2" />
+            HR Management
+          </Button>
+        }
+      />
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold">Human Resources Dashboard</h1>
-          <div className="flex gap-2">
-            <Button onClick={() => navigate('/management/hr')} variant="outline">
-              <Users className="h-4 w-4 mr-2" />
-              HR Management
-            </Button>
-          </div>
-        </div>
 
-        {/* KPI Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <KPICard
             title="Total Employees"

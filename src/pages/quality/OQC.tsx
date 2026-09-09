@@ -7,7 +7,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { FileCheck, CheckCircle, X, Eye } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -149,7 +148,7 @@ const OQC = () => {
 
   return (
     <DashboardLayout>
-      <PageHeader title="OQC" subtitle="Outgoing quality control before dispatch" />
+      <PageHeader title="Quality Department" />
       <TabBar tabs={qualityRouteTabs} className="mb-3" />
       <TabBar
         tabs={[
@@ -162,10 +161,11 @@ const OQC = () => {
         onChange={setSelectedTab}
       />
       <div className="grid gap-4 pt-4 md:gap-6">
-        <Tabs value={selectedTab} onValueChange={setSelectedTab}>
+        
 
           
-          <TabsContent value="pending" className="space-y-4">
+          {selectedTab === "pending" && (
+<div className="space-y-4">
             <Card>
               <CardHeader>
                 <CardTitle>Production Orders Pending OQC</CardTitle>
@@ -247,9 +247,11 @@ const OQC = () => {
                 )}
               </CardContent>
             </Card>
-          </TabsContent>
+          </div>
+)}
           
-          <TabsContent value="completed">
+          {selectedTab === "completed" && (
+<div>
             <Card>
               <CardHeader>
                 <CardTitle>Completed OQC Inspections</CardTitle>
@@ -300,13 +302,17 @@ const OQC = () => {
                 )}
               </CardContent>
             </Card>
-          </TabsContent>
+          </div>
+)}
           
-          <TabsContent value="complaints">
+          {selectedTab === "complaints" && (
+<div>
             <CustomerComplaintHandling />
-          </TabsContent>
+          </div>
+)}
           
-          <TabsContent value="reports">
+          {selectedTab === "reports" && (
+<div>
             <Card>
               <CardHeader>
                 <CardTitle>Quality Reports</CardTitle>
@@ -322,8 +328,9 @@ const OQC = () => {
                 </Button>
               </CardContent>
             </Card>
-          </TabsContent>
-        </Tabs>
+          </div>
+)}
+        
 
         <ProductionDetailsDialog
           open={detailsDialogOpen}

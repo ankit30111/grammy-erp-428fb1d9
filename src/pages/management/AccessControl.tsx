@@ -53,7 +53,6 @@ export default function AccessControl() {
       <DashboardLayout>
         <PageHeader
           title="Users & Access"
-          subtitle="Create users and decide who can see what — plants, departments and modules"
         />
         <TabBar tabs={accessTabs} value={activeTab} onChange={setActiveTab} />
         <div className="space-y-6 pt-4">
