@@ -163,7 +163,7 @@
   }
 
   .pill-tab {
-    @apply relative inline-flex items-center gap-2 rounded-none bg-transparent px-[11px] pb-[10px] pt-[7px] text-[13px] font-medium text-muted-foreground transition-colors hover:text-foreground;
+    @apply relative inline-flex items-center gap-2 rounded-none bg-transparent px-[11px] pb-[10px] pt-[7px] text-[12.5px] font-medium text-muted-foreground transition-colors hover:text-foreground;
   }
 
   .pill-tab[data-state="active"],
