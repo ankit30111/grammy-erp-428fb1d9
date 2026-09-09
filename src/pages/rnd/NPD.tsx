@@ -1,6 +1,9 @@
 
 import { useState } from "react";
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
+import { PageHeader } from "@/components/shell/PageHeader";
+import { TabBar } from "@/components/shell/TabBar";
+import { rndRouteTabs } from "@/components/shell/moduleTabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -170,13 +173,12 @@ const NPD = () => {
 
   return (
     <DashboardLayout>
-      <div className="grid gap-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Lightbulb className="h-8 w-8 text-blue-600" />
-            <h1 className="text-3xl font-bold">NPD (New Product Development)</h1>
-          </div>
+      <PageHeader title="NPD" subtitle="New product development projects from concept to approval" />
+      <TabBar tabs={rndRouteTabs} />
+      <div className="grid gap-6 pt-4">
+        <div className="flex items-center justify-end">
           <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+
             <DialogTrigger asChild>
               <Button>
                 <Plus className="h-4 w-4 mr-2" />

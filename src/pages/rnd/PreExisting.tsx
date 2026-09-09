@@ -1,6 +1,9 @@
 
 import { useState } from "react";
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
+import { PageHeader } from "@/components/shell/PageHeader";
+import { TabBar } from "@/components/shell/TabBar";
+import { rndRouteTabs } from "@/components/shell/moduleTabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -185,13 +188,12 @@ const PreExisting = () => {
 
   return (
     <DashboardLayout>
-      <div className="grid gap-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Package className="h-8 w-8 text-green-600" />
-            <h1 className="text-3xl font-bold">Pre-Existing Product Customization</h1>
-          </div>
+      <PageHeader title="Pre-Existing" subtitle="Brand customisation projects for existing products" />
+      <TabBar tabs={rndRouteTabs} />
+      <div className="grid gap-6 pt-4">
+        <div className="flex items-center justify-end">
           <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+
             <DialogTrigger asChild>
               <Button>
                 <Plus className="h-4 w-4 mr-2" />

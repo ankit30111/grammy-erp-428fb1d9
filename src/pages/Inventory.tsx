@@ -7,7 +7,7 @@ export default function Inventory() {
   return (
     <DashboardLayout>
       <PageHeader title="Inventory" subtitle="Live stock across raw materials and finished goods" />
-      <div className="page-card p-5">
+      <div>
         <StoreDashboard />
       </div>
     </DashboardLayout>

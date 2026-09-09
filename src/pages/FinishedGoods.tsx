@@ -157,7 +157,7 @@ const FinishedGoods = () => {
 
         {/* Charts */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <div className="page-card p-5">
+          <div>
             <ChartWidget title="Product-wise Stock Levels" description="Current inventory by product">
             <BarChart data={stockByProduct.slice(0, 8)}>
               <CartesianGrid strokeDasharray="3 3" />
@@ -169,7 +169,7 @@ const FinishedGoods = () => {
             </ChartWidget>
           </div>
 
-          <div className="page-card p-5">
+          <div>
             <ChartWidget title="Daily Inflow vs Outflow" description="Production inflow vs sales outflow">
             <LineChart data={mockFlowData}>
               <CartesianGrid strokeDasharray="3 3" />
@@ -184,7 +184,7 @@ const FinishedGoods = () => {
         </div>
 
         {/* Inventory Table */}
-        <Card className="page-card border-none shadow-none">
+        <Card className="border-none shadow-none">
           <CardHeader>
             <CardTitle>Current Finished Goods Inventory</CardTitle>
           </CardHeader>

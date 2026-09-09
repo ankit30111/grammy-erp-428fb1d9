@@ -1,12 +1,15 @@
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
+import { PageHeader } from "@/components/shell/PageHeader";
+import { TabBar } from "@/components/shell/TabBar";
+import { qualityRouteTabs } from "@/components/shell/moduleTabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Clock, ClipboardCheck, FileCheck, Layers } from "lucide-react";
+import { ClipboardCheck, FileCheck, Layers } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { format } from "date-fns";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { CAPAWidget } from "@/components/Quality/CAPAWidget";
+
 
 const Quality = () => {
   const navigate = useNavigate();
@@ -56,15 +59,10 @@ const Quality = () => {
 
   return (
     <DashboardLayout>
-      <div className="grid gap-4 md:gap-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold">Quality Control</h1>
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">Last updated:</span>
-            <span className="text-sm font-medium">Today, {format(new Date(), "HH:mm")}</span>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </div>
-        </div>
+      <PageHeader title="Quality" subtitle="Quality control across incoming, in-process and outgoing checks" />
+      <TabBar tabs={qualityRouteTabs} />
+      <div className="grid gap-4 pt-4 md:gap-6">
+
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card className="relative overflow-hidden">

@@ -1,11 +1,14 @@
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
+import { PageHeader } from "@/components/shell/PageHeader";
+import { TabBar } from "@/components/shell/TabBar";
+import { qualityRouteTabs } from "@/components/shell/moduleTabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Clock, FileText, Search, Filter, Download, Upload, AlertTriangle, CheckCircle, XCircle } from "lucide-react";
+import { FileText, Search, Filter, Download, Upload, AlertTriangle, CheckCircle, XCircle } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
@@ -13,6 +16,14 @@ import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import CAPAUploadDialog from "@/components/quality/CAPAUploadDialog";
 import { SignedStorageLink } from "@/components/ui/signed-storage-link";
+
+const capaTabs = [
+  { id: "vendor", label: "Vendor CAPAs" },
+  { id: "line-rejection", label: "Line Rejection CAPAs" },
+  { id: "part-analysis", label: "Part Analysis CAPAs" },
+  { id: "production", label: "Production CAPAs" },
+];
+
 
 const CAPA = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -240,15 +251,11 @@ const CAPA = () => {
 
   return (
     <DashboardLayout>
-      <div className="grid gap-4 md:gap-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold">CAPA Management</h1>
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">Last updated:</span>
-            <span className="text-sm font-medium">Today, {format(new Date(), "HH:mm")}</span>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </div>
-        </div>
+      <PageHeader title="CAPA" subtitle="Corrective and preventive actions across vendors and production" />
+      <TabBar tabs={qualityRouteTabs} className="mb-3" />
+      <TabBar tabs={capaTabs} value={selectedTab} onChange={setSelectedTab} />
+      <div className="grid gap-4 pt-4 md:gap-6">
+
 
         {/* Enhanced KPI Dashboard */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -326,12 +333,7 @@ const CAPA = () => {
         </div>
 
         <Tabs value={selectedTab} onValueChange={setSelectedTab}>
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="vendor">Vendor CAPAs</TabsTrigger>
-            <TabsTrigger value="line-rejection">Line Rejection CAPAs</TabsTrigger>
-            <TabsTrigger value="part-analysis">Part Analysis CAPAs</TabsTrigger>
-            <TabsTrigger value="production">Production CAPAs</TabsTrigger>
-          </TabsList>
+
 
           <TabsContent value="vendor" className="space-y-4">
             <Card>

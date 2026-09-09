@@ -1,6 +1,7 @@
 
 import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
+import { PageHeader } from "@/components/shell/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -240,9 +241,10 @@ const SpareOrders = () => {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold">Spare Orders Management</h1>
+      <PageHeader title="Spare Orders" subtitle="Spare part orders and their dispatch status" />
+      <div className="space-y-6 pt-4">
+        <div className="flex justify-end items-center">
+
           <Dialog open={isCreatingOrder} onOpenChange={setIsCreatingOrder}>
             <DialogTrigger asChild>
               <Button>

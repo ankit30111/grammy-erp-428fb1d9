@@ -1,6 +1,8 @@
 
 import React, { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
+import { PageHeader } from "@/components/shell/PageHeader";
+import { TabBar } from "@/components/shell/TabBar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,7 +10,6 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Calendar as CalendarIcon, Factory, AlertTriangle, Package, Edit, Trash2, RefreshCw } from "lucide-react";
@@ -22,8 +23,15 @@ import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, getDay 
 import { EditScheduleDialog } from "@/components/Planning/EditScheduleDialog";
 import { DeleteScheduleDialog } from "@/components/Planning/DeleteScheduleDialog";
 
+const planningTabs = [
+  { id: "planning", label: "Production Planning" },
+  { id: "scheduled", label: "Scheduled Production" },
+];
+
 const PlanningEnhanced: React.FC = () => {
+  const [activeTab, setActiveTab] = useState("planning");
   const [selectedDate, setSelectedDate] = useState<Date>();
+
   const [selectedProjection, setSelectedProjection] = useState<string>("");
   const [quantity, setQuantity] = useState<string>("");
   const [shortageDialogOpen, setShortageDialogOpen] = useState(false);
@@ -389,18 +397,12 @@ const PlanningEnhanced: React.FC = () => {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold">Production Planning</h1>
-        </div>
+      <PageHeader title="Planning" subtitle="Schedule production against customer projections" />
+      <TabBar tabs={planningTabs} value={activeTab} onChange={setActiveTab} />
+      <div className="space-y-6 pt-4">
+          {activeTab === "planning" && (
+            <div className="space-y-6">
 
-        <Tabs defaultValue="planning" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="planning">Production Planning</TabsTrigger>
-            <TabsTrigger value="scheduled">Scheduled Production</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="planning" className="space-y-6">
             {/* Unscheduled Projections */}
             <Card>
               <CardHeader>
@@ -531,9 +533,11 @@ const PlanningEnhanced: React.FC = () => {
                 <CalendarGrid />
               </CardContent>
             </Card>
-          </TabsContent>
+            </div>
+          )}
 
-          <TabsContent value="scheduled" className="space-y-6">
+          {activeTab === "scheduled" && (
+
             <Card>
               <CardHeader>
                 <CardTitle>Scheduled Production</CardTitle>
@@ -613,8 +617,8 @@ const PlanningEnhanced: React.FC = () => {
                 )}
               </CardContent>
             </Card>
-          </TabsContent>
-        </Tabs>
+          )}
+
 
         {/* Edit Schedule Dialog */}
         {selectedSchedule && (

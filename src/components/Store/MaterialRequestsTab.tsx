@@ -1,11 +1,9 @@
 
 import { memo, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { usePlantId } from "@/hooks/usePlantId";
@@ -311,50 +309,32 @@ const MaterialRequestsTab = memo(() => {
   }
 
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <ArrowLeftRight className="h-5 w-5" />
-            Material Requests from Production
-            <Badge variant="outline">Real-time Updates</Badge>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => refetch()}
-              className="ml-auto gap-1"
-            >
-              <RefreshCw className="h-3 w-3" />
-              Refresh
-            </Button>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-            <TabsList className="grid w-full grid-cols-5">
-              <TabsTrigger value="all" className="relative">
-                All ({statusCounts.all})
-              </TabsTrigger>
-              <TabsTrigger value="pending" className="relative">
-                Pending ({statusCounts.pending})
-                {statusCounts.pending > 0 && (
-                  <Badge variant="destructive" className="ml-1 h-5 w-5 p-0 text-xs">
-                    {statusCounts.pending}
-                  </Badge>
-                )}
-              </TabsTrigger>
-              <TabsTrigger value="approved" className="relative">
-                Approved ({statusCounts.approved})
-              </TabsTrigger>
-              <TabsTrigger value="rejected" className="relative">
-                Rejected ({statusCounts.rejected})
-              </TabsTrigger>
-              <TabsTrigger value="sent" className="relative">
-                Sent ({statusCounts.sent})
-              </TabsTrigger>
-            </TabsList>
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-2">
+        {[
+          { id: "all", label: `All (${statusCounts.all})` },
+          { id: "pending", label: `Pending (${statusCounts.pending})` },
+          { id: "approved", label: `Approved (${statusCounts.approved})` },
+          { id: "rejected", label: `Rejected (${statusCounts.rejected})` },
+          { id: "sent", label: `Sent (${statusCounts.sent})` },
+        ].map((filter) => (
+          <Button
+            key={filter.id}
+            variant={activeTab === filter.id ? "secondary" : "ghost"}
+            size="sm"
+            onClick={() => setActiveTab(filter.id)}
+          >
+            {filter.label}
+          </Button>
+        ))}
+        <Button variant="ghost" size="sm" onClick={() => refetch()} className="ml-auto gap-1">
+          <RefreshCw className="h-3 w-3" />
+          Refresh
+        </Button>
+      </div>
 
-            <TabsContent value={activeTab} className="space-y-4">
+      <div className="space-y-4">
+
               {filteredRequests.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   <ArrowLeftRight className="h-12 w-12 mx-auto mb-2 text-muted-foreground/50" />
@@ -487,12 +467,10 @@ const MaterialRequestsTab = memo(() => {
                   </Table>
                 </div>
               )}
-            </TabsContent>
-          </Tabs>
-        </CardContent>
-      </Card>
+      </div>
     </div>
   );
+
 });
 
 MaterialRequestsTab.displayName = "MaterialRequestsTab";

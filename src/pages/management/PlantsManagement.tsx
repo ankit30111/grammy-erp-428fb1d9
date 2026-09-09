@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
+import { PageHeader } from "@/components/shell/PageHeader";
 import { AdminGuard } from "@/components/Auth/AdminGuard";
 import { PlantLinesDialog } from "@/components/Plants/PlantLinesDialog";
 import { Button } from "@/components/ui/button";
@@ -185,22 +186,17 @@ const PlantsManagementInner = () => {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div>
-            <h1 className="text-3xl font-bold flex items-center gap-2">
-              <Building2 className="h-7 w-7" />
-              Plants / Factories
-            </h1>
-            <p className="text-muted-foreground mt-1 max-w-2xl">
-              Manage your manufacturing units. The active plant in the header
-              determines which orders, GRNs and production data you see.
-            </p>
-          </div>
+      <PageHeader
+        title="Plants"
+        subtitle="Manage manufacturing units and their production lines"
+        actions={
           <Button onClick={() => setAddOpen(true)} className="gap-2">
             <Plus className="h-4 w-4" /> Add plant
           </Button>
-        </div>
+        }
+      />
+      <div className="space-y-6 pt-4">
+
 
         {isLoading ? (
           <div className="flex items-center gap-2 text-muted-foreground py-12 justify-center">

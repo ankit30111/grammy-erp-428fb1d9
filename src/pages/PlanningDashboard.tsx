@@ -5,7 +5,8 @@ import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PageHeader } from "@/components/shell/PageHeader";
+import { TabBar } from "@/components/shell/TabBar";
 import { Calendar as CalendarIcon, Factory } from "lucide-react";
 import { useState } from "react";
 import { format } from "date-fns";
@@ -34,6 +35,8 @@ const PlanningDashboard = () => {
   const [selectedProjection, setSelectedProjection] = useState<string>("");
   const [quantity, setQuantity] = useState<string>("");
   const [selectedVoucher, setSelectedVoucher] = useState<any>(null);
+  const [activeTab, setActiveTab] = useState("projections");
+
 
   const { data: projections } = useProjections();
   const { data: schedules } = useProductionSchedules();
@@ -187,22 +190,23 @@ const PlanningDashboard = () => {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold">Production Planning Dashboard</h1>
-            <p className="text-muted-foreground">Manage customer projections, scheduling, and material status</p>
-          </div>
-        </div>
+      <PageHeader
+        title="Production Planning Dashboard"
+        subtitle="Customer projections, scheduling and material status"
+      />
+      <TabBar
+        tabs={[
+          { id: "projections", label: "Customer Projections" },
+          { id: "scheduling", label: "Scheduling Production" },
+          { id: "schedule", label: "Production Schedule" },
+        ]}
+        value={activeTab}
+        onChange={setActiveTab}
+      />
+      <div className="space-y-6 pt-4">
+        <div className="space-y-6">
+          {activeTab === "projections" && (
 
-        <Tabs defaultValue="projections" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="projections">Customer Projections</TabsTrigger>
-            <TabsTrigger value="scheduling">Scheduling Production</TabsTrigger>
-            <TabsTrigger value="schedule">Production Schedule</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="projections">
             <Card>
               <CardHeader>
                 <CardTitle>Customer Projections</CardTitle>
@@ -260,9 +264,10 @@ const PlanningDashboard = () => {
                 )}
               </CardContent>
             </Card>
-          </TabsContent>
+          )}
 
-          <TabsContent value="scheduling">
+          {activeTab === "scheduling" && (
+
             <Card>
               <CardHeader>
                 <CardTitle>Schedule Production</CardTitle>
@@ -401,9 +406,10 @@ const PlanningDashboard = () => {
                 </div>
               </CardContent>
             </Card>
-          </TabsContent>
+          )}
 
-          <TabsContent value="schedule">
+          {activeTab === "schedule" && (
+
             <Card>
               <CardHeader>
                 <CardTitle>Production Schedule</CardTitle>
@@ -459,8 +465,9 @@ const PlanningDashboard = () => {
                 )}
               </CardContent>
             </Card>
-          </TabsContent>
-        </Tabs>
+          )}
+        </div>
+
 
         {/* ProductionVoucherDetails Modal */}
         <Dialog open={!!selectedVoucher} onOpenChange={() => setSelectedVoucher(null)}>

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
+import { PageHeader } from "@/components/shell/PageHeader";
 import { 
   Card, CardContent, CardHeader, CardTitle 
 } from "@/components/ui/card";
@@ -301,12 +302,10 @@ const ProductsManagement = () => {
 
   return (
     <DashboardLayout>
-      <div className="container mx-auto p-6">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center space-x-2">
-            <Package className="h-6 w-6" />
-            <h1 className="text-3xl font-bold">Product Management</h1>
-          </div>
+      <PageHeader title="Products" subtitle="Product master with bills of material and documents" />
+      <div className="pt-4">
+        <div className="flex items-center justify-end mb-6">
+
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
               <Button>

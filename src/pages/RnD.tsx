@@ -1,4 +1,7 @@
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
+import { PageHeader } from "@/components/shell/PageHeader";
+import { TabBar } from "@/components/shell/TabBar";
+import { rndRouteTabs } from "@/components/shell/moduleTabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Lightbulb, Package, ArrowRight, Users, Clock, CheckCircle } from "lucide-react";
@@ -6,6 +9,7 @@ import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import ProjectStatusGrid from "@/components/RnD/ProjectStatusGrid";
+
 
 const RnD = () => {
   const navigate = useNavigate();
@@ -52,13 +56,10 @@ const RnD = () => {
 
   return (
     <DashboardLayout>
-      <div className="grid gap-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold">Research & Development</h1>
-          <div className="flex items-center gap-2">
-            <Lightbulb className="h-8 w-8 text-primary" />
-          </div>
-        </div>
+      <PageHeader title="R&D" subtitle="New product development and pre-existing product customisation" />
+      <TabBar tabs={rndRouteTabs} />
+      <div className="grid gap-6 pt-4">
+
 
         {/* Project Status Dashboard */}
         <ProjectStatusGrid />

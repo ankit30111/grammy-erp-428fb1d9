@@ -1,17 +1,21 @@
 import { useState } from "react";
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
+import { PageHeader } from "@/components/shell/PageHeader";
+import { TabBar } from "@/components/shell/TabBar";
+import { qualityRouteTabs } from "@/components/shell/moduleTabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Clock, FileCheck, CheckCircle, X, Eye } from "lucide-react";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
+import { FileCheck, CheckCircle, X, Eye } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import ProductionDetailsDialog from "@/components/Production/ProductionDetailsDialog";
 import CustomerComplaintHandling from "@/components/quality/CustomerComplaintHandling";
+
 
 const OQC = () => {
   const [selectedTab, setSelectedTab] = useState("pending");
@@ -145,23 +149,21 @@ const OQC = () => {
 
   return (
     <DashboardLayout>
-      <div className="grid gap-4 md:gap-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold">Outgoing Quality Control (OQC)</h1>
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">Last updated:</span>
-            <span className="text-sm font-medium">Today, {format(new Date(), "HH:mm")}</span>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </div>
-        </div>
-
+      <PageHeader title="OQC" subtitle="Outgoing quality control before dispatch" />
+      <TabBar tabs={qualityRouteTabs} className="mb-3" />
+      <TabBar
+        tabs={[
+          { id: "pending", label: "Pending OQC", count: pendingOQC.length },
+          { id: "completed", label: "Completed OQC" },
+          { id: "complaints", label: "Customer Complaint Handling" },
+          { id: "reports", label: "Quality Reports" },
+        ]}
+        value={selectedTab}
+        onChange={setSelectedTab}
+      />
+      <div className="grid gap-4 pt-4 md:gap-6">
         <Tabs value={selectedTab} onValueChange={setSelectedTab}>
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="pending">Pending OQC ({pendingOQC.length})</TabsTrigger>
-            <TabsTrigger value="completed">Completed OQC</TabsTrigger>
-            <TabsTrigger value="complaints">Customer Complaint Handling</TabsTrigger>
-            <TabsTrigger value="reports">Quality Reports</TabsTrigger>
-          </TabsList>
+
           
           <TabsContent value="pending" className="space-y-4">
             <Card>

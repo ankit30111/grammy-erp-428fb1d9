@@ -1,33 +1,26 @@
 
+import { useState } from "react";
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { DollarSign } from "lucide-react";
+import { PageHeader } from "@/components/shell/PageHeader";
+import { TabBar } from "@/components/shell/TabBar";
 import SpareDispatch from "./sales/SpareDispatch";
 import RegularDispatch from "./sales/RegularDispatch";
 
+const tabs = [
+  { id: "spare-dispatch", label: "Spare Dispatch" },
+  { id: "regular-dispatch", label: "Regular Dispatch" },
+];
+
 const Sales = () => {
+  const [activeTab, setActiveTab] = useState("spare-dispatch");
+
   return (
     <DashboardLayout>
-      <div className="container mx-auto py-6">
-        <div className="flex items-center space-x-4 mb-6">
-          <DollarSign className="h-8 w-8 text-primary" />
-          <h1 className="text-2xl font-bold">Sales Management - Grammy Electronics</h1>
-        </div>
-
-        <Tabs defaultValue="spare-dispatch" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="spare-dispatch">Spare Dispatch</TabsTrigger>
-            <TabsTrigger value="regular-dispatch">Regular Dispatch</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="spare-dispatch" className="space-y-4">
-            <SpareDispatch />
-          </TabsContent>
-
-          <TabsContent value="regular-dispatch" className="space-y-4">
-            <RegularDispatch />
-          </TabsContent>
-        </Tabs>
+      <PageHeader title="Sales" subtitle="Dispatch of spare parts and regular orders" />
+      <TabBar tabs={tabs} value={activeTab} onChange={setActiveTab} />
+      <div className="pt-4">
+        {activeTab === "spare-dispatch" && <SpareDispatch />}
+        {activeTab === "regular-dispatch" && <RegularDispatch />}
       </div>
     </DashboardLayout>
   );
