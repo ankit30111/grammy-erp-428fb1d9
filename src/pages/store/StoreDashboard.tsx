@@ -1,10 +1,11 @@
 
 import { useState, lazy, Suspense } from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Store, Package, FileText, ArrowLeftRight, AlertTriangle, BookOpen, Scale } from "lucide-react";
+import { Package, FileText, ArrowLeftRight, AlertTriangle, BookOpen, Scale } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { PageHeader } from "@/components/shell/PageHeader";
+import { TabBar } from "@/components/shell/TabBar";
 
 // Lazy load components for better performance
 const ProductionVoucherDetails = lazy(() => import("@/components/Store/ProductionVoucherDetails"));
@@ -28,6 +29,7 @@ const TabLoader = () => (
 
 const StoreDashboard = () => {
   const [selectedVoucherId, setSelectedVoucherId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState("production-vouchers");
 
   // Get pending feedback count for tab badge with optimized query
   const { data: pendingFeedbackCount = 0 } = useQuery({
@@ -45,38 +47,31 @@ const StoreDashboard = () => {
     staleTime: 20000, // Cache for 20 seconds
   });
 
+  const tabs = [
+    { id: "production-vouchers", label: "Production Vouchers" },
+    { id: "grn-receiving", label: "GRN Receiving" },
+    { id: "production-feedback", label: "Production Feedback", count: pendingFeedbackCount },
+    { id: "material-requests", label: "Material Requests" },
+    { id: "inventory", label: "Inventory" },
+    { id: "stock-reconciliation", label: "Stock Reconciliation" },
+    { id: "logbook", label: "LogBook" },
+  ];
+
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    setSelectedVoucherId(null);
+  };
+
   return (
-    <div className="container mx-auto py-6">
-      <div className="flex items-center space-x-4 mb-6">
-        <Store className="h-8 w-8 text-primary" />
-        <h1 className="text-2xl font-bold">Store Management - Grammy Electronics</h1>
-      </div>
+    <div className="mx-auto w-full min-w-0 py-4">
+      {!selectedVoucherId && (
+        <PageHeader title="Store" subtitle="Receipts, issues and material movements" />
+      )}
 
-      <Tabs defaultValue="production-vouchers" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-7">
-          <TabsTrigger value="production-vouchers">Production Vouchers</TabsTrigger>
-          <TabsTrigger value="grn-receiving">GRN Receiving</TabsTrigger>
-          <TabsTrigger value="production-feedback" className="relative">
-            Production Feedback
-            {pendingFeedbackCount > 0 && (
-              <Badge variant="destructive" className="ml-2 h-5 w-5 p-0 text-xs">
-                {pendingFeedbackCount}
-              </Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="material-requests">Material Requests</TabsTrigger>
-          <TabsTrigger value="inventory">Inventory</TabsTrigger>
-          <TabsTrigger value="stock-reconciliation">Stock Reconciliation</TabsTrigger>
-          <TabsTrigger value="logbook">LogBook</TabsTrigger>
-        </TabsList>
+      {!selectedVoucherId && <TabBar tabs={tabs} value={activeTab} onChange={handleTabChange} />}
 
-        <TabsContent value="production-vouchers" className="space-y-4">
-          <div className="flex items-center space-x-2 mb-4">
-            <Package className="h-5 w-5" />
-            <h2 className="text-xl font-semibold">Production Voucher Management</h2>
-            <Badge variant="outline">Real-time Inventory Deduction</Badge>
-          </div>
-          
+      <div className={selectedVoucherId ? "" : "pt-4"}>
+        {activeTab === "production-vouchers" && (
           <Suspense fallback={<TabLoader />}>
             {selectedVoucherId ? (
               <ProductionVoucherDetails 
@@ -89,9 +84,10 @@ const StoreDashboard = () => {
               />
             )}
           </Suspense>
-        </TabsContent>
+        )}
 
-        <TabsContent value="grn-receiving" className="space-y-4">
+        {activeTab === "grn-receiving" && (
+          <div className="space-y-4">
           <div className="flex items-center space-x-2 mb-4">
             <FileText className="h-5 w-5" />
             <h2 className="text-xl font-semibold">GRN Receiving</h2>
@@ -100,9 +96,11 @@ const StoreDashboard = () => {
           <Suspense fallback={<TabLoader />}>
             <GRNReceiving />
           </Suspense>
-        </TabsContent>
+          </div>
+        )}
 
-        <TabsContent value="production-feedback" className="space-y-4">
+        {activeTab === "production-feedback" && (
+          <div className="space-y-4">
           <div className="flex items-center space-x-2 mb-4">
             <AlertTriangle className="h-5 w-5" />
             <h2 className="text-xl font-semibold">Production Feedback & Discrepancies</h2>
@@ -111,9 +109,11 @@ const StoreDashboard = () => {
           <Suspense fallback={<TabLoader />}>
             <ProductionFeedbackTab />
           </Suspense>
-        </TabsContent>
+          </div>
+        )}
 
-        <TabsContent value="material-requests" className="space-y-4">
+        {activeTab === "material-requests" && (
+          <div className="space-y-4">
           <div className="flex items-center space-x-2 mb-4">
             <ArrowLeftRight className="h-5 w-5" />
             <h2 className="text-xl font-semibold">Material Requests</h2>
@@ -121,9 +121,11 @@ const StoreDashboard = () => {
           <Suspense fallback={<TabLoader />}>
             <MaterialRequestsTab />
           </Suspense>
-        </TabsContent>
+          </div>
+        )}
 
-        <TabsContent value="inventory" className="space-y-4">
+        {activeTab === "inventory" && (
+          <div className="space-y-4">
           <div className="flex items-center space-x-2 mb-4">
             <Package className="h-5 w-5" />
             <h2 className="text-xl font-semibold">Inventory Management</h2>
@@ -131,9 +133,11 @@ const StoreDashboard = () => {
           <Suspense fallback={<TabLoader />}>
             <InventoryManagement />
           </Suspense>
-        </TabsContent>
+          </div>
+        )}
 
-        <TabsContent value="stock-reconciliation" className="space-y-4">
+        {activeTab === "stock-reconciliation" && (
+          <div className="space-y-4">
           <div className="flex items-center space-x-2 mb-4">
             <Scale className="h-5 w-5" />
             <h2 className="text-xl font-semibold">Stock Reconciliation</h2>
@@ -142,9 +146,11 @@ const StoreDashboard = () => {
           <Suspense fallback={<TabLoader />}>
             <StockReconciliation />
           </Suspense>
-        </TabsContent>
+          </div>
+        )}
 
-        <TabsContent value="logbook" className="space-y-4">
+        {activeTab === "logbook" && (
+          <div className="space-y-4">
           <div className="flex items-center space-x-2 mb-4">
             <BookOpen className="h-5 w-5" />
             <h2 className="text-xl font-semibold">Material Movement LogBook</h2>
@@ -153,8 +159,9 @@ const StoreDashboard = () => {
           <Suspense fallback={<TabLoader />}>
             <LogBook />
           </Suspense>
-        </TabsContent>
-      </Tabs>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
