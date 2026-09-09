@@ -1,64 +1,36 @@
-## Root cause (short version)
+# Store production voucher design-system upgrade
 
-Per project rule, every DB function is created with `SET search_path TO ''` so it can't accidentally resolve to a malicious object. The cost of that rule: **every identifier inside the function body must be schema-qualified** (`public.foo`, `nextval('public.foo_seq')`). When a function forgets the `public.` prefix, it works in isolation (because the dev's session has `public` on the path) but blows up the moment it's invoked by another `search_path=''` function or trigger — exactly what just happened with `set_kit_number()` calling `generate_kit_number()`.
+## Goal
+Create four reusable shell primitives, then use them to simplify only the Store production-voucher detail experience. Existing fetching, calculations, mutations, PDF generation, refresh behavior, and navigation handlers remain unchanged.
 
-A scan of the database found this same latent bug in three places:
+## Implementation
+1. **Add shared shell primitives**
+   - `PageHeader`: breadcrumb links, title/subtitle, quiet metadata, and right-aligned actions without card chrome.
+   - `TabBar`: controlled underline tabs using the existing `.pill-tabs` and `.pill-tab` classes, including optional alert counts.
+   - `DataTable`: fixed-layout, seven-column-capable table with one flexible column, no horizontal scrolling, group bands, expandable detail rows, state stripes, truncation titles, and sticky totals.
+   - `StatePill`: semantic success, warning, destructive, and idle state labels using existing tokens.
 
-| Function | Bad call | Will break |
-|---|---|---|
-| `public.generate_kit_number` | `nextval('kit_number_seq')` | kit creation on dispatch (today's bug) |
-| `public.generate_dispatch_order_number` | `nextval('dispatch_order_seq')` | first dispatch order creation |
-| `public.generate_spare_order_number` | `nextval('spare_order_seq')` | first spare order creation |
+2. **De-nest the Store view**
+   - Remove the outer card wrapper and redundant Store/production-voucher headings.
+   - Keep the broader Store tabs functional, but use the new shared tab presentation.
+   - When a voucher is open, show one detail `PageHeader` with `Store / Production Vouchers / voucher number`, one refresh action, and one relative sync indicator.
 
-Plus the trigger wrappers (`set_kit_number`, `set_dispatch_order_number`, `set_spare_order_number`) call these generators unqualified.
+3. **Rebuild voucher details without business-logic changes**
+   - Add the compact voucher identity strip and semantic status pill.
+   - Transform the existing BOM rows into grouped `DataTable` rows.
+   - Render exactly seven columns: Material, Description, Req., Stock, Sent → Recd., To send, Balance.
+   - Move category, inventory/dispatch detail, pending quantities, and validation detail into expandable rows.
+   - Preserve the existing quantity state and handlers while restyling inputs.
+   - Add computed totals and the single pinned action bar while preserving dispatch, PDF, and navigation behavior.
 
-## Long-run fix — two parts
-
-### Part 1 — Fix all three pairs now (one migration)
-
-Recreate the six functions with fully-qualified identifiers:
-
-```sql
--- KIT
-CREATE OR REPLACE FUNCTION public.generate_kit_number() ...
-  RETURN 'KIT-' || LPAD(nextval('public.kit_number_seq')::text, 6, '0');
-
-CREATE OR REPLACE FUNCTION public.set_kit_number() ...
-  NEW.kit_number := public.generate_kit_number();
-
--- DISPATCH ORDER
-CREATE OR REPLACE FUNCTION public.generate_dispatch_order_number() ...
-  RETURN 'DO-' || LPAD(nextval('public.dispatch_order_seq')::text, 6, '0');
-
-CREATE OR REPLACE FUNCTION public.set_dispatch_order_number() ...
-  NEW.dispatch_order_number := public.generate_dispatch_order_number();
-
--- SPARE ORDER
-CREATE OR REPLACE FUNCTION public.generate_spare_order_number() ...
-  RETURN 'SO-' || LPAD(nextval('public.spare_order_seq')::text, 6, '0');
-
-CREATE OR REPLACE FUNCTION public.set_spare_order_number() ...
-  NEW.spare_order_number := public.generate_spare_order_number();
-```
-
-All other `search_path=''` functions in the codebase were checked — they already qualify `public.` correctly. This migration closes every currently known gap.
-
-### Part 2 — Prevent recurrence
-
-1. **Guardrail migration**: add a one-time DO block that scans `pg_proc` for any `public` function with empty `search_path` whose body contains an unqualified `nextval(...)` call or unqualified call to another `public` function, and `RAISE EXCEPTION` if found. Run it at the end of every new migration we ship from now on (or as a CI check) so a regression fails loud at migration time, not at runtime.
-2. **Promote the rule to a Core memory entry** that is more explicit than today's one-liner:
-   > Any function with `SET search_path TO ''` must schema-qualify *every* table, sequence, type, and function call (`public.foo`, `nextval('public.foo_seq')`). Trigger wrappers calling generators must also use `public.<fn>()`.
-3. **Standard template** for sequence-backed number generators (kit/PO/GRN/DO/SO/etc.) stored in `mem://database/secure-functions` so future generators are copied from a known-good shape.
-
-## Scope of changes
-
-- 1 migration file (six `CREATE OR REPLACE FUNCTION` statements + optional guardrail DO block).
-- 1 memory update (`mem://database/secure-functions`) — text only, no code.
-- **No frontend changes**, no schema changes, no RLS changes, no GRANT changes.
+## Technical details
+- Exactly one table column uses `auto`; all others use the requested fixed pixel widths through `<colgroup>`.
+- The first cell uses an inset state stripe so it consumes no width.
+- Relative sync time is presentation-only and updates from the existing inventory refresh cycle.
+- Existing Store query and mutation bodies will not be edited.
+- Expected changes: four new files under `src/components/shell/`, plus `src/pages/Store.tsx`, `src/pages/store/StoreDashboard.tsx`, and `src/components/Store/ProductionVoucherDetails.tsx`.
 
 ## Verification
-
-1. `/store` → Production Voucher → View Details → Dispatch Material → succeeds, `kit_preparation` row gets `KIT-000001`.
-2. Create a dispatch order from Sales → succeeds with `DO-000001`.
-3. Create a spare order → succeeds with `SO-000001`.
-4. Re-run the guardrail scan query → returns zero rows.
+- Run the project build.
+- Check diagnostics after the build.
+- Use the live preview at 1280px to confirm the voucher detail has seven columns, no horizontal page/table overflow, one refresh control, one sync indicator, expandable rows, and working actions.
