@@ -12,7 +12,7 @@ import { useContainers } from "@/hooks/useContainers";
 import { useState, useEffect } from "react";
 import { calculateMaterialShortages, MaterialShortage } from "@/utils/materialShortageCalculator";
 import { useToast } from "@/hooks/use-toast";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { TabBar } from "@/components/shell/TabBar";
 import IQCRejections from "@/components/PPC/IQCRejections";
 import ContainerTracking from "@/pages/ContainerTracking";
 const PPC = () => {
@@ -87,29 +87,27 @@ const PPC = () => {
         title="PPC Dashboard"
         subtitle="Production Planning & Control overview"
         actions={
-          <>
-            <Button onClick={calculateShortages} disabled={isCalculating} variant="outline" size="sm" className="gap-2">
-              <RefreshCw className={`h-4 w-4 ${isCalculating ? "animate-spin" : ""}`} />
-              Refresh Shortages
-            </Button>
-            <div className="hidden md:flex items-center gap-2 text-sm text-muted-foreground">
-              <Clock className="h-4 w-4" />
-              Today, 14:35
-            </div>
-          </>
+          <Button onClick={calculateShortages} disabled={isCalculating} variant="outline" size="sm" className="gap-2">
+            <RefreshCw className={`h-4 w-4 ${isCalculating ? "animate-spin" : ""}`} />
+            Refresh Shortages
+          </Button>
         }
       />
-      <div className="grid gap-4 md:gap-6">
-        <Tabs value={selectedTab} onValueChange={setSelectedTab} className="space-y-4">
-          <TabsList className="inline-flex h-10 items-center gap-1 rounded-xl bg-muted p-1 text-sm w-auto">
-            <TabsTrigger value="planning" className="px-3 py-1.5 rounded-lg text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm">Planning</TabsTrigger>
-            <TabsTrigger value="containers" className="px-3 py-1.5 rounded-lg text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm">Containers</TabsTrigger>
-            <TabsTrigger value="purchase" className="px-3 py-1.5 rounded-lg text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm">Purchase</TabsTrigger>
-            <TabsTrigger value="grn" className="px-3 py-1.5 rounded-lg text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm">GRN</TabsTrigger>
-            <TabsTrigger value="iqc-rejections" className="px-3 py-1.5 rounded-lg text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm">IQC</TabsTrigger>
-          </TabsList>
+      <TabBar
+        tabs={[
+          { id: "planning", label: "Planning" },
+          { id: "containers", label: "Containers" },
+          { id: "purchase", label: "Purchase" },
+          { id: "grn", label: "GRN" },
+          { id: "iqc-rejections", label: "IQC" },
+        ]}
+        value={selectedTab}
+        onChange={setSelectedTab}
+      />
+      <div className="grid gap-4 md:gap-6 pt-4">
+        <div className="space-y-4">
+          {selectedTab === "planning" && <div className="space-y-6">
 
-          <TabsContent value="planning" className="space-y-6">
 
             {/* Department Navigation Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -390,26 +388,14 @@ const PPC = () => {
                   </div>
                 </CardContent>
               </Card>}
-          </TabsContent>
+          </div>}
 
-          <TabsContent value="containers">
-            <ContainerTracking />
-          </TabsContent>
+          {selectedTab === "containers" && <ContainerTracking />}
 
-          <TabsContent value="purchase">
-            {/* Purchase Department Content */}
-          </TabsContent>
-
-          <TabsContent value="grn">
-            {/* GRN Management Content */}
-          </TabsContent>
-
-
-          <TabsContent value="iqc-rejections">
-            <IQCRejections />
-          </TabsContent>
-        </Tabs>
+          {selectedTab === "iqc-rejections" && <IQCRejections />}
+        </div>
       </div>
+
     </DashboardLayout>;
 };
 export default PPC;

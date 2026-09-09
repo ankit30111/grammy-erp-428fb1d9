@@ -1,8 +1,9 @@
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
+import { PageHeader } from "@/components/shell/PageHeader";
+import { TabBar } from "@/components/shell/TabBar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ShoppingCart, Clock, Package } from "lucide-react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ShoppingCart, Package } from "lucide-react";
 import { useState } from "react";
 import { useProjections } from "@/hooks/useProjections";
 import { usePurchaseOrders, useCreatePurchaseOrder } from "@/hooks/usePurchaseOrders";
@@ -17,11 +18,18 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { MaterialShortagesPage } from "@/components/Purchase/MaterialShortagesPage";
 import { EditablePurchaseOrders } from "@/components/Purchase/EditablePurchaseOrders";
-import { format } from "date-fns";
 import { ManualPOCreationDialog } from "@/components/Purchase/ManualPOCreationDialog";
 
+const purchaseTabs = [
+  { id: "material-shortages", label: "Material Shortages" },
+  { id: "create-po", label: "Create PO" },
+  { id: "purchase-orders", label: "Purchase Orders" },
+];
+
 const Purchase = () => {
+  const [activeTab, setActiveTab] = useState("material-shortages");
   const [selectedMaterials, setSelectedMaterials] = useState<string[]>([]);
+
   const [poDialogOpen, setPODialogOpen] = useState(false);
   const [selectedVendor, setSelectedVendor] = useState("");
   const [deliveryDate, setDeliveryDate] = useState("");
@@ -185,49 +193,16 @@ const Purchase = () => {
 
   return (
     <DashboardLayout>
-      <div className="grid gap-4 md:gap-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold">Purchase Management</h1>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">Last updated:</span>
-              <span className="text-sm font-medium">{format(new Date(), 'dd-MM-yyyy, HH:mm')}</span>
-              <Clock className="h-4 w-4 text-muted-foreground" />
-            </div>
-          </div>
-        </div>
+      <PageHeader title="Purchase" subtitle="Material shortages, purchase order creation and tracking" />
+      <TabBar tabs={purchaseTabs} value={activeTab} onChange={setActiveTab} />
+      <div className="grid gap-4 pt-4 md:gap-6">
 
-        {/* Updated Tabs with centered navigation styling */}
-        <Tabs defaultValue="material-shortages" className="w-full">
-          <div className="flex justify-center mb-6">
-            <TabsList className="grid w-full grid-cols-3 max-w-md rounded-lg p-1">
-              <TabsTrigger 
-                value="material-shortages" 
-                className="rounded-md data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm font-medium"
-              >
-                Material Shortages
-              </TabsTrigger>
-              <TabsTrigger 
-                value="create-po"
-                className="rounded-md data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm font-medium"
-              >
-                Create PO
-              </TabsTrigger>
-              <TabsTrigger 
-                value="purchase-orders"
-                className="rounded-md data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm font-medium"
-              >
-                Purchase Orders
-              </TabsTrigger>
-            </TabsList>
-          </div>
 
-          <TabsContent value="material-shortages" className="space-y-4">
-            <MaterialShortagesPage />
-          </TabsContent>
+          {activeTab === "material-shortages" && <MaterialShortagesPage />}
 
-          <TabsContent value="create-po" className="space-y-4">
+          {activeTab === "create-po" && (
             <div className="space-y-6">
+
               <div className="flex items-center gap-4">
                 {availableMaterialsForPO.length > 0 && (
                   <Dialog open={poDialogOpen} onOpenChange={setPODialogOpen}>
@@ -406,12 +381,11 @@ const Purchase = () => {
                 </Card>
               )}
             </div>
-          </TabsContent>
 
-          <TabsContent value="purchase-orders" className="space-y-4">
-            <EditablePurchaseOrders />
-          </TabsContent>
-        </Tabs>
+          )}
+
+          {activeTab === "purchase-orders" && <EditablePurchaseOrders />}
+
 
         {!projections?.length && (
           <Card>

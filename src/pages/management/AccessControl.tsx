@@ -2,9 +2,11 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
+import { PageHeader } from "@/components/shell/PageHeader";
+import { TabBar } from "@/components/shell/TabBar";
 import { AdminGuard } from "@/components/Auth/AdminGuard";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
@@ -37,50 +39,33 @@ const MODULES: { key: string; label: string; hint: string }[] = [
   { key: "approvals", label: "Approvals", hint: "Management / Admin only" },
 ];
 
+const accessTabs = [
+  { id: "users", label: "Users" },
+  { id: "modules", label: "Departments × Modules" },
+  { id: "plants", label: "Plants" },
+];
+
 export default function AccessControl() {
+  const [activeTab, setActiveTab] = useState("users");
+
   return (
     <AdminGuard>
       <DashboardLayout>
-        <div className="space-y-6">
-          <div>
-            <h1 className="text-3xl font-bold flex items-center gap-2">
-              <ShieldCheck className="h-7 w-7" />
-              Users &amp; Access
-            </h1>
-            <p className="text-muted-foreground mt-1 max-w-2xl">
-              Create users and decide who can see what. Users belong to plants
-              and departments; departments unlock modules.
-            </p>
-          </div>
-
-          <Tabs defaultValue="users" className="w-full">
-            <TabsList>
-              <TabsTrigger value="users" className="gap-2">
-                <Users className="h-4 w-4" /> Users
-              </TabsTrigger>
-              <TabsTrigger value="modules" className="gap-2">
-                <ShieldCheck className="h-4 w-4" /> Departments × Modules
-              </TabsTrigger>
-              <TabsTrigger value="plants" className="gap-2">
-                <Building2 className="h-4 w-4" /> Plants
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="users" className="mt-6">
-              <UsersTab />
-            </TabsContent>
-            <TabsContent value="modules" className="mt-6">
-              <ModulesMatrixTab />
-            </TabsContent>
-            <TabsContent value="plants" className="mt-6">
-              <PlantsTabHint />
-            </TabsContent>
-          </Tabs>
+        <PageHeader
+          title="Users & Access"
+          subtitle="Create users and decide who can see what — plants, departments and modules"
+        />
+        <TabBar tabs={accessTabs} value={activeTab} onChange={setActiveTab} />
+        <div className="space-y-6 pt-4">
+          {activeTab === "users" && <UsersTab />}
+          {activeTab === "modules" && <ModulesMatrixTab />}
+          {activeTab === "plants" && <PlantsTabHint />}
         </div>
       </DashboardLayout>
     </AdminGuard>
   );
 }
+
 
 // ---------------------------------------------------------------------------
 // USERS TAB

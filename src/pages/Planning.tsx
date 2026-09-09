@@ -2,8 +2,9 @@
 import React, { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Calendar, Clock, Package, Calculator } from "lucide-react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Package, Calculator } from "lucide-react";
+import { PageHeader } from "@/components/shell/PageHeader";
+import { TabBar } from "@/components/shell/TabBar";
 import { useProjections } from "@/hooks/useProjections";
 import { useProductionSchedules } from "@/hooks/useProductionSchedules";
 import { calculateMaterialShortages, MaterialShortage } from "@/utils/materialShortageCalculator";
@@ -16,6 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 
 const Planning: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<Date>();
+  const [activeTab, setActiveTab] = useState("schedule");
   const [shortages, setShortages] = useState<MaterialShortage[]>([]);
   const [isCalculating, setIsCalculating] = useState(false);
   const { data: projections } = useProjections();
@@ -74,47 +76,39 @@ const Planning: React.FC = () => {
 
   return (
     <DashboardLayout>
-      <div className="grid gap-4 md:gap-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold">Production Planning</h1>
-          <div className="flex items-center gap-4">
-            <Button 
-              onClick={calculateShortages}
-              disabled={isCalculating}
-              variant="outline"
-              className="gap-2"
-            >
-              <Calculator className="h-4 w-4" />
-              Recalculate Shortages
-            </Button>
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">Last updated:</span>
-              <span className="text-sm font-medium">Today, 14:35</span>
-              <Clock className="h-4 w-4 text-muted-foreground" />
-            </div>
-          </div>
-        </div>
-
-        <Tabs defaultValue="schedule" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="schedule">Production Schedule</TabsTrigger>
-            <TabsTrigger value="schedule-management">Schedule Management</TabsTrigger>
-            <TabsTrigger value="materials">Material Requirements</TabsTrigger>
-            <TabsTrigger value="shortages">Material Shortages</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="schedule">
+      <PageHeader
+        title="Production Planning"
+        subtitle="Schedules, material requirements and shortages"
+        actions={
+          <Button onClick={calculateShortages} disabled={isCalculating} variant="outline" size="sm" className="gap-2">
+            <Calculator className="h-4 w-4" />
+            Recalculate Shortages
+          </Button>
+        }
+      />
+      <TabBar
+        tabs={[
+          { id: "schedule", label: "Production Schedule" },
+          { id: "schedule-management", label: "Schedule Management" },
+          { id: "materials", label: "Material Requirements" },
+          { id: "shortages", label: "Material Shortages" },
+        ]}
+        value={activeTab}
+        onChange={setActiveTab}
+      />
+      <div className="grid gap-4 md:gap-6 pt-4">
+        <div className="space-y-4">
+          {activeTab === "schedule" && (
             <div className="space-y-6">
               <UnscheduledProjections onScheduleClick={handleScheduleProduction} />
               <ProductionSchedule date={selectedDate} />
             </div>
-          </TabsContent>
+          )}
 
-          <TabsContent value="schedule-management">
-            <ProductionScheduleManagement />
-          </TabsContent>
+          {activeTab === "schedule-management" && <ProductionScheduleManagement />}
 
-          <TabsContent value="materials">
+          {activeTab === "materials" && (
+
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -154,13 +148,12 @@ const Planning: React.FC = () => {
                 )}
               </CardContent>
             </Card>
-          </TabsContent>
+          )}
 
-          <TabsContent value="shortages">
-            <MaterialShortages shortages={shortages} />
-          </TabsContent>
-        </Tabs>
+          {activeTab === "shortages" && <MaterialShortages shortages={shortages} />}
+        </div>
       </div>
+
     </DashboardLayout>
   );
 };

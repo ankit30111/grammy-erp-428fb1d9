@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
+import { PageHeader } from "@/components/shell/PageHeader";
 import { 
   Card, CardContent, CardHeader, CardTitle 
 } from "@/components/ui/card";
@@ -139,12 +140,10 @@ const Vendors = () => {
 
   return (
     <DashboardLayout>
-      <div className="container mx-auto p-6">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center space-x-2">
-            <Building2 className="h-6 w-6" />
-            <h1 className="text-3xl font-bold">Vendor Management</h1>
-          </div>
+      <PageHeader
+        title="Vendors"
+        subtitle="Supplier records, contacts and supplied materials"
+        actions={
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
               <Button>
@@ -159,7 +158,10 @@ const Vendors = () => {
               <VendorForm onSuccess={handleAddSuccess} />
             </DialogContent>
           </Dialog>
-        </div>
+        }
+      />
+      <div className="pt-4">
+
 
         {/* Edit Dialog */}
         <Dialog open={isEditDialogOpen} onOpenChange={(open) => {

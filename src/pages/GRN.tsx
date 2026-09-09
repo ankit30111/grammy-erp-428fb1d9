@@ -1,9 +1,11 @@
 
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
+import { PageHeader } from "@/components/shell/PageHeader";
+import { TabBar } from "@/components/shell/TabBar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Package, Clock, Edit, Search, Filter, Trash2 } from "lucide-react";
+import { Package, Edit, Search, Filter, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { useGRN, useDeleteGRN } from "@/hooks/useGRN";
@@ -14,13 +16,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
+const grnTabs = [
+  { id: "create", label: "Create GRN" },
+  { id: "tracking", label: "GRN Tracking" },
+];
+
 const GRN = () => {
   const [activeTab, setActiveTab] = useState("create");
+
   const [selectedGRN, setSelectedGRN] = useState<string | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingGRN, setEditingGRN] = useState<any>(null);
@@ -124,57 +131,36 @@ const GRN = () => {
 
   return (
     <DashboardLayout>
-      <div className="grid gap-4 md:gap-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold">Goods Receipt Note (GRN)</h1>
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">Last updated:</span>
-            <span className="text-sm font-medium">Today, {new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' })}</span>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </div>
-        </div>
-
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="create">
-              <Package className="h-4 w-4 mr-2" />
-              Create GRN
-            </TabsTrigger>
-            <TabsTrigger value="tracking">
-              <Clock className="h-4 w-4 mr-2" />
-              GRN Tracking
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="create" className="space-y-4">
-            <Card>
-              <CardHeader className="pb-4">
-                <div className="flex items-center justify-between">
-                  <CardTitle>Create GRN</CardTitle>
-                  <div className="flex items-center space-x-2">
-                    <Label htmlFor="grn-mode" className="text-sm font-medium">
-                      {useNonPOMode ? "Without PO" : "With PO"}
-                    </Label>
-                    <Switch
-                      id="grn-mode"
-                      checked={useNonPOMode}
-                      onCheckedChange={setUseNonPOMode}
-                    />
-                  </div>
-                </div>
+      <PageHeader title="Goods Receipt" subtitle="Create and track goods receipt notes against purchase orders" />
+      <TabBar tabs={grnTabs} value={activeTab} onChange={setActiveTab} />
+      <div className="grid gap-4 pt-4 md:gap-6">
+          {activeTab === "create" && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between gap-4">
                 <p className="text-sm text-muted-foreground">
-                  {useNonPOMode 
+                  {useNonPOMode
                     ? "Create GRN for direct material receipts without a purchase order"
-                    : "Create GRN based on approved purchase orders"
-                  }
+                    : "Create GRN based on approved purchase orders"}
                 </p>
-              </CardHeader>
-            </Card>
-            
-            {useNonPOMode ? <NonPOGRNForm /> : <GRNForm />}
-          </TabsContent>
+                <div className="flex items-center space-x-2">
+                  <Label htmlFor="grn-mode" className="text-sm font-medium">
+                    {useNonPOMode ? "Without PO" : "With PO"}
+                  </Label>
+                  <Switch
+                    id="grn-mode"
+                    checked={useNonPOMode}
+                    onCheckedChange={setUseNonPOMode}
+                  />
+                </div>
+              </div>
 
-          <TabsContent value="tracking" className="space-y-4">
+              {useNonPOMode ? <NonPOGRNForm /> : <GRNForm />}
+            </div>
+
+          )}
+
+          {activeTab === "tracking" && (
+
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
                 <CardTitle>GRN Tracking</CardTitle>
@@ -339,8 +325,8 @@ const GRN = () => {
                 )}
               </CardContent>
             </Card>
-          </TabsContent>
-        </Tabs>
+          )}
+
 
         {/* Edit GRN Dialog */}
         <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>

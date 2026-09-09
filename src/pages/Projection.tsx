@@ -1,6 +1,7 @@
 
 import { useState } from "react";
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
+import { PageHeader } from "@/components/shell/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -160,15 +161,9 @@ const Projection = () => {
 
   return (
     <DashboardLayout>
-      <div className="grid gap-4 md:gap-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold">Customer Projections</h1>
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">Last updated:</span>
-            <span className="text-sm font-medium">Today, 14:35</span>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </div>
-        </div>
+      <PageHeader title="Projections" subtitle="Customer demand projections by month" />
+      <div className="grid gap-4 pt-4 md:gap-6">
+
 
         <Card>
           <CardHeader>

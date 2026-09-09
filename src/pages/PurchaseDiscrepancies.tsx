@@ -1,42 +1,29 @@
+import { useState } from "react";
 
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AlertTriangle, Package } from "lucide-react";
+import { PageHeader } from "@/components/shell/PageHeader";
+import { TabBar } from "@/components/shell/TabBar";
 import IQCDiscrepancies from "@/components/PurchaseDiscrepancies/IQCDiscrepancies";
 import StoreDiscrepancies from "@/components/PurchaseDiscrepancies/StoreDiscrepancies";
 
+const discrepancyTabs = [
+  { id: "iqc-discrepancy", label: "IQC Discrepancy" },
+  { id: "store-discrepancy", label: "Store Discrepancy" },
+];
+
 const PurchaseDiscrepancies = () => {
+  const [activeTab, setActiveTab] = useState("iqc-discrepancy");
+
   return (
     <DashboardLayout>
-      <div className="grid gap-4 md:gap-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold">Purchase Discrepancies</h1>
-            <p className="text-muted-foreground">Monitor and resolve material receiving discrepancies</p>
-          </div>
-        </div>
-
-        <Tabs defaultValue="iqc-discrepancy" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="iqc-discrepancy">
-              <AlertTriangle className="h-4 w-4 mr-2" />
-              IQC Discrepancy
-            </TabsTrigger>
-            <TabsTrigger value="store-discrepancy">
-              <Package className="h-4 w-4 mr-2" />
-              Store Discrepancy
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="iqc-discrepancy" className="space-y-4">
-            <IQCDiscrepancies />
-          </TabsContent>
-
-          <TabsContent value="store-discrepancy" className="space-y-4">
-            <StoreDiscrepancies />
-          </TabsContent>
-        </Tabs>
+      <PageHeader
+        title="Purchase Discrepancies"
+        subtitle="Monitor and resolve material receiving discrepancies"
+      />
+      <TabBar tabs={discrepancyTabs} value={activeTab} onChange={setActiveTab} />
+      <div className="grid gap-4 pt-4 md:gap-6">
+        {activeTab === "iqc-discrepancy" && <IQCDiscrepancies />}
+        {activeTab === "store-discrepancy" && <StoreDiscrepancies />}
       </div>
     </DashboardLayout>
   );

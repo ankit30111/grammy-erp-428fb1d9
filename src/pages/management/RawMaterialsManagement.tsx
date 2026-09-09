@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import { format } from "date-fns";
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
+import { PageHeader } from "@/components/shell/PageHeader";
 import { StatusBadge } from "@/components/ui/custom/StatusBadge";
 import { 
   Card, CardContent, CardHeader, CardTitle 
@@ -319,12 +320,10 @@ const RawMaterialsManagement = () => {
 
   return (
     <DashboardLayout>
-      <div className="container mx-auto p-6">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center space-x-2">
-            <Layers className="h-6 w-6" />
-            <h1 className="text-3xl font-bold">Raw Materials Management</h1>
-          </div>
+      <PageHeader title="Raw Materials" subtitle="Part master, categories and vendor sourcing" />
+      <div className="pt-4">
+        <div className="flex items-center justify-end mb-6">
+
           <div className="flex gap-2">
             <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
               <DialogTrigger asChild>

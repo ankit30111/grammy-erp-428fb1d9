@@ -1,20 +1,29 @@
 
 import { useState } from "react";
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
+import { PageHeader } from "@/components/shell/PageHeader";
+import { TabBar } from "@/components/shell/TabBar";
+import { qualityRouteTabs } from "@/components/shell/moduleTabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Clock, FileCheck, Upload, Search } from "lucide-react";
+import { FileCheck, Search } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { format } from "date-fns";
 import EnhancedPQCActionsDialog from "@/components/quality/EnhancedPQCActionsDialog";
+
+const pqcTabs = [
+  { id: "active", label: "Active Production" },
+  { id: "completed", label: "Completed Production" },
+  { id: "analytics", label: "Analytics" },
+];
 
 const PQC = () => {
   const [selectedTab, setSelectedTab] = useState("active");
+
   const [selectedProduction, setSelectedProduction] = useState<string | null>(null);
   const [showActionsDialog, setShowActionsDialog] = useState(false);
 
@@ -71,22 +80,12 @@ const PQC = () => {
 
   return (
     <DashboardLayout>
-      <div className="grid gap-4 md:gap-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold">Production Quality Control (PQC)</h1>
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">Last updated:</span>
-            <span className="text-sm font-medium">Today, {format(new Date(), "HH:mm")}</span>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </div>
-        </div>
-
+      <PageHeader title="PQC" subtitle="In-process quality control on running production" />
+      <TabBar tabs={qualityRouteTabs} className="mb-3" />
+      <TabBar tabs={pqcTabs} value={selectedTab} onChange={setSelectedTab} />
+      <div className="grid gap-4 pt-4 md:gap-6">
         <Tabs value={selectedTab} onValueChange={setSelectedTab}>
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="active">Active Production</TabsTrigger>
-            <TabsTrigger value="completed">Completed Production</TabsTrigger>
-            <TabsTrigger value="analytics">Analytics</TabsTrigger>
-          </TabsList>
+
           
           <TabsContent value="active" className="space-y-4">
             <Card>

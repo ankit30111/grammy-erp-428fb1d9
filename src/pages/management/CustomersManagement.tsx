@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
+import { PageHeader } from "@/components/shell/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -406,9 +407,10 @@ const CustomersManagement = () => {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold">Customer Management</h1>
+      <PageHeader title="Customers" subtitle="Customer master records and contact details" />
+      <div className="space-y-6 pt-4">
+        <div className="flex justify-end items-center">
+
           <Dialog open={isAddingCustomer} onOpenChange={(open) => {
             setIsAddingCustomer(open);
             if (!open) {
