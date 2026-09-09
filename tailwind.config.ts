@@ -19,10 +19,17 @@ export default {
 			}
 		},
 		extend: {
+			fontFamily: {
+				sans: ['"Inter Tight"', 'ui-sans-serif', 'system-ui', '-apple-system', 'sans-serif'],
+				mono: ['"JetBrains Mono"', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
+			},
 			colors: {
 				border: 'hsl(var(--border))',
 				input: 'hsl(var(--input))',
 				ring: 'hsl(var(--ring))',
+				hairline: 'hsl(var(--hairline))',
+				'surface-2': 'hsl(var(--surface-2))',
+				sunken: 'hsl(var(--sunken))',
 				background: 'hsl(var(--background))',
 				foreground: 'hsl(var(--foreground))',
 				primary: {
@@ -35,7 +42,16 @@ export default {
 				},
 				destructive: {
 					DEFAULT: 'hsl(var(--destructive))',
-					foreground: 'hsl(var(--destructive-foreground))'
+					foreground: 'hsl(var(--destructive-foreground))',
+					wash: 'hsl(var(--destructive-wash))'
+				},
+				success: {
+					DEFAULT: 'hsl(var(--success))',
+					wash: 'hsl(var(--success-wash))'
+				},
+				warning: {
+					DEFAULT: 'hsl(var(--warning))',
+					wash: 'hsl(var(--warning-wash))'
 				},
 				muted: {
 					DEFAULT: 'hsl(var(--muted))',
@@ -55,17 +71,17 @@ export default {
 				},
                 // ERP app specific colors
                 status: {
-                    approved: '#10b981',
-                    pending: '#f59e0b',
-                    rejected: '#ef4444',
-                    inProgress: '#3b82f6'
+                    approved: 'hsl(var(--success))',
+                    pending: 'hsl(var(--warning))',
+                    rejected: 'hsl(var(--destructive))',
+                    inProgress: 'hsl(var(--primary))'
                 },
                 department: {
-                    production: '#3b82f6',
-                    quality: '#8b5cf6',
-                    store: '#10b981',
-                    dispatch: '#f59e0b',
-                    purchase: '#ec4899'
+                    production: 'hsl(var(--foreground))',
+                    quality: 'hsl(var(--foreground))',
+                    store: 'hsl(var(--foreground))',
+                    dispatch: 'hsl(var(--foreground))',
+                    purchase: 'hsl(var(--foreground))'
                 },
 				sidebar: {
 					DEFAULT: 'hsl(var(--sidebar-background))',
