@@ -145,8 +145,9 @@
   }
 
   .status-badge {
-    @apply inline-flex h-[19px] items-center justify-center rounded-[3px] px-[7px] font-mono text-[11.5px] font-semibold uppercase tracking-[0.07em];
+    @apply inline-flex h-[23px] items-center justify-center rounded-[3px] px-[7px] font-mono text-[11.5px] font-semibold uppercase tracking-[0.07em];
   }
+
 
   .page-card {
     @apply border-0 bg-transparent shadow-none rounded-none;
