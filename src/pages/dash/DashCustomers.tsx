@@ -126,10 +126,7 @@ export default function DashCustomers() {
                 <ArrowLeft className="h-5 w-5" />
               </Button>
               <div>
-                <h1 className="text-2xl font-bold">{editing ? "Edit Customer" : "Add Customer"}</h1>
-                <p className="text-muted-foreground text-sm">
-                  {editing ? editing.customer_name : "Fill in the details below"}
-                </p>
+                <PageHeader title={editing ? editing.customer_name || "Customer" : "New Customer"} />
               </div>
             </div>
             <div className="flex gap-2">

@@ -28,10 +28,7 @@ export default function DashInventory() {
   return (
     <DashLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">DASH Inventory</h1>
-          <p className="text-muted-foreground">Warehouse stock management — isolated from other verticals</p>
-        </div>
+        <PageHeader title="Inventory" />
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card><CardContent className="pt-6 flex items-center gap-3"><Package className="h-8 w-8 text-primary" /><div><p className="text-sm text-muted-foreground">Total SKUs in Stock</p><p className="text-2xl font-bold">{inventory?.length || 0}</p></div></CardContent></Card>

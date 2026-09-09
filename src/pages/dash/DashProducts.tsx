@@ -26,7 +26,7 @@ const defaultForm = (): Record<string, any> => ({
 });
 
 export default function DashProducts() {
-  const [dashTab, setDashTab] = useState("");
+  const [dashTab, setDashTab] = useState("basic");
   const { data: products, isLoading } = useDashProducts();
   const { addProduct, updateProduct } = useDashProductMutations();
   const [view, setView] = useState<"list" | "detail">("list");
@@ -95,10 +95,7 @@ export default function DashProducts() {
       <div className="space-y-6">
         {view === "list" ? (
           <>
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight">Product Master</h1>
-              <p className="text-muted-foreground">DASH SKU catalog — pricing, specs, compliance & documents</p>
-            </div>
+            <PageHeader title="Products" />
             <ProductListView
               products={products}
               isLoading={isLoading}
@@ -114,12 +111,7 @@ export default function DashProducts() {
                   <ArrowLeft className="h-5 w-5" />
                 </Button>
                 <div>
-                  <h1 className="text-2xl font-bold tracking-tight">
-                    {selectedProduct ? `Edit: ${selectedProduct.product_name}` : "New Product"}
-                  </h1>
-                  <p className="text-sm text-muted-foreground">
-                    {selectedProduct ? selectedProduct.model_number : "Fill in product details across all tabs"}
-                  </p>
+                  <PageHeader title={selectedProduct ? selectedProduct.product_name : "New Product"} />
                 </div>
               </div>
               <div className="flex gap-2">

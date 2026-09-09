@@ -36,10 +36,10 @@ export default function DashSpares() {
   return (
     <DashLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div><h1 className="text-3xl font-bold tracking-tight">Spare Parts</h1><p className="text-muted-foreground">Spare SKU master & consumption tracking</p></div>
-          <Button onClick={openAdd}><Plus className="h-4 w-4 mr-2" />Add Spare</Button>
-        </div>
+        <PageHeader
+          title="Spares"
+          actions={<Button size="sm" onClick={openAdd}><Plus className="h-4 w-4 mr-2" />Add Spare</Button>}
+        />
 
         <>
 <TabBar tabs={[{ id: "master", label: "Spare Master" }, { id: "consumption", label: "Consumption Log" }]} value={dashTab} onChange={setDashTab} syncToUrl={false} />
