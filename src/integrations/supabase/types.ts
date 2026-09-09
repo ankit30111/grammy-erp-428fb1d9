@@ -5018,6 +5018,166 @@ export type Database = {
           },
         ]
       }
+      stock_balance: {
+        Row: {
+          id: string
+          location_id: string
+          min_stock: number | null
+          plant_id: string
+          quantity: number
+          raw_material_id: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          location_id: string
+          min_stock?: number | null
+          plant_id: string
+          quantity?: number
+          raw_material_id: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          location_id?: string
+          min_stock?: number | null
+          plant_id?: string
+          quantity?: number
+          raw_material_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_balance_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "stock_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_balance_plant_id_fkey"
+            columns: ["plant_id"]
+            isOneToOne: false
+            referencedRelation: "plants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_balance_raw_material_id_fkey"
+            columns: ["raw_material_id"]
+            isOneToOne: false
+            referencedRelation: "raw_materials"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stock_ledger: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          location_id: string
+          movement_type: string
+          notes: string | null
+          plant_id: string
+          qty_delta: number
+          raw_material_id: string
+          reason_code: string | null
+          reference_id: string | null
+          reference_number: string | null
+          reference_type: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          location_id: string
+          movement_type: string
+          notes?: string | null
+          plant_id: string
+          qty_delta: number
+          raw_material_id: string
+          reason_code?: string | null
+          reference_id?: string | null
+          reference_number?: string | null
+          reference_type?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          location_id?: string
+          movement_type?: string
+          notes?: string | null
+          plant_id?: string
+          qty_delta?: number
+          raw_material_id?: string
+          reason_code?: string | null
+          reference_id?: string | null
+          reference_number?: string | null
+          reference_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_ledger_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "stock_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_ledger_plant_id_fkey"
+            columns: ["plant_id"]
+            isOneToOne: false
+            referencedRelation: "plants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_ledger_raw_material_id_fkey"
+            columns: ["raw_material_id"]
+            isOneToOne: false
+            referencedRelation: "raw_materials"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stock_locations: {
+        Row: {
+          code: string
+          created_at: string
+          id: string
+          is_active: boolean
+          location_type: string
+          name: string
+          plant_id: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          location_type: string
+          name: string
+          plant_id: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          location_type?: string
+          name?: string
+          plant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_locations_plant_id_fkey"
+            columns: ["plant_id"]
+            isOneToOne: false
+            referencedRelation: "plants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       store_discrepancies: {
         Row: {
           created_at: string
@@ -5537,6 +5697,39 @@ export type Database = {
         }
         Relationships: []
       }
+      stock_balance_check: {
+        Row: {
+          balance_quantity: number | null
+          difference: number | null
+          ledger_quantity: number | null
+          location_id: string | null
+          plant_id: string | null
+          raw_material_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_balance_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "stock_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_balance_plant_id_fkey"
+            columns: ["plant_id"]
+            isOneToOne: false
+            referencedRelation: "plants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_balance_raw_material_id_fkey"
+            columns: ["raw_material_id"]
+            isOneToOne: false
+            referencedRelation: "raw_materials"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       admin_list_active_employee_salaries: {
@@ -5763,6 +5956,22 @@ export type Database = {
         }
         Returns: string
       }
+      post_stock_movement: {
+        Args: {
+          p_location_id: string
+          p_movement_type: string
+          p_notes?: string
+          p_plant_id: string
+          p_qty_delta: number
+          p_raw_material_id: string
+          p_reason_code?: string
+          p_reference_id?: string
+          p_reference_number?: string
+          p_reference_type?: string
+        }
+        Returns: number
+      }
+      post_stock_movements: { Args: { p_movements: Json }; Returns: Json }
       production_schedule_locked: {
         Args: { p_schedule_id: string }
         Returns: string
