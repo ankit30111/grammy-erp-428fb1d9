@@ -11,7 +11,6 @@ export interface PageHeaderBreadcrumb {
 
 interface PageHeaderProps {
   title: string;
-  subtitle?: string;
   breadcrumb?: PageHeaderBreadcrumb[];
   actions?: ReactNode;
   meta?: ReactNode;
@@ -20,12 +19,12 @@ interface PageHeaderProps {
 
 export function PageHeader({
   title,
-  subtitle,
   breadcrumb,
   actions,
   meta,
   className,
 }: PageHeaderProps) {
+
   return (
     <header className={cn("w-full pb-4", className)}>
       {breadcrumb && breadcrumb.length > 0 && (

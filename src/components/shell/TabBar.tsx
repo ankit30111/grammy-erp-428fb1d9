@@ -64,7 +64,7 @@ export function TabBar({
   };
 
   return (
-    <div className={cn("pill-tabs w-full", className)} role="tablist">
+    <div className={cn("pill-tabs", className)} role="tablist">
       {tabs.map((tab) => {
         const isActive = tab.to ? isRouteActive(tab.to) : tab.id === value;
         const inner = (

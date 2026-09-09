@@ -153,27 +153,68 @@
   }
 
   .pill-tabs {
-    @apply inline-flex items-center overflow-x-auto border-b border-hairline bg-transparent p-0 rounded-none;
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    max-width: 100%;
+    overflow-x: auto;
+    border: 0;
+    border-radius: 9px;
+    background: hsl(var(--sunken));
+    padding: 2px;
     scrollbar-width: none;
     -ms-overflow-style: none;
   }
-
-  .pill-tabs::-webkit-scrollbar {
-    display: none;
-  }
+  .pill-tabs::-webkit-scrollbar { display: none; }
 
   .pill-tab {
-    @apply relative inline-flex items-center gap-2 rounded-none bg-transparent px-[11px] pb-[10px] pt-[7px] text-[12.5px] font-medium text-muted-foreground transition-colors hover:text-foreground;
+    position: relative;
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 6px;
+    border: 0;
+    border-radius: 7px;
+    background: transparent;
+    padding: 6px 13px;
+    font-size: 12.5px;
+    font-weight: 500;
+    line-height: 1.35;
+    white-space: nowrap;
+    color: hsl(var(--muted-foreground));
+    transition: background-color .16s ease, color .16s ease, box-shadow .16s ease;
+  }
+  .pill-tab:hover { color: hsl(var(--foreground)); }
+
+  .pill-tab + .pill-tab::before {
+    content: "";
+    position: absolute;
+    left: -2px;
+    top: 6px;
+    bottom: 6px;
+    width: 1px;
+    background: hsl(var(--border));
+    opacity: .75;
   }
 
   .pill-tab[data-state="active"],
   .pill-tab.active {
-    @apply bg-transparent text-foreground font-semibold shadow-none;
+    background: hsl(var(--card));
+    color: hsl(var(--foreground));
+    font-weight: 600;
+    box-shadow: 0 1px 2px hsl(var(--foreground) / .13), 0 0 0 .5px hsl(var(--foreground) / .05);
   }
 
-  .pill-tab[data-state="active"]::after,
-  .pill-tab.active::after {
-    content: "";
-    @apply absolute -bottom-px left-2 right-2 h-0.5 bg-primary;
+  .pill-tab.active::before,
+  .pill-tab[data-state="active"]::before,
+  .pill-tab.active + .pill-tab::before,
+  .pill-tab[data-state="active"] + .pill-tab::before { opacity: 0; }
+
+  .dash-workspace .pill-tab[data-state="active"],
+  .dash-workspace .pill-tab.active {
+    color: hsl(var(--dash-accent));
   }
+
+  @media (prefers-reduced-motion: reduce) { .pill-tab { transition: none; } }
 }
+
