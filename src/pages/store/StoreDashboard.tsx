@@ -1,7 +1,6 @@
 
 import { useState, lazy, Suspense } from "react";
-import { Badge } from "@/components/ui/badge";
-import { Package, FileText, ArrowLeftRight, AlertTriangle, BookOpen, Scale } from "lucide-react";
+import { Package } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/shell/PageHeader";
@@ -87,79 +86,39 @@ const StoreDashboard = () => {
         )}
 
         {activeTab === "grn-receiving" && (
-          <div className="space-y-4">
-          <div className="flex items-center space-x-2 mb-4">
-            <FileText className="h-5 w-5" />
-            <h2 className="text-xl font-semibold">GRN Receiving</h2>
-            <Badge variant="outline">Physical Verification & Receipt</Badge>
-          </div>
           <Suspense fallback={<TabLoader />}>
             <GRNReceiving />
           </Suspense>
-          </div>
         )}
 
         {activeTab === "production-feedback" && (
-          <div className="space-y-4">
-          <div className="flex items-center space-x-2 mb-4">
-            <AlertTriangle className="h-5 w-5" />
-            <h2 className="text-xl font-semibold">Production Feedback & Discrepancies</h2>
-            <Badge variant="outline">Store-Production Reconciliation</Badge>
-          </div>
           <Suspense fallback={<TabLoader />}>
             <ProductionFeedbackTab />
           </Suspense>
-          </div>
         )}
 
         {activeTab === "material-requests" && (
-          <div className="space-y-4">
-          <div className="flex items-center space-x-2 mb-4">
-            <ArrowLeftRight className="h-5 w-5" />
-            <h2 className="text-xl font-semibold">Material Requests</h2>
-          </div>
           <Suspense fallback={<TabLoader />}>
             <MaterialRequestsTab />
           </Suspense>
-          </div>
         )}
 
         {activeTab === "inventory" && (
-          <div className="space-y-4">
-          <div className="flex items-center space-x-2 mb-4">
-            <Package className="h-5 w-5" />
-            <h2 className="text-xl font-semibold">Inventory Management</h2>
-          </div>
           <Suspense fallback={<TabLoader />}>
             <InventoryManagement />
           </Suspense>
-          </div>
         )}
 
         {activeTab === "stock-reconciliation" && (
-          <div className="space-y-4">
-          <div className="flex items-center space-x-2 mb-4">
-            <Scale className="h-5 w-5" />
-            <h2 className="text-xl font-semibold">Stock Reconciliation</h2>
-            <Badge variant="outline">Inventory Adjustment</Badge>
-          </div>
           <Suspense fallback={<TabLoader />}>
             <StockReconciliation />
           </Suspense>
-          </div>
         )}
 
         {activeTab === "logbook" && (
-          <div className="space-y-4">
-          <div className="flex items-center space-x-2 mb-4">
-            <BookOpen className="h-5 w-5" />
-            <h2 className="text-xl font-semibold">Material Movement LogBook</h2>
-            <Badge variant="outline">Complete Material Audit Trail</Badge>
-          </div>
           <Suspense fallback={<TabLoader />}>
             <LogBook />
           </Suspense>
-          </div>
         )}
       </div>
     </div>
