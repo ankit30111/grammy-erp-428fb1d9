@@ -60,7 +60,6 @@ export default function ContainerTracking() {
     <DashboardLayout>
       <PageHeader
         title="Container Tracking"
-        subtitle="Import containers and material delivery schedules"
         actions={
           <Button onClick={() => setCreateDialogOpen(true)}>
             <Plus className="h-4 w-4 mr-2" />

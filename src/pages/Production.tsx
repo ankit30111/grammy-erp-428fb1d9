@@ -24,7 +24,6 @@ export default function Production() {
     <DashboardLayout>
       <PageHeader
         title="Production"
-        subtitle="Production lines, schedules, material requests and rejections"
       />
       <TabBar tabs={tabs} value={activeTab} onChange={setActiveTab} />
       <div className="pt-4">

@@ -34,7 +34,6 @@ const Index = () => {
   return <DashboardLayout>
       <PageHeader
         title="Factory Dashboard"
-        subtitle="Real-time view across production, inventory, quality, and fulfillment"
         actions={
           <div className="flex items-center gap-2">
             <DashboardScopeSwitcher />

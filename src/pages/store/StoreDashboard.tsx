@@ -64,7 +64,7 @@ const StoreDashboard = () => {
   return (
     <div className="mx-auto w-full min-w-0 py-4">
       {!selectedVoucherId && (
-        <PageHeader title="Store" subtitle="Receipts, issues and material movements" />
+        <PageHeader title="Store" />
       )}
 
       {!selectedVoucherId && <TabBar tabs={tabs} value={activeTab} onChange={handleTabChange} />}

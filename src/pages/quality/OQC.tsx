@@ -149,7 +149,7 @@ const OQC = () => {
 
   return (
     <DashboardLayout>
-      <PageHeader title="OQC" subtitle="Outgoing quality control before dispatch" />
+      <PageHeader title="OQC" />
       <TabBar tabs={qualityRouteTabs} className="mb-3" />
       <TabBar
         tabs={[

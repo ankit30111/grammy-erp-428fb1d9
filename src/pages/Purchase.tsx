@@ -193,7 +193,7 @@ const Purchase = () => {
 
   return (
     <DashboardLayout>
-      <PageHeader title="Purchase" subtitle="Material shortages, purchase order creation and tracking" />
+      <PageHeader title="Purchase" />
       <TabBar tabs={purchaseTabs} value={activeTab} onChange={setActiveTab} />
       <div className="grid gap-4 pt-4 md:gap-6">
 

@@ -583,7 +583,6 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
     <div className="min-w-0 space-y-3">
       <PageHeader
         title={`Production Voucher ${productionOrder.voucher_number}`}
-        subtitle="Material issue and production receipt status"
         breadcrumb={[
           { label: "Store", to: "/store", onClick: onBack },
           { label: "Production Vouchers", to: "/store", onClick: onBack },

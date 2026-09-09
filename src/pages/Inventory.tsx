@@ -6,7 +6,7 @@ import StoreDashboard from "./store/StoreDashboard";
 export default function Inventory() {
   return (
     <DashboardLayout>
-      <PageHeader title="Inventory" subtitle="Live stock across raw materials and finished goods" />
+      <PageHeader title="Inventory" />
       <div>
         <StoreDashboard />
       </div>

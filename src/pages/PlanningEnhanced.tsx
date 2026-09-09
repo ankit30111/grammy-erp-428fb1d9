@@ -397,7 +397,7 @@ const PlanningEnhanced: React.FC = () => {
 
   return (
     <DashboardLayout>
-      <PageHeader title="Planning" subtitle="Schedule production against customer projections" />
+      <PageHeader title="Planning" />
       <TabBar tabs={planningTabs} value={activeTab} onChange={setActiveTab} />
       <div className="space-y-6 pt-4">
           {activeTab === "planning" && (

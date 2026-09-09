@@ -161,7 +161,7 @@ const Projection = () => {
 
   return (
     <DashboardLayout>
-      <PageHeader title="Projections" subtitle="Customer demand projections by month" />
+      <PageHeader title="Projections" />
       <div className="grid gap-4 pt-4 md:gap-6">
 
 

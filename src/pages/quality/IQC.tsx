@@ -230,7 +230,7 @@ const IQC = () => {
 
   return (
     <DashboardLayout>
-      <PageHeader title="IQC" subtitle="Incoming quality control of received materials" />
+      <PageHeader title="IQC" />
       <TabBar tabs={qualityRouteTabs} className="mb-3" />
       <TabBar tabs={iqcTabs} value={selectedTab} onChange={setSelectedTab} />
       <div className="grid gap-4 pt-4 md:gap-6">

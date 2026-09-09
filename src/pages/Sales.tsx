@@ -16,7 +16,7 @@ const Sales = () => {
 
   return (
     <DashboardLayout>
-      <PageHeader title="Sales" subtitle="Dispatch of spare parts and regular orders" />
+      <PageHeader title="Sales" />
       <TabBar tabs={tabs} value={activeTab} onChange={setActiveTab} />
       <div className="pt-4">
         {activeTab === "spare-dispatch" && <SpareDispatch />}

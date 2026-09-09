@@ -142,7 +142,6 @@ const Vendors = () => {
     <DashboardLayout>
       <PageHeader
         title="Vendors"
-        subtitle="Supplier records, contacts and supplied materials"
         actions={
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>

@@ -18,7 +18,7 @@ const Approvals = () => {
 
   return (
     <DashboardLayout>
-      <PageHeader title="Approvals" subtitle="Purchase order and CAPA approval workflow" />
+      <PageHeader title="Approvals" />
       <TabBar tabs={tabs} value={activeTab} onChange={setActiveTab} />
       <div className="pt-4">
         {activeTab === "purchase-orders" && <PurchaseOrderApprovalsEnhanced />}
