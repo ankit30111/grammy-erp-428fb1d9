@@ -9,7 +9,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { FileCheck, Search } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -84,10 +83,11 @@ const PQC = () => {
       <TabBar tabs={qualityRouteTabs} className="mb-3" />
       <TabBar tabs={pqcTabs} value={selectedTab} onChange={setSelectedTab} />
       <div className="grid gap-4 pt-4 md:gap-6">
-        <Tabs value={selectedTab} onValueChange={setSelectedTab}>
+        
 
           
-          <TabsContent value="active" className="space-y-4">
+          {selectedTab === "active" && (
+<div className="space-y-4">
             <Card>
               <CardHeader>
                 <CardTitle>Active Production Lines</CardTitle>
@@ -137,9 +137,11 @@ const PQC = () => {
                 )}
               </CardContent>
             </Card>
-          </TabsContent>
+          </div>
+)}
           
-          <TabsContent value="completed">
+          {selectedTab === "completed" && (
+<div>
             <Card>
               <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-2 sm:space-y-0">
                 <CardTitle>Completed Production</CardTitle>
@@ -186,9 +188,11 @@ const PQC = () => {
                 )}
               </CardContent>
             </Card>
-          </TabsContent>
+          </div>
+)}
           
-          <TabsContent value="analytics">
+          {selectedTab === "analytics" && (
+<div>
             <Card>
               <CardHeader>
                 <CardTitle>Quality Analytics</CardTitle>
@@ -199,8 +203,9 @@ const PQC = () => {
                 </div>
               </CardContent>
             </Card>
-          </TabsContent>
-        </Tabs>
+          </div>
+)}
+        
 
         {/* Enhanced PQC Actions Dialog */}
         {selectedProduction && (

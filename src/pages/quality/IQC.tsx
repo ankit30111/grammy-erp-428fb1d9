@@ -8,7 +8,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { FileCheck, Search, AlertTriangle, FileText } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useQuery } from "@tanstack/react-query";
@@ -234,10 +233,11 @@ const IQC = () => {
       <TabBar tabs={qualityRouteTabs} className="mb-3" />
       <TabBar tabs={iqcTabs} value={selectedTab} onChange={setSelectedTab} />
       <div className="grid gap-4 pt-4 md:gap-6">
-        <Tabs value={selectedTab} onValueChange={setSelectedTab}>
+        
 
           
-          <TabsContent value="pending" className="space-y-4">
+          {selectedTab === "pending" && (
+<div className="space-y-4">
             <Card>
               <CardHeader>
                 <CardTitle>Pending Quality Inspections</CardTitle>
@@ -288,9 +288,11 @@ const IQC = () => {
                 )}
               </CardContent>
             </Card>
-          </TabsContent>
+          </div>
+)}
           
-          <TabsContent value="completed">
+          {selectedTab === "completed" && (
+<div>
             <Card>
               <CardHeader className="space-y-4">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-2 sm:space-y-0">
@@ -442,17 +444,23 @@ const IQC = () => {
                 )}
               </CardContent>
             </Card>
-          </TabsContent>
+          </div>
+)}
 
-          <TabsContent value="line-rejection">
+          {selectedTab === "line-rejection" && (
+<div>
             <LineRejectionManager />
-          </TabsContent>
+          </div>
+)}
           
-          <TabsContent value="part-analysis">
+          {selectedTab === "part-analysis" && (
+<div>
             <PartAnalysis />
-          </TabsContent>
+          </div>
+)}
           
-          <TabsContent value="analytics">
+          {selectedTab === "analytics" && (
+<div>
             <Card>
               <CardHeader>
                 <CardTitle>IQC Analytics</CardTitle>
@@ -463,8 +471,9 @@ const IQC = () => {
                 </div>
               </CardContent>
             </Card>
-          </TabsContent>
-        </Tabs>
+          </div>
+)}
+        
 
         {/* IQC Inspection Dialog */}
         {selectedGRN && (

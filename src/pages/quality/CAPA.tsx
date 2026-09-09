@@ -3,7 +3,6 @@ import { PageHeader } from "@/components/shell/PageHeader";
 import { TabBar } from "@/components/shell/TabBar";
 import { qualityRouteTabs } from "@/components/shell/moduleTabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -332,10 +331,11 @@ const CAPA = () => {
           </Card>
         </div>
 
-        <Tabs value={selectedTab} onValueChange={setSelectedTab}>
+        
 
 
-          <TabsContent value="vendor" className="space-y-4">
+          {selectedTab === "vendor" && (
+<div className="space-y-4">
             <Card>
               <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-2 sm:space-y-0">
                 <CardTitle>Vendor CAPAs</CardTitle>
@@ -456,9 +456,11 @@ const CAPA = () => {
                 )}
               </CardContent>
             </Card>
-          </TabsContent>
+          </div>
+)}
 
-          <TabsContent value="line-rejection" className="space-y-4">
+          {selectedTab === "line-rejection" && (
+<div className="space-y-4">
             <Card>
               <CardHeader>
                 <CardTitle>Line Rejection CAPAs</CardTitle>
@@ -545,9 +547,11 @@ const CAPA = () => {
                 )}
               </CardContent>
             </Card>
-          </TabsContent>
+          </div>
+)}
 
-          <TabsContent value="part-analysis" className="space-y-4">
+          {selectedTab === "part-analysis" && (
+<div className="space-y-4">
             <Card>
               <CardHeader>
                 <CardTitle>Part Analysis CAPAs</CardTitle>
@@ -643,9 +647,11 @@ const CAPA = () => {
                 )}
               </CardContent>
             </Card>
-          </TabsContent>
+          </div>
+)}
 
-          <TabsContent value="production" className="space-y-4">
+          {selectedTab === "production" && (
+<div className="space-y-4">
             <Card>
               <CardHeader>
                 <CardTitle>Production CAPAs</CardTitle>
@@ -740,8 +746,9 @@ const CAPA = () => {
                 )}
               </CardContent>
             </Card>
-          </TabsContent>
-        </Tabs>
+          </div>
+)}
+        
 
         {/* CAPA Upload Dialog */}
         <CAPAUploadDialog
