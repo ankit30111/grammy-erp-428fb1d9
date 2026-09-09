@@ -80,7 +80,7 @@ const PQC = () => {
 
   return (
     <DashboardLayout>
-      <PageHeader title="PQC" />
+      <PageHeader title="Quality Department" />
       <TabBar tabs={qualityRouteTabs} className="mb-3" />
       <TabBar tabs={pqcTabs} value={selectedTab} onChange={setSelectedTab} />
       <div className="grid gap-4 pt-4 md:gap-6">

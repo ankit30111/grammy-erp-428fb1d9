@@ -59,7 +59,7 @@ const Quality = () => {
 
   return (
     <DashboardLayout>
-      <PageHeader title="Quality" />
+      <PageHeader title="Quality Department" />
       <TabBar tabs={qualityRouteTabs} />
       <div className="grid gap-4 pt-4 md:gap-6">
 

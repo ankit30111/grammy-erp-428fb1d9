@@ -149,7 +149,7 @@ const OQC = () => {
 
   return (
     <DashboardLayout>
-      <PageHeader title="OQC" />
+      <PageHeader title="Quality Department" />
       <TabBar tabs={qualityRouteTabs} className="mb-3" />
       <TabBar
         tabs={[

@@ -251,7 +251,7 @@ const CAPA = () => {
 
   return (
     <DashboardLayout>
-      <PageHeader title="CAPA" />
+      <PageHeader title="Quality Department" />
       <TabBar tabs={qualityRouteTabs} className="mb-3" />
       <TabBar tabs={capaTabs} value={selectedTab} onChange={setSelectedTab} />
       <div className="grid gap-4 pt-4 md:gap-6">

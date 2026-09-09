@@ -33,7 +33,7 @@ const Index = () => {
   }, []);
   return <DashboardLayout>
       <PageHeader
-        title="Factory Dashboard"
+        title="Dashboard"
         actions={
           <div className="flex items-center gap-2">
             <DashboardScopeSwitcher />

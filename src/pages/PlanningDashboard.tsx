@@ -191,7 +191,7 @@ const PlanningDashboard = () => {
   return (
     <DashboardLayout>
       <PageHeader
-        title="Production Planning Dashboard"
+        title="Planning"
       />
       <TabBar
         tabs={[

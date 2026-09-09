@@ -131,7 +131,7 @@ const GRN = () => {
 
   return (
     <DashboardLayout>
-      <PageHeader title="Goods Receipt" />
+      <PageHeader title="GRN" />
       <TabBar tabs={grnTabs} value={activeTab} onChange={setActiveTab} />
       <div className="grid gap-4 pt-4 md:gap-6">
           {activeTab === "create" && (
