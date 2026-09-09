@@ -157,10 +157,10 @@ function UsersTab() {
                     </div>
                     <div className="flex flex-col items-end gap-1 shrink-0">
                       {u.role === "admin" && (
-                        <Badge variant="default" className="text-[12px]">admin</Badge>
+                        <Badge variant="default" className="text-[14px]">admin</Badge>
                       )}
                       {!u.is_active && (
-                        <Badge variant="secondary" className="text-[12px]">inactive</Badge>
+                        <Badge variant="secondary" className="text-[14px]">inactive</Badge>
                       )}
                     </div>
                   </div>
@@ -565,7 +565,7 @@ function ModulesMatrixTab() {
               {MODULES.map((m) => (
                 <th key={m.key} className="p-2 text-center font-semibold">
                   <div>{m.label}</div>
-                  <div className="text-[12px] font-normal text-muted-foreground">
+                  <div className="text-[14px] font-normal text-muted-foreground">
                     {m.hint}
                   </div>
                 </th>
@@ -581,7 +581,7 @@ function ModulesMatrixTab() {
                   <td className="p-2 font-medium">
                     {d.name}
                     {isAdminLike && (
-                      <Badge variant="outline" className="ml-2 text-[12px]">
+                      <Badge variant="outline" className="ml-2 text-[14px]">
                         full access
                       </Badge>
                     )}

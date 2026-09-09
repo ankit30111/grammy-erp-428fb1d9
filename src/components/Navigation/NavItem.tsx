@@ -64,7 +64,7 @@ export const NavItem = ({
           </>
         )}
         {!collapsed && badge !== undefined && (
-          <span className="ml-auto bg-primary/10 text-primary text-[12px] font-semibold rounded-full px-2 py-0.5">
+          <span className="ml-auto bg-primary/10 text-primary text-[14px] font-semibold rounded-full px-2 py-0.5">
             {badge > 99 ? "99+" : badge}
           </span>
         )}
@@ -83,7 +83,7 @@ export const NavItem = ({
                 <div className="w-1 h-1 rounded-full bg-current opacity-50" />
                 <span className="truncate">{item.label}</span>
                 {item.badge !== undefined && (
-                  <span className="ml-auto bg-primary/10 text-primary text-[12px] font-semibold rounded-full px-2 py-0.5">
+                  <span className="ml-auto bg-primary/10 text-primary text-[14px] font-semibold rounded-full px-2 py-0.5">
                     {item.badge > 99 ? "99+" : item.badge}
                   </span>
                 )}
