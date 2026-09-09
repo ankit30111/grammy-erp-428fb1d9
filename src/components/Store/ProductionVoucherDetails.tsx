@@ -618,7 +618,7 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
         </div>
       </section>
 
-      <DataTable<VoucherTableRow>
+      <DataTable
         columns={columns}
         rows={tableRows}
         getRowKey={(row) => row.id}
