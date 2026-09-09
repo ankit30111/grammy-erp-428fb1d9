@@ -1,5 +1,7 @@
 
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
+import { PageHeader } from "@/components/shell/PageHeader";
+
 import { KPICard } from "@/components/Dashboard/KPICard";
 import { ChartWidget } from "@/components/Dashboard/ChartWidget";
 import { Button } from "@/components/ui/button";
@@ -23,18 +25,17 @@ const StoreDashboard = () => {
 
   return (
     <DashboardLayout>
+      <PageHeader
+        title="Store"
+        actions={
+          <Button onClick={() => navigate('/store')} variant="outline" size="sm">
+            <BookOpen className="h-4 w-4 mr-2" />
+            Store Management
+          </Button>
+        }
+      />
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold">Store Dashboard</h1>
-          <div className="flex gap-2">
-            <Button onClick={() => navigate('/store')} variant="outline">
-              <BookOpen className="h-4 w-4 mr-2" />
-              Store Management
-            </Button>
-          </div>
-        </div>
 
-        {/* KPI Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <KPICard
             title="Total Raw Materials Stock"

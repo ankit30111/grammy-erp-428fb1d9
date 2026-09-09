@@ -59,7 +59,7 @@ const Index = () => {
           { title: "Quality Metrics", node: <QualityMetricsWidget /> },
           { title: "Vendor Performance", node: <VendorPerformanceWidget /> },
         ].map((section) => (
-          <section key={section.title} className="page-card p-5">
+          <section key={section.title}>
             <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-4">
               {section.title}
             </h2>

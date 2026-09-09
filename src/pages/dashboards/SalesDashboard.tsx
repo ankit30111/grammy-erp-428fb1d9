@@ -1,5 +1,7 @@
 
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
+import { PageHeader } from "@/components/shell/PageHeader";
+
 import { KPICard } from "@/components/Dashboard/KPICard";
 import { ChartWidget } from "@/components/Dashboard/ChartWidget";
 import { Button } from "@/components/ui/button";
@@ -50,16 +52,17 @@ const SalesDashboard = () => {
 
   return (
     <DashboardLayout>
+      <PageHeader
+        title="Sales"
+        actions={
+          <Button onClick={() => navigate('/sales')} variant="outline" size="sm">
+            <DollarSign className="h-4 w-4 mr-2" />
+            Sales Management
+          </Button>
+        }
+      />
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold">Sales Dashboard</h1>
-          <div className="flex gap-2">
-            <Button onClick={() => navigate('/sales')} variant="outline">
-              <DollarSign className="h-4 w-4 mr-2" />
-              Sales Management
-            </Button>
-          </div>
-        </div>
+
 
         {/* KPI Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
