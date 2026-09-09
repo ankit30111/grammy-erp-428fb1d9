@@ -116,7 +116,10 @@ const ProductionVoucherList = memo(({ onSelectVoucher }: ProductionVoucherListPr
       columns={columns}
       rows={rows}
       getRowKey={(row) => row.id}
-      getRowState={(row) => getState(row.status)}
+      getRowState={(row) => {
+        const state = getState(row.status);
+        return state === "idle" ? null : state;
+      }}
       renderCell={(row, column, { expanded, toggleExpanded }) => {
         switch (column.key) {
           case "voucher":
@@ -133,14 +136,14 @@ const ProductionVoucherList = memo(({ onSelectVoucher }: ProductionVoucherListPr
           case "product": return row.product;
           case "quantity": return row.quantity.toLocaleString();
           case "planDate": return <span className="font-mono">{format(new Date(row.planDate), "dd MMM yy")}</span>;
-          case "status": return <StatePill state={getState(row.status)}>{row.status.replaceAll("_", " ")}</StatePill>;
+          case "status": return <StatePill state={getState(row.status)}>{row.status.replace(/_/g, " ")}</StatePill>;
           default: return null;
         }
       }}
       renderExpanded={(row) => (
         <div className="flex flex-wrap items-center gap-x-8 gap-y-3 text-[11px]">
           <div><span className="text-muted-foreground">Customer</span><div className="mt-0.5 font-medium text-foreground">{row.customer}</div></div>
-          <div><span className="text-muted-foreground">Kit status</span><div className="mt-0.5"><StatePill state={row.kitStatus === "PREPARED" ? "ok" : row.kitStatus === "PARTIAL" ? "warn" : row.kitStatus === "NOT_PREPARED" ? "bad" : "idle"}>{row.kitStatus.replaceAll("_", " ")}</StatePill></div></div>
+          <div><span className="text-muted-foreground">Kit status</span><div className="mt-0.5"><StatePill state={row.kitStatus === "PREPARED" ? "ok" : row.kitStatus === "PARTIAL" ? "warn" : row.kitStatus === "NOT_PREPARED" ? "bad" : "idle"}>{row.kitStatus.replace(/_/g, " ")}</StatePill></div></div>
           <Button variant="outline" size="sm" className="ml-auto" onClick={() => onSelectVoucher(row.id)}>
             <Eye className="h-3.5 w-3.5" />
             View details
