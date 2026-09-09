@@ -67,13 +67,16 @@ export default function DashSales() {
   return (
     <DashLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div><h1 className="text-3xl font-bold tracking-tight">Sales Management</h1><p className="text-muted-foreground">Orders, payments & dispatch tracking</p></div>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setPayDialogOpen(true)}>Record Payment</Button>
-            <Button onClick={() => { setSoForm({ customer_id: "", notes: "", scheme_details: "" }); setItems([]); setSoDialogOpen(true); }}><Plus className="h-4 w-4 mr-2" />New Sales Order</Button>
-          </div>
-        </div>
+        <PageHeader
+          title="Sales"
+          actions={
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={() => setPayDialogOpen(true)}>Record Payment</Button>
+              <Button size="sm" onClick={() => { setSoForm({ customer_id: "", notes: "", scheme_details: "" }); setItems([]); setSoDialogOpen(true); }}><Plus className="h-4 w-4 mr-2" />New Sales Order</Button>
+            </div>
+          }
+        />
+
 
         <>
 <TabBar tabs={[{ id: "orders", label: "Sales Orders" }, { id: "payments", label: "Payments" }]} value={dashTab} onChange={setDashTab} syncToUrl={false} />
