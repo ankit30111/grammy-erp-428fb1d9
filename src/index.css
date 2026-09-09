@@ -223,3 +223,12 @@
   @media (prefers-reduced-motion: reduce) { .pill-tab { transition: none; } }
 }
 
+
+/* Global +2px type scale: overrides Tailwind text utilities on source order */
+.text-xs   { font-size: 14px; line-height: 18px; }
+.text-sm   { font-size: 16px; line-height: 22px; }
+.text-base { font-size: 18px; line-height: 26px; }
+.text-lg   { font-size: 20px; line-height: 30px; }
+.text-xl   { font-size: 22px; line-height: 30px; }
+.text-2xl  { font-size: 26px; line-height: 34px; }
+.text-3xl  { font-size: 32px; line-height: 38px; }
