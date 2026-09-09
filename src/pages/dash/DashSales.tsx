@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { DashLayout } from "@/components/Layout/DashLayout";
+import { TabBar } from "@/components/shell/TabBar";
+import { PageHeader } from "@/components/shell/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,11 +14,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { useDashSalesOrders, useDashSalesMutations, useDashPayments, useDashPaymentMutations } from "@/hooks/useDashSales";
 import { useDashCustomers } from "@/hooks/useDashCustomers";
 import { useDashProducts } from "@/hooks/useDashProducts";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Search } from "lucide-react";
 import { format } from "date-fns";
 
 export default function DashSales() {
+  const [dashTab, setDashTab] = useState("orders");
   const { data: orders, isLoading } = useDashSalesOrders();
   const { data: customers } = useDashCustomers();
   const { data: products } = useDashProducts();
@@ -73,10 +75,13 @@ export default function DashSales() {
           </div>
         </div>
 
-        <Tabs defaultValue="orders">
-          <TabsList><TabsTrigger value="orders">Sales Orders</TabsTrigger><TabsTrigger value="payments">Payments</TabsTrigger></TabsList>
+        <>
+<TabBar tabs={[{ id: "orders", label: "Sales Orders" }, { id: "payments", label: "Payments" }]} value={dashTab} onChange={setDashTab} syncToUrl={false} />
 
-          <TabsContent value="orders">
+          
+
+          {dashTab === "orders" && (
+<div>
             <Card><CardContent className="pt-6">
               <div className="relative mb-4"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Search orders..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" /></div>
               <Table>
@@ -105,9 +110,11 @@ export default function DashSales() {
                 </TableBody>
               </Table>
             </CardContent></Card>
-          </TabsContent>
+          </div>
+)}
 
-          <TabsContent value="payments">
+          {dashTab === "payments" && (
+<div>
             <Card><CardContent className="pt-6">
               <Table>
                 <TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Customer</TableHead><TableHead>SO#</TableHead><TableHead>Amount</TableHead><TableHead>Mode</TableHead><TableHead>Reference</TableHead></TableRow></TableHeader>
@@ -126,8 +133,9 @@ export default function DashSales() {
                 </TableBody>
               </Table>
             </CardContent></Card>
-          </TabsContent>
-        </Tabs>
+          </div>
+)}
+        </>
 
         {/* Create SO Dialog */}
         <Dialog open={soDialogOpen} onOpenChange={setSoDialogOpen}>

@@ -1,15 +1,17 @@
 import { useState } from "react";
 import { DashLayout } from "@/components/Layout/DashLayout";
+import { TabBar } from "@/components/shell/TabBar";
+import { PageHeader } from "@/components/shell/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useDashInventory, useDashInventoryMovements } from "@/hooks/useDashInventory";
 import { Search, AlertTriangle, Package } from "lucide-react";
 import { format } from "date-fns";
 
 export default function DashInventory() {
+  const [dashTab, setDashTab] = useState("stock");
   const { data: inventory, isLoading } = useDashInventory();
   const { data: movements } = useDashInventoryMovements();
   const [search, setSearch] = useState("");
@@ -37,10 +39,13 @@ export default function DashInventory() {
           <Card><CardContent className="pt-6"><p className="text-sm text-muted-foreground">Inventory Valuation</p><p className="text-2xl font-bold">₹{totalValue.toLocaleString()}</p></CardContent></Card>
         </div>
 
-        <Tabs defaultValue="stock">
-          <TabsList><TabsTrigger value="stock">Stock View</TabsTrigger><TabsTrigger value="movements">Movements</TabsTrigger><TabsTrigger value="alerts">Low Stock Alerts</TabsTrigger></TabsList>
+        <>
+<TabBar tabs={[{ id: "stock", label: "Stock View" }, { id: "movements", label: "Movements" }, { id: "alerts", label: "Low Stock Alerts" }]} value={dashTab} onChange={setDashTab} syncToUrl={false} />
 
-          <TabsContent value="stock">
+          
+
+          {dashTab === "stock" && (
+<div>
             <Card>
               <CardContent className="pt-6">
                 <div className="relative mb-4">
@@ -78,9 +83,11 @@ export default function DashInventory() {
                 </Table>
               </CardContent>
             </Card>
-          </TabsContent>
+          </div>
+)}
 
-          <TabsContent value="movements">
+          {dashTab === "movements" && (
+<div>
             <Card>
               <CardContent className="pt-6">
                 <Table>
@@ -101,9 +108,11 @@ export default function DashInventory() {
                 </Table>
               </CardContent>
             </Card>
-          </TabsContent>
+          </div>
+)}
 
-          <TabsContent value="alerts">
+          {dashTab === "alerts" && (
+<div>
             <Card>
               <CardContent className="pt-6">
                 {lowStockItems.length === 0 ? <p className="text-center text-muted-foreground py-8">No low stock alerts 🎉</p> : (
@@ -123,8 +132,9 @@ export default function DashInventory() {
                 )}
               </CardContent>
             </Card>
-          </TabsContent>
-        </Tabs>
+          </div>
+)}
+        </>
       </div>
     </DashLayout>
   );
