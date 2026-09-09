@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { DashLayout } from "@/components/Layout/DashLayout";
+import { PageHeader } from "@/components/shell/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -50,15 +51,14 @@ export default function DashFactoryOrders() {
   return (
     <DashLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Factory Orders</h1>
-            <p className="text-muted-foreground">Manage factory purchase orders & GRN</p>
-          </div>
-          <Button onClick={() => { setForm({ product_id: "", quantity_ordered: 0, cost_per_unit: 0, expected_production_date: "", notes: "" }); setDialogOpen(true); }}>
-            <Plus className="h-4 w-4 mr-2" />Create Factory PO
-          </Button>
-        </div>
+        <PageHeader
+          title="Factory Orders"
+          actions={
+            <Button size="sm" onClick={() => { setForm({ product_id: "", quantity_ordered: 0, cost_per_unit: 0, expected_production_date: "", notes: "" }); setDialogOpen(true); }}>
+              <Plus className="h-4 w-4 mr-2" />Create Factory PO
+            </Button>
+          }
+        />
 
         <Card>
           <CardContent className="pt-6">

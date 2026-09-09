@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { DashLayout } from "@/components/Layout/DashLayout";
+import { PageHeader } from "@/components/shell/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,10 +45,10 @@ export default function DashService() {
   return (
     <DashLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div><h1 className="text-3xl font-bold tracking-tight">Service & After-Sales</h1><p className="text-muted-foreground">Warranty, repairs & service tracking</p></div>
-          <Button onClick={() => { setForm({ product_id: "", serial_number: "", customer_name: "", customer_phone: "", warranty_valid: false, issue_description: "", assigned_engineer: "" }); setDialogOpen(true); }}><Plus className="h-4 w-4 mr-2" />New Ticket</Button>
-        </div>
+        <PageHeader
+          title="Service"
+          actions={<Button size="sm" onClick={() => { setForm({ product_id: "", serial_number: "", customer_name: "", customer_phone: "", warranty_valid: false, issue_description: "", assigned_engineer: "" }); setDialogOpen(true); }}><Plus className="h-4 w-4 mr-2" />New Ticket</Button>}
+        />
 
         <Card><CardContent className="pt-6">
           <div className="flex flex-wrap gap-3 mb-4">

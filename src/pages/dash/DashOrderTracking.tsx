@@ -1,4 +1,5 @@
 import { DashLayout } from "@/components/Layout/DashLayout";
+import { PageHeader } from "@/components/shell/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useDashFactoryOrders } from "@/hooks/useDashFactoryOrders";
 import { useDashSalesOrders } from "@/hooks/useDashSales";
@@ -24,10 +25,7 @@ export default function DashOrderTracking() {
   return (
     <DashLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Order Lifecycle Tracking</h1>
-          <p className="text-muted-foreground">Factory → Warehouse → Sales → Dealer → Service</p>
-        </div>
+        <PageHeader title="Order Tracking" />
 
         <Card>
           <CardHeader><CardTitle>Pipeline Overview</CardTitle></CardHeader>
