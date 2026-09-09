@@ -1,18 +1,37 @@
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Package, AlertTriangle, CheckCircle, FileDown } from "lucide-react";
+import { ChevronDown, ChevronRight, FileDown, Package, RefreshCw } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { generateProductionVoucherPDF, generateProductionVoucherFilename, type ProductionVoucherData } from "@/utils/pdfTemplates";
+import { PageHeader } from "@/components/shell/PageHeader";
+import { DataTable, type DataTableColumn } from "@/components/shell/DataTable";
+import { StatePill } from "@/components/shell/StatePill";
 
 interface ProductionVoucherDetailsProps {
   voucherId: string;
   onBack: () => void;
+}
+
+interface VoucherTableRow extends Record<string, unknown> {
+  id: string;
+  __group?: boolean;
+  label?: string;
+  count?: number;
+  materialCode?: string;
+  description?: string;
+  category?: string;
+  required?: number;
+  stock?: number;
+  sent?: number;
+  received?: number;
+  toSend?: number;
+  balance?: number;
+  pending?: number;
+  isFullyReceived?: boolean;
+  hasInsufficientStock?: boolean;
 }
 
 const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetailsProps) => {
@@ -57,7 +76,7 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
   });
 
   // Fetch real-time inventory data with auto-refresh
-  const { data: inventoryData = [], refetch: refetchInventory } = useQuery({
+  const { data: inventoryData = [], refetch: refetchInventory, dataUpdatedAt: inventoryUpdatedAt } = useQuery({
     queryKey: ["inventory-real-time", voucherId, productionOrder?.plant_id],
     enabled: !!productionOrder?.plant_id,
     queryFn: async () => {
