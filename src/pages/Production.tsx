@@ -1,6 +1,6 @@
 
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
-import { PageHeader } from "@/components/Layout/PageHeader";
+import { PageHeader } from "@/components/shell/PageHeader";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ProductionLinesOverview from "@/components/Production/ProductionLinesOverview";
 import ScheduledProductions from "@/components/Production/ScheduledProductions";
@@ -19,7 +19,7 @@ export default function Production() {
     <DashboardLayout>
       <PageHeader
         title="Production Management"
-        description="Grammy Electronics — production lines, schedules, materials and rejections"
+        subtitle="Grammy Electronics — production lines, schedules, materials and rejections"
       />
       <div className="page-card p-5">
         <Tabs defaultValue="production-lines" className="space-y-4">

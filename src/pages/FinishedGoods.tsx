@@ -1,7 +1,7 @@
 
 import { useState } from "react";
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
-import { PageHeader } from "@/components/Layout/PageHeader";
+import { PageHeader } from "@/components/shell/PageHeader";
 import { KPICard } from "@/components/Dashboard/KPICard";
 import { ChartWidget } from "@/components/Dashboard/ChartWidget";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -119,7 +119,7 @@ const FinishedGoods = () => {
     <DashboardLayout>
       <PageHeader
         title="Finished Goods"
-        description="Stock levels, daily flow and aging across the FG store"
+        subtitle="Stock levels, daily flow and aging across the FG store"
       />
       <div className="space-y-6">
         {/* KPI Cards */}

@@ -1,5 +1,5 @@
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
-import { PageHeader } from "@/components/Layout/PageHeader";
+import { PageHeader } from "@/components/shell/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -85,7 +85,7 @@ const PPC = () => {
   return <DashboardLayout>
       <PageHeader
         title="PPC Dashboard"
-        description="Production Planning & Control overview"
+        subtitle="Production Planning & Control overview"
         actions={
           <>
             <Button onClick={calculateShortages} disabled={isCalculating} variant="outline" size="sm" className="gap-2">

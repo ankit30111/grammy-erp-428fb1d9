@@ -26,7 +26,7 @@ interface MovementTableProps {
 
 export const MovementTable = ({ movements }: MovementTableProps) => {
   return (
-    <div className="overflow-x-auto">
+    <div className="w-full overflow-x-hidden">
       <Table>
         <TableHeader>
           <TableRow>

@@ -367,7 +367,7 @@ const MaterialRequestsTab = memo(() => {
                   </p>
                 </div>
               ) : (
-                <div className="overflow-x-auto">
+                <div className="w-full overflow-x-hidden">
                   <Table>
                     <TableHeader>
                       <TableRow>

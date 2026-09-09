@@ -1,5 +1,5 @@
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
-import { PageHeader } from "@/components/Layout/PageHeader";
+import { PageHeader } from "@/components/shell/PageHeader";
 import { Clock, Wifi, WifiOff } from "lucide-react";
 import { DashboardScopeSwitcher } from "@/components/Dashboard/DashboardScopeSwitcher";
 import { ProductionOverviewWidget } from "@/components/Dashboard/ProductionOverviewWidget";
@@ -34,7 +34,7 @@ const Index = () => {
   return <DashboardLayout>
       <PageHeader
         title="Factory Dashboard"
-        description="Real-time view across production, inventory, quality, and fulfillment"
+        subtitle="Real-time view across production, inventory, quality, and fulfillment"
         actions={
           <div className="flex items-center gap-2">
             <DashboardScopeSwitcher />
