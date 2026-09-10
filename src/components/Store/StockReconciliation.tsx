@@ -52,28 +52,11 @@ const StockReconciliation = () => {
   ];
 
   const plantId = usePlantId();
-  // Fetch current inventory for the active plant
+  // Fetch current main-store stock balance for the active plant
   const { data: inventory = [], refetch } = useQuery({
     queryKey: ["inventory-reconciliation", plantId],
     enabled: !!plantId,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("inventory")
-        .select(`
-          *,
-          raw_materials!raw_material_id (
-            id,
-            material_code,
-            name,
-            category
-          )
-        `)
-        .eq("plant_id", plantId!)
-        .order("raw_materials(material_code)");
-      
-      if (error) throw error;
-      return data || [];
-    },
+    queryFn: async () => fetchStockBalanceRows(plantId!, "MAIN"),
   });
 
   // Filter inventory based on search term and category
