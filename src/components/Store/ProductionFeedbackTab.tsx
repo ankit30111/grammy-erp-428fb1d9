@@ -10,6 +10,8 @@ import { AlertTriangle, CheckCircle, X, Package, ArrowUpDown } from "lucide-reac
 import { format } from "date-fns";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { usePlantId } from "@/hooks/usePlantId";
+import { getStockLocationId, hasLedgerEntry, postStockMovement } from "@/utils/stockLedger";
 
 const ProductionFeedbackTab = () => {
   const { toast } = useToast();

@@ -94,23 +94,24 @@ const MaterialDispatchHistoryDialog = ({
       // Handle inventory adjustment if needed
       if (difference !== 0) {
         if (difference > 0) {
-          // Return excess to inventory
-          const { data: currentInventory, error: invError } = await supabase
-            .from("inventory")
-            .select("quantity, plant_id")
-            .eq("raw_material_id", rawMaterialId)
-            .single();
+          // Return excess to stock through the ledger
+          if (!plantId) throw new Error("No active plant selected");
 
-          if (invError) throw invError;
-
-          await supabase
-            .from("inventory")
-            .update({
-              quantity: currentInventory.quantity + difference,
-              last_updated: new Date().toISOString()
-            })
-            .eq("raw_material_id", rawMaterialId)
-            .eq("plant_id", currentInventory.plant_id);
+          if (!(await hasLedgerEntry("KIT_ITEM_VERIFY_RETURN", kitItemId))) {
+            const mainId = await getStockLocationId(plantId, "MAIN");
+            await postStockMovement({
+              plant_id: plantId,
+              raw_material_id: rawMaterialId,
+              location_id: mainId,
+              qty_delta: difference,
+              movement_type: "RETURN",
+              reason_code: "PRODUCTION_VERIFICATION",
+              reference_type: "KIT_ITEM_VERIFY_RETURN",
+              reference_id: kitItemId,
+              reference_number: productionOrderId,
+              notes: `Production verification return: ${materialCode} - sent ${sentQuantity}, received ${receivedQuantity}. Notes: ${notes}`,
+            });
+          }
 
           // Log return movement
           await supabase
