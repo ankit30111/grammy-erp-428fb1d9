@@ -10,7 +10,7 @@ import { usePlantId } from "@/hooks/usePlantId";
 import { format } from "date-fns";
 import { CheckCircle, XCircle, ArrowLeftRight, Package, RefreshCw, Send, Clock, ThumbsUp, ThumbsDown } from "lucide-react";
 import { toast } from "sonner";
-import { useInventoryMutations } from "@/hooks/inventory";
+import { fetchStockBalanceRows, getStockLocationId, postStockMovement } from "@/utils/stockLedger";
 import { isPermissionError, formatPermissionMessage, describeError } from "@/lib/permissions";
 import { AccessDenied } from "@/components/Auth/AccessDenied";
 
@@ -22,7 +22,7 @@ const SYSTEM_USER_ID = '00000000-0000-0000-0000-000000000001';
 
 const MaterialRequestsTab = memo(() => {
   const queryClient = useQueryClient();
-  const { updateInventoryQuantity } = useInventoryMutations();
+  
   const [sendingQuantities, setSendingQuantities] = useState<SendingQuantities>({});
   const [activeTab, setActiveTab] = useState("all");
   const plantId = usePlantId();
@@ -66,27 +66,11 @@ const MaterialRequestsTab = memo(() => {
     retry: (failureCount, error) => !isPermissionError(error) && failureCount < 2,
   });
 
-  // Fetch inventory data for available quantities
+  // Available quantities come from the main-store stock balance
   const { data: inventoryData = [] } = useQuery({
     queryKey: ["inventory-for-requests", plantId],
     enabled: !!plantId,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("inventory")
-        .select(`
-          raw_material_id,
-          quantity,
-          plant_id,
-          raw_materials!inner(
-            material_code,
-            name
-          )
-        `)
-        .eq("plant_id", plantId!);
-      
-      if (error) throw error;
-      return data || [];
-    },
+    queryFn: async () => fetchStockBalanceRows(plantId!, "MAIN"),
     refetchInterval: 5000,
   });
 
@@ -143,22 +127,27 @@ const MaterialRequestsTab = memo(() => {
         throw new Error("Request not found");
       }
 
-      // Check inventory availability
+      if (!plantId) throw new Error("No active plant selected");
+
+      // Check stock availability at the main store
       const inventoryItem = inventoryData.find(inv => inv.raw_material_id === requestData.raw_material_id);
       if (!inventoryItem || inventoryItem.quantity < sendQuantity) {
-        throw new Error(`Insufficient inventory. Available: ${inventoryItem?.quantity || 0}, Requested: ${sendQuantity}`);
+        throw new Error(`Insufficient stock. Available: ${inventoryItem?.quantity || 0}, Requested: ${sendQuantity}`);
       }
 
-      // Calculate new quantity after deduction
-      const newQuantity = inventoryItem.quantity - sendQuantity;
-
-      // Update inventory using the mutations hook
-      await updateInventoryQuantity.mutateAsync({
-        materialId: requestData.raw_material_id,
-        newQuantity,
-        operation: 'dispatch',
-        referenceNumber: requestData.production_orders.voucher_number,
-        notes: `Material sent to production for request: ${requestData.reason}`
+      // Issue out of MAIN through the stock ledger
+      const mainId = await getStockLocationId(plantId, "MAIN");
+      await postStockMovement({
+        plant_id: plantId,
+        raw_material_id: requestData.raw_material_id,
+        location_id: mainId,
+        qty_delta: -sendQuantity,
+        movement_type: 'ISSUE',
+        reason_code: 'MATERIAL_REQUEST',
+        reference_type: 'MATERIAL_REQUEST',
+        reference_id: requestId,
+        reference_number: requestData.production_orders.voucher_number,
+        notes: `Material sent to production for request: ${requestData.reason}`,
       });
 
       // Log the material movement with correct parameters for logbook visibility

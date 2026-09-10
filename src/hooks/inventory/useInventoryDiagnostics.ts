@@ -2,6 +2,7 @@
 import { useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { usePlantId } from "@/hooks/usePlantId";
+import { fetchStockQuantity } from "@/utils/stockLedger";
 
 export const useCheckMaterialInventory = () => {
   const plantId = usePlantId();
@@ -37,15 +38,10 @@ export const useCheckMaterialInventory = () => {
 
       if (grnError) throw grnError;
 
-      // Get current inventory for this plant
-      const { data: inventory, error: invError } = await supabase
-        .from("inventory")
-        .select("quantity")
-        .eq("raw_material_id", material.id)
-        .eq("plant_id", plantId)
-        .maybeSingle();
-
-      if (invError) throw invError;
+      // Get current main-store stock balance for this plant
+      const inventory = {
+        quantity: await fetchStockQuantity(plantId, material.id, "MAIN"),
+      };
 
       // Get production dispatches (materials issued to production)
       const { data: productionDispatches, error: dispatchError } = await supabase

@@ -31,7 +31,10 @@ export const useStoreDashboardData = () => {
   return useQuery({
     queryKey: ['store-dashboard', scopePlantId ?? 'all'],
     queryFn: async () => {
-      let invQ = supabase.from('inventory').select('quantity').eq('location', 'Main Store');
+      let invQ = supabase
+        .from('stock_balance')
+        .select('quantity, stock_locations!inner(code)')
+        .eq('stock_locations.code', 'MAIN');
       let grnQ = supabase.from('grn').select('*').eq('status', 'RECEIVED');
       let movQ = supabase.from('material_movements').select('*').eq('movement_type', 'OUT').gte('created_at', new Date().toISOString().split('T')[0]);
       if (scopePlantId) {

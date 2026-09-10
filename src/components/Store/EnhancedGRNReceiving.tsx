@@ -14,6 +14,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Textarea } from "@/components/ui/textarea";
 import { isPermissionError, formatPermissionMessage, describeError } from "@/lib/permissions";
 import { AccessDenied } from "@/components/Auth/AccessDenied";
+import {
+  getStockLocationId,
+  hasLedgerEntry,
+  postStockMovements,
+  type StockMovement,
+} from "@/utils/stockLedger";
 
 interface EnhancedGRNReceivingProps {
   onReceiveGRN?: (id: string, quantity: number) => void;
@@ -181,6 +187,35 @@ const EnhancedGRNReceiving = ({
       });
       
       await Promise.all(updatePromises);
+
+      // Physical verification variance against what IQC already released to MAIN
+      const grnPlantId = selectedGRN.plant_id;
+      if (grnPlantId) {
+        const mainId = await getStockLocationId(grnPlantId, "MAIN");
+        const movements: StockMovement[] = [];
+        for (const [itemId, quantity] of Object.entries(verifiedQuantities)) {
+          const grnItem = selectedGRN.grn_items.find((item: any) => item.id === itemId);
+          if (!grnItem) continue;
+          const delta = Number(quantity) - Number(grnItem.accepted_quantity || 0);
+          if (delta === 0) continue;
+          if (await hasLedgerEntry("GRN_ITEM_STORE_VARIANCE", itemId)) continue;
+          movements.push({
+            plant_id: grnPlantId,
+            raw_material_id: grnItem.raw_material_id,
+            location_id: mainId,
+            qty_delta: delta,
+            movement_type: "ADJUSTMENT",
+            reason_code: "STORE_PHYSICAL_VARIANCE",
+            reference_type: "GRN_ITEM_STORE_VARIANCE",
+            reference_id: itemId,
+            reference_number: selectedGRN.grn_number,
+            notes: `Store physical verification variance of ${delta} against IQC accepted quantity`,
+          });
+        }
+        await postStockMovements(movements);
+      }
+
+      
       
       // Check if all items in the GRN are now confirmed
       const allItemsConfirmed = selectedGRN.grn_items.every((item: any) => 

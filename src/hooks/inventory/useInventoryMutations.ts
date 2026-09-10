@@ -1,8 +1,12 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { usePlantId } from "@/hooks/usePlantId";
+import {
+  fetchStockQuantity,
+  getStockLocationId,
+  postStockMovement,
+} from "@/utils/stockLedger";
 
 export const useInventoryMutations = () => {
   const queryClient = useQueryClient();
@@ -24,39 +28,41 @@ export const useInventoryMutations = () => {
       notes?: string;
     }) => {
       if (!plantId) throw new Error("No active plant selected");
-      console.log(`🔧 INVENTORY UPDATE: ${operation.toUpperCase()}`, { 
+      console.log(`🔧 STOCK MOVEMENT: ${operation.toUpperCase()}`, { 
         materialId, 
         newQuantity, 
         referenceNumber,
         plantId,
       });
 
-      // Update inventory quantity directly — scoped to the active plant.
-      const { error: updateError } = await supabase
-        .from("inventory")
-        .update({ 
-          quantity: newQuantity,
-          last_updated: new Date().toISOString()
-        })
-        .eq("raw_material_id", materialId)
-        .eq("plant_id", plantId);
+      // Post the difference against the MAIN location through the ledger.
+      const current = await fetchStockQuantity(plantId, materialId, "MAIN");
+      const delta = newQuantity - current;
+      if (delta === 0) return;
 
-      if (updateError) {
-        console.error("❌ Error updating inventory:", updateError);
-        throw updateError;
-      }
+      const locationId = await getStockLocationId(plantId, "MAIN");
+      await postStockMovement({
+        plant_id: plantId,
+        raw_material_id: materialId,
+        location_id: locationId,
+        qty_delta: delta,
+        movement_type:
+          operation === "dispatch" ? "ISSUE" : operation === "return" ? "RETURN" : "ADJUSTMENT",
+        reason_code: operation.toUpperCase(),
+        reference_type: "MANUAL_ADJUSTMENT",
+        reference_number: referenceNumber ?? null,
+        notes: notes ?? null,
+      });
 
-      console.log(`✅ INVENTORY UPDATED - Quantity set to ${newQuantity}`);
-      // Material movement logging will be handled by specific components with proper voucher numbers
+      console.log(`✅ STOCK POSTED - new balance ${newQuantity}`);
     },
     onSuccess: () => {
-      // Invalidate all inventory-related queries
       queryClient.invalidateQueries({ queryKey: ["inventory"] });
       queryClient.invalidateQueries({ queryKey: ["inventory-real-time"] });
       queryClient.invalidateQueries({ queryKey: ["material-movements-logbook"] });
     },
     onError: (error: Error) => {
-      console.error("❌ Failed to update inventory:", error);
+      console.error("❌ Failed to post stock movement:", error);
       toast({
         title: "Update Failed",
         description: error.message,
