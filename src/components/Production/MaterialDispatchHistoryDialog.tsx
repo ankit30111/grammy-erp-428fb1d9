@@ -36,6 +36,7 @@ const MaterialDispatchHistoryDialog = ({
   const [verificationData, setVerificationData] = useState<Record<string, { receivedQty: number; notes: string }>>({});
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const plantId = usePlantId();
 
   // Fetch individual dispatch history for this material
   const { data: dispatchHistory = [], refetch } = useQuery({

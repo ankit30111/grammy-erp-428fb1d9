@@ -25,6 +25,7 @@ const ProductionFeedbackDialog = ({ productionOrderId, voucherNumber, isOpen, on
   const [feedback, setFeedback] = useState<Record<string, { actualUsed: number; reason: string }>>({});
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const plantId = usePlantId();
 
   // Fetch production order with BOM and sent materials
   const { data: productionData, isLoading } = useQuery({
