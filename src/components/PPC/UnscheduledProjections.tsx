@@ -69,6 +69,7 @@ const UnscheduledProjections = ({
                   <TableCell>{proj.customers?.name}</TableCell>
                   <TableCell>{proj.products?.name}</TableCell>
                   <TableCell>{proj.quantity}</TableCell>
+                  <TableCell className="font-medium">{getRemaining(proj)}</TableCell>
                   <TableCell>{proj.delivery_month}</TableCell>
                   <TableCell>
                     <Button 
@@ -83,7 +84,7 @@ const UnscheduledProjections = ({
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-4 text-muted-foreground">
+                <TableCell colSpan={7} className="text-center py-4 text-muted-foreground">
                   All projections have been scheduled
                 </TableCell>
               </TableRow>
