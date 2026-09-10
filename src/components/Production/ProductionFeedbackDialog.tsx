@@ -11,6 +11,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { MessageSquare, Package, AlertTriangle, CheckCircle, ArrowLeftRight } from "lucide-react";
+import { usePlantId } from "@/hooks/usePlantId";
+import { getStockLocationId, postStockMovement } from "@/utils/stockLedger";
 
 interface ProductionFeedbackDialogProps {
   productionOrderId: string;

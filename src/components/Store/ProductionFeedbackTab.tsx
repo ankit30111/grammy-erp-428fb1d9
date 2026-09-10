@@ -16,6 +16,7 @@ import { getStockLocationId, hasLedgerEntry, postStockMovement } from "@/utils/s
 const ProductionFeedbackTab = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const plantId = usePlantId();
   const [selectedDiscrepancy, setSelectedDiscrepancy] = useState<any>(null);
   const [resolutionNotes, setResolutionNotes] = useState("");
   const [showResolutionDialog, setShowResolutionDialog] = useState(false);

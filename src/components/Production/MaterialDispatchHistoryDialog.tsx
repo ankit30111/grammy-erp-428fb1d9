@@ -11,6 +11,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 import { format } from "date-fns";
 import { CheckCircle, Package, AlertTriangle } from "lucide-react";
+import { usePlantId } from "@/hooks/usePlantId";
+import { getStockLocationId, hasLedgerEntry, postStockMovement } from "@/utils/stockLedger";
 
 interface MaterialDispatchHistoryDialogProps {
   isOpen: boolean;
