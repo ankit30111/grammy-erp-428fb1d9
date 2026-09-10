@@ -46,7 +46,7 @@ export const useStoreDashboardData = () => {
         invQ, grnQ, movQ
       ]);
 
-      const totalStock = inventoryData.data?.reduce((sum, item) => sum + item.quantity, 0) || 0;
+      const totalStock = inventoryData.data?.reduce((sum: number, item: any) => sum + Number(item.quantity || 0), 0) || 0;
       
       return {
         totalRawMaterials: totalStock,
