@@ -15,12 +15,17 @@ const UnscheduledProjections = ({
   const { data: projections, isLoading: projectionsLoading } = useProjections();
   const { data: schedules, isLoading: schedulesLoading } = useProductionSchedules();
 
-  // Get unscheduled projections by checking which ones don't have production schedules
+  const getRemaining = (proj: any) =>
+    Math.max(0, Number(proj.quantity || 0) - Number(proj.vouchered_qty || 0));
+
+  // Projections with quantity still left to voucher (includes part-scheduled ones)
   const getUnscheduledProjections = () => {
     if (!projections || !schedules) return [];
-    
+
     const scheduledProjectionIds = schedules.map(schedule => schedule.projection_id);
-    return projections.filter(proj => !scheduledProjectionIds.includes(proj.id));
+    return projections.filter(
+      proj => !scheduledProjectionIds.includes(proj.id) || getRemaining(proj) > 0
+    );
   };
 
   const unscheduledProjections = getUnscheduledProjections();
@@ -51,6 +56,7 @@ const UnscheduledProjections = ({
               <TableHead>Customer</TableHead>
               <TableHead>Product</TableHead>
               <TableHead>Quantity</TableHead>
+              <TableHead>Remaining</TableHead>
               <TableHead>Delivery Month</TableHead>
               <TableHead>Action</TableHead>
             </TableRow>
@@ -63,6 +69,7 @@ const UnscheduledProjections = ({
                   <TableCell>{proj.customers?.name}</TableCell>
                   <TableCell>{proj.products?.name}</TableCell>
                   <TableCell>{proj.quantity}</TableCell>
+                  <TableCell className="font-medium">{getRemaining(proj)}</TableCell>
                   <TableCell>{proj.delivery_month}</TableCell>
                   <TableCell>
                     <Button 
@@ -77,7 +84,7 @@ const UnscheduledProjections = ({
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-4 text-muted-foreground">
+                <TableCell colSpan={7} className="text-center py-4 text-muted-foreground">
                   All projections have been scheduled
                 </TableCell>
               </TableRow>

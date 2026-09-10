@@ -120,7 +120,7 @@ export const useCreateProductionSchedule = () => {
       // IMMEDIATE FIX: Fetch projection data BEFORE any mutations to avoid RLS conflicts
       const { data: projection, error: projectionError } = await supabase
         .from('projections')
-        .select('product_id, quantity, scheduled_quantity')
+        .select('product_id, quantity, scheduled_quantity, vouchered_qty')
         .eq('id', scheduleData.projection_id)
         .maybeSingle();
 
@@ -188,7 +188,14 @@ export const useCreateProductionSchedule = () => {
       }
 
       console.log('✅ Production order created:', productionOrder);
-      
+
+      // Track how much of the projection has been turned into vouchers
+      const { error: vouchErr } = await supabase
+        .from('projections')
+        .update({ vouchered_qty: Number(projection.vouchered_qty || 0) + Number(scheduleData.quantity) })
+        .eq('id', scheduleData.projection_id);
+      if (vouchErr) console.error('⚠️ Failed to update vouchered_qty:', vouchErr);
+
       return { schedule, productionOrder, voucherNumber };
     },
     onSuccess: (data) => {
@@ -221,10 +228,36 @@ export const useDeleteProductionSchedule = () => {
 
   return useMutation({
     mutationFn: async (scheduleId: string) => {
+      // Capture what this schedule had vouchered, before it is removed
+      const { data: schedule } = await supabase
+        .from('production_schedules')
+        .select('quantity, projection_id, production_orders!production_schedule_id (id)')
+        .eq('id', scheduleId)
+        .maybeSingle();
+
       const { error } = await supabase.rpc('delete_production_schedule_cascade', {
         p_schedule_id: scheduleId,
       });
       if (error) throw error;
+
+      const hadVoucher = Array.isArray((schedule as any)?.production_orders)
+        ? (schedule as any).production_orders.length > 0
+        : false;
+
+      if (schedule?.projection_id && hadVoucher) {
+        const { data: projection } = await supabase
+          .from('projections')
+          .select('vouchered_qty')
+          .eq('id', schedule.projection_id)
+          .maybeSingle();
+
+        const next = Math.max(0, Number(projection?.vouchered_qty || 0) - Number(schedule.quantity || 0));
+        const { error: vouchErr } = await supabase
+          .from('projections')
+          .update({ vouchered_qty: next })
+          .eq('id', schedule.projection_id);
+        if (vouchErr) console.error('⚠️ Failed to reduce vouchered_qty:', vouchErr);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['production_schedules'] });

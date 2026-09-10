@@ -9,6 +9,7 @@ import { generateProductionVoucherPDF, generateProductionVoucherFilename, type P
 import { PageHeader } from "@/components/shell/PageHeader";
 import { DataTable, type DataTableColumn } from "@/components/shell/DataTable";
 import { StatePill } from "@/components/shell/StatePill";
+import { fetchStockBalanceRows, getStockLocationId, postStockMovement } from "@/utils/stockLedger";
 
 interface ProductionVoucherDetailsProps {
   voucherId: string;
@@ -75,36 +76,18 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
     },
   });
 
-  // Fetch real-time inventory data with auto-refresh
+  // Fetch real-time stock balance with auto-refresh
   const { data: inventoryData = [], refetch: refetchInventory, dataUpdatedAt: inventoryUpdatedAt } = useQuery({
     queryKey: ["inventory-real-time", voucherId, productionOrder?.plant_id],
     enabled: !!productionOrder?.plant_id,
     queryFn: async () => {
-      const plantId = productionOrder?.plant_id;
+      const plantId = productionOrder?.plant_id as string | undefined;
       if (!plantId) return [];
-      console.log("🔍 Fetching real-time inventory data for plant:", plantId);
+      console.log("🔍 Fetching real-time stock balance for plant:", plantId);
 
-      const { data, error } = await supabase
-        .from("inventory")
-        .select(`
-          *,
-          raw_materials!raw_material_id (
-            id,
-            material_code,
-            name,
-            category
-          )
-        `)
-        .eq("plant_id", plantId)
-        .order("last_updated", { ascending: false });
-
-      if (error) {
-        console.error("❌ Error fetching inventory:", error);
-        throw error;
-      }
-
-      console.log("📦 Real-time inventory data:", data);
-      return data || [];
+      const rows = await fetchStockBalanceRows(plantId, "MAIN");
+      console.log("📦 Real-time stock balance rows:", rows.length);
+      return rows;
     },
     refetchInterval: 2000, // Auto-refresh every 2 seconds
   });
@@ -246,26 +229,29 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
           console.log(`   - Deducting: ${plan.quantityToSend}`);
           console.log(`   - Expected After: ${plan.newStock}`);
           
-          const { data: inventoryUpdate, error: invError } = await supabase
-            .from("inventory")
-            .update({
-              quantity: plan.newStock,
-              last_updated: new Date().toISOString()
-            })
-            .eq("raw_material_id", plan.materialId)
-            .eq("plant_id", plan.plantId)
-            .select("quantity")
-            .single();
-
-          if (invError) {
-            console.error("❌ CRITICAL FAILURE - Inventory update failed:", invError);
-            throw new Error(`CRITICAL: Failed to update inventory for ${plan.materialCode}: ${invError.message}`);
+          const mainLocationId = await getStockLocationId(plan.plantId, "MAIN");
+          try {
+            await postStockMovement({
+              plant_id: plan.plantId,
+              raw_material_id: plan.materialId,
+              location_id: mainLocationId,
+              qty_delta: -plan.quantityToSend,
+              movement_type: "ISSUE_TO_PRODUCTION",
+              reason_code: "STORE_DISPATCH",
+              reference_type: "PRODUCTION_ORDER",
+              reference_id: voucherId,
+              reference_number: productionOrder.voucher_number,
+              notes: `Store Dispatch: ${plan.materialCode} dispatched to Production Voucher ${productionOrder.voucher_number}`,
+            });
+          } catch (invError: any) {
+            console.error("❌ CRITICAL FAILURE - Stock movement failed:", invError);
+            throw new Error(`CRITICAL: Failed to update stock for ${plan.materialCode}: ${invError.message}`);
           }
 
-          console.log("✅ INVENTORY UPDATE SUCCESSFUL:", {
+          console.log("✅ STOCK MOVEMENT POSTED:", {
             material: plan.materialCode,
             previous: plan.currentStock,
-            new: inventoryUpdate.quantity,
+            new: plan.newStock,
             deducted: plan.quantityToSend
           });
 
