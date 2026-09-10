@@ -87,6 +87,7 @@ export const ProjectionsOverview = () => {
                 <TableHead>Progress</TableHead>
                 <TableHead>Total Quantity</TableHead>
                 <TableHead>Scheduled</TableHead>
+                <TableHead>Vouchered</TableHead>
                 <TableHead>Remaining</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Actions</TableHead>

@@ -106,6 +106,19 @@ export const ScheduleProductionDialog = ({
 
       if (orderError) throw orderError;
 
+      // Track how much of the projection has been turned into vouchers
+      const { data: projectionRow } = await supabase
+        .from("projections")
+        .select("vouchered_qty")
+        .eq("id", projection.id)
+        .maybeSingle();
+
+      const { error: vouchErr } = await supabase
+        .from("projections")
+        .update({ vouchered_qty: Number(projectionRow?.vouchered_qty || 0) + quantityNum })
+        .eq("id", projection.id);
+      if (vouchErr) console.error("⚠️ Failed to update vouchered_qty:", vouchErr);
+
       toast({
         title: "Production Scheduled",
         description: `${quantityNum} units scheduled for ${format(scheduledDate, "PPP")} with voucher ${voucherNumber}`
