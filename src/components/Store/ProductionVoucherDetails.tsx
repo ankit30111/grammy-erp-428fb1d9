@@ -9,6 +9,7 @@ import { generateProductionVoucherPDF, generateProductionVoucherFilename, type P
 import { PageHeader } from "@/components/shell/PageHeader";
 import { DataTable, type DataTableColumn } from "@/components/shell/DataTable";
 import { StatePill } from "@/components/shell/StatePill";
+import { fetchStockBalanceRows, getStockLocationId, postStockMovement } from "@/utils/stockLedger";
 
 interface ProductionVoucherDetailsProps {
   voucherId: string;
@@ -75,36 +76,18 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
     },
   });
 
-  // Fetch real-time inventory data with auto-refresh
+  // Fetch real-time stock balance with auto-refresh
   const { data: inventoryData = [], refetch: refetchInventory, dataUpdatedAt: inventoryUpdatedAt } = useQuery({
     queryKey: ["inventory-real-time", voucherId, productionOrder?.plant_id],
     enabled: !!productionOrder?.plant_id,
     queryFn: async () => {
-      const plantId = productionOrder?.plant_id;
+      const plantId = productionOrder?.plant_id as string | undefined;
       if (!plantId) return [];
-      console.log("🔍 Fetching real-time inventory data for plant:", plantId);
+      console.log("🔍 Fetching real-time stock balance for plant:", plantId);
 
-      const { data, error } = await supabase
-        .from("inventory")
-        .select(`
-          *,
-          raw_materials!raw_material_id (
-            id,
-            material_code,
-            name,
-            category
-          )
-        `)
-        .eq("plant_id", plantId)
-        .order("last_updated", { ascending: false });
-
-      if (error) {
-        console.error("❌ Error fetching inventory:", error);
-        throw error;
-      }
-
-      console.log("📦 Real-time inventory data:", data);
-      return data || [];
+      const rows = await fetchStockBalanceRows(plantId, "MAIN");
+      console.log("📦 Real-time stock balance rows:", rows.length);
+      return rows;
     },
     refetchInterval: 2000, // Auto-refresh every 2 seconds
   });
