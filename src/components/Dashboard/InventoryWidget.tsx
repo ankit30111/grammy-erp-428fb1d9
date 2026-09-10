@@ -9,18 +9,21 @@ export const InventoryWidget = () => {
   const { scopePlantId } = useDashboardScope();
   const scopeKey = scopePlantId ?? "all";
 
-  // Live inventory value with real-time updates
+  // Live stock value (main store) with real-time updates
   const { data: inventoryValue } = useRealTimeQuery({
     queryKey: ['inventory-value', scopeKey],
     queryFn: async () => {
-      let q = supabase.from('inventory').select('quantity');
+      let q = supabase
+        .from('stock_balance')
+        .select('quantity, stock_locations!inner(code)')
+        .eq('stock_locations.code', 'MAIN');
       if (scopePlantId) q = q.eq('plant_id', scopePlantId);
       const { data, error } = await q;
       if (error) throw error;
-      const totalUnits = data?.reduce((sum, item) => sum + item.quantity, 0) || 0;
+      const totalUnits = data?.reduce((sum, item: any) => sum + Number(item.quantity || 0), 0) || 0;
       return totalUnits;
     },
-    tableName: 'inventory',
+    tableName: 'stock_balance',
   });
 
   // Material shortages with real-time updates

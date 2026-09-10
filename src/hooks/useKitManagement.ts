@@ -3,11 +3,19 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { usePlantId } from "@/hooks/usePlantId";
+import {
+  getStockLocationId,
+  hasLedgerEntry,
+  postStockMovements,
+  type StockMovement,
+} from "@/utils/stockLedger";
 
 export const useKitManagement = () => {
   const [kitStatuses, setKitStatuses] = useState<Record<string, string>>({});
   const [sentComponents, setSentComponents] = useState<Record<string, string[]>>({});
   const queryClient = useQueryClient();
+  const plantId = usePlantId();
 
   // Get all production vouchers in KIT state
   const { data: voucherStatuses } = useQuery({
@@ -110,31 +118,29 @@ export const useKitManagement = () => {
       
       if (movementError) throw movementError;
       
-      // Deduct from inventory
+      // Issue out of the main store through the stock ledger
+      if (!plantId) throw new Error("No active plant selected");
+      const mainId = await getStockLocationId(plantId, "MAIN");
+
+      const movements: StockMovement[] = [];
       for (const item of kitItems) {
-        // First get current quantity
-        const { data: invData, error: invError } = await supabase
-          .from("inventory")
-          .select("quantity")
-          .eq("raw_material_id", item.rawMaterialId)
-          .single();
-        
-        if (invError && invError.code !== 'PGRST116') throw invError;
-        
-        const currentQty = invData?.quantity || 0;
-        const newQty = Math.max(0, currentQty - item.issuedQuantity);
-        
-        // Update inventory with deducted quantity
-        const { error: updateError } = await supabase
-          .from("inventory")
-          .update({ 
-            quantity: newQty, 
-            last_updated: new Date().toISOString() 
-          })
-          .eq("raw_material_id", item.rawMaterialId);
-        
-        if (updateError) throw updateError;
+        // Idempotency: deterministic reference on the kit item
+        if (await hasLedgerEntry("KIT_ITEM_ISSUE", item.kitItemId)) continue;
+        movements.push({
+          plant_id: plantId,
+          raw_material_id: item.rawMaterialId,
+          location_id: mainId,
+          qty_delta: -item.issuedQuantity,
+          movement_type: "ISSUE",
+          reason_code: "KIT_ISSUE",
+          reference_type: "KIT_ITEM_ISSUE",
+          reference_id: item.kitItemId,
+          reference_number: kitItems[0].materialCode,
+          notes: `Issued to production for voucher ${kitItems[0].materialCode}`,
+        });
       }
+
+      await postStockMovements(movements);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["voucher-kit-statuses"] });

@@ -11,6 +11,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { MessageSquare, Package, AlertTriangle, CheckCircle, ArrowLeftRight } from "lucide-react";
+import { usePlantId } from "@/hooks/usePlantId";
+import { getStockLocationId, postStockMovement } from "@/utils/stockLedger";
 
 interface ProductionFeedbackDialogProps {
   productionOrderId: string;
@@ -23,6 +25,7 @@ const ProductionFeedbackDialog = ({ productionOrderId, voucherNumber, isOpen, on
   const [feedback, setFeedback] = useState<Record<string, { actualUsed: number; reason: string }>>({});
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const plantId = usePlantId();
 
   // Fetch production order with BOM and sent materials
   const { data: productionData, isLoading } = useQuery({
@@ -114,38 +117,25 @@ const ProductionFeedbackDialog = ({ productionOrderId, voucherNumber, isOpen, on
 
         // CRITICAL: If production used less than sent, return excess to inventory
         if (excessQuantity > 0) {
-          console.log(`🔄 RETURNING EXCESS TO INVENTORY: ${excessQuantity} units`);
-          
-          // Get current inventory (plant-scoped)
-          const { data: currentInventory, error: invFetchError } = await supabase
-            .from("inventory")
-            .select("quantity, plant_id")
-            .eq("raw_material_id", feedback.materialId)
-            .single();
+          console.log(`🔄 RETURNING EXCESS TO STOCK: ${excessQuantity} units`);
 
-          if (invFetchError) {
-            console.error("❌ Error fetching current inventory:", invFetchError);
-            throw new Error(`Failed to fetch inventory for return: ${invFetchError.message}`);
-          }
+          if (!plantId) throw new Error("No active plant selected");
 
-          const newQuantity = currentInventory.quantity + excessQuantity;
-          
-          // Update inventory with returned quantity
-          const { error: invUpdateError } = await supabase
-            .from("inventory")
-            .update({
-              quantity: newQuantity,
-              last_updated: new Date().toISOString()
-            })
-            .eq("raw_material_id", feedback.materialId)
-            .eq("plant_id", currentInventory.plant_id);
+          const mainId = await getStockLocationId(plantId, "MAIN");
+          await postStockMovement({
+            plant_id: plantId,
+            raw_material_id: feedback.materialId,
+            location_id: mainId,
+            qty_delta: excessQuantity,
+            movement_type: "RETURN",
+            reason_code: "PRODUCTION_FEEDBACK",
+            reference_type: "PRODUCTION_FEEDBACK_RETURN",
+            reference_id: productionOrderId,
+            reference_number: voucherNumber,
+            notes: `Production feedback return: sent ${feedback.sentQuantity}, used ${feedback.actualUsed}, returned ${excessQuantity}. Reason: ${feedback.reason}`,
+          });
 
-          if (invUpdateError) {
-            console.error("❌ Error updating inventory:", invUpdateError);
-            throw new Error(`Failed to return excess to inventory: ${invUpdateError.message}`);
-          }
-
-          console.log(`✅ EXCESS RETURNED TO INVENTORY: +${excessQuantity} units`);
+          console.log(`✅ EXCESS RETURNED TO STOCK: +${excessQuantity} units`);
 
           // Log the inventory return movement
           const { error: movementError } = await supabase

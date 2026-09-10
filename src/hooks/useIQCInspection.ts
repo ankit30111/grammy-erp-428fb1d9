@@ -3,6 +3,12 @@ import { useState, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import {
+  getStockLocationId,
+  hasLedgerEntry,
+  postStockMovements,
+  type StockMovement,
+} from '@/utils/stockLedger';
 
 export interface InspectionResult {
   status: 'APPROVED' | 'REJECTED' | 'SEGREGATED';
@@ -196,6 +202,84 @@ export const useIQCInspection = (grn: any) => {
 
           console.log(`Successfully updated GRN item ${itemId}`);
         }
+
+        // Move stock out of quarantine: accepted -> MAIN, rejected -> REJECT
+        let plantId: string | null = grn.plant_id ?? null;
+        if (!plantId) {
+          const { data: grnRow } = await supabase
+            .from('grn')
+            .select('plant_id')
+            .eq('id', grn.id)
+            .single();
+          plantId = grnRow?.plant_id ?? null;
+        }
+        if (!plantId) throw new Error('GRN has no plant assigned; cannot post stock movements');
+
+        const [quarantineId, mainId, rejectId] = await Promise.all([
+          getStockLocationId(plantId, 'QUAR'),
+          getStockLocationId(plantId, 'MAIN'),
+          getStockLocationId(plantId, 'REJECT'),
+        ]);
+
+        const movements: StockMovement[] = [];
+        for (const { itemId } of uploadResults) {
+          const result = inspectionResults[itemId];
+          // Idempotency: deterministic reference on the grn_item, skip if already posted
+          if (await hasLedgerEntry('GRN_ITEM_IQC', itemId)) {
+            console.log(`Stock movements already posted for GRN item ${itemId}, skipping`);
+            continue;
+          }
+
+          const base = {
+            plant_id: plantId,
+            raw_material_id: grn.grn_items.find((i: any) => i.id === itemId)?.raw_material_id,
+            reference_type: 'GRN_ITEM_IQC',
+            reference_id: itemId,
+            reference_number: grn.grn_number,
+          };
+
+          if (result.acceptedQuantity > 0) {
+            movements.push({
+              ...base,
+              location_id: quarantineId,
+              qty_delta: -result.acceptedQuantity,
+              movement_type: 'IQC_ACCEPT_OUT',
+              reason_code: 'IQC_ACCEPTED',
+              notes: `IQC accepted ${result.acceptedQuantity} — released from quarantine`,
+            } as StockMovement);
+            movements.push({
+              ...base,
+              location_id: mainId,
+              qty_delta: result.acceptedQuantity,
+              movement_type: 'IQC_ACCEPT_IN',
+              reason_code: 'IQC_ACCEPTED',
+              notes: `IQC accepted ${result.acceptedQuantity} — into main store`,
+            } as StockMovement);
+          }
+
+          if (result.rejectedQuantity > 0) {
+            movements.push({
+              ...base,
+              location_id: quarantineId,
+              qty_delta: -result.rejectedQuantity,
+              movement_type: 'IQC_REJECT_OUT',
+              reason_code: 'IQC_REJECTED',
+              notes: `IQC rejected ${result.rejectedQuantity} — out of quarantine`,
+            } as StockMovement);
+            movements.push({
+              ...base,
+              location_id: rejectId,
+              qty_delta: result.rejectedQuantity,
+              movement_type: 'IQC_REJECT_IN',
+              reason_code: 'IQC_REJECTED',
+              notes: `IQC rejected ${result.rejectedQuantity} — into rejected material`,
+            } as StockMovement);
+          }
+        }
+
+        await postStockMovements(movements);
+
+
 
         // Update GRN status if all items are completed
         const allItemsInspected = grn.grn_items.every((item: any) => 

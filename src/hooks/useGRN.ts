@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { usePlantId } from "@/hooks/usePlantId";
+import { getStockLocationId, postStockMovements } from "@/utils/stockLedger";
 
 export const useGRN = () => {
   const plantId = usePlantId();
@@ -83,9 +84,10 @@ export const useCreateGRN = () => {
         plant_id: plantId,
       }));
 
-      const { error: itemsError } = await supabase
+      const { data: insertedItems, error: itemsError } = await supabase
         .from('grn_items')
-        .insert(items);
+        .insert(items)
+        .select('id, raw_material_id, received_quantity');
 
         if (itemsError) {
           console.error('GRN items creation error:', itemsError);
@@ -93,6 +95,24 @@ export const useCreateGRN = () => {
         }
 
         console.log('GRN items created successfully');
+
+        // Received material lands in QUARANTINE — not usable until IQC clears it.
+        const quarantineId = await getStockLocationId(plantId, 'QUAR');
+        await postStockMovements(
+          (insertedItems || []).map((item) => ({
+            plant_id: plantId,
+            raw_material_id: item.raw_material_id,
+            location_id: quarantineId,
+            qty_delta: Number(item.received_quantity) || 0,
+            movement_type: 'RECEIPT',
+            reason_code: 'GRN_RECEIPT',
+            reference_type: 'GRN_ITEM_RECEIPT',
+            reference_id: item.id,
+            reference_number: grnRecord.grn_number,
+            notes: `Received into quarantine via GRN ${grnRecord.grn_number}`,
+          }))
+        );
+
         return grnRecord;
       } catch (error) {
         console.error('Error in GRN creation process:', error);

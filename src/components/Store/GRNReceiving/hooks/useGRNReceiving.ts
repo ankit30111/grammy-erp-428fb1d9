@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { getStockLocationId, hasLedgerEntry, postStockMovement } from "@/utils/stockLedger";
 
 export const useGRNReceiving = () => {
   const [physicalQuantities, setPhysicalQuantities] = useState<Record<string, number>>({});
@@ -51,6 +52,8 @@ export const useGRNReceiving = () => {
         throw new Error('User not authenticated');
       }
 
+      const item = grnItems.find((i: any) => i.id === itemId);
+
       const { error } = await supabase
         .from('grn_items')
         .update({
@@ -64,6 +67,24 @@ export const useGRNReceiving = () => {
         .eq('id', itemId);
 
       if (error) throw error;
+
+      // Post only the variance against the quantity IQC already released to MAIN
+      const delta = physicalQuantity - Number(item?.accepted_quantity || 0);
+      if (item?.plant_id && delta !== 0 && !(await hasLedgerEntry('GRN_ITEM_STORE_VARIANCE', itemId))) {
+        const mainId = await getStockLocationId(item.plant_id, 'MAIN');
+        await postStockMovement({
+          plant_id: item.plant_id,
+          raw_material_id: item.raw_material_id,
+          location_id: mainId,
+          qty_delta: delta,
+          movement_type: 'ADJUSTMENT',
+          reason_code: 'STORE_PHYSICAL_VARIANCE',
+          reference_type: 'GRN_ITEM_STORE_VARIANCE',
+          reference_id: itemId,
+          reference_number: item.grn?.grn_number ?? null,
+          notes: `Store physical verification variance of ${delta} against IQC accepted quantity`,
+        });
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['grn-items-for-store'] });

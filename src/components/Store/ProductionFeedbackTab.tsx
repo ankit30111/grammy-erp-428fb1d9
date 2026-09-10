@@ -10,10 +10,13 @@ import { AlertTriangle, CheckCircle, X, Package, ArrowUpDown } from "lucide-reac
 import { format } from "date-fns";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { usePlantId } from "@/hooks/usePlantId";
+import { getStockLocationId, hasLedgerEntry, postStockMovement } from "@/utils/stockLedger";
 
 const ProductionFeedbackTab = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const plantId = usePlantId();
   const [selectedDiscrepancy, setSelectedDiscrepancy] = useState<any>(null);
   const [resolutionNotes, setResolutionNotes] = useState("");
   const [showResolutionDialog, setShowResolutionDialog] = useState(false);
@@ -99,32 +102,24 @@ const ProductionFeedbackTab = () => {
 
         // If production received less (shortage), return excess to inventory
         if (discrepancy.discrepancy_type === 'SHORTAGE') {
-          const { data: currentInventory, error: invError } = await supabase
-            .from("inventory")
-            .select("quantity, plant_id")
-            .eq("raw_material_id", discrepancy.raw_material_id)
-            .single();
-
-          if (invError) {
-            console.error("❌ Error fetching inventory:", invError);
-            throw new Error(`Failed to fetch inventory: ${invError.message}`);
-          }
+          if (!plantId) throw new Error("No active plant selected");
 
           const returnQuantity = discrepancy.discrepancy_quantity;
-          const newQuantity = currentInventory.quantity + returnQuantity;
 
-          const { error: invUpdateError } = await supabase
-            .from("inventory")
-            .update({
-              quantity: newQuantity,
-              last_updated: new Date().toISOString()
-            })
-            .eq("raw_material_id", discrepancy.raw_material_id)
-            .eq("plant_id", currentInventory.plant_id);
-
-          if (invUpdateError) {
-            console.error("❌ Error updating inventory:", invUpdateError);
-            throw new Error(`Failed to update inventory: ${invUpdateError.message}`);
+          if (!(await hasLedgerEntry('PRODUCTION_DISCREPANCY_RETURN', discrepancy.id))) {
+            const mainId = await getStockLocationId(plantId, "MAIN");
+            await postStockMovement({
+              plant_id: plantId,
+              raw_material_id: discrepancy.raw_material_id,
+              location_id: mainId,
+              qty_delta: returnQuantity,
+              movement_type: 'RETURN',
+              reason_code: 'PRODUCTION_DISCREPANCY',
+              reference_type: 'PRODUCTION_DISCREPANCY_RETURN',
+              reference_id: discrepancy.id,
+              reference_number: discrepancy.production_orders.voucher_number,
+              notes: `Store accepted production shortage discrepancy. Returned ${returnQuantity} units to stock.`,
+            });
           }
 
           // PROPER LOGGING: Only log when store accepts production feedback with correct voucher number
