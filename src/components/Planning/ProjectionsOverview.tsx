@@ -96,7 +96,9 @@ export const ProjectionsOverview = () => {
             <TableBody>
               {projections.map((projection) => {
                 const scheduled = projection.scheduled_quantity || 0;
+                const vouchered = Number((projection as any).vouchered_qty || 0);
                 const remaining = getRemainingQuantity(projection);
+                
                 
                 return (
                   <TableRow key={projection.id}>
@@ -113,7 +115,10 @@ export const ProjectionsOverview = () => {
                       {scheduled.toLocaleString()}
                     </TableCell>
                     <TableCell className="font-medium">
-                      {remaining.toLocaleString()}
+                      {vouchered.toLocaleString()}
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      {Math.max(0, projection.quantity - vouchered).toLocaleString()}
                     </TableCell>
                     <TableCell>
                       <Badge variant={remaining === 0 ? "default" : "destructive"}>
