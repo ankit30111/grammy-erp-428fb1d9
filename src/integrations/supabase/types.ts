@@ -4552,6 +4552,7 @@ export type Database = {
           scheduled_quantity: number | null
           status: string
           updated_at: string
+          vouchered_qty: number
         }
         Insert: {
           created_at?: string
@@ -4564,6 +4565,7 @@ export type Database = {
           scheduled_quantity?: number | null
           status?: string
           updated_at?: string
+          vouchered_qty?: number
         }
         Update: {
           created_at?: string
@@ -4576,6 +4578,7 @@ export type Database = {
           scheduled_quantity?: number | null
           status?: string
           updated_at?: string
+          vouchered_qty?: number
         }
         Relationships: [
           {
