@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { usePlantId } from "@/hooks/usePlantId";
+import { fetchStockBalanceRows } from "@/utils/stockLedger";
 import { useToast } from "@/hooks/use-toast";
 import { AlertTriangle, CheckCircle, Scale, Search, Filter } from "lucide-react";
 

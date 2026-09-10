@@ -2,17 +2,24 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { usePlantId } from "@/hooks/usePlantId";
+import { fetchStockBalanceRows } from "@/utils/stockLedger";
 
+/**
+ * Reconciliation report only.
+ *
+ * The stock ledger is now the source of truth, so this no longer rewrites
+ * balances. It compares store-confirmed GRN receipts against the current
+ * main-store balance and reports any difference for review.
+ */
 export const useManualInventorySync = () => {
   const queryClient = useQueryClient();
   const plantId = usePlantId();
-  
+
   return useMutation({
     mutationFn: async () => {
       if (!plantId) throw new Error("No active plant selected");
-      console.log("🔧 Starting enhanced manual inventory sync with store physical quantities...");
-      
-      // Get all store confirmed GRN items for THIS PLANT with their physical quantities
+      console.log("🔧 Reconciling store receipts against the stock ledger...");
+
       const { data: confirmedItems, error } = await supabase
         .from("grn_items")
         .select(`
@@ -31,83 +38,38 @@ export const useManualInventorySync = () => {
         throw error;
       }
 
-      console.log("📋 Store confirmed items to sync:", confirmedItems);
+      const balances = await fetchStockBalanceRows(plantId, "MAIN");
+      const balanceMap = new Map<string, number>();
+      balances.forEach((row: any) => balanceMap.set(row.raw_material_id, row.quantity));
 
-      // Get current inventory for this plant
-      const { data: currentInventory, error: invError } = await supabase
-        .from("inventory")
-        .select("raw_material_id, quantity")
-        .eq("plant_id", plantId);
-
-      if (invError) {
-        console.error("❌ Error fetching current inventory:", invError);
-        throw invError;
-      }
-
-      console.log("📦 Current inventory records:", currentInventory);
-
-      // Create a map of current inventory quantities
-      const inventoryMap = new Map();
-      currentInventory?.forEach(item => {
-        inventoryMap.set(item.raw_material_id, item.quantity);
+      const receivedTotals = new Map<string, number>();
+      confirmedItems?.forEach((item: any) => {
+        const received = item.store_physical_quantity ?? item.accepted_quantity ?? 0;
+        receivedTotals.set(
+          item.raw_material_id,
+          (receivedTotals.get(item.raw_material_id) || 0) + received
+        );
       });
 
-      // Calculate what the correct quantities should be based on STORE PHYSICAL QUANTITIES
-      const correctQuantities = new Map();
-      confirmedItems?.forEach(item => {
-        const current = correctQuantities.get(item.raw_material_id) || 0;
-        // Use store_physical_quantity if available, otherwise fall back to accepted_quantity
-        const quantityToAdd = item.store_physical_quantity || item.accepted_quantity;
-        const newTotal = current + quantityToAdd;
-        correctQuantities.set(item.raw_material_id, newTotal);
-        
-        console.log(`🧮 Material ${item.raw_materials?.material_code}: Adding ${quantityToAdd} (Store Physical: ${item.store_physical_quantity}, IQC: ${item.accepted_quantity}), Total should be: ${newTotal}`);
-        console.log(`   - GRN: ${item.grn?.grn_number}, Confirmed at: ${item.store_confirmed_at}`);
-      });
-
-      // Compare and fix any discrepancies
-      let correctedCount = 0;
-      for (const [materialId, correctQuantity] of correctQuantities) {
-        const currentQuantity = inventoryMap.get(materialId) || 0;
-        
-        if (currentQuantity !== correctQuantity) {
-          console.log(`🔧 FIXING DISCREPANCY for material ${materialId}:`);
-          console.log(`   - Current in inventory: ${currentQuantity}`);
-          console.log(`   - Should be (from Store Physical): ${correctQuantity}`);
-          console.log(`   - Difference: ${correctQuantity - currentQuantity}`);
-          
-          // Update to correct quantity
-          const { error: upsertError } = await supabase
-            .from("inventory")
-            .upsert({
-              raw_material_id: materialId,
-              quantity: correctQuantity,
-              location: 'Main Store',
-              last_updated: new Date().toISOString(),
-              plant_id: plantId,
-            }, {
-              onConflict: 'plant_id,raw_material_id'
-            });
-
-          if (upsertError) {
-            console.error(`❌ Error fixing inventory for material ${materialId}:`, upsertError);
-          } else {
-            console.log(`✅ FIXED: Material ${materialId} quantity corrected to ${correctQuantity}`);
-            correctedCount++;
-          }
-        } else {
-          console.log(`✅ Material ${materialId} quantity is correct: ${correctQuantity}`);
+      let differences = 0;
+      for (const [materialId, receivedTotal] of receivedTotals) {
+        const balance = balanceMap.get(materialId) || 0;
+        if (balance !== receivedTotal) {
+          differences++;
+          console.log(
+            `ℹ️ Material ${materialId}: received ${receivedTotal}, current main-store balance ${balance} (difference explained by issues/returns or a real gap)`
+          );
         }
       }
 
-      console.log("🎉 Enhanced manual inventory sync completed with store physical quantities");
-      return { success: true, correctedItems: correctedCount };
+      console.log("🎉 Reconciliation report completed");
+      return { success: true, correctedItems: differences };
     },
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["inventory"] });
       queryClient.invalidateQueries({ queryKey: ["inventory-real-time"] });
       queryClient.invalidateQueries({ queryKey: ["material-movements-logbook"] });
-      console.log(`✅ Enhanced sync completed. Corrected ${result.correctedItems} materials.`);
+      console.log(`✅ Reconciliation completed. ${result.correctedItems} materials differ from receipts.`);
     },
   });
 };
