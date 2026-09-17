@@ -17,8 +17,8 @@ export const ProjectionsOverview = () => {
   const [isScheduleDialogOpen, setIsScheduleDialogOpen] = useState(false);
 
   const getRemainingQuantity = (projection: any) => {
-    const scheduled = projection.scheduled_quantity || 0;
-    return projection.quantity - scheduled;
+    const scheduled = Number(projection.scheduled_quantity || 0);
+    return Math.max(0, Number(projection.quantity || 0) - scheduled);
   };
 
   const handleScheduleProduction = (projection: any) => {
