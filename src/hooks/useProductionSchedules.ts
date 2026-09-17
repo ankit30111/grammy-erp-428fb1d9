@@ -189,12 +189,8 @@ export const useCreateProductionSchedule = () => {
 
       console.log('✅ Production order created:', productionOrder);
 
-      // Track how much of the projection has been turned into vouchers
-      const { error: vouchErr } = await supabase
-        .from('projections')
-        .update({ vouchered_qty: Number(projection.vouchered_qty || 0) + Number(scheduleData.quantity) })
-        .eq('id', scheduleData.projection_id);
-      if (vouchErr) console.error('⚠️ Failed to update vouchered_qty:', vouchErr);
+      // scheduled_quantity / vouchered_qty are maintained by database triggers
+      // (recomputed as the SUM of linked schedules) — never incremented here.
 
       return { schedule, productionOrder, voucherNumber };
     },
