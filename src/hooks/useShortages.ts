@@ -59,6 +59,13 @@ export const useShortages = (plantId?: string | null) => {
           unit_price: row.parts?.unit_price ?? null,
           currency: row.parts?.currency ?? null,
           sources: [],
+          material_name: row.parts?.name ?? "",
+          total_required: Number(row.required_quantity || 0),
+          available_quantity: Number(row.available_quantity || 0),
+          shortage_quantity: Number(row.shortage_quantity || 0),
+          vendor_info: row.parts?.part_vendors?.[0]?.vendors?.name
+            ? { vendor_name: row.parts.part_vendors[0].vendors.name }
+            : null,
           shortage_id: row.id,
           purchase_order_item_id: row.purchase_order_item_id,
           status: row.purchase_order_item_id ? "COVERED" : row.status,

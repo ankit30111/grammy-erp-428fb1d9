@@ -36,6 +36,12 @@ export interface ShortageLine {
   unit_price: number | null;
   currency: string | null;
   sources: DemandSource[];
+  /* legacy field names still read by some dashboards */
+  material_name: string;
+  total_required: number;
+  available_quantity: number;
+  shortage_quantity: number;
+  vendor_info: { vendor_name: string; vendor_code?: string } | null;
 }
 
 interface PartRow {
@@ -206,6 +212,11 @@ export const calculateShortages = async (plantId?: string | null): Promise<Short
       unit_price: part.unit_price,
       currency: part.currency,
       sources: sources.get(partId) || [],
+      material_name: part.name,
+      total_required: required,
+      available_quantity: av,
+      shortage_quantity: Math.max(0, -balance),
+      vendor_info: primaryVendor?.vendors?.name ? { vendor_name: primaryVendor.vendors.name } : null,
     });
   }
 
