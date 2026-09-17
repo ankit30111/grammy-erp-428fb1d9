@@ -8,9 +8,9 @@ const Management = () => {
   const location = useLocation();
 
   useEffect(() => {
-    // Redirect to products page if at the main management route
+    // Redirect to the parts page if at the main management route
     if (location.pathname === "/management") {
-      navigate("/management/products");
+      navigate("/management/parts");
     }
   }, [location.pathname, navigate]);
 

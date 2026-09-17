@@ -53,18 +53,13 @@ export const ManualPOCreationDialog = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('parts')
-        .select(`
-          *,
-          inventory (
-            quantity
-          )
-        `)
+        .select('*')
         .order('part_code');
       
       if (error) throw error;
-      return data.map(material => ({
+      return (data || []).map(material => ({
         ...material,
-        current_stock: material.inventory?.[0]?.quantity || 0
+        current_stock: 0,
       }));
     },
   });

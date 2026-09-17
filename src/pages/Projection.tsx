@@ -17,9 +17,8 @@ import {
 } from "@/components/ui/select";
 import { format, addMonths } from "date-fns";
 import { useCustomers } from "@/hooks/useCustomers";
-import { useProducts } from "@/hooks/useProducts";
+import { useFinishedGoodParts } from "@/hooks/useProducts";
 import { useProjections, useCreateProjection, useDeleteProjection } from "@/hooks/useProjections";
-import { useDispatchOrders } from "@/hooks/useDispatchOrders";
 import { EditProjectionDialog } from "@/components/Projections/EditProjectionDialog";
 
 // Generate the next 12 months
@@ -44,7 +43,7 @@ const Projection = () => {
     customer_id: "",
     part_id: "",
     quantity: "",
-    delivery_month: "",
+    month: "",
   });
   const [editingProjection, setEditingProjection] = useState<any>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -52,9 +51,8 @@ const Projection = () => {
 
   // Fetch data from database
   const { data: customers, isLoading: customersLoading } = useCustomers();
-  const { data: products, isLoading: productsLoading } = useProducts();
+  const { data: products, isLoading: productsLoading } = useFinishedGoodParts();
   const { data: projections, isLoading: projectionsLoading } = useProjections();
-  const { data: dispatchOrders } = useDispatchOrders();
   const createProjection = useCreateProjection();
   const deleteProjection = useDeleteProjection();
 
@@ -75,7 +73,7 @@ const Projection = () => {
 
   const handleAddProjection = async () => {
     // Validate inputs
-    if (!newProjection.customer_id || !newProjection.part_id || !newProjection.quantity || !newProjection.delivery_month) {
+    if (!newProjection.customer_id || !newProjection.part_id || !newProjection.quantity || !newProjection.month) {
       toast({
         title: "Missing fields",
         description: "Please fill in all required fields",
@@ -89,7 +87,7 @@ const Projection = () => {
         customer_id: newProjection.customer_id,
         part_id: newProjection.part_id,
         quantity: parseInt(newProjection.quantity),
-        delivery_month: newProjection.delivery_month,
+        month: `${newProjection.month}-01`,
       });
 
       // Reset form
@@ -97,7 +95,7 @@ const Projection = () => {
         customer_id: "",
         part_id: "",
         quantity: "",
-        delivery_month: "",
+        month: "",
       });
 
       toast({
@@ -137,26 +135,14 @@ const Projection = () => {
     }
   };
 
-  // Calculate supplied quantity from dispatch orders
-  const getSuppliedQuantity = (customerId: string, productId: string, deliveryMonth: string) => {
-    if (!dispatchOrders) return 0;
-    
-    const monthYear = deliveryMonth; // format: yyyy-MM
-    return dispatchOrders
-      .filter(order => {
-        const orderMonth = format(new Date(order.dispatch_date), 'yyyy-MM');
-        return order.customer_id === customerId && orderMonth === monthYear;
-      })
-      .reduce((total, order) => {
-        const productItems = order.dispatch_order_items?.filter(item => item.part_id === productId) || [];
-        return total + productItems.reduce((sum, item) => sum + item.quantity, 0);
-      }, 0);
-  };
-
   // Format month for display
   const formatMonth = (monthValue: string) => {
-    const month = months.find(m => m.value === monthValue);
-    return month ? month.label : monthValue;
+    if (!monthValue) return "";
+    try {
+      return format(new Date(monthValue), "MMM yyyy");
+    } catch {
+      return monthValue;
+    }
   };
 
   return (
@@ -197,7 +183,7 @@ const Projection = () => {
               </div>
               <div>
                 <label htmlFor="product" className="text-sm font-medium mb-1 block">
-                  Product
+                  Finished Good
                 </label>
                 <Select
                   value={newProjection.part_id}
@@ -205,12 +191,12 @@ const Projection = () => {
                   disabled={productsLoading}
                 >
                   <SelectTrigger id="product">
-                    <SelectValue placeholder={productsLoading ? "Loading..." : "Select product"} />
+                    <SelectValue placeholder={productsLoading ? "Loading..." : "Select finished good"} />
                   </SelectTrigger>
                   <SelectContent>
                     {products?.map((product) => (
                       <SelectItem key={product.id} value={product.id}>
-                        {product.name}
+                        {product.part_code} — {product.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -235,8 +221,8 @@ const Projection = () => {
                   Delivery Month
                 </label>
                 <Select
-                  value={newProjection.delivery_month}
-                  onValueChange={(value) => handleSelectChange("delivery_month", value)}
+                  value={newProjection.month}
+                  onValueChange={(value) => handleSelectChange("month", value)}
                 >
                   <SelectTrigger id="deliveryMonth">
                     <SelectValue placeholder="Select month" />
@@ -274,38 +260,40 @@ const Projection = () => {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Customer</TableHead>
-                    <TableHead>Product</TableHead>
+                    <TableHead>Finished Good</TableHead>
                     <TableHead>Projected Qty</TableHead>
-                    <TableHead>Supplied Qty</TableHead>
-                    <TableHead>Pending Qty</TableHead>
-                    <TableHead>Delivery Month</TableHead>
+                    <TableHead>Scheduled Qty</TableHead>
+                    <TableHead>Vouchered Qty</TableHead>
+                    <TableHead>Remaining Qty</TableHead>
+                    <TableHead>Month</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {projections?.map((projection) => {
-                    const suppliedQty = getSuppliedQuantity(
-                      projection.customer_id, 
-                      projection.part_id, 
-                      projection.delivery_month
-                    );
-                    const pendingQty = projection.quantity - suppliedQty;
-                    
+                  {projections?.map((projection: any) => {
+                    const scheduledQty = Number(projection.scheduled_quantity) || 0;
+                    const voucheredQty = Number(projection.vouchered_quantity) || 0;
+                    const remainingQty = Math.max(0, Number(projection.quantity) - scheduledQty);
+
                     return (
                       <TableRow key={projection.id}>
                         <TableCell className="font-medium">
                           {projection.customers?.name}
                         </TableCell>
-                        <TableCell>{projection.products?.name}</TableCell>
-                        <TableCell>{projection.quantity.toLocaleString()}</TableCell>
-                        <TableCell className="text-green-600 font-medium">
-                          {suppliedQty.toLocaleString()}
+                        <TableCell>
+                          {projection.parts?.part_code ? (
+                            <span className="font-mono text-xs bg-muted px-1 rounded mr-2">{projection.parts.part_code}</span>
+                          ) : null}
+                          {projection.parts?.name}
                         </TableCell>
-                        <TableCell className={pendingQty > 0 ? "text-orange-600 font-medium" : "text-green-600"}>
-                          {pendingQty.toLocaleString()}
+                        <TableCell>{Number(projection.quantity).toLocaleString()}</TableCell>
+                        <TableCell>{scheduledQty.toLocaleString()}</TableCell>
+                        <TableCell>{voucheredQty.toLocaleString()}</TableCell>
+                        <TableCell className={remainingQty > 0 ? "text-orange-600 font-medium" : "text-green-600"}>
+                          {remainingQty.toLocaleString()}
                         </TableCell>
-                        <TableCell>{formatMonth(projection.delivery_month)}</TableCell>
+                        <TableCell>{formatMonth(projection.month)}</TableCell>
                         <TableCell>
                           <span className={`px-2 py-1 rounded-full text-xs ${
                             projection.status === "New" ? "bg-blue-100 text-blue-800" : 

@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useCustomers } from "@/hooks/useCustomers";
-import { useProducts } from "@/hooks/useProducts";
+import { useFinishedGoodParts } from "@/hooks/useProducts";
 import { useUpdateProjection } from "@/hooks/useProjections";
 import { format, addMonths } from "date-fns";
 
@@ -39,12 +39,12 @@ export const EditProjectionDialog = ({ projection, isOpen, onClose }: EditProjec
     customer_id: "",
     part_id: "",
     quantity: "",
-    delivery_month: "",
+    month: "",
   });
   
   const { toast } = useToast();
   const { data: customers } = useCustomers();
-  const { data: products } = useProducts();
+  const { data: products } = useFinishedGoodParts();
   const updateProjection = useUpdateProjection();
 
   useEffect(() => {
@@ -53,7 +53,7 @@ export const EditProjectionDialog = ({ projection, isOpen, onClose }: EditProjec
         customer_id: projection.customer_id,
         part_id: projection.part_id,
         quantity: projection.quantity.toString(),
-        delivery_month: projection.delivery_month,
+        month: projection.month ? format(new Date(projection.month), "yyyy-MM") : "",
       });
     }
   }, [projection]);
@@ -74,7 +74,7 @@ export const EditProjectionDialog = ({ projection, isOpen, onClose }: EditProjec
   };
 
   const handleSubmit = async () => {
-    if (!formData.customer_id || !formData.part_id || !formData.quantity || !formData.delivery_month) {
+    if (!formData.customer_id || !formData.part_id || !formData.quantity || !formData.month) {
       toast({
         title: "Missing fields",
         description: "Please fill in all required fields",
@@ -90,7 +90,7 @@ export const EditProjectionDialog = ({ projection, isOpen, onClose }: EditProjec
           customer_id: formData.customer_id,
           part_id: formData.part_id,
           quantity: parseInt(formData.quantity),
-          delivery_month: formData.delivery_month,
+          month: `${formData.month}-01`,
         }
       });
 
@@ -106,11 +106,6 @@ export const EditProjectionDialog = ({ projection, isOpen, onClose }: EditProjec
         variant: "destructive",
       });
     }
-  };
-
-  const formatMonth = (monthValue: string) => {
-    const month = months.find(m => m.value === monthValue);
-    return month ? month.label : monthValue;
   };
 
   return (
@@ -141,18 +136,18 @@ export const EditProjectionDialog = ({ projection, isOpen, onClose }: EditProjec
           </div>
           
           <div>
-            <Label htmlFor="product">Product</Label>
+            <Label htmlFor="product">Finished Good</Label>
             <Select
               value={formData.part_id}
               onValueChange={(value) => handleSelectChange("part_id", value)}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Select product" />
+                <SelectValue placeholder="Select finished good" />
               </SelectTrigger>
               <SelectContent>
                 {products?.map((product) => (
                   <SelectItem key={product.id} value={product.id}>
-                    {product.name}
+                    {product.part_code} — {product.name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -173,10 +168,10 @@ export const EditProjectionDialog = ({ projection, isOpen, onClose }: EditProjec
           </div>
           
           <div>
-            <Label htmlFor="deliveryMonth">Delivery Month</Label>
+            <Label htmlFor="deliveryMonth">Month</Label>
             <Select
-              value={formData.delivery_month}
-              onValueChange={(value) => handleSelectChange("delivery_month", value)}
+              value={formData.month}
+              onValueChange={(value) => handleSelectChange("month", value)}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select month" />
