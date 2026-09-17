@@ -105,7 +105,7 @@ const RawMaterialsManagement = () => {
   });
 
   const getVendorSortValue = (material: any) => {
-    const rels = material.raw_material_vendors || [];
+    const rels = material.part_vendors || [];
     const primary = rels.find((rv: any) => rv.is_primary);
     const name = primary?.vendors?.name || rels[0]?.vendors?.name || "";
     return name.toLowerCase();
@@ -220,8 +220,8 @@ const RawMaterialsManagement = () => {
       cbm_per_unit: material.cbm_per_unit?.toString() || "",
       supplier_country: material.supplier_country || ""
     });
-    setSelectedVendors(material.raw_material_vendors?.map((rv: any) => rv.vendors.id) || []);
-    setPrimaryVendor(material.raw_material_vendors?.find((rv: any) => rv.is_primary)?.vendors.id || "");
+    setSelectedVendors(material.part_vendors?.map((rv: any) => rv.vendors.id) || []);
+    setPrimaryVendor(material.part_vendors?.find((rv: any) => rv.is_primary)?.vendors.id || "");
     setSpecificationFile(null);
     setIqcChecklistFile(null);
     setIsEditDialogOpen(true);
@@ -762,7 +762,7 @@ const RawMaterialsManagement = () => {
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-1">
-                          {material.raw_material_vendors?.map((rv: any) => (
+                          {material.part_vendors?.map((rv: any) => (
                             <Badge 
                               key={rv.id} 
                               variant={rv.is_primary ? "default" : "secondary"}
@@ -966,7 +966,7 @@ const RawMaterialsManagement = () => {
                 <div className="space-y-2">
                   <Label className="text-sm font-medium text-muted-foreground">Vendors</Label>
                   <div className="flex flex-wrap gap-2">
-                    {viewMaterial.raw_material_vendors?.map((rv: any) => (
+                    {viewMaterial.part_vendors?.map((rv: any) => (
                       <Badge 
                         key={rv.id} 
                         variant={rv.is_primary ? "default" : "secondary"}

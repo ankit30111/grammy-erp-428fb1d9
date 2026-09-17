@@ -73,7 +73,7 @@ const Purchase = () => {
       if (materialIds.length === 0) return [];
 
       const { data: vendorData, error: vendorError } = await supabase
-        .from("raw_material_vendors")
+        .from("part_vendors")
         .select(`
           part_id,
           vendor_id,
@@ -89,7 +89,7 @@ const Purchase = () => {
         const vendorsForMaterial = vendorData?.filter(v => v.part_id === shortage.part_id) || [];
         return {
           ...shortage,
-          raw_material_vendors: vendorsForMaterial
+          part_vendors: vendorsForMaterial
         };
       }) || [];
     },
@@ -166,8 +166,8 @@ const Purchase = () => {
     const vendorIds = new Set();
     
     selectedMaterialData.forEach(material => {
-      if (material.raw_material_vendors) {
-        material.raw_material_vendors.forEach((rmv: any) => {
+      if (material.part_vendors) {
+        material.part_vendors.forEach((rmv: any) => {
           if (rmv.is_primary) {
             vendorIds.add(rmv.vendor_id);
           }
@@ -180,7 +180,7 @@ const Purchase = () => {
 
   // Group materials by vendor for display
   const materialsByVendor = availableMaterialsForPO.reduce((acc, material) => {
-    const primaryVendor = material.raw_material_vendors?.find((rmv: any) => rmv.is_primary);
+    const primaryVendor = material.part_vendors?.find((rmv: any) => rmv.is_primary);
     if (primaryVendor) {
       const vendorName = primaryVendor.vendors.name;
       if (!acc[vendorName]) {

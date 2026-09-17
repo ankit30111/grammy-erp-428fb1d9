@@ -120,7 +120,7 @@ const LineRejectionManager = () => {
       if (!rejection) throw new Error("Rejection not found");
 
       const { data: materialVendor } = await supabase
-        .from("raw_material_vendors")
+        .from("part_vendors")
         .select("vendor_id")
         .eq("part_id", rejection.part_id)
         .eq("is_primary", true)

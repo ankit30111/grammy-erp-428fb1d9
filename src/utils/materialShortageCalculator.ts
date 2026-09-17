@@ -87,7 +87,7 @@ export const calculateMaterialShortages = async (projectionIds: string[]): Promi
 
     // Get vendor information for materials
     const { data: vendorData, error: vendorError } = await supabase
-      .from('raw_material_vendors')
+      .from('part_vendors')
       .select(`
         part_id,
         vendors!inner(id, name, vendor_code)

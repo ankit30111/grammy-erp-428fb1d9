@@ -15,7 +15,7 @@ export const useRawMaterials = () => {
         .from("parts")
         .select(`
           *,
-          raw_material_vendors(
+          part_vendors(
             id,
             is_primary,
             vendor_id,
@@ -113,7 +113,7 @@ export const useRawMaterials = () => {
         }));
 
         const { error: vendorError } = await supabase
-          .from("raw_material_vendors")
+          .from("part_vendors")
           .insert(vendorRelations);
 
         if (vendorError) throw vendorError;
@@ -122,7 +122,7 @@ export const useRawMaterials = () => {
       // Create initial specification record if files were uploaded
       if (specificationUrl || iqcChecklistUrl) {
         const { error: specError } = await supabase
-          .from("raw_material_specifications")
+          .from("part_specifications")
           .insert({
             part_id: material.id,
             version_number: 1,
@@ -259,7 +259,7 @@ export const useRawMaterials = () => {
         // First delete existing relationships
         console.log("Debug: Deleting existing vendor relationships");
         const { error: deleteError } = await supabase
-          .from("raw_material_vendors")
+          .from("part_vendors")
           .delete()
           .eq("part_id", data.id);
 
@@ -278,7 +278,7 @@ export const useRawMaterials = () => {
           }));
 
           const { error: vendorError } = await supabase
-            .from("raw_material_vendors")
+            .from("part_vendors")
             .insert(vendorRelations);
 
           if (vendorError) {
@@ -295,7 +295,7 @@ export const useRawMaterials = () => {
           
           // Get the next version number
           const { data: lastVersion } = await supabase
-            .from("raw_material_specifications")
+            .from("part_specifications")
             .select("version_number")
             .eq("part_id", data.id)
             .order("version_number", { ascending: false })
@@ -305,7 +305,7 @@ export const useRawMaterials = () => {
           const nextVersion = (lastVersion?.version_number || 0) + 1;
 
           const { error: specError } = await supabase
-            .from("raw_material_specifications")
+            .from("part_specifications")
             .insert({
               part_id: data.id,
               version_number: nextVersion,
@@ -377,7 +377,7 @@ export const useSpecificationHistory = (materialId: string) => {
     queryKey: ["specification-history", materialId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("raw_material_specifications")
+        .from("part_specifications")
         .select("*")
         .eq("part_id", materialId)
         .order("version_number", { ascending: false });
