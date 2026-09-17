@@ -45,8 +45,7 @@ export const navigationItems: NavigationItem[] = [
 ];
 
 export const managementItems: NavigationItem[] = [
-  { to: "/management/products", icon: <FileText size={18} />, label: "Products", adminOnly: true },
-  { to: "/management/raw-materials", icon: <Layers size={18} />, label: "Raw Materials", adminOnly: true },
+  { to: "/management/parts", icon: <Layers size={18} />, label: "Parts", adminOnly: true },
   { to: "/management/customers", icon: <UserPlus size={18} />, label: "Customers", adminOnly: true },
   { to: "/vendors", icon: <Building2 size={18} />, label: "Vendors", adminOnly: true },
   { to: "/management/plants", icon: <Building2 size={18} />, label: "Plants", adminOnly: true },

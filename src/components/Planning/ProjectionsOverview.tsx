@@ -64,7 +64,7 @@ export const ProjectionsOverview = () => {
               <AlertTriangle className="h-8 w-8 text-orange-600" />
               <div>
                 <div className="text-2xl font-bold">
-                  {projections.filter(p => getRemainingQuantity(p) > 0).length}
+                  {projections.filter((p: any) => getRemainingQuantity(p) > 0).length}
                 </div>
                 <div className="text-sm text-muted-foreground">Pending Scheduling</div>
               </div>
@@ -82,8 +82,8 @@ export const ProjectionsOverview = () => {
             <TableHeader>
               <TableRow>
                 <TableHead>Customer</TableHead>
-                <TableHead>Product</TableHead>
-                <TableHead>Delivery Month</TableHead>
+                <TableHead>Finished Good</TableHead>
+                <TableHead>Month</TableHead>
                 <TableHead>Progress</TableHead>
                 <TableHead>Total Quantity</TableHead>
                 <TableHead>Scheduled</TableHead>
@@ -94,9 +94,9 @@ export const ProjectionsOverview = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {projections.map((projection) => {
-                const scheduled = projection.scheduled_quantity || 0;
-                const vouchered = Number((projection as any).vouchered_qty || 0);
+              {projections.map((projection: any) => {
+                const scheduled = Number(projection.scheduled_quantity || 0);
+                const vouchered = Number(projection.vouchered_quantity || 0);
                 const remaining = getRemainingQuantity(projection);
                 
                 
@@ -105,12 +105,17 @@ export const ProjectionsOverview = () => {
                     <TableCell className="font-medium">
                       {projection.customers?.name}
                     </TableCell>
-                    <TableCell>{projection.products?.name}</TableCell>
-                    <TableCell>{projection.delivery_month}</TableCell>
+                    <TableCell>
+                      {projection.parts?.part_code ? (
+                        <span className="font-mono text-xs bg-muted px-1 rounded mr-2">{projection.parts.part_code}</span>
+                      ) : null}
+                      {projection.parts?.name}
+                    </TableCell>
+                    <TableCell>{projection.month}</TableCell>
                     <TableCell className="w-32">
                       <ProjectionProgressIndicator projectionId={projection.id} />
                     </TableCell>
-                    <TableCell>{projection.quantity.toLocaleString()}</TableCell>
+                    <TableCell>{Number(projection.quantity).toLocaleString()}</TableCell>
                     <TableCell className="font-medium text-blue-600">
                       {scheduled.toLocaleString()}
                     </TableCell>
@@ -118,7 +123,7 @@ export const ProjectionsOverview = () => {
                       {vouchered.toLocaleString()}
                     </TableCell>
                     <TableCell className="font-medium">
-                      {Math.max(0, projection.quantity - vouchered).toLocaleString()}
+                      {remaining.toLocaleString()}
                     </TableCell>
                     <TableCell>
                       <Badge variant={remaining === 0 ? "default" : "destructive"}>

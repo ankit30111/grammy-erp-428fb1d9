@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Navigate } from "react-router-dom";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -27,8 +28,7 @@ import SpareOrders from "./pages/SpareOrders";
 import HRManagement from "./pages/management/HRManagement";
 import CustomersManagement from "./pages/management/CustomersManagement";
 import Vendors from "./pages/Vendors";
-import ProductsManagement from "./pages/management/ProductsManagement";
-import RawMaterialsManagement from "./pages/management/RawMaterialsManagement";
+import PartsManagement from "./pages/management/PartsManagement";
 import Settings from "./pages/Settings";
 import PlantsManagement from "./pages/management/PlantsManagement";
 import AccessControl from "./pages/management/AccessControl";
@@ -220,17 +220,14 @@ function App() {
               </AuthGuard>
             } />
             
-            <Route path="/management/products" element={
+            <Route path="/management/parts" element={
               <AuthGuard>
-                <ProductsManagement />
+                <PartsManagement />
               </AuthGuard>
             } />
-            
-            <Route path="/management/raw-materials" element={
-              <AuthGuard>
-                <RawMaterialsManagement />
-              </AuthGuard>
-            } />
+
+            <Route path="/management/products" element={<Navigate to="/management/parts" replace />} />
+            <Route path="/management/raw-materials" element={<Navigate to="/management/parts" replace />} />
             
             <Route path="/settings" element={
               <AuthGuard>

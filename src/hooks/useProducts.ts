@@ -1,35 +1,23 @@
-
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
-export const useProducts = () => {
+/** Finished goods (what used to be "products") live in parts now. */
+export const useFinishedGoodParts = () => {
   return useQuery({
-    queryKey: ["products"],
+    queryKey: ["parts", "finished-goods"],
     queryFn: async () => {
-      console.log("Debug: Fetching products...");
-      
-      // Test connection first
-      const { data: testData, error: testError } = await supabase
-        .from("parts")
-        .select("count", { count: 'exact' });
-      
-      console.log("Debug: Products count test:", testData, testError);
-      
       const { data, error } = await supabase
         .from("parts")
-        .select("*")
-        .order("name");
-      
-      console.log("Debug products data:", data);
-      console.log("Debug products error:", error);
-      
-      if (error) {
-        console.error("Error fetching products:", error);
-        throw error;
-      }
+        .select("id, part_code, name, category, uom, source_type, is_active")
+        .eq("source_type", "FINISHED_GOOD")
+        .eq("is_active", true)
+        .order("part_code");
+      if (error) throw error;
       return data || [];
     },
-    retry: 3,
-    retryDelay: 1000,
+    retry: 2,
   });
 };
+
+/** Kept name for screens not yet rewired. */
+export const useProducts = useFinishedGoodParts;
