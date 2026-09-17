@@ -1,145 +1,97 @@
-
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Package, TrendingUp, AlertTriangle, ShoppingCart } from "lucide-react";
+import { ShortageRow } from "@/hooks/useShortages";
 
 interface MaterialShortageDetailsProps {
+  shortage: ShortageRow | null;
   isOpen: boolean;
   onClose: () => void;
-  materialData: {
-    part_code: string;
-    material_name: string;
-    total_required: number;
-    available_quantity: number;
-    shortage_quantity: number;
-    pending_po_quantity: number;
-    received_quantity: number;
-    has_pending_po: boolean;
-    is_critical: boolean;
-    projection_details: Array<{
-      projection_id: string;
-      product_name: string;
-      customer_name: string;
-      projection_quantity: number;
-      required_quantity: number;
-      delivery_month: string;
-    }>;
-  } | null;
 }
 
-const MaterialShortageDetails = ({ isOpen, onClose, materialData }: MaterialShortageDetailsProps) => {
-  if (!materialData) return null;
+const MaterialShortageDetails = ({ shortage, isOpen, onClose }: MaterialShortageDetailsProps) => {
+  if (!shortage) return null;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Package className="h-5 w-5" />
-            Material Shortage Details - {materialData.part_code}
+          <DialogTitle>
+            <span className="font-mono text-sm bg-muted px-1 rounded mr-2">{shortage.part_code}</span>
+            {shortage.name}
           </DialogTitle>
         </DialogHeader>
-        
-        <div className="space-y-6">
-          {/* Summary Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-              <div className="flex items-center gap-2">
-                <TrendingUp className="h-4 w-4 text-blue-600" />
-                <div>
-                  <div className="text-sm text-blue-600 font-medium">Current Stock</div>
-                  <div className="text-lg font-bold text-blue-800">{materialData.available_quantity.toLocaleString()}</div>
-                </div>
-              </div>
-            </div>
-            
-            <div className="bg-orange-50 p-4 rounded-lg border border-orange-200">
-              <div className="flex items-center gap-2">
-                <Package className="h-4 w-4 text-orange-600" />
-                <div>
-                  <div className="text-sm text-orange-600 font-medium">Total Required</div>
-                  <div className="text-lg font-bold text-orange-800">{materialData.total_required.toLocaleString()}</div>
-                </div>
-              </div>
-            </div>
-            
-            <div className="bg-red-50 p-4 rounded-lg border border-red-200">
-              <div className="flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4 text-red-600" />
-                <div>
-                  <div className="text-sm text-red-600 font-medium">Net Shortage</div>
-                  <div className="text-lg font-bold text-red-800">{materialData.shortage_quantity.toLocaleString()}</div>
-                </div>
-              </div>
-            </div>
-            
-            <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-              <div className="flex items-center gap-2">
-                <ShoppingCart className="h-4 w-4 text-green-600" />
-                <div>
-                  <div className="text-sm text-green-600 font-medium">Pending PO</div>
-                  <div className="text-lg font-bold text-green-800">
-                    {materialData.has_pending_po 
-                      ? materialData.pending_po_quantity.toLocaleString() 
-                      : "None"}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
 
-          {/* Material Info */}
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <h3 className="font-medium mb-2">Material Information</h3>
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div><strong>Part Code:</strong> {materialData.part_code}</div>
-              <div><strong>Part Name:</strong> {materialData.material_name}</div>
-            </div>
-          </div>
-
-          {/* Projection Details */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div>
-            <h3 className="font-medium mb-4">Projection Requirements</h3>
+            <div className="text-sm text-muted-foreground">Required</div>
+            <div className="text-lg font-semibold tabular-nums">{shortage.required.toLocaleString()}</div>
+          </div>
+          <div>
+            <div className="text-sm text-muted-foreground">Available</div>
+            <div className="text-lg font-semibold tabular-nums">{shortage.available.toLocaleString()}</div>
+          </div>
+          <div>
+            <div className="text-sm text-muted-foreground">Hold</div>
+            <div className="text-lg font-semibold tabular-nums">{shortage.hold.toLocaleString()}</div>
+          </div>
+          <div>
+            <div className="text-sm text-muted-foreground">Balance</div>
+            <div className="text-lg font-semibold tabular-nums">
+              <Badge variant={shortage.balance < 0 ? "destructive" : "secondary"}>
+                {shortage.balance.toLocaleString()}
+              </Badge>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4 text-sm">
+          <div>
+            <span className="text-muted-foreground">Vendor: </span>
+            {shortage.vendor_name || "Not set"}
+          </div>
+          <div>
+            <span className="text-muted-foreground">Needed on: </span>
+            {shortage.needed_on || "—"}
+          </div>
+          <div>
+            <span className="text-muted-foreground">Unit: </span>
+            {shortage.uom}
+          </div>
+          <div>
+            <span className="text-muted-foreground">Status: </span>
+            {shortage.purchase_order_item_id ? "Purchase order raised" : shortage.status}
+          </div>
+        </div>
+
+        <div>
+          <div className="font-medium mb-2">Where this demand comes from</div>
+          {shortage.sources.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No live demand — this line is kept because a purchase order already covers it.
+            </p>
+          ) : (
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead>Finished Good</TableHead>
                   <TableHead>Customer</TableHead>
-                  <TableHead>Product</TableHead>
-                  <TableHead>Projection Qty</TableHead>
-                  <TableHead>Required for this Part</TableHead>
-                  <TableHead>Delivery Month</TableHead>
+                  <TableHead>Month</TableHead>
+                  <TableHead>Quantity Needed</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {materialData.projection_details.map((projection, index) => (
-                  <TableRow key={index}>
-                    <TableCell>{projection.customer_name}</TableCell>
-                    <TableCell>{projection.product_name}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{projection.projection_quantity.toLocaleString()}</Badge>
-                    </TableCell>
-                    <TableCell className="font-medium">{projection.required_quantity.toLocaleString()}</TableCell>
-                    <TableCell>{projection.delivery_month}</TableCell>
+                {shortage.sources.map((source, index) => (
+                  <TableRow key={`${source.label}-${index}`}>
+                    <TableCell>{source.label}</TableCell>
+                    <TableCell>{source.customer || "—"}</TableCell>
+                    <TableCell>{source.needed_on || "—"}</TableCell>
+                    <TableCell className="tabular-nums">{source.quantity.toLocaleString()}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
-          </div>
-
-          {/* Summary */}
-          <div className="bg-amber-50 p-4 rounded-lg border border-amber-200">
-            <h4 className="font-medium text-amber-800 mb-2">Summary</h4>
-            <div className="text-sm text-amber-700 space-y-1">
-              <div>• Cumulative quantity required: <strong>{materialData.total_required.toLocaleString()}</strong></div>
-              <div>• Available in stock: <strong>{materialData.available_quantity.toLocaleString()}</strong></div>
-              <div>• Received from GRN: <strong>{materialData.received_quantity.toLocaleString()}</strong></div>
-              <div>• Net shortage: <strong className="text-red-600">{materialData.shortage_quantity.toLocaleString()}</strong></div>
-              {materialData.has_pending_po && (
-                <div>• Pending PO quantity: <strong className="text-blue-600">{materialData.pending_po_quantity.toLocaleString()}</strong></div>
-              )}
-            </div>
-          </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>
