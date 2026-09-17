@@ -276,3 +276,10 @@ export const markShortagesCovered = async (
     if (error) throw error;
   }
 };
+
+/* ---- names kept for screens that already import them ---- */
+export type MaterialShortage = ShortageLine;
+export const calculateMaterialShortages = async (
+  _projectionIds?: string[],
+  plantId?: string | null,
+) => calculateShortages(plantId ?? null);
