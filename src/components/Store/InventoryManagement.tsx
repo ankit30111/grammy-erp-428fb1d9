@@ -26,8 +26,8 @@ export default function InventoryManagement() {
 
   const filteredInventory = inventory.filter(item => {
     const status = getInventoryStatus(item.quantity, item.minimum_stock || 0);
-    const materialCode = item.raw_materials?.material_code || "";
-    const materialName = item.raw_materials?.name || "";
+    const materialCode = item.parts?.part_code || "";
+    const materialName = item.parts?.name || "";
     
     const matchesSearch = 
       materialCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -234,9 +234,9 @@ export default function InventoryManagement() {
               return (
                 <TableRow key={item.id}>
                   <TableCell className="font-mono font-medium">
-                    {item.raw_materials?.material_code || "N/A"}
+                    {item.parts?.part_code || "N/A"}
                   </TableCell>
-                  <TableCell>{item.raw_materials?.name || "N/A"}</TableCell>
+                  <TableCell>{item.parts?.name || "N/A"}</TableCell>
                   <TableCell className={`font-medium ${
                     item.quantity <= (item.minimum_stock || 0) ? "text-red-600" : "text-green-600"
                   }`}>

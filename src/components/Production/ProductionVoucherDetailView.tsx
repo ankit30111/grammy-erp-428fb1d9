@@ -29,25 +29,25 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
   const { data: bomData = [] } = useQuery({
     queryKey: ["production-bom", production?.id],
     queryFn: async () => {
-      if (!production?.product_id) return [];
+      if (!production?.part_id) return [];
       
       const { data, error } = await supabase
         .from("bom")
         .select(`
           *,
-          raw_materials!inner(
+          parts!inner(
             id,
-            material_code,
+            part_code,
             name,
             category
           )
         `)
-        .eq("product_id", production.product_id);
+        .eq("part_id", production.part_id);
       
       if (error) throw error;
       return data || [];
     },
-    enabled: !!production?.product_id && isOpen,
+    enabled: !!production?.part_id && isOpen,
   });
 
   // ENHANCED: Fetch materials sent by store with individual dispatch tracking
@@ -62,13 +62,13 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
         .from("kit_items")
         .select(`
           id,
-          raw_material_id,
+          part_id,
           actual_quantity,
           verified_by_production,
           created_at,
-          raw_materials!inner(
+          parts!inner(
             id,
-            material_code,
+            part_code,
             name,
             category
           ),
@@ -122,7 +122,7 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
       
       console.log(`📋 Verification details:`);
       console.log(`   - Kit Item ID: ${kitItemId}`);
-      console.log(`   - Material: ${kitItem.raw_materials.material_code}`);
+      console.log(`   - Material: ${kitItem.parts.part_code}`);
       console.log(`   - Sent: ${sentQuantity}`);
       console.log(`   - Received: ${receivedQuantity}`);
       console.log(`   - Difference: ${difference}`);
@@ -138,7 +138,7 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
           .from("production_material_discrepancies")
           .insert({
             production_order_id: production.id,
-            raw_material_id: kitItem.raw_material_id,
+            part_id: kitItem.part_id,
             kit_item_id: kitItemId,
             sent_quantity: sentQuantity,
             received_quantity: receivedQuantity,
@@ -255,8 +255,8 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
     }
     
     // Initialize with BOM data and empty dispatches
-    acc[bomType][bomItem.raw_material_id] = {
-      rawMaterial: bomItem.raw_materials,
+    acc[bomType][bomItem.part_id] = {
+      rawMaterial: bomItem.parts,
       bomItem: bomItem,
       dispatches: [],
       requiredQuantity: bomItem.quantity * production.quantity
@@ -267,11 +267,11 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
 
   // Now merge dispatch data for materials that have been sent
   sentMaterials.forEach(item => {
-    const bomItem = bomData.find(b => b.raw_material_id === item.raw_material_id);
+    const bomItem = bomData.find(b => b.part_id === item.part_id);
     const bomType = bomItem?.bom_type || 'main_assembly';
     
-    if (groupedMaterials[bomType] && groupedMaterials[bomType][item.raw_material_id]) {
-      groupedMaterials[bomType][item.raw_material_id].dispatches.push(item);
+    if (groupedMaterials[bomType] && groupedMaterials[bomType][item.part_id]) {
+      groupedMaterials[bomType][item.part_id].dispatches.push(item);
     }
   });
 

@@ -17,7 +17,7 @@ export const useProductionOrders = () => {
             *,
             projections!projection_id (
               customers!customer_id (name),
-              products!product_id (name)
+              products!part_id (name)
             )
           )
         `)

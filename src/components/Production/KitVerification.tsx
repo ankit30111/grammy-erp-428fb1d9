@@ -39,8 +39,8 @@ const KitVerification = () => {
               )
             )
           ),
-          raw_materials!inner(
-            material_code,
+          parts!inner(
+            part_code,
             name
           )
         `)
@@ -80,8 +80,8 @@ const KitVerification = () => {
               )
             )
           ),
-          raw_materials!inner(
-            material_code,
+          parts!inner(
+            part_code,
             name
           )
         `)
@@ -243,8 +243,8 @@ const KitVerification = () => {
 
                 return (
                   <TableRow key={item.id}>
-                    <TableCell className="font-medium">{item.raw_materials.name}</TableCell>
-                    <TableCell className="font-mono">{item.raw_materials.material_code}</TableCell>
+                    <TableCell className="font-medium">{item.parts.name}</TableCell>
+                    <TableCell className="font-mono">{item.parts.part_code}</TableCell>
                     <TableCell>{item.actual_quantity}</TableCell>
                     <TableCell>
                       {showActions ? (

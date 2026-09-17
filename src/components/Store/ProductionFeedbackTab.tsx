@@ -39,9 +39,9 @@ const ProductionFeedbackTab = () => {
               name
             )
           ),
-          raw_materials!inner(
+          parts!inner(
             id,
-            material_code,
+            part_code,
             name,
             category
           )
@@ -110,7 +110,7 @@ const ProductionFeedbackTab = () => {
             const mainId = await getStockLocationId(plantId, "MAIN");
             await postStockMovement({
               plant_id: plantId,
-              raw_material_id: discrepancy.raw_material_id,
+              part_id: discrepancy.part_id,
               location_id: mainId,
               qty_delta: returnQuantity,
               movement_type: 'RETURN',
@@ -124,7 +124,7 @@ const ProductionFeedbackTab = () => {
 
           // PROPER LOGGING: Only log when store accepts production feedback with correct voucher number
           const { error: logError } = await supabase.rpc('log_material_movement', {
-            p_raw_material_id: discrepancy.raw_material_id,
+            p_raw_material_id: discrepancy.part_id,
             p_movement_type: 'PRODUCTION_FEEDBACK_RETURN',
             p_quantity: returnQuantity,
             p_reference_id: discrepancy.production_order_id,
@@ -161,7 +161,7 @@ const ProductionFeedbackTab = () => {
 
         // Log the rejection with proper voucher number (no random references)
         const { error: logError } = await supabase.rpc('log_material_movement', {
-          p_raw_material_id: discrepancy.raw_material_id,
+          p_raw_material_id: discrepancy.part_id,
           p_movement_type: 'PRODUCTION_DISCREPANCY_REJECTED',
           p_quantity: discrepancy.discrepancy_quantity,
           p_reference_id: discrepancy.production_order_id,
@@ -273,8 +273,8 @@ const ProductionFeedbackTab = () => {
                     </TableCell>
                     <TableCell>
                       <div>
-                        <p className="font-medium">{discrepancy.raw_materials.material_code}</p>
-                        <p className="text-sm text-muted-foreground">{discrepancy.raw_materials.name}</p>
+                        <p className="font-medium">{discrepancy.parts.part_code}</p>
+                        <p className="text-sm text-muted-foreground">{discrepancy.parts.name}</p>
                       </div>
                     </TableCell>
                     <TableCell>
@@ -349,7 +349,7 @@ const ProductionFeedbackTab = () => {
                 <h4 className="font-semibold mb-2">Discrepancy Details</h4>
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
-                    <span className="font-medium">Material:</span> {selectedDiscrepancy.raw_materials.material_code}
+                    <span className="font-medium">Material:</span> {selectedDiscrepancy.parts.part_code}
                   </div>
                   <div>
                     <span className="font-medium">Voucher:</span> {selectedDiscrepancy.production_orders.voucher_number}

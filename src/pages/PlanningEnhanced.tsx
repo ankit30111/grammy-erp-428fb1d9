@@ -212,14 +212,14 @@ const PlanningEnhanced: React.FC = () => {
           .from("bom")
           .select(`
             *,
-            raw_materials!inner(
+            parts!inner(
               id,
-              material_code,
+              part_code,
               name,
               category
             )
           `)
-          .eq("product_id", productId);
+          .eq("part_id", productId);
         
         if (error) {
           console.error('❌ BOM fetch error:', error);
@@ -248,7 +248,7 @@ const PlanningEnhanced: React.FC = () => {
       }
 
       const bomWithInventory = productBOM.map(bomItem => {
-        const inventoryItem = inventory?.find(inv => inv.raw_material_id === bomItem.raw_material_id);
+        const inventoryItem = inventory?.find(inv => inv.part_id === bomItem.part_id);
         const requiredQty = bomItem.quantity * selectedSchedule.quantity;
         const availableQty = inventoryItem?.quantity || 0;
         const shortQty = Math.max(0, requiredQty - availableQty); // Only show positive shortage or 0
@@ -332,9 +332,9 @@ const PlanningEnhanced: React.FC = () => {
               {items.map((item, index) => (
                 <TableRow key={index}>
                   <TableCell className="font-medium">
-                    {item.raw_materials?.material_code || 'N/A'}
+                    {item.parts?.part_code || 'N/A'}
                   </TableCell>
-                  <TableCell>{item.raw_materials?.name || 'N/A'}</TableCell>
+                  <TableCell>{item.parts?.name || 'N/A'}</TableCell>
                   <TableCell className="font-medium">{item.requiredQuantity}</TableCell>
                   <TableCell className="font-medium">{item.availableQuantity}</TableCell>
                   <TableCell>

@@ -68,25 +68,25 @@ const Purchase = () => {
       if (shortagesError) throw shortagesError;
 
       // Then get vendor information for these materials
-      const materialIds = shortages?.map(s => s.raw_material_id) || [];
+      const materialIds = shortages?.map(s => s.part_id) || [];
       
       if (materialIds.length === 0) return [];
 
       const { data: vendorData, error: vendorError } = await supabase
         .from("raw_material_vendors")
         .select(`
-          raw_material_id,
+          part_id,
           vendor_id,
           is_primary,
           vendors!inner(id, name, vendor_code)
         `)
-        .in("raw_material_id", materialIds);
+        .in("part_id", materialIds);
       
       if (vendorError) throw vendorError;
 
       // Combine shortage data with vendor information
       return shortages?.map(shortage => {
-        const vendorsForMaterial = vendorData?.filter(v => v.raw_material_id === shortage.raw_material_id) || [];
+        const vendorsForMaterial = vendorData?.filter(v => v.part_id === shortage.part_id) || [];
         return {
           ...shortage,
           raw_material_vendors: vendorsForMaterial
@@ -101,7 +101,7 @@ const Purchase = () => {
   const handleMaterialSelect = (materialId: string, checked: boolean) => {
     if (checked) {
       setSelectedMaterials([...selectedMaterials, materialId]);
-      const material = availableMaterialsForPO.find(m => m.raw_material_id === materialId);
+      const material = availableMaterialsForPO.find(m => m.part_id === materialId);
       if (material) {
         setEditableQuantities(prev => ({
           ...prev,
@@ -135,10 +135,10 @@ const Purchase = () => {
       return;
     }
 
-    const selectedMaterialData = availableMaterialsForPO.filter(m => selectedMaterials.includes(m.raw_material_id));
+    const selectedMaterialData = availableMaterialsForPO.filter(m => selectedMaterials.includes(m.part_id));
     const items = selectedMaterialData.map(material => ({
-      raw_material_id: material.raw_material_id,
-      quantity: editableQuantities[material.raw_material_id] || material.shortage_quantity,
+      part_id: material.part_id,
+      quantity: editableQuantities[material.part_id] || material.shortage_quantity,
       unit_price: 0,
     }));
 
@@ -147,7 +147,7 @@ const Purchase = () => {
         vendor_id: selectedVendor,
         items,
         notes,
-        expected_delivery_date: deliveryDate,
+        promised_delivery_date: deliveryDate,
       });
 
       setPODialogOpen(false);
@@ -162,7 +162,7 @@ const Purchase = () => {
   };
 
   const getAvailableVendors = () => {
-    const selectedMaterialData = availableMaterialsForPO.filter(m => selectedMaterials.includes(m.raw_material_id));
+    const selectedMaterialData = availableMaterialsForPO.filter(m => selectedMaterials.includes(m.part_id));
     const vendorIds = new Set();
     
     selectedMaterialData.forEach(material => {
@@ -257,11 +257,11 @@ const Purchase = () => {
                               </TableHeader>
                               <TableBody>
                                 {selectedMaterials.map((materialId) => {
-                                  const material = availableMaterialsForPO.find(m => m.raw_material_id === materialId);
+                                  const material = availableMaterialsForPO.find(m => m.part_id === materialId);
                                   if (!material) return null;
                                   return (
                                     <TableRow key={materialId}>
-                                      <TableCell className="font-mono">{material.material_code}</TableCell>
+                                      <TableCell className="font-mono">{material.part_code}</TableCell>
                                       <TableCell>{material.material_name}</TableCell>
                                       <TableCell>{material.shortage_quantity}</TableCell>
                                       <TableCell>
@@ -332,18 +332,18 @@ const Purchase = () => {
                       </TableHeader>
                       <TableBody>
                         {vendorMaterials.map((material) => (
-                          <TableRow key={material.raw_material_id}>
+                          <TableRow key={material.part_id}>
                             <TableCell>
                               <input
                                 type="checkbox"
-                                checked={selectedMaterials.includes(material.raw_material_id)}
-                                onChange={(e) => handleMaterialSelect(material.raw_material_id, e.target.checked)}
+                                checked={selectedMaterials.includes(material.part_id)}
+                                onChange={(e) => handleMaterialSelect(material.part_id, e.target.checked)}
                                 className="h-4 w-4"
                                 disabled={material.has_pending_po}
                               />
                             </TableCell>
                             <TableCell className="font-medium font-mono">
-                              {material.material_code}
+                              {material.part_code}
                             </TableCell>
                             <TableCell>{material.material_name}</TableCell>
                             <TableCell>{material.total_required.toLocaleString()}</TableCell>

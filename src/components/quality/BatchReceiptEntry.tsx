@@ -15,8 +15,8 @@ import { useBOMByProduct } from "@/hooks/useBOM";
 
 interface BatchItem {
   id: string;
-  product_id?: string;
-  raw_material_id?: string;
+  part_id?: string;
+  part_id?: string;
   brand_name: string;
   quantity_received: number;
   item_type: 'PRODUCT' | 'DATA' | 'PART';
@@ -36,8 +36,8 @@ const BatchReceiptEntry = () => {
 
   const [batchItems, setBatchItems] = useState<BatchItem[]>([]);
   const [currentItem, setCurrentItem] = useState({
-    product_id: "",
-    raw_material_id: "",
+    part_id: "",
+    part_id: "",
     brand_name: "",
     quantity_received: 1,
     item_type: "PRODUCT" as "PRODUCT" | "DATA" | "PART",
@@ -50,7 +50,7 @@ const BatchReceiptEntry = () => {
 
   // Fetch BOM data when product is selected for faulty parts
   const { data: bomData = [] } = useBOMByProduct(
-    formData.receipt_type === 'FAULTY_PARTS_ONLY' ? currentItem.product_id : ""
+    formData.receipt_type === 'FAULTY_PARTS_ONLY' ? currentItem.part_id : ""
   );
 
   // Fetch customers
@@ -73,8 +73,8 @@ const BatchReceiptEntry = () => {
     queryKey: ["products"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("products")
-        .select("id, name, product_code")
+        .from("parts")
+        .select("id, name, part_code")
         .eq("is_active", true)
         .order("name");
       
@@ -109,8 +109,8 @@ const BatchReceiptEntry = () => {
       // Create batch items
       const itemsData = batchItems.map(item => ({
         batch_id: batch.id,
-        product_id: item.product_id || null,
-        raw_material_id: item.raw_material_id || null,
+        part_id: item.part_id || null,
+        part_id: item.part_id || null,
         brand_name: item.brand_name,
         quantity_received: item.quantity_received,
         item_type: item.item_type,
@@ -171,7 +171,7 @@ const BatchReceiptEntry = () => {
       return;
     }
 
-    if (currentItem.item_type === 'PRODUCT' && !currentItem.product_id) {
+    if (currentItem.item_type === 'PRODUCT' && !currentItem.part_id) {
       toast({
         title: "Error",
         description: "Please select a product",
@@ -180,7 +180,7 @@ const BatchReceiptEntry = () => {
       return;
     }
 
-    if (currentItem.item_type === 'DATA' && !currentItem.product_id) {
+    if (currentItem.item_type === 'DATA' && !currentItem.part_id) {
       toast({
         title: "Error",
         description: "Please select a product for data analysis",
@@ -189,7 +189,7 @@ const BatchReceiptEntry = () => {
       return;
     }
 
-    if (currentItem.item_type === 'PART' && (!currentItem.product_id || !currentItem.raw_material_id)) {
+    if (currentItem.item_type === 'PART' && (!currentItem.part_id || !currentItem.part_id)) {
       toast({
         title: "Error",
         description: "Please select both product and part",
@@ -201,14 +201,14 @@ const BatchReceiptEntry = () => {
     const newItem: BatchItem = {
       id: Date.now().toString(),
       ...currentItem,
-      product_id: currentItem.item_type !== 'PRODUCT' ? currentItem.product_id : currentItem.product_id,
-      raw_material_id: currentItem.item_type === 'PART' ? currentItem.raw_material_id : undefined
+      part_id: currentItem.item_type !== 'PRODUCT' ? currentItem.part_id : currentItem.part_id,
+      part_id: currentItem.item_type === 'PART' ? currentItem.part_id : undefined
     };
 
     setBatchItems(prev => [...prev, newItem]);
     setCurrentItem({
-      product_id: "",
-      raw_material_id: "",
+      part_id: "",
+      part_id: "",
       brand_name: "",
       quantity_received: 1,
       item_type: formData.receipt_type === 'COMPLETE_PRODUCTS' ? 'PRODUCT' : 
@@ -252,15 +252,15 @@ const BatchReceiptEntry = () => {
 
   const getItemTypeDisplay = (item: BatchItem) => {
     if (item.item_type === 'PRODUCT') {
-      const product = products.find(p => p.id === item.product_id);
-      return product ? `${product.name} (${product.product_code})` : 'Unknown Product';
+      const product = products.find(p => p.id === item.part_id);
+      return product ? `${product.name} (${product.part_code})` : 'Unknown Product';
     }
     if (item.item_type === 'DATA') {
-      const product = products.find(p => p.id === item.product_id);
-      return product ? `Data Analysis: ${product.name} (${product.product_code})` : 'Data Analysis: Unknown Product';
+      const product = products.find(p => p.id === item.part_id);
+      return product ? `Data Analysis: ${product.name} (${product.part_code})` : 'Data Analysis: Unknown Product';
     }
     if (item.item_type === 'PART') {
-      const product = products.find(p => p.id === item.product_id);
+      const product = products.find(p => p.id === item.part_id);
       const productName = product ? `${product.name}` : 'Unknown Product';
       const partName = item.part_description || 'Unknown Part';
       return `${productName} - ${partName}`;
@@ -337,8 +337,8 @@ const BatchReceiptEntry = () => {
                     setFormData({ ...formData, receipt_type: value });
                     // Reset current item type and clear fields based on receipt type
                     setCurrentItem({
-                      product_id: "",
-                      raw_material_id: "",
+                      part_id: "",
+                      part_id: "",
                       brand_name: "",
                       quantity_received: 1,
                       item_type: value === 'COMPLETE_PRODUCTS' ? 'PRODUCT' : 
@@ -393,8 +393,8 @@ const BatchReceiptEntry = () => {
                   <div className="col-span-3">
                     <Label>Product *</Label>
                     <Select
-                      value={currentItem.product_id}
-                      onValueChange={(value) => setCurrentItem({ ...currentItem, product_id: value })}
+                      value={currentItem.part_id}
+                      onValueChange={(value) => setCurrentItem({ ...currentItem, part_id: value })}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Select product" />
@@ -402,7 +402,7 @@ const BatchReceiptEntry = () => {
                       <SelectContent>
                         {products.map((product) => (
                           <SelectItem key={product.id} value={product.id}>
-                            {product.name} ({product.product_code})
+                            {product.name} ({product.part_code})
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -415,8 +415,8 @@ const BatchReceiptEntry = () => {
                   <div className="col-span-3">
                     <Label>Product *</Label>
                     <Select
-                      value={currentItem.product_id}
-                      onValueChange={(value) => setCurrentItem({ ...currentItem, product_id: value })}
+                      value={currentItem.part_id}
+                      onValueChange={(value) => setCurrentItem({ ...currentItem, part_id: value })}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Select product for analysis" />
@@ -424,7 +424,7 @@ const BatchReceiptEntry = () => {
                       <SelectContent>
                         {products.map((product) => (
                           <SelectItem key={product.id} value={product.id}>
-                            {product.name} ({product.product_code})
+                            {product.name} ({product.part_code})
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -438,12 +438,12 @@ const BatchReceiptEntry = () => {
                     <div className="col-span-3">
                       <Label>Product *</Label>
                       <Select
-                        value={currentItem.product_id}
+                        value={currentItem.part_id}
                         onValueChange={(value) => {
                           setCurrentItem({ 
                             ...currentItem, 
-                            product_id: value,
-                            raw_material_id: "" // Reset part selection when product changes
+                            part_id: value,
+                            part_id: "" // Reset part selection when product changes
                           });
                         }}
                       >
@@ -453,7 +453,7 @@ const BatchReceiptEntry = () => {
                         <SelectContent>
                           {products.map((product) => (
                             <SelectItem key={product.id} value={product.id}>
-                              {product.name} ({product.product_code})
+                              {product.name} ({product.part_code})
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -462,24 +462,24 @@ const BatchReceiptEntry = () => {
                     <div className="col-span-3">
                       <Label>Faulty Part *</Label>
                       <Select
-                        value={currentItem.raw_material_id}
+                        value={currentItem.part_id}
                         onValueChange={(value) => {
-                          const selectedPart = bomData.find(item => item.raw_materials.id === value);
+                          const selectedPart = bomData.find(item => item.parts.id === value);
                           setCurrentItem({ 
                             ...currentItem, 
-                            raw_material_id: value,
-                            part_description: selectedPart ? selectedPart.raw_materials.name : ""
+                            part_id: value,
+                            part_description: selectedPart ? selectedPart.parts.name : ""
                           });
                         }}
-                        disabled={!currentItem.product_id}
+                        disabled={!currentItem.part_id}
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder={!currentItem.product_id ? "Select product first" : "Select faulty part"} />
+                          <SelectValue placeholder={!currentItem.part_id ? "Select product first" : "Select faulty part"} />
                         </SelectTrigger>
                         <SelectContent>
                           {bomData.map((bomItem) => (
-                            <SelectItem key={bomItem.raw_materials.id} value={bomItem.raw_materials.id}>
-                              {bomItem.raw_materials.name} ({bomItem.raw_materials.material_code})
+                            <SelectItem key={bomItem.parts.id} value={bomItem.parts.id}>
+                              {bomItem.parts.name} ({bomItem.parts.part_code})
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -592,8 +592,8 @@ const BatchReceiptEntry = () => {
                 });
                 setBatchItems([]);
                 setCurrentItem({
-                  product_id: "",
-                  raw_material_id: "",
+                  part_id: "",
+                  part_id: "",
                   brand_name: "",
                   quantity_received: 1,
                   item_type: "PRODUCT",

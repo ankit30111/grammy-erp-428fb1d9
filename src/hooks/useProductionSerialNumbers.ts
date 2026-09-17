@@ -49,7 +49,7 @@ export const useProductionVouchersWithDispatch = () => {
           quantity,
           scheduled_date,
           status,
-          products!product_id (name),
+          products!part_id (name),
           production_schedules!production_schedule_id (
             projections!projection_id (
               customers!customer_id (name)

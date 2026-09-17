@@ -32,7 +32,7 @@ export const ComplaintStatusDialog = ({ complaint, isOpen, onClose }: ComplaintS
         .from("customer_complaint_parts")
         .select(`
           *,
-          raw_materials(name, material_code),
+          parts(name, part_code),
           profiles:sent_to_iqc_by(full_name),
           analyzed_profiles:analyzed_by(full_name),
           closed_profiles:closed_by(full_name)

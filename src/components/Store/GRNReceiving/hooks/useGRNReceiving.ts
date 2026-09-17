@@ -28,8 +28,8 @@ export const useGRNReceiving = () => {
               vendor_code
             )
           ),
-          raw_materials (
-            material_code,
+          parts (
+            part_code,
             name
           )
         `)
@@ -74,7 +74,7 @@ export const useGRNReceiving = () => {
         const mainId = await getStockLocationId(item.plant_id, 'MAIN');
         await postStockMovement({
           plant_id: item.plant_id,
-          raw_material_id: item.raw_material_id,
+          part_id: item.part_id,
           location_id: mainId,
           qty_delta: delta,
           movement_type: 'ADJUSTMENT',

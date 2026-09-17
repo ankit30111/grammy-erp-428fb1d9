@@ -30,7 +30,7 @@ import {
 } from "@/components/ui/select";
 
 export interface BOMItem {
-  raw_material_id: string;
+  part_id: string;
   raw_material_name: string;
   raw_material_code: string;
   bom_type: "main_assembly" | "sub_assembly" | "accessory";
@@ -58,10 +58,10 @@ export function BOMForm({ bomItems, onBOMChange }: BOMFormProps) {
 
   const fetchRawMaterials = async () => {
     const { data, error } = await supabase
-      .from('raw_materials')
+      .from('parts')
       .select('*')
       .eq('is_active', true)
-      .order('material_code');
+      .order('part_code');
     
     if (error) {
       console.error('Error fetching raw materials:', error);
@@ -72,7 +72,7 @@ export function BOMForm({ bomItems, onBOMChange }: BOMFormProps) {
 
   const filteredMaterials = rawMaterials.filter(material =>
     material.name.toLowerCase().includes(searchValue.toLowerCase()) ||
-    material.material_code.toLowerCase().includes(searchValue.toLowerCase()) ||
+    material.part_code.toLowerCase().includes(searchValue.toLowerCase()) ||
     material.category.toLowerCase().includes(searchValue.toLowerCase())
   );
 
@@ -86,7 +86,7 @@ export function BOMForm({ bomItems, onBOMChange }: BOMFormProps) {
 
     // Check if this combination already exists
     const exists = bomItems.some(item => 
-      item.raw_material_id === selectedMaterial && item.bom_type === selectedType
+      item.part_id === selectedMaterial && item.bom_type === selectedType
     );
 
     if (exists) {
@@ -95,9 +95,9 @@ export function BOMForm({ bomItems, onBOMChange }: BOMFormProps) {
     }
 
     const newItem: BOMItem = {
-      raw_material_id: selectedMaterial,
+      part_id: selectedMaterial,
       raw_material_name: material.name,
-      raw_material_code: material.material_code,
+      raw_material_code: material.part_code,
       bom_type: selectedType,
       quantity,
       is_critical: isCritical
@@ -155,7 +155,7 @@ export function BOMForm({ bomItems, onBOMChange }: BOMFormProps) {
                   className="w-full justify-between"
                 >
                   {selectedMaterialData
-                    ? `${selectedMaterialData.material_code} - ${selectedMaterialData.name}`
+                    ? `${selectedMaterialData.part_code} - ${selectedMaterialData.name}`
                     : "Select material..."}
                 </Button>
               </PopoverTrigger>
@@ -172,7 +172,7 @@ export function BOMForm({ bomItems, onBOMChange }: BOMFormProps) {
                       {filteredMaterials.map((material) => (
                         <CommandItem
                           key={material.id}
-                          value={`${material.material_code} ${material.name} ${material.category}`}
+                          value={`${material.part_code} ${material.name} ${material.category}`}
                           onSelect={() => {
                             setSelectedMaterial(material.id);
                             setOpen(false);
@@ -180,7 +180,7 @@ export function BOMForm({ bomItems, onBOMChange }: BOMFormProps) {
                           }}
                         >
                           <div className="flex flex-col">
-                            <span className="font-medium">{material.material_code}</span>
+                            <span className="font-medium">{material.part_code}</span>
                             <span className="text-sm text-muted-foreground">{material.name}</span>
                             <span className="text-xs text-muted-foreground">({material.category})</span>
                           </div>
@@ -245,11 +245,11 @@ export function BOMForm({ bomItems, onBOMChange }: BOMFormProps) {
             <div className="grid gap-2">
               {getBOMItemsByType(type).map((item, index) => {
                 const itemIndex = bomItems.findIndex(bomItem => 
-                  bomItem.raw_material_id === item.raw_material_id && 
+                  bomItem.part_id === item.part_id && 
                   bomItem.bom_type === item.bom_type
                 );
                 return (
-                  <div key={`${item.raw_material_id}-${item.bom_type}`} 
+                  <div key={`${item.part_id}-${item.bom_type}`} 
                        className="flex items-center justify-between p-3 bg-gray-50 rounded">
                     <div className="flex flex-col">
                       <div className="flex items-center gap-2">

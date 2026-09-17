@@ -232,7 +232,7 @@ export const useIQCInspection = (grn: any) => {
 
           const base = {
             plant_id: plantId,
-            raw_material_id: grn.grn_items.find((i: any) => i.id === itemId)?.raw_material_id,
+            part_id: grn.grn_items.find((i: any) => i.id === itemId)?.part_id,
             reference_type: 'GRN_ITEM_IQC',
             reference_id: itemId,
             reference_number: grn.grn_number,

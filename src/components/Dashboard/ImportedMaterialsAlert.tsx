@@ -10,7 +10,7 @@ import { Link } from "react-router-dom";
 interface ImportedMaterialAlert {
   id: string;
   name: string;
-  material_code: string;
+  part_code: string;
   currency: string;
   unit_price: number;
   supplier_country: string;
@@ -25,18 +25,18 @@ const ImportedMaterialsAlert = () => {
       try {
         // Query to find imported materials that are used in projections
         const { data: materialsData, error: materialsError } = await supabase
-          .from("raw_materials")
+          .from("parts")
           .select(`
             id,
             name,
-            material_code,
+            part_code,
             currency,
             unit_price,
             supplier_country,
             bom!inner(
               id,
               quantity,
-              product_id,
+              part_id,
               products!inner(
                 id,
                 name,
@@ -70,7 +70,7 @@ const ImportedMaterialsAlert = () => {
             processedData.push({
               id: material.id,
               name: material.name,
-              material_code: material.material_code,
+              part_code: material.part_code,
               currency: material.currency || 'USD',
               unit_price: material.unit_price || 0,
               supplier_country: material.supplier_country || '',
@@ -145,7 +145,7 @@ const ImportedMaterialsAlert = () => {
             <div key={material.id} className="flex items-center justify-between p-3 bg-orange-50 rounded-lg">
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="font-medium">{material.material_code}</span>
+                  <span className="font-medium">{material.part_code}</span>
                   <Badge variant="outline">{material.currency}</Badge>
                   {material.supplier_country && (
                     <Badge variant="secondary" className="text-xs">

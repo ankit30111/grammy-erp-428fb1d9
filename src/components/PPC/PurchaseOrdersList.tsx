@@ -76,17 +76,17 @@ const PurchaseOrdersList = ({ onViewDetails }: PurchaseOrdersListProps) => {
         vendorName: po.vendors?.name || "Unknown Vendor",
         vendorAddress: po.vendors?.address || "Address not available",
         vendorContact: po.vendors?.contact_number || "Contact not available", 
-        expectedDeliveryDate: po.expected_delivery_date || po.created_at,
+        expectedDeliveryDate: po.promised_delivery_date || po.created_at,
         createdAt: po.created_at,
         createdBy: "Purchase Department", // Could be enhanced to get actual user
         totalAmount: po.total_amount || 0,
         notes: po.notes,
         items: po.purchase_order_items.map((item: any) => ({
-          materialCode: item.raw_materials?.material_code || "N/A",
-          materialName: item.raw_materials?.name || "Unknown Material",
+          materialCode: item.parts?.part_code || "N/A",
+          materialName: item.parts?.name || "Unknown Material",
           quantity: item.quantity,
           unitPrice: item.unit_price || 0,
-          totalPrice: item.total_price || (item.quantity * (item.unit_price || 0))
+          totalPrice: item.line_total || (item.quantity * (item.unit_price || 0))
         }))
       };
 

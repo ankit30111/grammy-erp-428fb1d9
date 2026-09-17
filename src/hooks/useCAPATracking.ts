@@ -9,7 +9,7 @@ export interface CAPAForIQC {
   vendor_name: string | null;
   approved_at: string;
   status: string;
-  raw_material_id: string;
+  part_id: string;
   vendor_id: string | null;
 }
 
@@ -18,7 +18,7 @@ export interface CAPAImplementationCheck {
   capa_category: string;
   reference_id: string;
   grn_item_id: string;
-  raw_material_id: string;
+  part_id: string;
   vendor_id: string | null;
   implemented: boolean;
   remarks: string;
@@ -34,7 +34,7 @@ export const useCAPATracking = () => {
           .from('capa_tracking_with_links')
           .select('*')
           .eq('status', 'APPROVED')
-          .or(`and(capa_category.eq.VENDOR,vendor_id.eq.${vendorId},raw_material_id.eq.${materialId}),and(capa_category.eq.PART_ANALYSIS,raw_material_id.eq.${materialId})`)
+          .or(`and(capa_category.eq.VENDOR,vendor_id.eq.${vendorId},part_id.eq.${materialId}),and(capa_category.eq.PART_ANALYSIS,part_id.eq.${materialId})`)
           .order('approved_at', { ascending: false });
 
         if (error) throw error;

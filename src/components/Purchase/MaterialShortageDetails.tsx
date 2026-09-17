@@ -8,7 +8,7 @@ interface MaterialShortageDetailsProps {
   isOpen: boolean;
   onClose: () => void;
   materialData: {
-    material_code: string;
+    part_code: string;
     material_name: string;
     total_required: number;
     available_quantity: number;
@@ -37,7 +37,7 @@ const MaterialShortageDetails = ({ isOpen, onClose, materialData }: MaterialShor
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Package className="h-5 w-5" />
-            Material Shortage Details - {materialData.material_code}
+            Material Shortage Details - {materialData.part_code}
           </DialogTitle>
         </DialogHeader>
         
@@ -93,7 +93,7 @@ const MaterialShortageDetails = ({ isOpen, onClose, materialData }: MaterialShor
           <div className="bg-gray-50 p-4 rounded-lg">
             <h3 className="font-medium mb-2">Material Information</h3>
             <div className="grid grid-cols-2 gap-4 text-sm">
-              <div><strong>Part Code:</strong> {materialData.material_code}</div>
+              <div><strong>Part Code:</strong> {materialData.part_code}</div>
               <div><strong>Part Name:</strong> {materialData.material_name}</div>
             </div>
           </div>

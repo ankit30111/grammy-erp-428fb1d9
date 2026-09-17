@@ -7,14 +7,14 @@ interface MaterialMovement {
   id: string;
   created_at: string;
   movement_type: string;
-  raw_material_id: string;
+  part_id: string;
   quantity: number;
   reference_id: string;
   reference_type: string;
   reference_number: string;
   notes: string;
-  raw_materials?: {
-    material_code: string;
+  parts?: {
+    part_code: string;
     name: string;
     category: string;
   };
@@ -32,14 +32,14 @@ export const useMovementData = (filterType: string) => {
           id,
           created_at,
           movement_type,
-          raw_material_id,
+          part_id,
           quantity,
           reference_id,
           reference_type,
           reference_number,
           notes,
-          raw_materials!inner(
-            material_code,
+          parts!inner(
+            part_code,
             name,
             category
           )

@@ -61,7 +61,7 @@ const CAPAImplementationSection = ({
             capa_category: capa.capa_category,
             reference_id: capaId,
             grn_item_id: grnItemId,
-            raw_material_id: materialId,
+            part_id: materialId,
             vendor_id: vendorId,
             implemented: check.implemented,
             remarks: check.remarks || ''

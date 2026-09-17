@@ -97,7 +97,7 @@ export const ScheduleProductionDialog = ({
         .from("production_orders")
         .insert({
           production_schedule_id: schedule.id,
-          product_id: projection.product_id,
+          part_id: projection.part_id,
           quantity: quantityNum,
           scheduled_date: format(scheduledDate, "yyyy-MM-dd"),
           voucher_number: voucherNumber,

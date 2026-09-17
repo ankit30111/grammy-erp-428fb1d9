@@ -42,7 +42,7 @@ const months = generateMonths();
 const Projection = () => {
   const [newProjection, setNewProjection] = useState({
     customer_id: "",
-    product_id: "",
+    part_id: "",
     quantity: "",
     delivery_month: "",
   });
@@ -75,7 +75,7 @@ const Projection = () => {
 
   const handleAddProjection = async () => {
     // Validate inputs
-    if (!newProjection.customer_id || !newProjection.product_id || !newProjection.quantity || !newProjection.delivery_month) {
+    if (!newProjection.customer_id || !newProjection.part_id || !newProjection.quantity || !newProjection.delivery_month) {
       toast({
         title: "Missing fields",
         description: "Please fill in all required fields",
@@ -87,7 +87,7 @@ const Projection = () => {
     try {
       await createProjection.mutateAsync({
         customer_id: newProjection.customer_id,
-        product_id: newProjection.product_id,
+        part_id: newProjection.part_id,
         quantity: parseInt(newProjection.quantity),
         delivery_month: newProjection.delivery_month,
       });
@@ -95,7 +95,7 @@ const Projection = () => {
       // Reset form
       setNewProjection({
         customer_id: "",
-        product_id: "",
+        part_id: "",
         quantity: "",
         delivery_month: "",
       });
@@ -148,7 +148,7 @@ const Projection = () => {
         return order.customer_id === customerId && orderMonth === monthYear;
       })
       .reduce((total, order) => {
-        const productItems = order.dispatch_order_items?.filter(item => item.product_id === productId) || [];
+        const productItems = order.dispatch_order_items?.filter(item => item.part_id === productId) || [];
         return total + productItems.reduce((sum, item) => sum + item.quantity, 0);
       }, 0);
   };
@@ -200,8 +200,8 @@ const Projection = () => {
                   Product
                 </label>
                 <Select
-                  value={newProjection.product_id}
-                  onValueChange={(value) => handleSelectChange("product_id", value)}
+                  value={newProjection.part_id}
+                  onValueChange={(value) => handleSelectChange("part_id", value)}
                   disabled={productsLoading}
                 >
                   <SelectTrigger id="product">
@@ -287,7 +287,7 @@ const Projection = () => {
                   {projections?.map((projection) => {
                     const suppliedQty = getSuppliedQuantity(
                       projection.customer_id, 
-                      projection.product_id, 
+                      projection.part_id, 
                       projection.delivery_month
                     );
                     const pendingQty = projection.quantity - suppliedQty;

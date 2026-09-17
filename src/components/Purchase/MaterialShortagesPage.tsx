@@ -11,8 +11,8 @@ import { useState } from "react";
 import MaterialShortageDetails from "./MaterialShortageDetails";
 
 interface MaterialShortage {
-  raw_material_id: string;
-  material_code: string;
+  part_id: string;
+  part_code: string;
   material_name: string;
   total_required: number;
   available_quantity: number;
@@ -193,12 +193,12 @@ export const MaterialShortagesPage = () => {
               </TableHeader>
               <TableBody>
                 {materialShortages.map((shortage) => (
-                  <TableRow key={shortage.raw_material_id}>
+                  <TableRow key={shortage.part_id}>
                     <TableCell 
                       className="font-medium font-mono cursor-pointer text-blue-600 hover:text-blue-800"
                       onClick={() => handleViewDetails(shortage)}
                     >
-                      {shortage.material_code}
+                      {shortage.part_code}
                     </TableCell>
                     <TableCell>{shortage.material_name}</TableCell>
                     <TableCell>{shortage.total_required.toLocaleString()}</TableCell>

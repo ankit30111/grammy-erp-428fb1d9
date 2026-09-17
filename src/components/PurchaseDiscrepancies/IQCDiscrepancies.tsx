@@ -28,8 +28,8 @@ const IQCDiscrepancies = () => {
               vendor_code
             )
           ),
-          raw_materials (
-            material_code,
+          parts (
+            part_code,
             name
           )
         `)
@@ -110,8 +110,8 @@ const IQCDiscrepancies = () => {
                 {iqcDiscrepancies.map((item) => (
                   <TableRow key={item.id}>
                     <TableCell className="font-mono">{item.grn?.grn_number}</TableCell>
-                    <TableCell className="font-mono">{item.raw_materials?.material_code}</TableCell>
-                    <TableCell>{item.raw_materials?.name}</TableCell>
+                    <TableCell className="font-mono">{item.parts?.part_code}</TableCell>
+                    <TableCell>{item.parts?.name}</TableCell>
                     <TableCell>{item.grn?.vendors?.name}</TableCell>
                     <TableCell>{item.po_quantity}</TableCell>
                     <TableCell>{item.received_quantity}</TableCell>

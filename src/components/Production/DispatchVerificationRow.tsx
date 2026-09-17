@@ -74,7 +74,7 @@ const DispatchVerificationRow = ({
 
   return (
     <TableRow className={isVerified ? "bg-green-50" : ""}>
-      <TableCell className="font-mono">{rawMaterial.material_code}</TableCell>
+      <TableCell className="font-mono">{rawMaterial.part_code}</TableCell>
       <TableCell>{rawMaterial.name}</TableCell>
       <TableCell className="font-semibold">{requiredQuantity}</TableCell>
       <TableCell className="font-medium text-blue-600">{sentQuantity}</TableCell>
@@ -100,7 +100,7 @@ const DispatchVerificationRow = ({
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
                       <span className="text-muted-foreground">Material:</span>
-                      <p className="font-medium">{rawMaterial.material_code}</p>
+                      <p className="font-medium">{rawMaterial.part_code}</p>
                     </div>
                     <div>
                       <span className="text-muted-foreground">Sent Quantity:</span>

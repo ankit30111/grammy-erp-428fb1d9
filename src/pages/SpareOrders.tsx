@@ -24,7 +24,7 @@ interface Customer {
 
 interface RawMaterial {
   id: string;
-  material_code: string;
+  part_code: string;
   name: string;
   category: string;
 }
@@ -39,9 +39,9 @@ interface SpareOrder {
   customers: Customer;
   spare_order_items: Array<{
     id: string;
-    raw_material_id: string;
+    part_id: string;
     quantity: number;
-    raw_materials: RawMaterial;
+    parts: RawMaterial;
   }>;
 }
 
@@ -59,12 +59,12 @@ const SpareOrders = () => {
   });
 
   const [orderItems, setOrderItems] = useState<Array<{
-    raw_material_id: string;
+    part_id: string;
     quantity: number;
   }>>([]);
 
   const [currentItem, setCurrentItem] = useState({
-    raw_material_id: "",
+    part_id: "",
     quantity: 1
   });
 
@@ -90,8 +90,8 @@ const SpareOrders = () => {
 
   const fetchRawMaterials = async () => {
     const { data, error } = await supabase
-      .from('raw_materials')
-      .select('id, material_code, name, category')
+      .from('parts')
+      .select('id, part_code, name, category')
       .eq('is_active', true)
       .order('name');
     
@@ -119,11 +119,11 @@ const SpareOrders = () => {
         ),
         spare_order_items (
           id,
-          raw_material_id,
+          part_id,
           quantity,
-          raw_materials:raw_material_id (
+          parts:part_id (
             id,
-            material_code,
+            part_code,
             name,
             category
           )
@@ -139,7 +139,7 @@ const SpareOrders = () => {
   };
 
   const addItemToOrder = () => {
-    if (!currentItem.raw_material_id || currentItem.quantity <= 0) {
+    if (!currentItem.part_id || currentItem.quantity <= 0) {
       toast({
         title: "Error",
         description: "Please select a raw material and enter a valid quantity",
@@ -148,7 +148,7 @@ const SpareOrders = () => {
       return;
     }
 
-    const existingItemIndex = orderItems.findIndex(item => item.raw_material_id === currentItem.raw_material_id);
+    const existingItemIndex = orderItems.findIndex(item => item.part_id === currentItem.part_id);
     
     if (existingItemIndex >= 0) {
       const updatedItems = [...orderItems];
@@ -159,7 +159,7 @@ const SpareOrders = () => {
     }
 
     setCurrentItem({
-      raw_material_id: "",
+      part_id: "",
       quantity: 1
     });
   };
@@ -179,7 +179,7 @@ const SpareOrders = () => {
     }
 
     try {
-      // Create spare order without product_id
+      // Create spare order without part_id
       const { data: spareOrder, error: orderError } = await supabase
         .from('spare_orders')
         .insert({
@@ -300,8 +300,8 @@ const SpareOrders = () => {
                     <div className="space-y-2">
                       <Label>Raw Material / Spare Part *</Label>
                       <RawMaterialDropdown
-                        value={currentItem.raw_material_id}
-                        onValueChange={(value) => setCurrentItem({ ...currentItem, raw_material_id: value })}
+                        value={currentItem.part_id}
+                        onValueChange={(value) => setCurrentItem({ ...currentItem, part_id: value })}
                         placeholder="Search by part name or code..."
                       />
                     </div>
@@ -334,11 +334,11 @@ const SpareOrders = () => {
                         </TableHeader>
                         <TableBody>
                           {orderItems.map((item, index) => {
-                            const material = rawMaterials.find(m => m.id === item.raw_material_id);
+                            const material = rawMaterials.find(m => m.id === item.part_id);
                             return (
                               <TableRow key={index}>
                                 <TableCell>
-                                  {material ? `${material.name} (${material.material_code})` : 'Material not found'}
+                                  {material ? `${material.name} (${material.part_code})` : 'Material not found'}
                                 </TableCell>
                                 <TableCell>{item.quantity}</TableCell>
                                 <TableCell>

@@ -13,9 +13,9 @@ export const useCheckMaterialInventory = () => {
       
       // Get material details
       const { data: material, error: materialError } = await supabase
-        .from("raw_materials")
-        .select("id, material_code, name")
-        .eq("material_code", materialCode)
+        .from("parts")
+        .select("id, part_code, name")
+        .eq("part_code", materialCode)
         .single();
 
       if (materialError) {
@@ -32,7 +32,7 @@ export const useCheckMaterialInventory = () => {
           store_confirmed_at,
           grn!inner(grn_number, received_date)
         `)
-        .eq("raw_material_id", material.id)
+        .eq("part_id", material.id)
         .eq("store_confirmed", true)
         .eq("plant_id", plantId);
 
@@ -47,7 +47,7 @@ export const useCheckMaterialInventory = () => {
       const { data: productionDispatches, error: dispatchError } = await supabase
         .from("material_movements")
         .select("quantity")
-        .eq("raw_material_id", material.id)
+        .eq("part_id", material.id)
         .eq("movement_type", "ISSUED_TO_PRODUCTION")
         .order("created_at", { ascending: false });
 
@@ -57,7 +57,7 @@ export const useCheckMaterialInventory = () => {
       const { data: materialRequests, error: requestError } = await supabase
         .from("material_requests")
         .select("approved_quantity")
-        .eq("raw_material_id", material.id)
+        .eq("part_id", material.id)
         .eq("status", "APPROVED");
 
       if (requestError) throw requestError;

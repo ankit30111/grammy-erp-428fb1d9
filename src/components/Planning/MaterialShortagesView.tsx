@@ -36,7 +36,7 @@ export const MaterialShortagesView = () => {
             delivery_target_date,
             vendors(name)
           ),
-          raw_materials(material_code, name)
+          parts(part_code, name)
         `)
         .in("received_status", ["PENDING", "PARTIAL"]);
       
@@ -48,14 +48,14 @@ export const MaterialShortagesView = () => {
   // Group shortages by material
   const materialShortages = materialRequirements.reduce((acc: any[], req: any) => {
     if (req.shortage_quantity > 0) {
-      const existing = acc.find(item => item.raw_material_id === req.raw_material_id);
+      const existing = acc.find(item => item.part_id === req.part_id);
       if (existing) {
         existing.total_shortage += req.shortage_quantity;
         existing.projections.push(req);
       } else {
         acc.push({
-          raw_material_id: req.raw_material_id,
-          material_code: req.material_code,
+          part_id: req.part_id,
+          part_code: req.part_code,
           material_name: req.material_name,
           available_quantity: req.available_quantity,
           total_shortage: req.shortage_quantity,
@@ -68,7 +68,7 @@ export const MaterialShortagesView = () => {
   }, []);
 
   const getPurchaseStatus = (materialId: string) => {
-    return purchaseOrderStatus.filter(po => po.raw_material_id === materialId);
+    return purchaseOrderStatus.filter(po => po.part_id === materialId);
   };
 
   return (
@@ -150,11 +150,11 @@ export const MaterialShortagesView = () => {
             </TableHeader>
             <TableBody>
               {materialShortages.map((shortage) => {
-                const poItems = getPurchaseStatus(shortage.raw_material_id);
+                const poItems = getPurchaseStatus(shortage.part_id);
                 
                 return (
-                  <TableRow key={shortage.raw_material_id}>
-                    <TableCell className="font-medium">{shortage.material_code}</TableCell>
+                  <TableRow key={shortage.part_id}>
+                    <TableCell className="font-medium">{shortage.part_code}</TableCell>
                     <TableCell>{shortage.material_name}</TableCell>
                     <TableCell>{shortage.available_quantity}</TableCell>
                     <TableCell className="text-red-600 font-medium">

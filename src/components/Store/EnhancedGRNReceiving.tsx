@@ -50,7 +50,7 @@ const EnhancedGRNReceiving = ({
           purchase_orders (po_number),
           grn_items (
             id,
-            raw_material_id,
+            part_id,
             po_quantity,
             received_quantity,
             accepted_quantity,
@@ -58,7 +58,7 @@ const EnhancedGRNReceiving = ({
             iqc_status,
             store_confirmed,
             store_confirmed_at,
-            raw_materials (id, name, material_code)
+            parts (id, name, part_code)
           )
         `)
         .eq("status", "IQC_COMPLETED")
@@ -90,7 +90,7 @@ const EnhancedGRNReceiving = ({
           purchase_orders (po_number),
           grn_items (
             id,
-            raw_material_id,
+            part_id,
             po_quantity,
             received_quantity,
             accepted_quantity,
@@ -98,7 +98,7 @@ const EnhancedGRNReceiving = ({
             iqc_status,
             store_confirmed,
             store_confirmed_at,
-            raw_materials (id, name, material_code)
+            parts (id, name, part_code)
           )
         `)
         .eq("status", "STORE_RECEIVED")
@@ -171,7 +171,7 @@ const EnhancedGRNReceiving = ({
         if (grnItem) {
           // Auto-log GRN receipt with proper reference
           const { error: logError } = await supabase.rpc('log_material_movement', {
-            p_raw_material_id: grnItem.raw_material_id,
+            p_raw_material_id: grnItem.part_id,
             p_movement_type: 'GRN_RECEIPT',
             p_quantity: quantity,
             p_reference_id: selectedGRN.id,
@@ -201,7 +201,7 @@ const EnhancedGRNReceiving = ({
           if (await hasLedgerEntry("GRN_ITEM_STORE_VARIANCE", itemId)) continue;
           movements.push({
             plant_id: grnPlantId,
-            raw_material_id: grnItem.raw_material_id,
+            part_id: grnItem.part_id,
             location_id: mainId,
             qty_delta: delta,
             movement_type: "ADJUSTMENT",
@@ -424,9 +424,9 @@ const EnhancedGRNReceiving = ({
                       return (
                         <TableRow key={item.id}>
                           <TableCell className="font-mono text-xs">
-                            {item.raw_materials?.material_code}
+                            {item.parts?.part_code}
                           </TableCell>
-                          <TableCell>{item.raw_materials?.name}</TableCell>
+                          <TableCell>{item.parts?.name}</TableCell>
                           <TableCell>{maxQty}</TableCell>
                           <TableCell>
                             <Input

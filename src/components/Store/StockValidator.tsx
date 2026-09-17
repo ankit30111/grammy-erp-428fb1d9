@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 export interface StockValidationResult {
   isValid: boolean;
   shortageItems: Array<{
-    material_code: string;
+    part_code: string;
     material_name: string;
     required: number;
     available: number;
@@ -25,14 +25,14 @@ export const validateStockForComponent = async (
       .from("bom")
       .select(`
         *,
-        raw_materials!inner(
+        parts!inner(
           id,
-          material_code,
+          part_code,
           name,
           inventory(quantity)
         )
       `)
-      .eq("product_id", productId)
+      .eq("part_id", productId)
       .eq("bom_type", bomType);
 
     if (bomError) throw bomError;
@@ -42,13 +42,13 @@ export const validateStockForComponent = async (
 
     bomItems?.forEach(bomItem => {
       const requiredQty = bomItem.quantity * quantity;
-      const availableQty = bomItem.raw_materials.inventory?.[0]?.quantity || 0;
+      const availableQty = bomItem.parts.inventory?.[0]?.quantity || 0;
       
       if (availableQty < requiredQty) {
         isValid = false;
         shortageItems.push({
-          material_code: bomItem.raw_materials.material_code,
-          material_name: bomItem.raw_materials.name,
+          part_code: bomItem.parts.part_code,
+          material_name: bomItem.parts.name,
           required: requiredQty,
           available: availableQty,
           shortage: requiredQty - availableQty

@@ -16,9 +16,9 @@ import { format } from "date-fns";
 
 interface SelectedPart {
   id: string;
-  raw_material_id: string;
+  part_id: string;
   name: string;
-  material_code: string;
+  part_code: string;
 }
 
 const CustomerComplaintHandling = () => {
@@ -38,7 +38,7 @@ const CustomerComplaintHandling = () => {
         .select(`
           *,
           customers!inner(name),
-          products!inner(name, product_code)
+          products!inner(name, part_code)
         `)
         .in("status", ["Open", "CAPA SHARED WITH CUSTOMER"])
         .order("created_at", { ascending: false });
@@ -50,22 +50,22 @@ const CustomerComplaintHandling = () => {
 
   // Fetch BOM for selected product
   const { data: bomItems = [] } = useQuery({
-    queryKey: ["product-bom", selectedComplaint?.product_id],
+    queryKey: ["product-bom", selectedComplaint?.part_id],
     queryFn: async () => {
-      if (!selectedComplaint?.product_id) return [];
+      if (!selectedComplaint?.part_id) return [];
       
       const { data, error } = await supabase
         .from("bom")
         .select(`
           *,
-          raw_materials!inner(id, name, material_code)
+          parts!inner(id, name, part_code)
         `)
-        .eq("product_id", selectedComplaint.product_id);
+        .eq("part_id", selectedComplaint.part_id);
       
       if (error) throw error;
       return data || [];
     },
-    enabled: !!selectedComplaint?.product_id,
+    enabled: !!selectedComplaint?.part_id,
   });
 
   // Send selected parts to IQC
@@ -76,7 +76,7 @@ const CustomerComplaintHandling = () => {
 
       const partsData = selectedParts.map(part => ({
         complaint_id: selectedComplaint.id,
-        raw_material_id: part.raw_material_id,
+        part_id: part.part_id,
         serial_number: serialNumber,
         reason: reason,
         status: "UNDER_ANALYSIS",
@@ -114,9 +114,9 @@ const CustomerComplaintHandling = () => {
     if (checked) {
       setSelectedParts(prev => [...prev, {
         id: part.id,
-        raw_material_id: part.raw_material_id,
-        name: part.raw_materials.name,
-        material_code: part.raw_materials.material_code
+        part_id: part.part_id,
+        name: part.parts.name,
+        part_code: part.parts.part_code
       }]);
     } else {
       setSelectedParts(prev => prev.filter(p => p.id !== part.id));
@@ -174,7 +174,7 @@ const CustomerComplaintHandling = () => {
                   <TableCell>
                     <div>
                       <div className="font-medium">{complaint.products?.name}</div>
-                      <div className="text-sm text-muted-foreground">{complaint.products?.product_code}</div>
+                      <div className="text-sm text-muted-foreground">{complaint.products?.part_code}</div>
                     </div>
                   </TableCell>
                   <TableCell>{complaint.brand_name}</TableCell>
@@ -248,8 +248,8 @@ const CustomerComplaintHandling = () => {
                             onCheckedChange={(checked) => handlePartSelection(item, checked as boolean)}
                           />
                         </TableCell>
-                        <TableCell className="font-mono">{item.raw_materials.material_code}</TableCell>
-                        <TableCell>{item.raw_materials.name}</TableCell>
+                        <TableCell className="font-mono">{item.parts.part_code}</TableCell>
+                        <TableCell>{item.parts.name}</TableCell>
                         <TableCell>{item.quantity}</TableCell>
                       </TableRow>
                     ))}
@@ -264,7 +264,7 @@ const CustomerComplaintHandling = () => {
                 <div className="flex flex-wrap gap-2">
                   {selectedParts.map((part) => (
                     <Badge key={part.id} variant="secondary">
-                      {part.material_code} - {part.name}
+                      {part.part_code} - {part.name}
                     </Badge>
                   ))}
                 </div>

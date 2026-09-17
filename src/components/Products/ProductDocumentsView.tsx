@@ -39,7 +39,7 @@ export function ProductDocumentsView({ product, open, onOpenChange, onDocumentUp
       const url = URL.createObjectURL(data);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${product.product_code}_${label}.pdf`;
+      a.download = `${product.part_code}_${label}.pdf`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -81,8 +81,8 @@ export function ProductDocumentsView({ product, open, onOpenChange, onDocumentUp
 
     try {
       const fileExt = file.name.split('.').pop();
-      const fileName = `${product.product_code}_${documentKey}_${Date.now()}.${fileExt}`;
-      const filePath = `${product.product_code}/${fileName}`;
+      const fileName = `${product.part_code}_${documentKey}_${Date.now()}.${fileExt}`;
+      const filePath = `${product.part_code}/${fileName}`;
 
       // Upload to Supabase Storage
       const { data, error: uploadError } = await supabase.storage
@@ -137,7 +137,7 @@ export function ProductDocumentsView({ product, open, onOpenChange, onDocumentUp
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl">
         <DialogHeader>
-          <DialogTitle>Documents for {product.name} ({product.product_code})</DialogTitle>
+          <DialogTitle>Documents for {product.name} ({product.part_code})</DialogTitle>
         </DialogHeader>
         
         <div className="space-y-4">

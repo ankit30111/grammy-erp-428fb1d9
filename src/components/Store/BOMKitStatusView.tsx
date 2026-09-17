@@ -30,26 +30,26 @@ const BOMKitStatusView = ({
   const { toast } = useToast();
 
   const { data: bomItems = [] } = useQuery({
-    queryKey: ["bom-details", productionOrder?.product_id],
+    queryKey: ["bom-details", productionOrder?.part_id],
     queryFn: async () => {
-      if (!productionOrder?.product_id) return [];
+      if (!productionOrder?.part_id) return [];
       
       const { data, error } = await supabase
         .from("bom")
         .select(`
           *,
-          raw_materials!inner(
+          parts!inner(
             id,
             name,
-            material_code
+            part_code
           )
         `)
-        .eq("product_id", productionOrder.product_id);
+        .eq("part_id", productionOrder.part_id);
       
       if (error) throw error;
       return data || [];
     },
-    enabled: !!productionOrder?.product_id && isOpen,
+    enabled: !!productionOrder?.part_id && isOpen,
   });
 
   const groupedBOM = {
@@ -116,21 +116,21 @@ const BOMKitStatusView = ({
               <TableBody>
                 {items.map((item) => {
                   const totalRequired = item.quantity * productionOrder.quantity;
-                  const issued = issuedQuantities[item.raw_materials.material_code] || 0;
+                  const issued = issuedQuantities[item.parts.part_code] || 0;
                   const shortage = Math.max(0, totalRequired - issued);
                   
                   return (
                     <TableRow key={item.id}>
-                      <TableCell className="font-medium">{item.raw_materials.name}</TableCell>
-                      <TableCell className="font-mono">{item.raw_materials.material_code}</TableCell>
+                      <TableCell className="font-medium">{item.parts.name}</TableCell>
+                      <TableCell className="font-mono">{item.parts.part_code}</TableCell>
                       <TableCell>{item.quantity}</TableCell>
                       <TableCell>{totalRequired}</TableCell>
                       <TableCell>
                         <Input
                           type="number"
                           className="w-20"
-                          value={issuedQuantities[item.raw_materials.material_code] || ''}
-                          onChange={(e) => handleQuantityChange(item.raw_materials.material_code, e.target.value)}
+                          value={issuedQuantities[item.parts.part_code] || ''}
+                          onChange={(e) => handleQuantityChange(item.parts.part_code, e.target.value)}
                           placeholder="0"
                           disabled={isComponentSent}
                         />

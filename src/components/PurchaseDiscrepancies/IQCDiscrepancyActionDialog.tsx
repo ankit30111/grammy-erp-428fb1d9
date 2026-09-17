@@ -111,7 +111,7 @@ const IQCDiscrepancyActionDialog = ({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <div className="text-sm text-muted-foreground">
-              <strong>Material:</strong> {discrepancy.raw_materials?.material_code} - {discrepancy.raw_materials?.name}
+              <strong>Material:</strong> {discrepancy.parts?.part_code} - {discrepancy.parts?.name}
             </div>
             <div className="text-sm text-muted-foreground">
               <strong>Vendor:</strong> {discrepancy.grn?.vendors?.name}

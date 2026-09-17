@@ -23,10 +23,10 @@ const ScheduledProductions = () => {
         .from("production_orders")
         .select(`
           *,
-          products!product_id (
+          products!part_id (
             id,
             name,
-            product_code
+            part_code
           ),
           production_schedules!production_schedule_id (
             production_line,
@@ -163,7 +163,7 @@ const ScheduledProductions = () => {
                     </TableCell>
                     <TableCell>{production.products?.name || 'N/A'}</TableCell>
                     <TableCell className="font-mono">
-                      {production.products?.product_code || 'N/A'}
+                      {production.products?.part_code || 'N/A'}
                     </TableCell>
                     <TableCell>
                       {production.production_schedules?.projections?.customers?.name || 'N/A'}

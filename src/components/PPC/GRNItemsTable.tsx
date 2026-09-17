@@ -5,8 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
 interface GRNItem {
-  raw_material_id: string;
-  material_code: string;
+  part_id: string;
+  part_code: string;
   material_name: string;
   po_quantity: number;
   received_quantity: number;
@@ -46,8 +46,8 @@ const GRNItemsTable = ({
           </TableHeader>
           <TableBody>
             {grnItems.map((item, index) => (
-              <TableRow key={item.raw_material_id}>
-                <TableCell className="font-mono text-sm">{item.material_code}</TableCell>
+              <TableRow key={item.part_id}>
+                <TableCell className="font-mono text-sm">{item.part_code}</TableCell>
                 <TableCell className="font-medium">{item.material_name}</TableCell>
                 <TableCell>{item.po_quantity.toLocaleString()}</TableCell>
                 <TableCell>

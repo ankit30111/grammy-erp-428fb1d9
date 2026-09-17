@@ -7,14 +7,14 @@ interface MaterialMovement {
   id: string;
   created_at: string;
   movement_type: string;
-  raw_material_id: string;
+  part_id: string;
   quantity: number;
   reference_id: string;
   reference_type: string;
   reference_number: string;
   notes: string;
-  raw_materials?: {
-    material_code: string;
+  parts?: {
+    part_code: string;
     name: string;
     category: string;
   };
@@ -57,9 +57,9 @@ export const MovementTable = ({ movements }: MovementTableProps) => {
               </TableCell>
               <TableCell>{getMovementBadge(movement.movement_type)}</TableCell>
               <TableCell className="font-mono font-medium">
-                {movement.raw_materials?.material_code}
+                {movement.parts?.part_code}
               </TableCell>
-              <TableCell>{movement.raw_materials?.name}</TableCell>
+              <TableCell>{movement.parts?.name}</TableCell>
               <TableCell className="font-semibold">
                 <span className={getQuantityStyle(movement.movement_type)}>
                   {getQuantityPrefix(movement.movement_type)}{movement.quantity}

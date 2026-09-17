@@ -45,7 +45,7 @@ const ProductionScheduleManagement = () => {
 
     // Get BOM for the product
     const productBOM = bomData?.filter(bom => 
-      bom.product_id === schedule.projections?.products?.id
+      bom.part_id === schedule.projections?.products?.id
     );
 
     if (!productBOM?.length) {
@@ -56,7 +56,7 @@ const ProductionScheduleManagement = () => {
     // Block materials for this production schedule
     const materialBlocks = productBOM.map(bomItem => ({
       production_schedule_id: scheduleId,
-      raw_material_id: bomItem.raw_material_id,
+      part_id: bomItem.part_id,
       quantity_blocked: bomItem.quantity * schedule.quantity,
       status: 'BLOCKED',
     }));
@@ -231,7 +231,7 @@ const ProductionScheduleManagement = () => {
                     <div>
                       <div className="font-medium">{schedule.projections?.products?.name}</div>
                       <div className="text-sm text-muted-foreground">
-                        {schedule.projections?.products?.product_code}
+                        {schedule.projections?.products?.part_code}
                       </div>
                     </div>
                   </TableCell>

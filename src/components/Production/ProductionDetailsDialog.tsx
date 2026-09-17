@@ -16,26 +16,26 @@ interface ProductionDetailsDialogProps {
 const ProductionDetailsDialog = ({ open, onOpenChange, productionOrder }: ProductionDetailsDialogProps) => {
   // Get BOM data for the product
   const { data: bomData = [] } = useQuery({
-    queryKey: ["production-bom", productionOrder?.product_id],
+    queryKey: ["production-bom", productionOrder?.part_id],
     queryFn: async () => {
-      if (!productionOrder?.product_id) return [];
+      if (!productionOrder?.part_id) return [];
       
       const { data, error } = await supabase
         .from("bom")
         .select(`
           *,
-          raw_materials!inner(
-            material_code,
+          parts!inner(
+            part_code,
             name,
             category
           )
         `)
-        .eq("product_id", productionOrder.product_id);
+        .eq("part_id", productionOrder.part_id);
       
       if (error) throw error;
       return data || [];
     },
-    enabled: !!productionOrder?.product_id && open,
+    enabled: !!productionOrder?.part_id && open,
   });
 
   // Get kit preparation status
@@ -50,8 +50,8 @@ const ProductionDetailsDialog = ({ open, onOpenChange, productionOrder }: Produc
           *,
           kit_items(
             *,
-            raw_materials!inner(
-              material_code,
+            parts!inner(
+              part_code,
               name,
               category
             )
@@ -70,7 +70,7 @@ const ProductionDetailsDialog = ({ open, onOpenChange, productionOrder }: Produc
     if (!kitData?.kit_items) return "pending";
     
     const categoryItems = kitData.kit_items.filter(
-      item => item.raw_materials.category === category
+      item => item.parts.category === category
     );
     
     if (categoryItems.length === 0) return "pending";
@@ -99,7 +99,7 @@ const ProductionDetailsDialog = ({ open, onOpenChange, productionOrder }: Produc
 
   // Group BOM items by category for better organization
   const bomByCategory = bomData.reduce((acc, item) => {
-    const category = item.raw_materials.category;
+    const category = item.parts.category;
     if (!acc[category]) acc[category] = [];
     acc[category].push(item);
     return acc;
@@ -179,11 +179,11 @@ const ProductionDetailsDialog = ({ open, onOpenChange, productionOrder }: Produc
                     {getCategoryItems(mainCategories).map(category => 
                       bomByCategory[category].map((item, index) => (
                         <TableRow key={`${category}-${index}`}>
-                          <TableCell className="font-medium">{item.raw_materials.material_code}</TableCell>
-                          <TableCell>{item.raw_materials.name}</TableCell>
-                          <TableCell>{item.raw_materials.category}</TableCell>
+                          <TableCell className="font-medium">{item.parts.part_code}</TableCell>
+                          <TableCell>{item.parts.name}</TableCell>
+                          <TableCell>{item.parts.category}</TableCell>
                           <TableCell>{item.quantity * productionOrder.quantity}</TableCell>
-                          <TableCell>{getStatusBadge(getBOMCategoryStatus(item.raw_materials.category))}</TableCell>
+                          <TableCell>{getStatusBadge(getBOMCategoryStatus(item.parts.category))}</TableCell>
                         </TableRow>
                       ))
                     )}
@@ -217,11 +217,11 @@ const ProductionDetailsDialog = ({ open, onOpenChange, productionOrder }: Produc
                     {getCategoryItems(subAssemblyCategories).map(category => 
                       bomByCategory[category].map((item, index) => (
                         <TableRow key={`${category}-${index}`}>
-                          <TableCell className="font-medium">{item.raw_materials.material_code}</TableCell>
-                          <TableCell>{item.raw_materials.name}</TableCell>
-                          <TableCell>{item.raw_materials.category}</TableCell>
+                          <TableCell className="font-medium">{item.parts.part_code}</TableCell>
+                          <TableCell>{item.parts.name}</TableCell>
+                          <TableCell>{item.parts.category}</TableCell>
                           <TableCell>{item.quantity * productionOrder.quantity}</TableCell>
-                          <TableCell>{getStatusBadge(getBOMCategoryStatus(item.raw_materials.category))}</TableCell>
+                          <TableCell>{getStatusBadge(getBOMCategoryStatus(item.parts.category))}</TableCell>
                         </TableRow>
                       ))
                     )}
@@ -255,11 +255,11 @@ const ProductionDetailsDialog = ({ open, onOpenChange, productionOrder }: Produc
                     {getCategoryItems(accessoryCategories).map(category => 
                       bomByCategory[category].map((item, index) => (
                         <TableRow key={`${category}-${index}`}>
-                          <TableCell className="font-medium">{item.raw_materials.material_code}</TableCell>
-                          <TableCell>{item.raw_materials.name}</TableCell>
-                          <TableCell>{item.raw_materials.category}</TableCell>
+                          <TableCell className="font-medium">{item.parts.part_code}</TableCell>
+                          <TableCell>{item.parts.name}</TableCell>
+                          <TableCell>{item.parts.category}</TableCell>
                           <TableCell>{item.quantity * productionOrder.quantity}</TableCell>
-                          <TableCell>{getStatusBadge(getBOMCategoryStatus(item.raw_materials.category))}</TableCell>
+                          <TableCell>{getStatusBadge(getBOMCategoryStatus(item.parts.category))}</TableCell>
                         </TableRow>
                       ))
                     )}

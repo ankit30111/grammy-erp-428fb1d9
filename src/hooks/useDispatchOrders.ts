@@ -15,7 +15,7 @@ export const useDispatchOrders = () => {
           *,
           dispatch_order_items (
             *,
-            product_id,
+            part_id,
             quantity
           ),
           customers (name)

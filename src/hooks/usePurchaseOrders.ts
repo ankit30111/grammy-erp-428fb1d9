@@ -20,10 +20,10 @@ export const usePurchaseOrders = () => {
           ),
           purchase_order_items (
             *,
-            raw_materials (
+            parts (
               id,
               name,
-              material_code
+              part_code
             )
           )
         `)
@@ -75,7 +75,7 @@ export const useCreatePurchaseOrder = () => {
           vendor_id: orderData.vendor_id,
           status: 'PENDING',
           notes: orderData.notes,
-          expected_delivery_date: orderData.expected_delivery_date,
+          promised_delivery_date: orderData.promised_delivery_date,
           plant_id: plantId,
         })
         .select()
@@ -86,10 +86,10 @@ export const useCreatePurchaseOrder = () => {
       // Insert purchase order items
       const items = orderData.items.map((item: any) => ({
         purchase_order_id: poData.id,
-        raw_material_id: item.raw_material_id,
+        part_id: item.part_id,
         quantity: item.quantity,
         unit_price: item.unit_price,
-        total_price: item.quantity * item.unit_price,
+        line_total: item.quantity * item.unit_price,
       }));
 
       const { error: itemsError } = await supabase
@@ -99,7 +99,7 @@ export const useCreatePurchaseOrder = () => {
       if (itemsError) throw itemsError;
 
       // Update total amount
-      const totalAmount = items.reduce((sum: number, item: any) => sum + item.total_price, 0);
+      const totalAmount = items.reduce((sum: number, item: any) => sum + item.line_total, 0);
       const { error: updateError } = await supabase
         .from('purchase_orders')
         .update({ total_amount: totalAmount })

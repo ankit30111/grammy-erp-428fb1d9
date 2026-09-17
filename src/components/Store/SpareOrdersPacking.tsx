@@ -12,12 +12,12 @@ import { useToast } from "@/hooks/use-toast";
 interface SpareOrderItem {
   id: string;
   spare_order_id: string;
-  raw_material_id: string;
+  part_id: string;
   quantity: number;
   packed: boolean;
-  raw_materials: {
+  parts: {
     id: string;
-    material_code: string;
+    part_code: string;
     name: string;
     category: string;
   } | null;
@@ -47,12 +47,12 @@ const SpareOrdersPacking = () => {
       .select(`
         id,
         spare_order_id,
-        raw_material_id,
+        part_id,
         quantity,
         packed,
-        raw_materials:raw_material_id (
+        parts:part_id (
           id,
-          material_code,
+          part_code,
           name,
           category
         ),
@@ -73,9 +73,9 @@ const SpareOrdersPacking = () => {
     if (error) {
       console.error('Error fetching spare order items:', error);
     } else {
-      // Filter out items with null spare_orders or raw_materials
+      // Filter out items with null spare_orders or parts
       const validItems = (data || []).filter(item => 
-        item.spare_orders && item.raw_materials
+        item.spare_orders && item.parts
       );
       setSpareOrderItems(validItems);
     }
@@ -166,8 +166,8 @@ const SpareOrdersPacking = () => {
                   {item.spare_orders?.customers?.name || 'Unknown Customer'}
                 </TableCell>
                 <TableCell>
-                  {item.raw_materials ? 
-                    `${item.raw_materials.name} (${item.raw_materials.material_code})` : 
+                  {item.parts ? 
+                    `${item.parts.name} (${item.parts.part_code})` : 
                     'Unknown Material'
                   }
                 </TableCell>

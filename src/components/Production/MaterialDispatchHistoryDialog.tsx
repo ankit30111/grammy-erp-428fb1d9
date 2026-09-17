@@ -57,7 +57,7 @@ const MaterialDispatchHistoryDialog = ({
           )
         `)
         .eq("kit_preparation.production_order_id", productionOrderId)
-        .eq("raw_material_id", rawMaterialId)
+        .eq("part_id", rawMaterialId)
         .order("created_at", { ascending: true });
 
       if (error) {
@@ -104,7 +104,7 @@ const MaterialDispatchHistoryDialog = ({
             const mainId = await getStockLocationId(plantId, "MAIN");
             await postStockMovement({
               plant_id: plantId,
-              raw_material_id: rawMaterialId,
+              part_id: rawMaterialId,
               location_id: mainId,
               qty_delta: difference,
               movement_type: "RETURN",
@@ -120,7 +120,7 @@ const MaterialDispatchHistoryDialog = ({
           await supabase
             .from("material_movements")
             .insert({
-              raw_material_id: rawMaterialId,
+              part_id: rawMaterialId,
               movement_type: "PRODUCTION_RETURN",
               quantity: difference,
               reference_id: productionOrderId,
@@ -134,7 +134,7 @@ const MaterialDispatchHistoryDialog = ({
             .from("material_requests")
             .insert({
               production_order_id: productionOrderId,
-              raw_material_id: rawMaterialId,
+              part_id: rawMaterialId,
               requested_quantity: Math.abs(difference),
               reason: `Production verification shortage: ${notes}`,
               status: 'PENDING'

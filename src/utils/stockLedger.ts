@@ -13,7 +13,7 @@ export type StockLocationCode = "MAIN" | "QUAR" | "REJECT";
 
 export interface StockMovement {
   plant_id: string;
-  raw_material_id: string;
+  part_id: string;
   location_id: string;
   qty_delta: number;
   movement_type: string;
@@ -93,7 +93,7 @@ export async function hasLedgerEntry(
 /**
  * Read stock for a plant/location from `stock_balance`, mapped to the shape
  * the existing screens already expect (quantity / minimum_stock / location /
- * last_updated / raw_materials).
+ * last_updated / parts).
  */
 export async function fetchStockBalanceRows(
   plantId: string,
@@ -107,14 +107,14 @@ export async function fetchStockBalanceRows(
       `
       id,
       plant_id,
-      raw_material_id,
+      part_id,
       location_id,
       quantity,
       min_stock,
       updated_at,
-      raw_materials!raw_material_id (
+      parts!part_id (
         id,
-        material_code,
+        part_code,
         name,
         category
       )
@@ -132,17 +132,17 @@ export async function fetchStockBalanceRows(
     .map((row: any) => ({
       id: row.id,
       plant_id: row.plant_id,
-      raw_material_id: row.raw_material_id,
+      part_id: row.part_id,
       location_id: row.location_id,
       quantity: Number(row.quantity) || 0,
       minimum_stock: row.min_stock == null ? 0 : Number(row.min_stock),
       location: locationLabel,
       last_updated: row.updated_at,
-      raw_materials: row.raw_materials,
+      parts: row.parts,
     }))
     .sort((a: any, b: any) =>
-      (a.raw_materials?.material_code || "").localeCompare(
-        b.raw_materials?.material_code || ""
+      (a.parts?.part_code || "").localeCompare(
+        b.parts?.part_code || ""
       )
     );
 }
@@ -158,7 +158,7 @@ export async function fetchStockQuantity(
     .from("stock_balance")
     .select("quantity")
     .eq("plant_id", plantId)
-    .eq("raw_material_id", rawMaterialId)
+    .eq("part_id", rawMaterialId)
     .eq("location_id", locationId)
     .maybeSingle();
 

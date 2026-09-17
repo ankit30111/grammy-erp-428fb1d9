@@ -26,7 +26,7 @@ const MaterialShortages = ({ shortages, onCreatePO }: MaterialShortagesProps) =>
     setCreatingPO(vendorId);
     try {
       const poItems = items.map(item => ({
-        raw_material_id: item.raw_material_id,
+        part_id: item.part_id,
         quantity: item.shortage_quantity,
         unit_price: 0, // Default price, can be updated later
       }));
@@ -35,7 +35,7 @@ const MaterialShortages = ({ shortages, onCreatePO }: MaterialShortagesProps) =>
         vendor_id: vendorId,
         items: poItems,
         notes: `Auto-generated PO for material shortages`,
-        expected_delivery_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 7 days from now
+        promised_delivery_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 7 days from now
       });
 
       toast({
@@ -152,8 +152,8 @@ const MaterialShortages = ({ shortages, onCreatePO }: MaterialShortagesProps) =>
               </TableHeader>
               <TableBody>
                 {vendorGroup.items.map((shortage) => (
-                  <TableRow key={shortage.raw_material_id}>
-                    <TableCell className="font-medium">{shortage.material_code}</TableCell>
+                  <TableRow key={shortage.part_id}>
+                    <TableCell className="font-medium">{shortage.part_code}</TableCell>
                     <TableCell>{shortage.material_name}</TableCell>
                     <TableCell>{shortage.required_quantity}</TableCell>
                     <TableCell>{shortage.available_quantity}</TableCell>
@@ -196,8 +196,8 @@ const MaterialShortages = ({ shortages, onCreatePO }: MaterialShortagesProps) =>
               </TableHeader>
               <TableBody>
                 {materialsWithoutVendors.map((shortage) => (
-                  <TableRow key={shortage.raw_material_id}>
-                    <TableCell className="font-medium">{shortage.material_code}</TableCell>
+                  <TableRow key={shortage.part_id}>
+                    <TableCell className="font-medium">{shortage.part_code}</TableCell>
                     <TableCell>{shortage.material_name}</TableCell>
                     <TableCell>{shortage.required_quantity}</TableCell>
                     <TableCell>{shortage.available_quantity}</TableCell>

@@ -35,7 +35,7 @@ const MaterialRequestsTab = memo(() => {
         .select(`
           id,
           production_order_id,
-          raw_material_id,
+          part_id,
           requested_quantity,
           approved_quantity,
           reason,
@@ -43,8 +43,8 @@ const MaterialRequestsTab = memo(() => {
           created_at,
           requested_by,
           approved_by,
-          raw_materials!inner(
-            material_code,
+          parts!inner(
+            part_code,
             name,
             category
           ),
@@ -130,7 +130,7 @@ const MaterialRequestsTab = memo(() => {
       if (!plantId) throw new Error("No active plant selected");
 
       // Check stock availability at the main store
-      const inventoryItem = inventoryData.find(inv => inv.raw_material_id === requestData.raw_material_id);
+      const inventoryItem = inventoryData.find(inv => inv.part_id === requestData.part_id);
       if (!inventoryItem || inventoryItem.quantity < sendQuantity) {
         throw new Error(`Insufficient stock. Available: ${inventoryItem?.quantity || 0}, Requested: ${sendQuantity}`);
       }
@@ -139,7 +139,7 @@ const MaterialRequestsTab = memo(() => {
       const mainId = await getStockLocationId(plantId, "MAIN");
       await postStockMovement({
         plant_id: plantId,
-        raw_material_id: requestData.raw_material_id,
+        part_id: requestData.part_id,
         location_id: mainId,
         qty_delta: -sendQuantity,
         movement_type: 'ISSUE',
@@ -152,7 +152,7 @@ const MaterialRequestsTab = memo(() => {
 
       // Log the material movement with correct parameters for logbook visibility
       const { error: logError } = await supabase.rpc('log_material_movement', {
-        p_raw_material_id: requestData.raw_material_id,
+        p_raw_material_id: requestData.part_id,
         p_movement_type: 'ISSUED_TO_PRODUCTION',
         p_quantity: sendQuantity,
         p_reference_id: requestData.production_order_id,
@@ -241,7 +241,7 @@ const MaterialRequestsTab = memo(() => {
   };
 
   const getAvailableQuantity = (rawMaterialId: string) => {
-    const inventoryItem = inventoryData.find(inv => inv.raw_material_id === rawMaterialId);
+    const inventoryItem = inventoryData.find(inv => inv.part_id === rawMaterialId);
     return inventoryItem?.quantity || 0;
   };
 
@@ -354,7 +354,7 @@ const MaterialRequestsTab = memo(() => {
                     </TableHeader>
                     <TableBody>
                       {filteredRequests.map((request) => {
-                        const availableQty = getAvailableQuantity(request.raw_material_id);
+                        const availableQty = getAvailableQuantity(request.part_id);
                         const sendingQty = sendingQuantities[request.id] || 0;
                         
                         return (
@@ -375,8 +375,8 @@ const MaterialRequestsTab = memo(() => {
                             </TableCell>
                             <TableCell>
                               <div>
-                                <p className="font-medium">{request.raw_materials?.material_code}</p>
-                                <p className="text-sm text-muted-foreground">{request.raw_materials?.name}</p>
+                                <p className="font-medium">{request.parts?.part_code}</p>
+                                <p className="text-sm text-muted-foreground">{request.parts?.name}</p>
                               </div>
                             </TableCell>
                             <TableCell className="font-medium">

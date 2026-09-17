@@ -20,7 +20,7 @@ interface PurchaseOrder {
   vendor_name: string;
   total_amount: number;
   po_date: string;
-  expected_delivery_date: string | null;
+  promised_delivery_date: string | null;
   status: string;
   items_count: number;
   created_by_name: string | null;
@@ -32,7 +32,7 @@ interface POItem {
   raw_material_name: string;
   quantity: number;
   unit_price: number;
-  total_price: number;
+  line_total: number;
 }
 
 const PurchaseOrderApprovalsEnhanced = () => {
@@ -60,7 +60,7 @@ const PurchaseOrderApprovalsEnhanced = () => {
           po_number,
           total_amount,
           po_date,
-          expected_delivery_date,
+          promised_delivery_date,
           status,
           vendors:vendor_id (name),
           purchase_order_items (id)
@@ -86,7 +86,7 @@ const PurchaseOrderApprovalsEnhanced = () => {
         vendor_name: po.vendors?.name || 'Unknown Vendor',
         total_amount: po.total_amount || 0,
         po_date: po.po_date,
-        expected_delivery_date: po.expected_delivery_date,
+        promised_delivery_date: po.promised_delivery_date,
         status: po.status,
         items_count: po.purchase_order_items?.length || 0,
         created_by_name: null,
@@ -119,8 +119,8 @@ const PurchaseOrderApprovalsEnhanced = () => {
           id,
           quantity,
           unit_price,
-          total_price,
-          raw_materials:raw_material_id (name, material_code)
+          line_total,
+          parts:part_id (name, part_code)
         `)
         .eq('purchase_order_id', poId);
 
@@ -128,11 +128,11 @@ const PurchaseOrderApprovalsEnhanced = () => {
 
       const formattedItems = data?.map(item => ({
         id: item.id,
-        raw_material_name: item.raw_materials?.name || 'Unknown Material',
-        material_code: item.raw_materials?.material_code || 'N/A',
+        raw_material_name: item.parts?.name || 'Unknown Material',
+        part_code: item.parts?.part_code || 'N/A',
         quantity: item.quantity,
         unit_price: item.unit_price || 0,
-        total_price: item.total_price || 0
+        line_total: item.line_total || 0
       })) || [];
 
       setPOItems(formattedItems);
@@ -157,8 +157,8 @@ const PurchaseOrderApprovalsEnhanced = () => {
             id,
             quantity,
             unit_price,
-            total_price,
-            raw_materials:raw_material_id (name, material_code)
+            line_total,
+            parts:part_id (name, part_code)
           )
         `)
         .eq('id', poId)
@@ -172,13 +172,13 @@ const PurchaseOrderApprovalsEnhanced = () => {
         vendorName: vendor?.name || 'Unknown Vendor',
         vendorAddress: vendor?.address || 'Address not available',
         vendorContact: vendor?.contact_number || vendor?.email || 'Contact not available',
-        expectedDeliveryDate: poData.expected_delivery_date || new Date().toISOString(),
+        expectedDeliveryDate: poData.promised_delivery_date || new Date().toISOString(),
         items: poData.purchase_order_items?.map(item => ({
-          materialCode: item.raw_materials?.material_code || 'N/A',
-          materialName: item.raw_materials?.name || 'Unknown Material',
+          materialCode: item.parts?.part_code || 'N/A',
+          materialName: item.parts?.name || 'Unknown Material',
           quantity: item.quantity,
           unitPrice: item.unit_price || 0,
-          totalPrice: item.total_price || 0
+          totalPrice: item.line_total || 0
         })) || [],
         totalAmount: poData.total_amount || 0,
         notes: poData.notes || '',
@@ -336,7 +336,7 @@ const PurchaseOrderApprovalsEnhanced = () => {
                   <TableCell>₹{po.total_amount.toLocaleString()}</TableCell>
                   <TableCell>{new Date(po.po_date).toLocaleDateString()}</TableCell>
                   <TableCell>
-                    {po.expected_delivery_date ? new Date(po.expected_delivery_date).toLocaleDateString() : '-'}
+                    {po.promised_delivery_date ? new Date(po.promised_delivery_date).toLocaleDateString() : '-'}
                   </TableCell>
                   <TableCell>{po.items_count} items</TableCell>
                   <TableCell>
@@ -372,7 +372,7 @@ const PurchaseOrderApprovalsEnhanced = () => {
                               </div>
                               <div>
                                 <p><strong>Total Amount:</strong> ₹{po.total_amount.toLocaleString()}</p>
-                                <p><strong>Expected Delivery:</strong> {po.expected_delivery_date ? new Date(po.expected_delivery_date).toLocaleDateString() : 'Not specified'}</p>
+                                <p><strong>Expected Delivery:</strong> {po.promised_delivery_date ? new Date(po.promised_delivery_date).toLocaleDateString() : 'Not specified'}</p>
                               </div>
                             </div>
 
@@ -393,7 +393,7 @@ const PurchaseOrderApprovalsEnhanced = () => {
                                       <TableCell>{item.raw_material_name}</TableCell>
                                       <TableCell>{item.quantity}</TableCell>
                                       <TableCell>₹{item.unit_price}</TableCell>
-                                      <TableCell>₹{item.total_price}</TableCell>
+                                      <TableCell>₹{item.line_total}</TableCell>
                                     </TableRow>
                                   ))}
                                 </TableBody>
@@ -628,7 +628,7 @@ const PurchaseOrderApprovalsEnhanced = () => {
                                             onChange={(e) => {
                                               const newItems = [...poItems];
                                               newItems[index].quantity = parseInt(e.target.value) || 0;
-                                              newItems[index].total_price = newItems[index].quantity * newItems[index].unit_price;
+                                              newItems[index].line_total = newItems[index].quantity * newItems[index].unit_price;
                                               setPOItems(newItems);
                                             }}
                                             className="mt-1"
@@ -643,7 +643,7 @@ const PurchaseOrderApprovalsEnhanced = () => {
                                             onChange={(e) => {
                                               const newItems = [...poItems];
                                               newItems[index].unit_price = parseFloat(e.target.value) || 0;
-                                              newItems[index].total_price = newItems[index].quantity * newItems[index].unit_price;
+                                              newItems[index].line_total = newItems[index].quantity * newItems[index].unit_price;
                                               setPOItems(newItems);
                                             }}
                                             className="mt-1"
@@ -652,7 +652,7 @@ const PurchaseOrderApprovalsEnhanced = () => {
                                         <div>
                                           <Label className="text-xs">Total</Label>
                                           <div className="text-sm font-medium mt-1 p-2 bg-gray-100 rounded">
-                                            ₹{item.total_price.toLocaleString()}
+                                            ₹{item.line_total.toLocaleString()}
                                           </div>
                                         </div>
                                       </div>
@@ -660,7 +660,7 @@ const PurchaseOrderApprovalsEnhanced = () => {
                                   </div>
                                   <div className="flex justify-between items-center mt-4 pt-3 border-t">
                                     <div className="text-lg font-semibold">
-                                      Total Amount: ₹{poItems.reduce((sum, item) => sum + item.total_price, 0).toLocaleString()}
+                                      Total Amount: ₹{poItems.reduce((sum, item) => sum + item.line_total, 0).toLocaleString()}
                                     </div>
                                     <div className="flex gap-2">
                                       <Button
@@ -687,13 +687,13 @@ const PurchaseOrderApprovalsEnhanced = () => {
                                                  .update({
                                                    quantity: item.quantity,
                                                    unit_price: item.unit_price,
-                                                   total_price: item.total_price
+                                                   line_total: item.line_total
                                                  })
                                                  .eq('id', item.id);
                                              }
                                              
                                              // Update total amount
-                                             const newTotal = poItems.reduce((sum, item) => sum + item.total_price, 0);
+                                             const newTotal = poItems.reduce((sum, item) => sum + item.line_total, 0);
                                              await supabase
                                                .from('purchase_orders')
                                                .update({ 

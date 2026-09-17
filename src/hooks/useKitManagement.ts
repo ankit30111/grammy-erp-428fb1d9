@@ -26,7 +26,7 @@ export const useKitManagement = () => {
         .select(`
           id,
           voucher_number,
-          product_id,
+          part_id,
           quantity,
           kit_status,
           scheduled_date,
@@ -37,12 +37,12 @@ export const useKitManagement = () => {
             status,
             kit_items (
               id,
-              raw_material_id,
+              part_id,
               required_quantity,
               issued_quantity,
               verified_by_production,
               actual_quantity,
-              raw_materials (name, material_code)
+              parts (name, part_code)
             )
           )
         `)
@@ -102,7 +102,7 @@ export const useKitManagement = () => {
       
       // Create material movement records for inventory deduction
       const movementRecords = kitItems.map(item => ({
-        raw_material_id: item.rawMaterialId,
+        part_id: item.rawMaterialId,
         quantity: item.issuedQuantity,
         reference_id: voucherId,
         reference_type: "PRODUCTION_ORDER",
@@ -128,7 +128,7 @@ export const useKitManagement = () => {
         if (await hasLedgerEntry("KIT_ITEM_ISSUE", item.kitItemId)) continue;
         movements.push({
           plant_id: plantId,
-          raw_material_id: item.rawMaterialId,
+          part_id: item.rawMaterialId,
           location_id: mainId,
           qty_delta: -item.issuedQuantity,
           movement_type: "ISSUE",

@@ -31,7 +31,7 @@ interface CustomerWarehouse {
 
 interface Product {
   id: string;
-  product_code: string;
+  part_code: string;
   name: string;
 }
 
@@ -47,7 +47,7 @@ interface DispatchOrder {
   customer_warehouses: CustomerWarehouse;
   dispatch_order_items: Array<{
     id: string;
-    product_id: string;
+    part_id: string;
     quantity: number;
     lot_number?: string;
     products: Product;
@@ -70,13 +70,13 @@ const Dispatch = () => {
   });
 
   const [orderItems, setOrderItems] = useState<Array<{
-    product_id: string;
+    part_id: string;
     quantity: number;
     lot_number: string;
   }>>([]);
 
   const [currentItem, setCurrentItem] = useState({
-    product_id: "",
+    part_id: "",
     quantity: 1,
     lot_number: ""
   });
@@ -125,7 +125,7 @@ const Dispatch = () => {
   const fetchProducts = async () => {
     const { data, error } = await supabase
       .from('products')
-      .select('id, product_code, name')
+      .select('id, part_code, name')
       .eq('is_active', true)
       .order('name');
     
@@ -160,12 +160,12 @@ const Dispatch = () => {
         ),
         dispatch_order_items (
           id,
-          product_id,
+          part_id,
           quantity,
           lot_number,
-          products:product_id (
+          products:part_id (
             id,
-            product_code,
+            part_code,
             name
           )
         )
@@ -180,7 +180,7 @@ const Dispatch = () => {
   };
 
   const addItemToOrder = () => {
-    if (!currentItem.product_id || currentItem.quantity <= 0) {
+    if (!currentItem.part_id || currentItem.quantity <= 0) {
       toast({
         title: "Error",
         description: "Please select a product and enter a valid quantity",
@@ -189,7 +189,7 @@ const Dispatch = () => {
       return;
     }
 
-    const existingItemIndex = orderItems.findIndex(item => item.product_id === currentItem.product_id);
+    const existingItemIndex = orderItems.findIndex(item => item.part_id === currentItem.part_id);
     
     if (existingItemIndex >= 0) {
       const updatedItems = [...orderItems];
@@ -200,7 +200,7 @@ const Dispatch = () => {
     }
 
     setCurrentItem({
-      product_id: "",
+      part_id: "",
       quantity: 1,
       lot_number: ""
     });
@@ -360,14 +360,14 @@ const Dispatch = () => {
                   <div className="grid grid-cols-4 gap-4 mb-4">
                     <div className="space-y-2">
                       <Label>Product *</Label>
-                      <Select value={currentItem.product_id} onValueChange={(value) => setCurrentItem({...currentItem, product_id: value})}>
+                      <Select value={currentItem.part_id} onValueChange={(value) => setCurrentItem({...currentItem, part_id: value})}>
                         <SelectTrigger>
                           <SelectValue placeholder="Select product" />
                         </SelectTrigger>
                         <SelectContent>
                           {products.map((product) => (
                             <SelectItem key={product.id} value={product.id}>
-                              {product.name} ({product.product_code})
+                              {product.name} ({product.part_code})
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -411,10 +411,10 @@ const Dispatch = () => {
                         </TableHeader>
                         <TableBody>
                           {orderItems.map((item, index) => {
-                            const product = products.find(p => p.id === item.product_id);
+                            const product = products.find(p => p.id === item.part_id);
                             return (
                               <TableRow key={index}>
-                                <TableCell>{product?.name} ({product?.product_code})</TableCell>
+                                <TableCell>{product?.name} ({product?.part_code})</TableCell>
                                 <TableCell>{item.quantity}</TableCell>
                                 <TableCell>{item.lot_number || '-'}</TableCell>
                                 <TableCell>

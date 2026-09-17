@@ -24,7 +24,7 @@ const ProductionFeedback = () => {
         .select(`
           *,
           production_orders!inner(voucher_number),
-          raw_materials!inner(material_code, name)
+          parts!inner(part_code, name)
         `)
         .order("created_at", { ascending: false });
       
@@ -137,8 +137,8 @@ const ProductionFeedback = () => {
                         <TableRow key={request.id}>
                           <TableCell>{format(new Date(request.created_at), "MMM dd, yyyy")}</TableCell>
                           <TableCell className="font-medium">{request.production_orders?.voucher_number}</TableCell>
-                          <TableCell className="font-mono">{request.raw_materials?.material_code}</TableCell>
-                          <TableCell>{request.raw_materials?.name}</TableCell>
+                          <TableCell className="font-mono">{request.parts?.part_code}</TableCell>
+                          <TableCell>{request.parts?.name}</TableCell>
                           <TableCell>{discrepancyData?.quantitySent || '-'}</TableCell>
                           <TableCell>{discrepancyData?.quantityReceived || '-'}</TableCell>
                           <TableCell className={discrepancyData?.difference && discrepancyData.difference !== 0 ? "text-red-600 font-medium" : ""}>
@@ -220,7 +220,7 @@ const ProductionFeedback = () => {
                       <TableRow key={returnItem.id}>
                         <TableCell>{format(new Date(returnItem.created_at), "MMM dd, yyyy")}</TableCell>
                         <TableCell className="font-medium">{returnItem.voucher_number}</TableCell>
-                        <TableCell className="font-mono">{returnItem.material_code}</TableCell>
+                        <TableCell className="font-mono">{returnItem.part_code}</TableCell>
                         <TableCell>{returnItem.material_name}</TableCell>
                         <TableCell>{returnItem.return_quantity}</TableCell>
                         <TableCell>{returnItem.reason}</TableCell>

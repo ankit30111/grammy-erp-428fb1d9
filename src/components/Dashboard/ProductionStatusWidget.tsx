@@ -63,7 +63,7 @@ export const ProductionStatusWidget = () => {
         .from('grn_items')
         .select(`
           id,
-          raw_materials (name, material_code),
+          parts (name, part_code),
           grn (grn_number)
         `)
         .eq('iqc_status', 'PENDING');

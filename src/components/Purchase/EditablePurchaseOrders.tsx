@@ -91,7 +91,7 @@ export const EditablePurchaseOrders = () => {
     setEditingPO(po.id);
     setEditFormData({
       vendor_id: po.vendor_id,
-      expected_delivery_date: po.expected_delivery_date,
+      promised_delivery_date: po.promised_delivery_date,
       notes: po.notes || '',
     });
   };
@@ -199,8 +199,8 @@ export const EditablePurchaseOrders = () => {
                       <Label>Expected Delivery Date</Label>
                       <Input
                         type="date"
-                        value={editFormData.expected_delivery_date || ''}
-                        onChange={(e) => setEditFormData(prev => ({ ...prev, expected_delivery_date: e.target.value }))}
+                        value={editFormData.promised_delivery_date || ''}
+                        onChange={(e) => setEditFormData(prev => ({ ...prev, promised_delivery_date: e.target.value }))}
                       />
                     </div>
                     <div>
@@ -225,7 +225,7 @@ export const EditablePurchaseOrders = () => {
                     <div>
                       <p className="text-sm text-muted-foreground">Expected Delivery</p>
                       <p className="font-medium">
-                        {po.expected_delivery_date ? new Date(po.expected_delivery_date).toLocaleDateString() : 'Not set'}
+                        {po.promised_delivery_date ? new Date(po.promised_delivery_date).toLocaleDateString() : 'Not set'}
                       </p>
                     </div>
                     <div>
@@ -260,9 +260,9 @@ export const EditablePurchaseOrders = () => {
                           return (
                             <TableRow key={item.id}>
                               <TableCell className="font-mono">
-                                {item.raw_materials?.material_code}
+                                {item.parts?.part_code}
                               </TableCell>
-                              <TableCell>{item.raw_materials?.name}</TableCell>
+                              <TableCell>{item.parts?.name}</TableCell>
                               <TableCell className="font-medium">{item.quantity}</TableCell>
                               <TableCell className="text-blue-600 font-medium">{receivedQty}</TableCell>
                               <TableCell className={pendingQty > 0 ? "text-orange-600 font-medium" : "text-green-600 font-medium"}>

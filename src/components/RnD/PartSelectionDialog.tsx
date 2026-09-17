@@ -62,12 +62,12 @@ export const PartSelectionDialog: React.FC<PartSelectionDialogProps> = ({
     queryKey: ['raw-materials-search', searchTerm],
     queryFn: async () => {
       let query = supabase
-        .from('raw_materials')
+        .from('parts')
         .select('*')
         .limit(50);
 
       if (searchTerm) {
-        query = query.or(`name.ilike.%${searchTerm}%,material_code.ilike.%${searchTerm}%`);
+        query = query.or(`name.ilike.%${searchTerm}%,part_code.ilike.%${searchTerm}%`);
       }
 
       const { data, error } = await query;
@@ -88,7 +88,7 @@ export const PartSelectionDialog: React.FC<PartSelectionDialogProps> = ({
         .insert({
           npd_project_bom_id: bomId,
           material_name: part.name,
-          material_code: part.material_code,
+          part_code: part.part_code,
           quantity,
           unit: 'PCS',
           specifications: part.specification,
@@ -214,7 +214,7 @@ export const PartSelectionDialog: React.FC<PartSelectionDialogProps> = ({
                       <div className="flex justify-between items-start">
                         <div>
                           <h4 className="font-medium">{material.name}</h4>
-                          <p className="text-sm text-muted-foreground">{material.material_code}</p>
+                          <p className="text-sm text-muted-foreground">{material.part_code}</p>
                           <p className="text-xs text-muted-foreground">{material.specification}</p>
                         </div>
                         <div className="text-right text-sm">
