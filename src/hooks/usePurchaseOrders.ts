@@ -1,60 +1,67 @@
-
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { usePlantId } from "@/hooks/usePlantId";
+import { markShortagesCovered } from "@/utils/materialShortageCalculator";
+
+export type PoStatus =
+  | "DRAFT"
+  | "PENDING_APPROVAL"
+  | "APPROVED"
+  | "PARTIALLY_RECEIVED"
+  | "RECEIVED"
+  | "CANCELLED";
+
+export interface NewPurchaseOrder {
+  vendor_id: string;
+  notes?: string;
+  po_date?: string;
+  currency?: string;
+  projection_id?: string | null;
+  is_import?: boolean;
+  origin_country?: string | null;
+  promised_loading_date?: string | null;
+  promised_delivery_date?: string | null;
+  status?: PoStatus;
+  items: {
+    part_id: string;
+    quantity: number;
+    unit_price: number;
+    /** shortage row this line covers, if any */
+    shortage_id?: string | null;
+  }[];
+}
 
 export const usePurchaseOrders = () => {
   const plantId = usePlantId();
   return useQuery({
-    queryKey: ['purchase_orders', plantId],
+    queryKey: ["purchase_orders", plantId],
     enabled: !!plantId,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('purchase_orders')
-        .select(`
-          *,
-          vendors (
-            id,
-            name
-          ),
-          purchase_order_items (
-            *,
-            parts (
-              id,
-              name,
-              part_code
-            )
-          )
-        `)
-        .eq('plant_id', plantId!)
-        .order('created_at', { ascending: false });
-      
+        .from("purchase_orders")
+        .select(
+          `*,
+           vendors ( id, name ),
+           purchase_order_items (
+             *,
+             parts ( id, name, part_code, uom )
+           )`,
+        )
+        .eq("plant_id", plantId!)
+        .order("created_at", { ascending: false });
+
       if (error) throw error;
 
-      // Get received quantities from the new view for each PO
-      const { data: receivedQuantities, error: receivedError } = await supabase
-        .from('purchase_order_received_quantities')
-        .select('*');
-
-      if (receivedError) throw receivedError;
-
-      // Merge the received quantities data with PO items
-      const enhancedData = data.map(po => ({
+      // received_quantity is maintained on the item by the GRN trigger.
+      return (data || []).map((po: any) => ({
         ...po,
-        purchase_order_items: po.purchase_order_items?.map(item => {
-          const receivedData = receivedQuantities?.find(
-            rq => rq.purchase_order_item_id === item.id
-          );
-          return {
-            ...item,
-            received_quantity: receivedData?.total_received_quantity || 0,
-            pending_quantity: receivedData?.pending_quantity || item.quantity
-          };
-        })
+        purchase_order_items: (po.purchase_order_items || []).map((item: any) => ({
+          ...item,
+          received_quantity: Number(item.received_quantity || 0),
+          pending_quantity: Math.max(0, Number(item.quantity || 0) - Number(item.received_quantity || 0)),
+        })),
       }));
-
-      return enhancedData;
     },
   });
 };
@@ -65,105 +72,107 @@ export const useCreatePurchaseOrder = () => {
   const plantId = usePlantId();
 
   return useMutation({
-    mutationFn: async (orderData: any) => {
-      if (!plantId) throw new Error('No active plant selected');
-      // Insert purchase order with empty po_number (let trigger generate it)
+    mutationFn: async (orderData: NewPurchaseOrder) => {
+      if (!plantId) throw new Error("No active plant selected");
+
+      // po_number and total_amount are set by the database.
       const { data: poData, error: poError } = await supabase
-        .from('purchase_orders')
+        .from("purchase_orders")
         .insert({
-          po_number: '', // Empty string will be replaced by trigger using PO-MM-XX format
-          vendor_id: orderData.vendor_id,
-          status: 'PENDING',
-          notes: orderData.notes,
-          promised_delivery_date: orderData.promised_delivery_date,
+          po_number: "",
           plant_id: plantId,
+          vendor_id: orderData.vendor_id,
+          projection_id: orderData.projection_id ?? null,
+          status: orderData.status || "DRAFT",
+          notes: orderData.notes ?? null,
+          currency: orderData.currency ?? "INR",
+          po_date: orderData.po_date ?? new Date().toISOString().slice(0, 10),
+          is_import: orderData.is_import ?? false,
+          origin_country: orderData.origin_country ?? null,
+          promised_loading_date: orderData.promised_loading_date ?? null,
+          promised_delivery_date: orderData.promised_delivery_date ?? null,
         })
         .select()
         .single();
 
       if (poError) throw poError;
 
-      // Insert purchase order items
-      const items = orderData.items.map((item: any) => ({
-        purchase_order_id: poData.id,
-        part_id: item.part_id,
-        quantity: item.quantity,
-        unit_price: item.unit_price,
-        line_total: item.quantity * item.unit_price,
-      }));
-
-      const { error: itemsError } = await supabase
-        .from('purchase_order_items')
-        .insert(items);
+      const { data: insertedItems, error: itemsError } = await supabase
+        .from("purchase_order_items")
+        .insert(
+          orderData.items.map((item) => ({
+            purchase_order_id: poData.id,
+            part_id: item.part_id,
+            quantity: item.quantity,
+            unit_price: item.unit_price,
+          })),
+        )
+        .select("id, part_id");
 
       if (itemsError) throw itemsError;
 
-      // Update total amount
-      const totalAmount = items.reduce((sum: number, item: any) => sum + item.line_total, 0);
-      const { error: updateError } = await supabase
-        .from('purchase_orders')
-        .update({ total_amount: totalAmount })
-        .eq('id', poData.id);
+      // Report the shortage lines as covered.
+      const covers = orderData.items
+        .filter((item) => item.shortage_id)
+        .map((item) => {
+          const match = (insertedItems || []).find((i) => i.part_id === item.part_id);
+          return match ? { shortage_id: item.shortage_id!, purchase_order_item_id: match.id } : null;
+        })
+        .filter(Boolean) as { shortage_id: string; purchase_order_item_id: string }[];
 
-      if (updateError) throw updateError;
+      if (covers.length > 0) await markShortagesCovered(covers);
 
       return poData;
     },
-    onSuccess: () => {
-      // Invalidate both purchase orders and material shortages queries
-      queryClient.invalidateQueries({ queryKey: ['purchase_orders'] });
-      queryClient.invalidateQueries({ queryKey: ['materials-for-po'] });
-      queryClient.invalidateQueries({ queryKey: ['material-shortages-calculated'] });
-      
+    onSuccess: (poData: any) => {
+      queryClient.invalidateQueries({ queryKey: ["purchase_orders"] });
+      queryClient.invalidateQueries({ queryKey: ["materials-for-po"] });
+      queryClient.invalidateQueries({ queryKey: ["shortages"] });
+
       toast({
-        title: "Success",
-        description: "Purchase order created successfully",
+        title: "Purchase order created",
+        description: poData?.po_number ? `Purchase order ${poData.po_number} created` : "Purchase order created",
       });
     },
-    onError: (error) => {
-      console.error('Error creating PO:', error);
+    onError: (error: any) => {
+      console.error("Error creating PO:", error);
       toast({
-        title: "Error",
-        description: "Failed to create purchase order",
+        title: "Could not create the purchase order",
+        description: error?.message || "Please try again",
         variant: "destructive",
       });
     },
   });
 };
 
-// Function to update PO status - used when sending to vendor
 export const useUpdatePOStatus = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async ({ poId, status }: { poId: string, status: string }) => {
-      const { error } = await supabase
-        .from('purchase_orders')
-        .update({ status })
-        .eq('id', poId);
-      
+    mutationFn: async ({ poId, status }: { poId: string; status: PoStatus }) => {
+      const { error } = await supabase.from("purchase_orders").update({ status }).eq("id", poId);
       if (error) throw error;
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['purchase_orders'] });
-      
+      queryClient.invalidateQueries({ queryKey: ["purchase_orders"] });
+
       const statusMap: Record<string, string> = {
-        'SENT': 'sent to vendor',
-        'APPROVED': 'approved',
-        'CANCELLED': 'cancelled'
+        PENDING_APPROVAL: "sent for approval",
+        APPROVED: "approved",
+        CANCELLED: "cancelled",
       };
-      
+
       toast({
-        title: "PO Updated",
+        title: "Purchase order updated",
         description: `Purchase order ${statusMap[variables.status] || variables.status.toLowerCase()}`,
       });
     },
-    onError: (error) => {
-      console.error('Error updating PO status:', error);
+    onError: (error: any) => {
+      console.error("Error updating PO status:", error);
       toast({
-        title: "Error",
-        description: "Failed to update purchase order status",
+        title: "Could not update the purchase order",
+        description: error?.message || "Please try again",
         variant: "destructive",
       });
     },
