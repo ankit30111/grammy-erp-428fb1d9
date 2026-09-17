@@ -20,7 +20,7 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
-import { CreateUserForm } from "@/components/UserManagement/CreateUserForm";
+import { CreateUserForm, readFunctionError } from "@/components/UserManagement/CreateUserForm";
 import { toast } from "sonner";
 import { ShieldCheck, Users, Building2, Loader2, Save, AlertTriangle, UserPlus, KeyRound } from "lucide-react";
 
@@ -189,7 +189,7 @@ function UsersTab() {
       )}
 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Create new user</DialogTitle>
             <DialogDescription>
@@ -314,15 +314,22 @@ function UserAccessEditor({
     }
     setPwSaving(true);
     try {
-      const { error } = await supabase.functions.invoke("admin-update-user-password", {
+      const { data, error } = await supabase.functions.invoke("admin-update-user-password", {
         body: { userId: user.id, newPassword },
       });
-      if (error) throw error;
+      if (error) {
+        toast.error(await readFunctionError(error, "Failed to update password"));
+        return;
+      }
+      if (data && data.success === false) {
+        toast.error(data.error ?? data.message ?? "Failed to update password");
+        return;
+      }
       toast.success("Password updated");
       setPwOpen(false);
       setNewPassword("");
     } catch (e: any) {
-      toast.error(e?.message ?? "Failed to update password");
+      toast.error(await readFunctionError(e, "Failed to update password"));
     } finally {
       setPwSaving(false);
     }
