@@ -65,7 +65,7 @@ const PurchaseOrderApprovalsEnhanced = () => {
           vendors:vendor_id (name),
           purchase_order_items (id)
         `)
-        .eq('status', 'PENDING')
+        .eq('status', 'PENDING_APPROVAL')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -569,7 +569,7 @@ const PurchaseOrderApprovalsEnhanced = () => {
                                       const { error: poError } = await supabase
                                         .from('purchase_orders')
                                         .update({
-                                          status: 'REJECTED',
+                                          status: 'CANCELLED',
                                           rejection_reason: reason,
                                           updated_at: currentTime
                                         })
