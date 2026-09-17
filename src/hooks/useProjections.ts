@@ -11,7 +11,7 @@ export const useProjections = () => {
         .select(`
           *,
           customers!customer_id (name),
-          products!product_id (name)
+          products!part_id (name)
         `)
         .order("created_at", { ascending: false });
       
@@ -27,7 +27,7 @@ export const useCreateProjection = () => {
   return useMutation({
     mutationFn: async (projection: {
       customer_id: string;
-      product_id: string;
+      part_id: string;
       quantity: number;
       delivery_month: string;
     }) => {
@@ -52,7 +52,7 @@ export const useUpdateProjection = () => {
   return useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: Partial<{
       customer_id: string;
-      product_id: string;
+      part_id: string;
       quantity: number;
       delivery_month: string;
     }>}) => {

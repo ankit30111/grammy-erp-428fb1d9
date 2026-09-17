@@ -94,8 +94,8 @@ export function PerformanceReviews() {
           rejection_date,
           production_order_id,
           rejected_by,
-          raw_materials!raw_material_id (
-            material_code,
+          parts!part_id (
+            part_code,
             name
           ),
           production_orders!production_order_id (
@@ -547,7 +547,7 @@ export function PerformanceReviews() {
                         </TableCell>
                         <TableCell>{mishandling.production_orders?.voucher_number}</TableCell>
                         <TableCell>
-                          {mishandling.raw_materials?.material_code} - {mishandling.raw_materials?.name}
+                          {mishandling.parts?.part_code} - {mishandling.parts?.name}
                         </TableCell>
                         <TableCell>
                           <Badge variant="destructive">{mishandling.quantity_rejected}</Badge>

@@ -2,8 +2,8 @@
 import { supabase } from "@/integrations/supabase/client";
 
 export interface MaterialShortage {
-  raw_material_id: string;
-  material_code: string;
+  part_id: string;
+  part_code: string;
   material_name: string;
   required_quantity: number;
   available_quantity: number;
@@ -39,7 +39,7 @@ export const calculateMaterialShortages = async (projectionIds: string[]): Promi
     const { data: activePOs, error: poError } = await supabase
       .from('purchase_order_items')
       .select(`
-        raw_material_id,
+        part_id,
         quantity,
         received_quantity,
         purchase_orders!inner(status)
@@ -53,14 +53,14 @@ export const calculateMaterialShortages = async (projectionIds: string[]): Promi
     activePOs?.forEach(po => {
       const pending = po.quantity - (po.received_quantity || 0);
       if (pending > 0) {
-        const current = pendingQuantities.get(po.raw_material_id) || 0;
-        pendingQuantities.set(po.raw_material_id, current + pending);
+        const current = pendingQuantities.get(po.part_id) || 0;
+        pendingQuantities.set(po.part_id, current + pending);
       }
     });
 
     // Group requirements by material and calculate shortages
     const materialMap = new Map<string, {
-      material_code: string;
+      part_code: string;
       material_name: string;
       total_required: number;
       available_quantity: number;
@@ -68,16 +68,16 @@ export const calculateMaterialShortages = async (projectionIds: string[]): Promi
     }>();
 
     requirements?.forEach((req) => {
-      if (!req.raw_material_id) return;
+      if (!req.part_id) return;
       
-      const key = req.raw_material_id;
+      const key = req.part_id;
       const existing = materialMap.get(key);
       
       if (existing) {
         existing.total_required += req.total_required || 0;
       } else {
         materialMap.set(key, {
-          material_code: req.material_code || '',
+          part_code: req.part_code || '',
           material_name: req.material_name || '',
           total_required: req.total_required || 0,
           available_quantity: req.available_quantity || 0,
@@ -87,9 +87,9 @@ export const calculateMaterialShortages = async (projectionIds: string[]): Promi
 
     // Get vendor information for materials
     const { data: vendorData, error: vendorError } = await supabase
-      .from('raw_material_vendors')
+      .from('part_vendors')
       .select(`
-        raw_material_id,
+        part_id,
         vendors!inner(id, name, vendor_code)
       `)
       .eq('is_primary', true);
@@ -98,7 +98,7 @@ export const calculateMaterialShortages = async (projectionIds: string[]): Promi
 
     const vendorMap = new Map();
     vendorData?.forEach(v => {
-      vendorMap.set(v.raw_material_id, {
+      vendorMap.set(v.part_id, {
         vendor_id: v.vendors.id,
         vendor_name: v.vendors.name,
         vendor_code: v.vendors.vendor_code,
@@ -115,8 +115,8 @@ export const calculateMaterialShortages = async (projectionIds: string[]): Promi
       
       if (shortage > 0) {
         shortages.push({
-          raw_material_id: materialId,
-          material_code: data.material_code,
+          part_id: materialId,
+          part_code: data.part_code,
           material_name: data.material_name,
           required_quantity: data.total_required,
           available_quantity: totalAvailable,

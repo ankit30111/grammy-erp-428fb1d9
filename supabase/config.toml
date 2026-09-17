@@ -1,1 +1,4 @@
 project_id = "oacdhvmpkuadlyvvvbpq"
+
+[functions.temp-master-import]
+verify_jwt = false

@@ -50,13 +50,13 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
         .from("production_orders")
         .select(`
           *,
-          products!product_id (
+          products!part_id (
             name,
-            bom!product_id (
+            bom!part_id (
               *,
-              raw_materials!raw_material_id (
+              parts!part_id (
                 id,
-                material_code,
+                part_code,
                 name,
                 category
               )
@@ -101,13 +101,13 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
       const { data, error } = await supabase
         .from("kit_items")
         .select(`
-          raw_material_id,
+          part_id,
           actual_quantity,
           verified_by_production,
           created_at,
-          raw_materials!raw_material_id (
+          parts!part_id (
             id,
-            material_code,
+            part_code,
             name,
             category
           ),
@@ -128,20 +128,20 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
   // Create inventory lookup map
   const inventoryMap = new Map();
   inventoryData.forEach(item => {
-    inventoryMap.set(item.raw_materials.id, item.quantity);
+    inventoryMap.set(item.parts.id, item.quantity);
   });
 
   // Enhanced calculation to use production-verified quantities
   const getActualReceivedQuantity = (materialId: string) => {
     return dispatchedItems
-      .filter(item => item.raw_materials.id === materialId && item.verified_by_production)
+      .filter(item => item.parts.id === materialId && item.verified_by_production)
       .reduce((sum, item) => sum + item.actual_quantity, 0);
   };
 
   // Get total dispatched (sent) quantities regardless of production verification
   const getDispatchedQuantity = (materialId: string) => {
     return dispatchedItems
-      .filter(item => item.raw_materials.id === materialId)
+      .filter(item => item.parts.id === materialId)
       .reduce((sum, item) => sum + item.actual_quantity, 0);
   };
 
@@ -161,28 +161,28 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
       const dispatchPlan = [];
       
       for (const material of materialsToSend) {
-        const currentStock = getCurrentStock(material.raw_materials.id);
-        const quantityToSend = quantities[material.raw_materials.id] || 0;
+        const currentStock = getCurrentStock(material.parts.id);
+        const quantityToSend = quantities[material.parts.id] || 0;
         
-        console.log(`🧮 PRE-VALIDATION for ${material.raw_materials.material_code}:`);
-        console.log(`   - Material ID: ${material.raw_materials.id}`);
+        console.log(`🧮 PRE-VALIDATION for ${material.parts.part_code}:`);
+        console.log(`   - Material ID: ${material.parts.id}`);
         console.log(`   - Current Stock: ${currentStock}`);
         console.log(`   - Quantity to Send: ${quantityToSend}`);
         
         if (quantityToSend <= 0) {
-          validationErrors.push(`Invalid quantity for ${material.raw_materials.material_code}`);
+          validationErrors.push(`Invalid quantity for ${material.parts.part_code}`);
           continue;
         }
         
         if (quantityToSend > currentStock) {
-          validationErrors.push(`Insufficient stock for ${material.raw_materials.material_code}: Required ${quantityToSend}, Available ${currentStock}`);
+          validationErrors.push(`Insufficient stock for ${material.parts.part_code}: Required ${quantityToSend}, Available ${currentStock}`);
           continue;
         }
 
         dispatchPlan.push({
-          materialId: material.raw_materials.id,
-          materialCode: material.raw_materials.material_code,
-          materialName: material.raw_materials.name,
+          materialId: material.parts.id,
+          materialCode: material.parts.part_code,
+          materialName: material.parts.name,
           currentStock,
           quantityToSend,
           newStock: currentStock - quantityToSend,
@@ -233,7 +233,7 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
           try {
             await postStockMovement({
               plant_id: plan.plantId,
-              raw_material_id: plan.materialId,
+              part_id: plan.materialId,
               location_id: mainLocationId,
               qty_delta: -plan.quantityToSend,
               movement_type: "ISSUE_TO_PRODUCTION",
@@ -260,7 +260,7 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
             .from("kit_items")
             .insert({
               kit_preparation_id: kitPrep.id,
-              raw_material_id: plan.materialId,
+              part_id: plan.materialId,
               required_quantity: plan.requiredQuantity,
               actual_quantity: plan.quantityToSend
             })
@@ -280,7 +280,7 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
           const { data: movementData, error: movementError } = await supabase
             .from("material_movements")
             .insert({
-              raw_material_id: plan.materialId,
+              part_id: plan.materialId,
               movement_type: "ISSUED_TO_PRODUCTION",
               quantity: plan.quantityToSend,
               reference_id: voucherId,
@@ -299,7 +299,7 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
           console.log("✅ MATERIAL MOVEMENT LOGGED:", movementData.id);
 
           dispatchResults.push({
-            material_code: plan.materialCode,
+            part_code: plan.materialCode,
             material_name: plan.materialName,
             quantity_sent: plan.quantityToSend,
             previous_stock: plan.currentStock,
@@ -384,7 +384,7 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
   const handleSendMaterials = () => {
     const bom = productionOrder?.products?.bom || [];
     const materialsWithQuantities = bom.filter(item => 
-      quantities[item.raw_materials.id] && quantities[item.raw_materials.id] > 0
+      quantities[item.parts.id] && quantities[item.parts.id] > 0
     );
 
     if (materialsWithQuantities.length === 0) {
@@ -398,13 +398,13 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
 
     // Enhanced validation before dispatch
     const insufficientStockMaterials = materialsWithQuantities.filter(material => {
-      const currentStock = getCurrentStock(material.raw_materials.id);
-      const quantityToSend = quantities[material.raw_materials.id];
+      const currentStock = getCurrentStock(material.parts.id);
+      const quantityToSend = quantities[material.parts.id];
       return quantityToSend > currentStock;
     });
 
     if (insufficientStockMaterials.length > 0) {
-      const materialNames = insufficientStockMaterials.map(m => m.raw_materials.material_code).join(', ');
+      const materialNames = insufficientStockMaterials.map(m => m.parts.part_code).join(', ');
       toast({
         title: "Insufficient Stock",
         description: `Cannot dispatch materials with insufficient stock: ${materialNames}. Please check inventory levels.`,
@@ -438,12 +438,12 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
         dispatchedAt: new Date().toISOString(),
         dispatchedBy: "Store Department", // Could be enhanced to get current user
         materials: bom.map(bomItem => ({
-          materialCode: bomItem.raw_materials.material_code,
-          materialName: bomItem.raw_materials.name,
-          category: bomItem.raw_materials.category,
+          materialCode: bomItem.parts.part_code,
+          materialName: bomItem.parts.name,
+          category: bomItem.parts.category,
           requiredQuantity: bomItem.quantity * productionOrder.quantity,
-          dispatchedQuantity: getDispatchedQuantity(bomItem.raw_materials.id),
-          currentStock: getCurrentStock(bomItem.raw_materials.id),
+          dispatchedQuantity: getDispatchedQuantity(bomItem.parts.id),
+          currentStock: getCurrentStock(bomItem.parts.id),
           bomType: bomItem.bom_type || 'main_assembly'
         }))
       };
@@ -509,7 +509,7 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
   const tableRows: VoucherTableRow[] = groupedBOM.flatMap((group) => {
     if (group.items.length === 0) return [];
     const materialRows = group.items.map((item): VoucherTableRow => {
-      const materialId = item.raw_materials.id;
+      const materialId = item.parts.id;
       const required = item.quantity * orderQuantity;
       const stock = getCurrentStock(materialId);
       const sent = getDispatchedQuantity(materialId);
@@ -517,9 +517,9 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
       const toSend = quantities[materialId] || 0;
       return {
         id: materialId,
-        materialCode: item.raw_materials.material_code,
-        description: item.raw_materials.name,
-        category: item.raw_materials.category,
+        materialCode: item.parts.part_code,
+        description: item.parts.name,
+        category: item.parts.category,
         required,
         stock,
         sent,

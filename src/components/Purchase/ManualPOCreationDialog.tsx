@@ -15,7 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 
 interface SelectedMaterial {
   id: string;
-  material_code: string;
+  part_code: string;
   name: string;
   quantity: number;
   current_stock: number;
@@ -52,14 +52,14 @@ export const ManualPOCreationDialog = () => {
     queryKey: ['raw-materials-with-inventory'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('raw_materials')
+        .from('parts')
         .select(`
           *,
           inventory (
             quantity
           )
         `)
-        .order('material_code');
+        .order('part_code');
       
       if (error) throw error;
       return data.map(material => ({
@@ -71,7 +71,7 @@ export const ManualPOCreationDialog = () => {
 
   // Filter materials based on search term
   const filteredMaterials = rawMaterials.filter(material =>
-    material.material_code.toLowerCase().includes(materialSearchTerm.toLowerCase()) ||
+    material.part_code.toLowerCase().includes(materialSearchTerm.toLowerCase()) ||
     material.name.toLowerCase().includes(materialSearchTerm.toLowerCase())
   );
 
@@ -87,7 +87,7 @@ export const ManualPOCreationDialog = () => {
 
     setSelectedMaterials([...selectedMaterials, {
       id: material.id,
-      material_code: material.material_code,
+      part_code: material.part_code,
       name: material.name,
       quantity: 1,
       current_stock: material.current_stock
@@ -116,7 +116,7 @@ export const ManualPOCreationDialog = () => {
     }
 
     const items = selectedMaterials.map(material => ({
-      raw_material_id: material.id,
+      part_id: material.id,
       quantity: material.quantity,
       unit_price: 0,
     }));
@@ -126,7 +126,7 @@ export const ManualPOCreationDialog = () => {
         vendor_id: selectedVendor,
         items,
         notes: notes || 'Manual PO Creation',
-        expected_delivery_date: deliveryDate,
+        promised_delivery_date: deliveryDate,
       });
 
       // Reset form
@@ -218,7 +218,7 @@ export const ManualPOCreationDialog = () => {
                     onClick={() => handleAddMaterial(material)}
                   >
                     <div className="flex-1">
-                      <div className="font-medium">{material.material_code}</div>
+                      <div className="font-medium">{material.part_code}</div>
                       <div className="text-sm text-gray-600">{material.name}</div>
                       <div className="text-xs text-gray-500">
                         Current Stock: {material.current_stock}
@@ -255,7 +255,7 @@ export const ManualPOCreationDialog = () => {
                 <TableBody>
                   {selectedMaterials.map((material) => (
                     <TableRow key={material.id}>
-                      <TableCell className="font-mono">{material.material_code}</TableCell>
+                      <TableCell className="font-mono">{material.part_code}</TableCell>
                       <TableCell>{material.name}</TableCell>
                       <TableCell>
                         <Badge variant="outline">

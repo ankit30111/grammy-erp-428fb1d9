@@ -192,7 +192,7 @@ const PurchaseOrderApprovals = () => {
                       <div>
                         <p className="text-sm text-muted-foreground">Expected Delivery</p>
                         <p className="font-medium">
-                          {po.expected_delivery_date ? new Date(po.expected_delivery_date).toLocaleDateString() : 'Not set'}
+                          {po.promised_delivery_date ? new Date(po.promised_delivery_date).toLocaleDateString() : 'Not set'}
                         </p>
                       </div>
                       <div>
@@ -220,9 +220,9 @@ const PurchaseOrderApprovals = () => {
                             {po.purchase_order_items.map((item) => (
                               <TableRow key={item.id}>
                                 <TableCell className="font-mono">
-                                  {item.raw_materials?.material_code}
+                                  {item.parts?.part_code}
                                 </TableCell>
-                                <TableCell>{item.raw_materials?.name}</TableCell>
+                                <TableCell>{item.parts?.name}</TableCell>
                                 <TableCell className="font-medium">{item.quantity}</TableCell>
                                 <TableCell>₹{item.unit_price?.toFixed(2) || '0.00'}</TableCell>
                                 <TableCell>₹{(item.quantity * (item.unit_price || 0)).toFixed(2)}</TableCell>
@@ -275,9 +275,9 @@ const PurchaseOrderApprovals = () => {
                     ?.purchase_order_items?.map((item) => (
                     <TableRow key={item.id}>
                       <TableCell className="font-mono">
-                        {item.raw_materials?.material_code}
+                        {item.parts?.part_code}
                       </TableCell>
-                      <TableCell>{item.raw_materials?.name}</TableCell>
+                      <TableCell>{item.parts?.name}</TableCell>
                       <TableCell className="font-medium">{item.quantity}</TableCell>
                       <TableCell>
                         <Input

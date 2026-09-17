@@ -39,7 +39,7 @@ const MaterialRequests = () => {
           products!inner(
             id,
             name,
-            product_code
+            part_code
           )
         `)
         .eq("status", "IN_PROGRESS")
@@ -74,14 +74,14 @@ const MaterialRequests = () => {
           id,
           quantity,
           bom_type,
-          raw_materials!inner(
+          parts!inner(
             id,
-            material_code,
+            part_code,
             name,
             category
           )
         `)
-        .eq("product_id", selectedProduction.products.id);
+        .eq("part_id", selectedProduction.products.id);
       
       if (error) {
         console.error("❌ Error fetching BOM materials:", error);
@@ -108,9 +108,9 @@ const MaterialRequests = () => {
               name
             )
           ),
-          raw_materials!inner(
+          parts!inner(
             name, 
-            material_code
+            part_code
           )
         `)
         .order("created_at", { ascending: false });
@@ -134,7 +134,7 @@ const MaterialRequests = () => {
         .from("material_requests")
         .insert({
           production_order_id: requestData.productionOrderId,
-          raw_material_id: requestData.rawMaterialId,
+          part_id: requestData.rawMaterialId,
           requested_quantity: requestData.requestedQuantity,
           reason: requestData.reason,
           requested_by: null
@@ -298,13 +298,13 @@ const MaterialRequests = () => {
                       </SelectTrigger>
                       <SelectContent>
                         {bomMaterials.map((bomItem) => (
-                          <SelectItem key={bomItem.raw_materials.id} value={bomItem.raw_materials.id}>
+                          <SelectItem key={bomItem.parts.id} value={bomItem.parts.id}>
                             <div className="flex flex-col">
                               <span className="font-medium">
-                                {bomItem.raw_materials.material_code} - {bomItem.raw_materials.name}
+                                {bomItem.parts.part_code} - {bomItem.parts.name}
                               </span>
                               <span className="text-xs text-muted-foreground">
-                                Category: {bomItem.raw_materials.category} | Type: {bomItem.bom_type} | BOM Qty: {bomItem.quantity}
+                                Category: {bomItem.parts.category} | Type: {bomItem.bom_type} | BOM Qty: {bomItem.quantity}
                               </span>
                             </div>
                           </SelectItem>
@@ -386,8 +386,8 @@ const MaterialRequests = () => {
                     </TableCell>
                     <TableCell>
                       <div>
-                        <p className="font-medium">{request.raw_materials?.material_code}</p>
-                        <p className="text-sm text-muted-foreground">{request.raw_materials?.name}</p>
+                        <p className="font-medium">{request.parts?.part_code}</p>
+                        <p className="text-sm text-muted-foreground">{request.parts?.name}</p>
                       </div>
                     </TableCell>
                     <TableCell className="font-medium">

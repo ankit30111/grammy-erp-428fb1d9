@@ -10,13 +10,13 @@ export const useProducts = () => {
       
       // Test connection first
       const { data: testData, error: testError } = await supabase
-        .from("products")
+        .from("parts")
         .select("count", { count: 'exact' });
       
       console.log("Debug: Products count test:", testData, testError);
       
       const { data, error } = await supabase
-        .from("products")
+        .from("parts")
         .select("*")
         .order("name");
       

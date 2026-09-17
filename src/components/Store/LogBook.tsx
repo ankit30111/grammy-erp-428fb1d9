@@ -20,8 +20,8 @@ const LogBook = memo(() => {
     if (searchTerm.trim()) {
       const search = searchTerm.toLowerCase();
       return (
-        movement.raw_materials?.material_code?.toLowerCase().includes(search) ||
-        movement.raw_materials?.name?.toLowerCase().includes(search) ||
+        movement.parts?.part_code?.toLowerCase().includes(search) ||
+        movement.parts?.name?.toLowerCase().includes(search) ||
         movement.reference_number?.toLowerCase().includes(search) ||
         movement.notes?.toLowerCase().includes(search) ||
         movement.movement_type?.toLowerCase().includes(search)

@@ -55,9 +55,9 @@ const PlanningDashboard = () => {
         .from('bom')
         .select(`
           *,
-          raw_materials (
+          parts (
             id,
-            material_code,
+            part_code,
             name
           )
         `);
@@ -152,16 +152,16 @@ const PlanningDashboard = () => {
   const getVoucherDetails = (schedule: any) => {
     if (!schedule || !bomData || !inventory) return [];
     
-    const productBOM = bomData.filter(bom => bom.product_id === schedule.projections?.products?.id);
+    const productBOM = bomData.filter(bom => bom.part_id === schedule.projections?.products?.id);
     
     const materialRequirements = productBOM.map(bomItem => {
-      const inventoryItem = inventory.find(inv => inv.raw_material_id === bomItem.raw_material_id);
+      const inventoryItem = inventory.find(inv => inv.part_id === bomItem.part_id);
       const requiredQty = bomItem.quantity * schedule.quantity;
       const availableQty = inventoryItem?.quantity || 0;
       
       return {
-        material_code: bomItem.raw_materials?.material_code || 'N/A',
-        material_name: bomItem.raw_materials?.name || 'Unknown',
+        part_code: bomItem.parts?.part_code || 'N/A',
+        material_name: bomItem.parts?.name || 'Unknown',
         required_quantity: requiredQty,
         available_quantity: availableQty,
         shortage: Math.max(0, requiredQty - availableQty)
@@ -522,7 +522,7 @@ const PlanningDashboard = () => {
                       {getVoucherDetails(selectedVoucher).length > 0 ? (
                         getVoucherDetails(selectedVoucher).map((material, index) => (
                           <TableRow key={index}>
-                            <TableCell className="font-mono">{material.material_code}</TableCell>
+                            <TableCell className="font-mono">{material.part_code}</TableCell>
                             <TableCell>{material.material_name}</TableCell>
                             <TableCell>{material.required_quantity}</TableCell>
                             <TableCell>{material.available_quantity}</TableCell>

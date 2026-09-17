@@ -31,7 +31,7 @@ const OQC = () => {
         .from("production_orders")
         .select(`
           *,
-          products!inner(name, product_code),
+          products!inner(name, part_code),
           production_schedules!inner(
             production_line,
             projections!inner(
@@ -55,7 +55,7 @@ const OQC = () => {
         .from("production_orders")
         .select(`
           *,
-          products!inner(name, product_code),
+          products!inner(name, part_code),
           production_schedules!inner(
             production_line,
             projections!inner(
@@ -96,7 +96,7 @@ const OQC = () => {
       if (status === "OQC_PASSED") {
         const { data: order } = await supabase
           .from("production_orders")
-          .select("product_id, quantity, voucher_number")
+          .select("part_id, quantity, voucher_number")
           .eq("id", orderId)
           .single();
 
@@ -104,7 +104,7 @@ const OQC = () => {
           await supabase
             .from("finished_goods_inventory")
             .insert({
-              product_id: order.product_id,
+              part_id: order.part_id,
               quantity: order.quantity,
               quality_status: "APPROVED",
               production_date: new Date().toISOString().split('T')[0],
@@ -196,7 +196,7 @@ const OQC = () => {
                           <TableCell>
                             <div>
                               <div className="font-medium">{order.products?.name}</div>
-                              <div className="text-sm text-muted-foreground">{order.products?.product_code}</div>
+                              <div className="text-sm text-muted-foreground">{order.products?.part_code}</div>
                             </div>
                           </TableCell>
                           <TableCell>{order.production_schedules?.projections?.customers?.name}</TableCell>
@@ -280,7 +280,7 @@ const OQC = () => {
                           <TableCell>
                             <div>
                               <div className="font-medium">{order.products?.name}</div>
-                              <div className="text-sm text-muted-foreground">{order.products?.product_code}</div>
+                              <div className="text-sm text-muted-foreground">{order.products?.part_code}</div>
                             </div>
                           </TableCell>
                           <TableCell>{order.production_schedules?.projections?.customers?.name}</TableCell>

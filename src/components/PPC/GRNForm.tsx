@@ -8,8 +8,8 @@ import GRNFormInputs from "./GRNFormInputs";
 import GRNItemsTable from "./GRNItemsTable";
 
 interface GRNItem {
-  raw_material_id: string;
-  material_code: string;
+  part_id: string;
+  part_code: string;
   material_name: string;
   po_quantity: number;
   received_quantity: number;
@@ -34,9 +34,9 @@ const GRNForm = () => {
       const items: GRNItem[] = po.purchase_order_items
         .filter(item => (item.pending_quantity || item.quantity) > 0) // Only show items with pending quantities
         .map(item => ({
-          raw_material_id: item.raw_material_id,
-          material_code: item.raw_materials?.material_code || '',
-          material_name: item.raw_materials?.name || '',
+          part_id: item.part_id,
+          part_code: item.parts?.part_code || '',
+          material_name: item.parts?.name || '',
           po_quantity: item.quantity,
           received_quantity: 0,
           pending_quantity: item.pending_quantity || item.quantity
@@ -104,7 +104,7 @@ const GRNForm = () => {
         received_date: receivedDate,
         notes: `Invoice Number: ${invoiceNumber}`,
         items: grnItems.filter(item => item.received_quantity > 0).map(item => ({
-          raw_material_id: item.raw_material_id,
+          part_id: item.part_id,
           po_quantity: item.po_quantity,
           received_quantity: item.received_quantity
         }))

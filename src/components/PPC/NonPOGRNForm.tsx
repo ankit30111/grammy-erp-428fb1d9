@@ -13,7 +13,7 @@ import { useRawMaterials } from '@/hooks/useRawMaterials';
 
 interface NonPOGRNItem {
   id: string;
-  raw_material_id: string;
+  part_id: string;
   expected_quantity: number;
   received_quantity: number;
 }
@@ -24,7 +24,7 @@ export const NonPOGRNForm = () => {
   const [receivedDate, setReceivedDate] = useState(new Date().toISOString().split('T')[0]);
   const [items, setItems] = useState<NonPOGRNItem[]>([]);
   const [newItem, setNewItem] = useState({
-    raw_material_id: '',
+    part_id: '',
     expected_quantity: 0,
     received_quantity: 0,
   });
@@ -34,7 +34,7 @@ export const NonPOGRNForm = () => {
   const { rawMaterials } = useRawMaterials();
 
   const addItem = () => {
-    if (!newItem.raw_material_id || newItem.expected_quantity <= 0) {
+    if (!newItem.part_id || newItem.expected_quantity <= 0) {
       toast({
         title: "Invalid Item",
         description: "Please select a material and enter a valid quantity",
@@ -43,7 +43,7 @@ export const NonPOGRNForm = () => {
       return;
     }
 
-    const materialExists = items.some(item => item.raw_material_id === newItem.raw_material_id);
+    const materialExists = items.some(item => item.part_id === newItem.part_id);
     if (materialExists) {
       toast({
         title: "Duplicate Material",
@@ -55,14 +55,14 @@ export const NonPOGRNForm = () => {
 
     const item: NonPOGRNItem = {
       id: Date.now().toString(),
-      raw_material_id: newItem.raw_material_id,
+      part_id: newItem.part_id,
       expected_quantity: newItem.expected_quantity,
       received_quantity: newItem.received_quantity || newItem.expected_quantity,
     };
 
     setItems(prev => [...prev, item]);
     setNewItem({
-      raw_material_id: '',
+      part_id: '',
       expected_quantity: 0,
       received_quantity: 0,
     });
@@ -121,7 +121,7 @@ export const NonPOGRNForm = () => {
       received_date: receivedDate,
       notes: `Invoice Number: ${invoiceNumber} (Non-PO GRN)`,
       items: items.filter(item => item.received_quantity > 0).map(item => ({
-        raw_material_id: item.raw_material_id,
+        part_id: item.part_id,
         expected_quantity: item.expected_quantity,
         received_quantity: item.received_quantity,
       })),
@@ -137,7 +137,7 @@ export const NonPOGRNForm = () => {
         setReceivedDate(new Date().toISOString().split('T')[0]);
         setItems([]);
         setNewItem({
-          raw_material_id: '',
+          part_id: '',
           expected_quantity: 0,
           received_quantity: 0,
         });
@@ -149,7 +149,7 @@ export const NonPOGRNForm = () => {
     return rawMaterials.find(m => m.id === materialId);
   };
 
-  const selectedMaterialIds = items.map(item => item.raw_material_id);
+  const selectedMaterialIds = items.map(item => item.part_id);
 
   return (
     <Card>
@@ -197,8 +197,8 @@ export const NonPOGRNForm = () => {
               <div className="space-y-2">
                 <Label>Material *</Label>
                 <RawMaterialDropdown
-                  value={newItem.raw_material_id}
-                  onValueChange={(value) => setNewItem(prev => ({ ...prev, raw_material_id: value }))}
+                  value={newItem.part_id}
+                  onValueChange={(value) => setNewItem(prev => ({ ...prev, part_id: value }))}
                   excludeIds={selectedMaterialIds}
                   placeholder="Select material"
                 />
@@ -258,10 +258,10 @@ export const NonPOGRNForm = () => {
                 </TableHeader>
                 <TableBody>
                   {items.map((item) => {
-                    const material = getMaterialInfo(item.raw_material_id);
+                    const material = getMaterialInfo(item.part_id);
                     return (
                       <TableRow key={item.id}>
-                        <TableCell className="font-mono">{material?.material_code}</TableCell>
+                        <TableCell className="font-mono">{material?.part_code}</TableCell>
                         <TableCell>{material?.name}</TableCell>
                         <TableCell>
                           <Input

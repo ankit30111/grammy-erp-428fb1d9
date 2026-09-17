@@ -62,9 +62,9 @@ const StockReconciliation = () => {
 
   // Filter inventory based on search term and category
   const filteredInventory = inventory.filter(item => {
-    const materialCode = item.raw_materials?.material_code || "";
-    const materialName = item.raw_materials?.name || "";
-    const materialCategory = item.raw_materials?.category || "";
+    const materialCode = item.parts?.part_code || "";
+    const materialName = item.parts?.name || "";
+    const materialCategory = item.parts?.category || "";
     
     // Search filter
     const matchesSearch = searchTerm === "" || 
@@ -92,7 +92,7 @@ const StockReconciliation = () => {
         .from("material_movements")
         .insert(
           reconciliationData.map(item => ({
-            raw_material_id: item.materialId,
+            part_id: item.materialId,
             movement_type: "STOCK_RECONCILIATION",
             quantity: Math.abs(item.variance),
             reference_id: crypto.randomUUID(),
@@ -152,28 +152,28 @@ const StockReconciliation = () => {
 
   const hasVariances = () => {
     return filteredInventory.some(item => {
-      const variance = getVariance(item.raw_material_id, item.quantity);
-      return variance !== 0 && physicalCounts[item.raw_material_id] !== undefined;
+      const variance = getVariance(item.part_id, item.quantity);
+      return variance !== 0 && physicalCounts[item.part_id] !== undefined;
     });
   };
 
   const getVariancesForSubmission = () => {
     return filteredInventory
       .filter(item => {
-        const variance = getVariance(item.raw_material_id, item.quantity);
-        const hasPhysicalCount = physicalCounts[item.raw_material_id] !== undefined;
+        const variance = getVariance(item.part_id, item.quantity);
+        const hasPhysicalCount = physicalCounts[item.part_id] !== undefined;
         const hasVariance = variance !== 0;
         return hasPhysicalCount && hasVariance;
       })
       .map(item => {
-        const variance = getVariance(item.raw_material_id, item.quantity);
-        const reasonCode = selectedReasonCodes[item.raw_material_id] || "";
-        const remarks = reasons[item.raw_material_id] || "";
+        const variance = getVariance(item.part_id, item.quantity);
+        const reasonCode = selectedReasonCodes[item.part_id] || "";
+        const remarks = reasons[item.part_id] || "";
         
         return {
-          materialId: item.raw_material_id,
+          materialId: item.part_id,
           systemQuantity: item.quantity,
-          physicalQuantity: physicalCounts[item.raw_material_id],
+          physicalQuantity: physicalCounts[item.part_id],
           variance,
           reasonCode,
           remarks
@@ -298,29 +298,29 @@ const StockReconciliation = () => {
           </TableHeader>
           <TableBody>
             {filteredInventory.map((item) => {
-              const variance = getVariance(item.raw_material_id, item.quantity);
-              const hasVariance = variance !== 0 && physicalCounts[item.raw_material_id] !== undefined;
+              const variance = getVariance(item.part_id, item.quantity);
+              const hasVariance = variance !== 0 && physicalCounts[item.part_id] !== undefined;
 
               return (
                 <TableRow key={item.id} className={hasVariance ? "bg-yellow-50" : ""}>
-                  <TableCell className="font-mono">{item.raw_materials?.material_code}</TableCell>
-                  <TableCell>{item.raw_materials?.name}</TableCell>
+                  <TableCell className="font-mono">{item.parts?.part_code}</TableCell>
+                  <TableCell>{item.parts?.name}</TableCell>
                   <TableCell>
-                    <Badge variant="outline">{item.raw_materials?.category}</Badge>
+                    <Badge variant="outline">{item.parts?.category}</Badge>
                   </TableCell>
                   <TableCell className="font-medium">{item.quantity}</TableCell>
                   <TableCell>
                     <Input
                       type="number"
                       min="0"
-                      value={physicalCounts[item.raw_material_id] || ""}
-                      onChange={(e) => handlePhysicalCountChange(item.raw_material_id, e.target.value)}
+                      value={physicalCounts[item.part_id] || ""}
+                      onChange={(e) => handlePhysicalCountChange(item.part_id, e.target.value)}
                       className="w-24"
                       placeholder="Count"
                     />
                   </TableCell>
                   <TableCell>
-                    {physicalCounts[item.raw_material_id] !== undefined && (
+                    {physicalCounts[item.part_id] !== undefined && (
                       <span className={`font-medium ${variance > 0 ? 'text-green-600' : variance < 0 ? 'text-red-600' : 'text-gray-600'}`}>
                         {variance > 0 ? `+${variance}` : variance}
                       </span>
@@ -329,8 +329,8 @@ const StockReconciliation = () => {
                   <TableCell>
                     {hasVariance && (
                       <Select
-                        value={selectedReasonCodes[item.raw_material_id] || ""}
-                        onValueChange={(value) => handleReasonCodeChange(item.raw_material_id, value)}
+                        value={selectedReasonCodes[item.part_id] || ""}
+                        onValueChange={(value) => handleReasonCodeChange(item.part_id, value)}
                       >
                         <SelectTrigger className="w-40">
                           <SelectValue placeholder="Select reason" />
@@ -348,8 +348,8 @@ const StockReconciliation = () => {
                   <TableCell>
                     {hasVariance && (
                       <Textarea
-                        value={reasons[item.raw_material_id] || ""}
-                        onChange={(e) => handleRemarksChange(item.raw_material_id, e.target.value)}
+                        value={reasons[item.part_id] || ""}
+                        onChange={(e) => handleRemarksChange(item.part_id, e.target.value)}
                         placeholder="Enter remarks..."
                         className="w-48 h-20"
                       />

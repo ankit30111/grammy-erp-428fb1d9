@@ -38,13 +38,13 @@ const ProductionFeedbackDialog = ({ productionOrderId, voucherNumber, isOpen, on
         .from("production_orders")
         .select(`
           *,
-          products!product_id (
+          products!part_id (
             name,
-            bom!product_id (
+            bom!part_id (
               *,
-              raw_materials!raw_material_id (
+              parts!part_id (
                 id,
-                material_code,
+                part_code,
                 name,
                 category
               )
@@ -61,9 +61,9 @@ const ProductionFeedbackDialog = ({ productionOrderId, voucherNumber, isOpen, on
         .from("kit_items")
         .select(`
           *,
-          raw_materials!inner(
+          parts!inner(
             id,
-            material_code,
+            part_code,
             name,
             category
           ),
@@ -103,7 +103,7 @@ const ProductionFeedbackDialog = ({ productionOrderId, voucherNumber, isOpen, on
             actual_quantity: feedback.actualUsed,
             verified_by_production: true
           })
-          .eq("raw_material_id", feedback.materialId)
+          .eq("part_id", feedback.materialId)
           .eq("kit_preparation_id", (await supabase
             .from("kit_preparation")
             .select("id")
@@ -124,7 +124,7 @@ const ProductionFeedbackDialog = ({ productionOrderId, voucherNumber, isOpen, on
           const mainId = await getStockLocationId(plantId, "MAIN");
           await postStockMovement({
             plant_id: plantId,
-            raw_material_id: feedback.materialId,
+            part_id: feedback.materialId,
             location_id: mainId,
             qty_delta: excessQuantity,
             movement_type: "RETURN",
@@ -141,7 +141,7 @@ const ProductionFeedbackDialog = ({ productionOrderId, voucherNumber, isOpen, on
           const { error: movementError } = await supabase
             .from("material_movements")
             .insert({
-              raw_material_id: feedback.materialId,
+              part_id: feedback.materialId,
               movement_type: "PRODUCTION_RETURN",
               quantity: excessQuantity,
               reference_id: productionOrderId,
@@ -167,7 +167,7 @@ const ProductionFeedbackDialog = ({ productionOrderId, voucherNumber, isOpen, on
             .from("material_requests")
             .insert({
               production_order_id: productionOrderId,
-              raw_material_id: feedback.materialId,
+              part_id: feedback.materialId,
               requested_quantity: shortageQuantity,
               reason: `Production feedback shortage: ${feedback.reason}`,
               status: 'PENDING'
@@ -219,12 +219,12 @@ const ProductionFeedbackDialog = ({ productionOrderId, voucherNumber, isOpen, on
     if (!productionData?.sentMaterials) return;
 
     const feedbackToSubmit = productionData.sentMaterials
-      .filter(item => feedback[item.raw_material_id])
+      .filter(item => feedback[item.part_id])
       .map(item => ({
-        materialId: item.raw_material_id,
+        materialId: item.part_id,
         sentQuantity: item.actual_quantity,
-        actualUsed: feedback[item.raw_material_id].actualUsed,
-        reason: feedback[item.raw_material_id].reason
+        actualUsed: feedback[item.part_id].actualUsed,
+        reason: feedback[item.part_id].reason
       }))
       .filter(f => f.actualUsed !== f.sentQuantity); // Only submit if there's a difference
 
@@ -313,20 +313,20 @@ const ProductionFeedbackDialog = ({ productionOrderId, voucherNumber, isOpen, on
                 <TableBody>
                   {sentMaterials?.map((item) => {
                     const sentQty = item.actual_quantity;
-                    const actualUsed = feedback[item.raw_material_id]?.actualUsed ?? sentQty;
+                    const actualUsed = feedback[item.part_id]?.actualUsed ?? sentQty;
                     const difference = sentQty - actualUsed;
                     const isAlreadyVerified = item.verified_by_production;
                     
                     return (
-                      <TableRow key={item.raw_material_id} className={isAlreadyVerified ? "bg-gray-50" : ""}>
-                        <TableCell className="font-mono">{item.raw_materials.material_code}</TableCell>
-                        <TableCell>{item.raw_materials.name}</TableCell>
+                      <TableRow key={item.part_id} className={isAlreadyVerified ? "bg-gray-50" : ""}>
+                        <TableCell className="font-mono">{item.parts.part_code}</TableCell>
+                        <TableCell>{item.parts.name}</TableCell>
                         <TableCell className="font-medium text-blue-600">{sentQty}</TableCell>
                         <TableCell>
                           <Input
                             type="number"
                             value={actualUsed}
-                            onChange={(e) => handleFeedbackChange(item.raw_material_id, 'actualUsed', e.target.value)}
+                            onChange={(e) => handleFeedbackChange(item.part_id, 'actualUsed', e.target.value)}
                             className="w-24"
                             min="0"
                             disabled={isAlreadyVerified}
@@ -341,8 +341,8 @@ const ProductionFeedbackDialog = ({ productionOrderId, voucherNumber, isOpen, on
                         </TableCell>
                         <TableCell>
                           <Textarea
-                            value={feedback[item.raw_material_id]?.reason || ''}
-                            onChange={(e) => handleFeedbackChange(item.raw_material_id, 'reason', e.target.value)}
+                            value={feedback[item.part_id]?.reason || ''}
+                            onChange={(e) => handleFeedbackChange(item.part_id, 'reason', e.target.value)}
                             placeholder="Reason for difference..."
                             className="min-h-[60px]"
                             disabled={isAlreadyVerified}

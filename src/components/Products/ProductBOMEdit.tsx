@@ -38,19 +38,19 @@ export function ProductBOMEdit({ product, open, onOpenChange, onSuccess }: Produ
         .from('bom')
         .select(`
           *,
-          raw_materials (
-            material_code,
+          parts (
+            part_code,
             name
           )
         `)
-        .eq('product_id', product.id);
+        .eq('part_id', product.id);
 
       if (error) throw error;
 
       const formattedItems: BOMItem[] = (data || []).map(item => ({
-        raw_material_id: item.raw_material_id,
-        raw_material_name: item.raw_materials?.name || '',
-        raw_material_code: item.raw_materials?.material_code || '',
+        part_id: item.part_id,
+        raw_material_name: item.parts?.name || '',
+        raw_material_code: item.parts?.part_code || '',
         bom_type: item.bom_type,
         quantity: item.quantity,
         is_critical: item.is_critical
@@ -108,7 +108,7 @@ export function ProductBOMEdit({ product, open, onOpenChange, onSuccess }: Produ
       const { data: bomVersionData, error: versionError } = await supabase
         .from('bom_versions')
         .select('version_number')
-        .eq('product_id', product.id)
+        .eq('part_id', product.id)
         .order('version_number', { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -123,7 +123,7 @@ export function ProductBOMEdit({ product, open, onOpenChange, onSuccess }: Produ
         const { error: archiveError } = await supabase
           .from('bom_versions')
           .insert({
-            product_id: product.id,
+            part_id: product.id,
             version_number: nextVersion - 1,
             change_reason: nextVersion === 1 ? "Initial version" : "Previous version",
             bom_data: originalBomItems as any,
@@ -140,14 +140,14 @@ export function ProductBOMEdit({ product, open, onOpenChange, onSuccess }: Produ
       const { error: deleteError } = await supabase
         .from('bom')
         .delete()
-        .eq('product_id', product.id);
+        .eq('part_id', product.id);
 
       if (deleteError) throw deleteError;
 
       // Insert new BOM items
       const bomInserts = bomItems.map(item => ({
-        product_id: product.id,
-        raw_material_id: item.raw_material_id,
+        part_id: product.id,
+        part_id: item.part_id,
         bom_type: item.bom_type,
         quantity: item.quantity,
         is_critical: item.is_critical || false
@@ -163,7 +163,7 @@ export function ProductBOMEdit({ product, open, onOpenChange, onSuccess }: Produ
       const { error: versionInsertError } = await supabase
         .from('bom_versions')
         .insert({
-          product_id: product.id,
+          part_id: product.id,
           version_number: nextVersion,
           change_reason: changeReason,
           bom_data: bomItems as any,
@@ -200,7 +200,7 @@ export function ProductBOMEdit({ product, open, onOpenChange, onSuccess }: Produ
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Edit BOM for {product.name} ({product.product_code})</DialogTitle>
+          <DialogTitle>Edit BOM for {product.name} ({product.part_code})</DialogTitle>
         </DialogHeader>
         
         {loading ? (

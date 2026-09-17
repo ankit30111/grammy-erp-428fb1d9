@@ -20,7 +20,7 @@ const ProductionQueueDashboard = () => {
         .from("production_orders")
         .select(`
           *,
-          products!product_id (name)
+          products!part_id (name)
         `)
         .eq("plant_id", plantId!)
         .in("status", ["IN_PROGRESS", "SCHEDULED"])

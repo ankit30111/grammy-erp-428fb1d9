@@ -291,8 +291,8 @@ const GRN = () => {
                           <TableBody>
                             {filteredGRNs.find(grn => grn.id === selectedGRN)?.grn_items?.map((item, idx) => (
                               <TableRow key={idx}>
-                                <TableCell className="font-mono">{item.raw_materials?.material_code}</TableCell>
-                                <TableCell>{item.raw_materials?.name}</TableCell>
+                                <TableCell className="font-mono">{item.parts?.part_code}</TableCell>
+                                <TableCell>{item.parts?.name}</TableCell>
                                 <TableCell>{item.po_quantity?.toLocaleString()}</TableCell>
                                 <TableCell>{item.received_quantity?.toLocaleString()}</TableCell>
                                 <TableCell>
@@ -349,8 +349,8 @@ const GRN = () => {
                     <TableBody>
                       {editingGRN.grn_items.map((item: any) => (
                         <TableRow key={item.id}>
-                          <TableCell className="font-mono">{item.raw_materials?.material_code}</TableCell>
-                          <TableCell>{item.raw_materials?.name}</TableCell>
+                          <TableCell className="font-mono">{item.parts?.part_code}</TableCell>
+                          <TableCell>{item.parts?.name}</TableCell>
                           <TableCell>{item.po_quantity}</TableCell>
                           <TableCell>
                             <Input

@@ -49,7 +49,7 @@ const ProductsManagement = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const [newProduct, setNewProduct] = useState({
-    product_code: "",
+    part_code: "",
     name: "",
     category: "",
     description: ""
@@ -93,7 +93,7 @@ const ProductsManagement = () => {
 
   const filteredProducts = products.filter(product => 
     product.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    product.product_code.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    product.part_code.toLowerCase().includes(searchQuery.toLowerCase()) ||
     product.category.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -101,7 +101,7 @@ const ProductsManagement = () => {
     const { data, error } = await supabase
       .from('products')
       .select('id')
-      .eq('product_code', productCode)
+      .eq('part_code', productCode)
       .eq('is_active', true);
     
     if (error) {
@@ -135,7 +135,7 @@ const ProductsManagement = () => {
   };
 
   const handleAddProduct = async () => {
-    if (!newProduct.product_code.trim()) {
+    if (!newProduct.part_code.trim()) {
       toast({
         title: "Product Code Required",
         description: "Please enter a product code",
@@ -157,7 +157,7 @@ const ProductsManagement = () => {
     
     try {
       // Check if product code already exists
-      const codeExists = await checkProductCodeExists(newProduct.product_code);
+      const codeExists = await checkProductCodeExists(newProduct.part_code);
       if (codeExists) {
         toast({
           title: "Product Code Exists",
@@ -174,7 +174,7 @@ const ProductsManagement = () => {
       for (const [type, file] of Object.entries(productDocuments)) {
         if (file) {
           try {
-            const url = await uploadDocument(file, type, newProduct.product_code);
+            const url = await uploadDocument(file, type, newProduct.part_code);
             documentUrls[`${type}_url`] = url;
           } catch (error) {
             console.error(`Error uploading ${type}:`, error);
@@ -186,7 +186,7 @@ const ProductsManagement = () => {
       const { data: productData, error: productError } = await supabase
         .from('products')
         .insert({
-          product_code: newProduct.product_code,
+          part_code: newProduct.part_code,
           name: newProduct.name,
           category: newProduct.category,
           description: newProduct.description,
@@ -199,8 +199,8 @@ const ProductsManagement = () => {
 
       // Insert BOM items
       const bomInserts = bomItems.map(item => ({
-        product_id: productData.id,
-        raw_material_id: item.raw_material_id,
+        part_id: productData.id,
+        part_id: item.part_id,
         bom_type: item.bom_type,
         quantity: item.quantity,
         is_critical: item.is_critical || false
@@ -214,7 +214,7 @@ const ProductsManagement = () => {
 
       // Reset form
       setNewProduct({
-        product_code: "",
+        part_code: "",
         name: "",
         category: "",
         description: ""
@@ -326,11 +326,11 @@ const ProductsManagement = () => {
                   <CardContent className="grid gap-4">
                     <div className="grid grid-cols-3 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="product_code">Product Code *</Label>
+                        <Label htmlFor="part_code">Product Code *</Label>
                         <Input 
-                          id="product_code" 
-                          value={newProduct.product_code} 
-                          onChange={(e) => setNewProduct({...newProduct, product_code: e.target.value})}
+                          id="part_code" 
+                          value={newProduct.part_code} 
+                          onChange={(e) => setNewProduct({...newProduct, part_code: e.target.value})}
                           placeholder="Enter unique product code"
                         />
                       </div>
@@ -397,7 +397,7 @@ const ProductsManagement = () => {
                 <Button 
                   type="submit" 
                   onClick={handleAddProduct}
-                  disabled={!hasAllBOMTypes() || isLoading || !newProduct.product_code.trim()}
+                  disabled={!hasAllBOMTypes() || isLoading || !newProduct.part_code.trim()}
                 >
                   {isLoading ? "Creating..." : "Create Product"}
                 </Button>
@@ -445,7 +445,7 @@ const ProductsManagement = () => {
                 ) : (
                   filteredProducts.map((product) => (
                     <TableRow key={product.id}>
-                      <TableCell className="font-medium">{product.product_code}</TableCell>
+                      <TableCell className="font-medium">{product.part_code}</TableCell>
                       <TableCell>{product.name}</TableCell>
                       <TableCell>{product.category}</TableCell>
                       <TableCell className="max-w-md truncate">{product.description}</TableCell>

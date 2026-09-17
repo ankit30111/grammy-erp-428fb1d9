@@ -158,7 +158,7 @@ const IQCInspectionDialog = ({ grn, isOpen, onClose }: IQCInspectionDialogProps)
             <h3 className="text-lg font-medium mb-4">Material Inspection</h3>
             {pendingItems.map((item: any) => {
               // Fetch relevant CAPAs for this item
-              const relevantCAPAsQuery = fetchRelevantCAPAs(item.raw_material_id, grn.vendor_id);
+              const relevantCAPAsQuery = fetchRelevantCAPAs(item.part_id, grn.vendor_id);
               const relevantCAPAs = relevantCAPAsQuery.data || [];
 
               return (
@@ -167,9 +167,9 @@ const IQCInspectionDialog = ({ grn, isOpen, onClose }: IQCInspectionDialogProps)
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <span className="font-mono font-medium">
-                          {item.raw_materials?.material_code}
+                          {item.parts?.part_code}
                         </span>
-                        <Badge variant="outline">{item.raw_materials?.name}</Badge>
+                        <Badge variant="outline">{item.parts?.name}</Badge>
                       </div>
                       <div>
                         <span className="text-sm">
@@ -279,7 +279,7 @@ const IQCInspectionDialog = ({ grn, isOpen, onClose }: IQCInspectionDialogProps)
                     <div className="flex justify-end space-x-2">
                       <SignedStorageLink
                         bucket="raw-material-documents"
-                        path={item.raw_materials?.specification_sheet_url}
+                        path={item.parts?.specification_sheet_url}
                         variant="outline"
                         size="sm"
                         className="gap-1"
@@ -289,7 +289,7 @@ const IQCInspectionDialog = ({ grn, isOpen, onClose }: IQCInspectionDialogProps)
                       </SignedStorageLink>
                       <SignedStorageLink
                         bucket="raw-material-documents"
-                        path={item.raw_materials?.iqc_checklist_url}
+                        path={item.parts?.iqc_checklist_url}
                         variant="outline"
                         size="sm"
                         className="gap-1"
@@ -313,7 +313,7 @@ const IQCInspectionDialog = ({ grn, isOpen, onClose }: IQCInspectionDialogProps)
                     <CAPAImplementationSection
                       relevantCAPAs={relevantCAPAs}
                       grnItemId={item.id}
-                      materialId={item.raw_material_id}
+                      materialId={item.part_id}
                       vendorId={grn.vendor_id}
                       onCAPAChecksChange={(checks) => {
                         // Filter checks for this specific item and merge with existing

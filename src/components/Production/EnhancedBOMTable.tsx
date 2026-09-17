@@ -30,14 +30,14 @@ const EnhancedBOMTable = ({ productionOrderId, productId, productionQuantity }: 
         .from("bom")
         .select(`
           *,
-          raw_materials!inner(
+          parts!inner(
             id,
-            material_code,
+            part_code,
             name,
             category
           )
         `)
-        .eq("product_id", productId);
+        .eq("part_id", productId);
       
       if (error) throw error;
       return data || [];
@@ -52,7 +52,7 @@ const EnhancedBOMTable = ({ productionOrderId, productId, productionQuantity }: 
       const { data, error } = await supabase
         .from("kit_items")
         .select(`
-          raw_material_id,
+          part_id,
           actual_quantity,
           verified_by_production,
           kit_preparation!inner(
@@ -67,7 +67,7 @@ const EnhancedBOMTable = ({ productionOrderId, productId, productionQuantity }: 
       const materialStats = new Map();
       
       data?.forEach(item => {
-        const materialId = item.raw_material_id;
+        const materialId = item.part_id;
         const existing = materialStats.get(materialId) || { totalSent: 0, totalReceived: 0 };
         
         existing.totalSent += item.actual_quantity;
@@ -79,7 +79,7 @@ const EnhancedBOMTable = ({ productionOrderId, productId, productionQuantity }: 
       });
 
       return Array.from(materialStats.entries()).map(([materialId, stats]) => ({
-        raw_material_id: materialId,
+        part_id: materialId,
         total_sent: stats.totalSent,
         total_received: stats.totalReceived
       }));
@@ -89,7 +89,7 @@ const EnhancedBOMTable = ({ productionOrderId, productId, productionQuantity }: 
   });
 
   const getDispatchStats = (materialId: string) => {
-    const stats = dispatchData.find(item => item.raw_material_id === materialId);
+    const stats = dispatchData.find(item => item.part_id === materialId);
     return {
       totalSent: stats?.total_sent || 0,
       totalReceived: stats?.total_received || 0
@@ -140,18 +140,18 @@ const EnhancedBOMTable = ({ productionOrderId, productId, productionQuantity }: 
             <TableBody>
               {materials.map((bomItem) => {
                 const requiredQty = bomItem.quantity * productionQuantity;
-                const { totalSent, totalReceived } = getDispatchStats(bomItem.raw_materials.id);
+                const { totalSent, totalReceived } = getDispatchStats(bomItem.parts.id);
                 const remainingQty = Math.max(0, requiredQty - totalReceived);
                 const status = getCompletionStatus(requiredQty, totalReceived);
 
                 return (
                   <TableRow key={bomItem.id} className={status === 'complete' ? 'bg-green-50' : ''}>
                     <TableCell className="font-mono font-medium">
-                      {bomItem.raw_materials.material_code}
+                      {bomItem.parts.part_code}
                     </TableCell>
-                    <TableCell>{bomItem.raw_materials.name}</TableCell>
+                    <TableCell>{bomItem.parts.name}</TableCell>
                     <TableCell>
-                      <Badge variant="outline">{bomItem.raw_materials.category}</Badge>
+                      <Badge variant="outline">{bomItem.parts.category}</Badge>
                     </TableCell>
                     <TableCell className="font-semibold">{requiredQty}</TableCell>
                     <TableCell className="font-medium text-blue-600">
@@ -196,9 +196,9 @@ const EnhancedBOMTable = ({ productionOrderId, productId, productionQuantity }: 
                         variant="outline"
                         size="sm"
                         onClick={() => setSelectedMaterial({
-                          id: bomItem.raw_materials.id,
-                          code: bomItem.raw_materials.material_code,
-                          name: bomItem.raw_materials.name,
+                          id: bomItem.parts.id,
+                          code: bomItem.parts.part_code,
+                          name: bomItem.parts.name,
                           requiredQty
                         })}
                         className="gap-1"

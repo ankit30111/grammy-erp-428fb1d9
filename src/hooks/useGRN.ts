@@ -25,10 +25,10 @@ export const useGRN = () => {
           ),
           grn_items (
             *,
-            raw_materials (
+            parts (
               id,
               name,
-              material_code
+              part_code
             )
           )
         `)
@@ -77,7 +77,7 @@ export const useCreateGRN = () => {
       // Insert GRN items
       const items = grnData.items.map((item: any) => ({
         grn_id: grnRecord.id,
-        raw_material_id: item.raw_material_id,
+        part_id: item.part_id,
         po_quantity: item.po_quantity || item.expected_quantity, // Use expected_quantity for non-PO GRNs
         received_quantity: item.received_quantity,
         iqc_status: 'PENDING',
@@ -87,7 +87,7 @@ export const useCreateGRN = () => {
       const { data: insertedItems, error: itemsError } = await supabase
         .from('grn_items')
         .insert(items)
-        .select('id, raw_material_id, received_quantity');
+        .select('id, part_id, received_quantity');
 
         if (itemsError) {
           console.error('GRN items creation error:', itemsError);
@@ -101,7 +101,7 @@ export const useCreateGRN = () => {
         await postStockMovements(
           (insertedItems || []).map((item) => ({
             plant_id: plantId,
-            raw_material_id: item.raw_material_id,
+            part_id: item.part_id,
             location_id: quarantineId,
             qty_delta: Number(item.received_quantity) || 0,
             movement_type: 'RECEIPT',

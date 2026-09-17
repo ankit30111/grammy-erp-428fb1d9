@@ -52,7 +52,7 @@ export const RawMaterialDropdown = ({
           {selectedMaterial ? (
             <span className="flex items-center gap-2">
               <span className="font-mono text-xs bg-muted px-1 rounded">
-                {selectedMaterial.material_code}
+                {selectedMaterial.part_code}
               </span>
               {selectedMaterial.name}
             </span>
@@ -71,7 +71,7 @@ export const RawMaterialDropdown = ({
               {filteredMaterials.map((material) => (
                 <CommandItem
                   key={material.id}
-                  value={`${material.material_code} ${material.name} ${material.category}`}
+                  value={`${material.part_code} ${material.name} ${material.category}`}
                   onSelect={() => {
                     onValueChange(material.id);
                     setOpen(false);
@@ -85,7 +85,7 @@ export const RawMaterialDropdown = ({
                   />
                   <div className="flex items-center gap-2">
                     <span className="font-mono text-xs bg-muted px-1 rounded">
-                      {material.material_code}
+                      {material.part_code}
                     </span>
                     <span>{material.name}</span>
                     <span className="text-xs text-muted-foreground">

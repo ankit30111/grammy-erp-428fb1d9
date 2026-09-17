@@ -12,10 +12,10 @@ export const useRawMaterials = () => {
       console.log("Debug: Fetching raw materials...");
       
       const { data, error } = await supabase
-        .from("raw_materials")
+        .from("parts")
         .select(`
           *,
-          raw_material_vendors(
+          part_vendors(
             id,
             is_primary,
             vendor_id,
@@ -44,7 +44,7 @@ export const useRawMaterials = () => {
   const addRawMaterial = useMutation({
     mutationFn: async (materialData: {
       name: string;
-      material_code: string;
+      part_code: string;
       category: string;
       specification?: string;
       sourcing_type: 'IMPORTED' | 'LOCAL';
@@ -82,12 +82,12 @@ export const useRawMaterials = () => {
         iqcChecklistUrl = fileName;
       }
 
-      // Insert raw material with user-provided material_code
+      // Insert raw material with user-provided part_code
       const { data: material, error: materialError } = await supabase
-        .from("raw_materials")
+        .from("parts")
         .insert({
           name: materialData.name,
-          material_code: materialData.material_code,
+          part_code: materialData.part_code,
           category: materialData.category,
           specification: materialData.specification || "",
           sourcing_type: materialData.sourcing_type,
@@ -107,13 +107,13 @@ export const useRawMaterials = () => {
       // Add vendor relationships only if vendors are provided
       if (materialData.vendorIds && materialData.vendorIds.length > 0) {
         const vendorRelations = materialData.vendorIds.map(vendorId => ({
-          raw_material_id: material.id,
+          part_id: material.id,
           vendor_id: vendorId,
           is_primary: vendorId === materialData.primaryVendorId,
         }));
 
         const { error: vendorError } = await supabase
-          .from("raw_material_vendors")
+          .from("part_vendors")
           .insert(vendorRelations);
 
         if (vendorError) throw vendorError;
@@ -122,9 +122,9 @@ export const useRawMaterials = () => {
       // Create initial specification record if files were uploaded
       if (specificationUrl || iqcChecklistUrl) {
         const { error: specError } = await supabase
-          .from("raw_material_specifications")
+          .from("part_specifications")
           .insert({
-            raw_material_id: material.id,
+            part_id: material.id,
             version_number: 1,
             specification_sheet_url: specificationUrl,
             iqc_checklist_url: iqcChecklistUrl,
@@ -143,7 +143,7 @@ export const useRawMaterials = () => {
     onError: (error: any) => {
       console.error("Error adding raw material:", error);
       // Check for unique constraint violation
-      if (error?.code === '23505' && error?.message?.includes('material_code')) {
+      if (error?.code === '23505' && error?.message?.includes('part_code')) {
         toast.error("Material code already exists. Please choose a different code.");
       } else {
         toast.error("Failed to add raw material");
@@ -155,7 +155,7 @@ export const useRawMaterials = () => {
     mutationFn: async (data: {
       id: string;
       name: string;
-      material_code: string;
+      part_code: string;
       category: string;
       specification?: string;
       sourcing_type?: 'IMPORTED' | 'LOCAL';
@@ -222,7 +222,7 @@ export const useRawMaterials = () => {
         // Update raw material
         const updateData: any = {
           name: data.name,
-          material_code: data.material_code,
+          part_code: data.part_code,
           category: data.category,
           specification: data.specification || "",
           sourcing_type: data.sourcing_type,
@@ -244,7 +244,7 @@ export const useRawMaterials = () => {
         console.log("Debug: Updating raw material with data:", updateData);
 
         const { error: materialError } = await supabase
-          .from("raw_materials")
+          .from("parts")
           .update(updateData)
           .eq("id", data.id);
 
@@ -259,9 +259,9 @@ export const useRawMaterials = () => {
         // First delete existing relationships
         console.log("Debug: Deleting existing vendor relationships");
         const { error: deleteError } = await supabase
-          .from("raw_material_vendors")
+          .from("part_vendors")
           .delete()
-          .eq("raw_material_id", data.id);
+          .eq("part_id", data.id);
 
         if (deleteError) {
           console.error("Debug: Vendor delete error:", deleteError);
@@ -272,13 +272,13 @@ export const useRawMaterials = () => {
         if (data.vendorIds && data.vendorIds.length > 0) {
           console.log("Debug: Adding new vendor relationships:", data.vendorIds);
           const vendorRelations = data.vendorIds.map(vendorId => ({
-            raw_material_id: data.id,
+            part_id: data.id,
             vendor_id: vendorId,
             is_primary: vendorId === data.primaryVendorId,
           }));
 
           const { error: vendorError } = await supabase
-            .from("raw_material_vendors")
+            .from("part_vendors")
             .insert(vendorRelations);
 
           if (vendorError) {
@@ -295,9 +295,9 @@ export const useRawMaterials = () => {
           
           // Get the next version number
           const { data: lastVersion } = await supabase
-            .from("raw_material_specifications")
+            .from("part_specifications")
             .select("version_number")
-            .eq("raw_material_id", data.id)
+            .eq("part_id", data.id)
             .order("version_number", { ascending: false })
             .limit(1)
             .maybeSingle();
@@ -305,9 +305,9 @@ export const useRawMaterials = () => {
           const nextVersion = (lastVersion?.version_number || 0) + 1;
 
           const { error: specError } = await supabase
-            .from("raw_material_specifications")
+            .from("part_specifications")
             .insert({
-              raw_material_id: data.id,
+              part_id: data.id,
               version_number: nextVersion,
               specification_sheet_url: specificationUrl,
               iqc_checklist_url: iqcChecklistUrl,
@@ -336,7 +336,7 @@ export const useRawMaterials = () => {
     onError: (error: any) => {
       console.error("Error updating raw material:", error);
       // Check for unique constraint violation
-      if (error?.code === '23505' && error?.message?.includes('material_code')) {
+      if (error?.code === '23505' && error?.message?.includes('part_code')) {
         toast.error("Material code already exists. Please choose a different code.");
       } else {
         toast.error(error.message || "Failed to update raw material");
@@ -347,7 +347,7 @@ export const useRawMaterials = () => {
   const deleteRawMaterial = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase
-        .from("raw_materials")
+        .from("parts")
         .update({ is_active: false })
         .eq("id", id);
       
@@ -377,9 +377,9 @@ export const useSpecificationHistory = (materialId: string) => {
     queryKey: ["specification-history", materialId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("raw_material_specifications")
+        .from("part_specifications")
         .select("*")
-        .eq("raw_material_id", materialId)
+        .eq("part_id", materialId)
         .order("version_number", { ascending: false });
       
       if (error) throw error;

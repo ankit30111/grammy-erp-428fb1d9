@@ -29,8 +29,8 @@ const StoreDiscrepancies = () => {
               vendor_code
             )
           ),
-          raw_materials (
-            material_code,
+          parts (
+            part_code,
             name
           )
         `)
@@ -112,8 +112,8 @@ const StoreDiscrepancies = () => {
                   return (
                     <TableRow key={discrepancy.id}>
                       <TableCell className="font-mono">{discrepancy.grn?.grn_number}</TableCell>
-                      <TableCell className="font-mono">{discrepancy.raw_materials?.material_code}</TableCell>
-                      <TableCell>{discrepancy.raw_materials?.name}</TableCell>
+                      <TableCell className="font-mono">{discrepancy.parts?.part_code}</TableCell>
+                      <TableCell>{discrepancy.parts?.name}</TableCell>
                       <TableCell>{discrepancy.grn?.vendors?.name}</TableCell>
                       <TableCell>{discrepancy.iqc_accepted_quantity}</TableCell>
                       <TableCell>{discrepancy.store_physical_quantity}</TableCell>

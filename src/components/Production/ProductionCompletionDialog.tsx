@@ -74,18 +74,18 @@ const ProductionCompletionDialog = ({
         .from("bom")
         .select(`
           *,
-          raw_materials!inner(material_code, name)
+          parts!inner(part_code, name)
         `)
-        .eq("product_id", productionOrder?.product_id);
+        .eq("part_id", productionOrder?.part_id);
 
       if (bomError) throw bomError;
 
       // Calculate return quantities for each material
       const returnItems = bomData?.map(bomItem => ({
         production_order_id: voucherId,
-        raw_material_id: bomItem.raw_material_id,
-        material_code: bomItem.raw_materials.material_code,
-        material_name: bomItem.raw_materials.name,
+        part_id: bomItem.part_id,
+        part_code: bomItem.parts.part_code,
+        material_name: bomItem.parts.name,
         return_quantity: Math.ceil(bomItem.quantity * shortfall),
         reason: `Production shortfall: ${shortfall} units unproduced`,
         voucher_number: productionOrder?.voucher_number

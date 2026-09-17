@@ -64,7 +64,7 @@ const MATERIAL_CATEGORIES = [
 const RawMaterialsManagement = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterCategory, setFilterCategory] = useState("all");
-  const [sortConfig, setSortConfig] = useState<{ key: 'material_code' | 'category' | 'vendors' | null; direction: 'asc' | 'desc' }>({ key: null, direction: 'asc' });
+  const [sortConfig, setSortConfig] = useState<{ key: 'part_code' | 'category' | 'vendors' | null; direction: 'asc' | 'desc' }>({ key: null, direction: 'asc' });
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
@@ -81,7 +81,7 @@ const RawMaterialsManagement = () => {
 
   const [newMaterial, setNewMaterial] = useState({
     name: "",
-    material_code: "",
+    part_code: "",
     category: "",
     unit_of_measure: "",
     specification: "",
@@ -99,13 +99,13 @@ const RawMaterialsManagement = () => {
   // Filter materials based on search and category
   const filteredMaterials = rawMaterials.filter(material => {
     const matchesSearch = material.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                         material.material_code.toLowerCase().includes(searchQuery.toLowerCase());
+                         material.part_code.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = filterCategory === "all" || material.category === filterCategory;
     return matchesSearch && matchesCategory;
   });
 
   const getVendorSortValue = (material: any) => {
-    const rels = material.raw_material_vendors || [];
+    const rels = material.part_vendors || [];
     const primary = rels.find((rv: any) => rv.is_primary);
     const name = primary?.vendors?.name || rels[0]?.vendors?.name || "";
     return name.toLowerCase();
@@ -116,9 +116,9 @@ const RawMaterialsManagement = () => {
     sortedMaterials.sort((a, b) => {
       let av = "";
       let bv = "";
-      if (sortConfig.key === 'material_code') {
-        av = (a.material_code || "").toLowerCase();
-        bv = (b.material_code || "").toLowerCase();
+      if (sortConfig.key === 'part_code') {
+        av = (a.part_code || "").toLowerCase();
+        bv = (b.part_code || "").toLowerCase();
       } else if (sortConfig.key === 'category') {
         av = (a.category || "").toLowerCase();
         bv = (b.category || "").toLowerCase();
@@ -131,7 +131,7 @@ const RawMaterialsManagement = () => {
     });
   }
 
-  const handleSort = (key: 'material_code' | 'category' | 'vendors') => {
+  const handleSort = (key: 'part_code' | 'category' | 'vendors') => {
     setSortConfig((prev) => {
       if (prev.key !== key) return { key, direction: 'asc' };
       if (prev.direction === 'asc') return { key, direction: 'desc' };
@@ -139,7 +139,7 @@ const RawMaterialsManagement = () => {
     });
   };
 
-  const SortIcon = ({ column }: { column: 'material_code' | 'category' | 'vendors' }) => {
+  const SortIcon = ({ column }: { column: 'part_code' | 'category' | 'vendors' }) => {
     if (sortConfig.key !== column) return <ArrowUpDown className="ml-1 h-3.5 w-3.5 opacity-50" />;
     return sortConfig.direction === 'asc'
       ? <ArrowUp className="ml-1 h-3.5 w-3.5" />
@@ -152,7 +152,7 @@ const RawMaterialsManagement = () => {
       return;
     }
 
-    if (!newMaterial.material_code.trim()) {
+    if (!newMaterial.part_code.trim()) {
       toast.error("Material Code is required");
       return;
     }
@@ -166,7 +166,7 @@ const RawMaterialsManagement = () => {
     try {
       await addRawMaterial.mutateAsync({
         name: newMaterial.name,
-        material_code: newMaterial.material_code,
+        part_code: newMaterial.part_code,
         category: newMaterial.category,
         specification: newMaterial.specification,
         sourcing_type: newMaterial.sourcing_type,
@@ -183,7 +183,7 @@ const RawMaterialsManagement = () => {
       // Reset form
       setNewMaterial({ 
         name: "", 
-        material_code: "", 
+        part_code: "", 
         category: "", 
         unit_of_measure: "", 
         specification: "",
@@ -210,7 +210,7 @@ const RawMaterialsManagement = () => {
     setSelectedMaterial(material);
     setNewMaterial({
       name: material.name,
-      material_code: material.material_code || "",
+      part_code: material.part_code || "",
       category: material.category,
       unit_of_measure: material.unit_of_measure || "",
       specification: material.specification || "",
@@ -220,8 +220,8 @@ const RawMaterialsManagement = () => {
       cbm_per_unit: material.cbm_per_unit?.toString() || "",
       supplier_country: material.supplier_country || ""
     });
-    setSelectedVendors(material.raw_material_vendors?.map((rv: any) => rv.vendors.id) || []);
-    setPrimaryVendor(material.raw_material_vendors?.find((rv: any) => rv.is_primary)?.vendors.id || "");
+    setSelectedVendors(material.part_vendors?.map((rv: any) => rv.vendors.id) || []);
+    setPrimaryVendor(material.part_vendors?.find((rv: any) => rv.is_primary)?.vendors.id || "");
     setSpecificationFile(null);
     setIqcChecklistFile(null);
     setIsEditDialogOpen(true);
@@ -235,7 +235,7 @@ const RawMaterialsManagement = () => {
       await updateRawMaterial.mutateAsync({
         id: selectedMaterial.id,
         name: newMaterial.name,
-        material_code: newMaterial.material_code,
+        part_code: newMaterial.part_code,
         category: newMaterial.category,
         specification: newMaterial.specification,
         sourcing_type: newMaterial.sourcing_type,
@@ -349,11 +349,11 @@ const RawMaterialsManagement = () => {
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="material_code">Material Code *</Label>
+                    <Label htmlFor="part_code">Material Code *</Label>
                     <Input 
-                      id="material_code" 
-                      value={newMaterial.material_code} 
-                      onChange={(e) => setNewMaterial({...newMaterial, material_code: e.target.value.toUpperCase()})}
+                      id="part_code" 
+                      value={newMaterial.part_code} 
+                      onChange={(e) => setNewMaterial({...newMaterial, part_code: e.target.value.toUpperCase()})}
                       placeholder="Enter material code (e.g., B-001, C-002)"
                       required
                     />
@@ -616,7 +616,7 @@ const RawMaterialsManagement = () => {
                   <Button 
                     type="submit" 
                     onClick={handleAddMaterial} 
-                    disabled={isUploading || addRawMaterial.isPending || !newMaterial.name.trim() || !newMaterial.material_code.trim() || !newMaterial.category.trim()}
+                    disabled={isUploading || addRawMaterial.isPending || !newMaterial.name.trim() || !newMaterial.part_code.trim() || !newMaterial.category.trim()}
                   >
                     {isUploading ? (
                       <>
@@ -676,11 +676,11 @@ const RawMaterialsManagement = () => {
                   <TableHead>
                     <button
                       type="button"
-                      onClick={() => handleSort('material_code')}
+                      onClick={() => handleSort('part_code')}
                       className="inline-flex items-center hover:text-foreground"
                     >
                       Part Code
-                      <SortIcon column="material_code" />
+                      <SortIcon column="part_code" />
                     </button>
                   </TableHead>
                   <TableHead>Part Name</TableHead>
@@ -726,7 +726,7 @@ const RawMaterialsManagement = () => {
                   sortedMaterials.map((material, index) => (
                     <TableRow key={material.id}>
                       <TableCell className="text-muted-foreground text-sm">{index + 1}</TableCell>
-                      <TableCell className="font-medium">{material.material_code}</TableCell>
+                      <TableCell className="font-medium">{material.part_code}</TableCell>
                       <TableCell>{material.name}</TableCell>
                       <TableCell>{material.category}</TableCell>
                       <TableCell>
@@ -762,7 +762,7 @@ const RawMaterialsManagement = () => {
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-1">
-                          {material.raw_material_vendors?.map((rv: any) => (
+                          {material.part_vendors?.map((rv: any) => (
                             <Badge 
                               key={rv.id} 
                               variant={rv.is_primary ? "default" : "secondary"}
@@ -828,7 +828,7 @@ const RawMaterialsManagement = () => {
         <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>View Material: {viewMaterial?.material_code}</DialogTitle>
+              <DialogTitle>View Material: {viewMaterial?.part_code}</DialogTitle>
             </DialogHeader>
             {viewMaterial && (
               <div className="grid gap-6 py-4">
@@ -966,7 +966,7 @@ const RawMaterialsManagement = () => {
                 <div className="space-y-2">
                   <Label className="text-sm font-medium text-muted-foreground">Vendors</Label>
                   <div className="flex flex-wrap gap-2">
-                    {viewMaterial.raw_material_vendors?.map((rv: any) => (
+                    {viewMaterial.part_vendors?.map((rv: any) => (
                       <Badge 
                         key={rv.id} 
                         variant={rv.is_primary ? "default" : "secondary"}
@@ -1008,8 +1008,8 @@ const RawMaterialsManagement = () => {
                 <Label htmlFor="edit-material-code">Material Code</Label>
                 <Input 
                   id="edit-material-code" 
-                  value={newMaterial.material_code} 
-                  onChange={(e) => setNewMaterial({...newMaterial, material_code: e.target.value.toUpperCase()})}
+                  value={newMaterial.part_code} 
+                  onChange={(e) => setNewMaterial({...newMaterial, part_code: e.target.value.toUpperCase()})}
                   placeholder="Enter material code (e.g., B-001, C-002)"
                 />
               </div>

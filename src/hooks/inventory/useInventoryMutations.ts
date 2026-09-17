@@ -43,7 +43,7 @@ export const useInventoryMutations = () => {
       const locationId = await getStockLocationId(plantId, "MAIN");
       await postStockMovement({
         plant_id: plantId,
-        raw_material_id: materialId,
+        part_id: materialId,
         location_id: locationId,
         qty_delta: delta,
         movement_type:

@@ -55,7 +55,7 @@ const ProductionVoucherList = memo(({ onSelectVoucher }: ProductionVoucherListPr
           status,
           kit_status,
           created_at,
-          products!product_id (
+          products!part_id (
             name
           ),
           production_schedules!production_schedule_id (

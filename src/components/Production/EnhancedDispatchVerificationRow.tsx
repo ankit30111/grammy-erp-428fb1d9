@@ -87,7 +87,7 @@ const EnhancedDispatchVerificationRow = ({
   return (
     <>
       <TableRow>
-        <TableCell className="font-mono">{rawMaterial.material_code}</TableCell>
+        <TableCell className="font-mono">{rawMaterial.part_code}</TableCell>
         <TableCell>{rawMaterial.name}</TableCell>
         <TableCell className="font-semibold">{requiredQuantity}</TableCell>
         <TableCell className="text-blue-600 font-medium">
@@ -121,7 +121,7 @@ const EnhancedDispatchVerificationRow = ({
               <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>
-                    Material Details - {rawMaterial.material_code}
+                    Material Details - {rawMaterial.part_code}
                   </DialogTitle>
                 </DialogHeader>
                 
@@ -151,7 +151,7 @@ const EnhancedDispatchVerificationRow = ({
                     <h4 className="font-semibold text-blue-800 mb-2">Material Information</h4>
                     <div className="grid grid-cols-2 gap-4 text-sm">
                       <div>
-                        <span className="font-medium">Material Code:</span> {rawMaterial.material_code}
+                        <span className="font-medium">Material Code:</span> {rawMaterial.part_code}
                       </div>
                       <div>
                         <span className="font-medium">Material Name:</span> {rawMaterial.name}

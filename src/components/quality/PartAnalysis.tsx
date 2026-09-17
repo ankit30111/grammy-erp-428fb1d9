@@ -33,11 +33,11 @@ const PartAnalysis = () => {
           customer_complaints!inner(
             id,
             customers!inner(name),
-            products!inner(name, product_code),
+            products!inner(name, part_code),
             brand_name,
             bill_number
           ),
-          raw_materials!inner(name, material_code)
+          parts!inner(name, part_code)
         `)
         .in("status", ["UNDER_ANALYSIS", "PENDING"])
         .order("created_at", { ascending: false });
@@ -181,11 +181,11 @@ const PartAnalysis = () => {
                   <TableCell>
                     <div>
                       <div className="font-medium">{part.customer_complaints.products?.name}</div>
-                      <div className="text-sm text-muted-foreground">{part.customer_complaints.products?.product_code}</div>
+                      <div className="text-sm text-muted-foreground">{part.customer_complaints.products?.part_code}</div>
                     </div>
                   </TableCell>
-                  <TableCell className="font-mono">{part.raw_materials.material_code}</TableCell>
-                  <TableCell>{part.raw_materials.name}</TableCell>
+                  <TableCell className="font-mono">{part.parts.part_code}</TableCell>
+                  <TableCell>{part.parts.name}</TableCell>
                   <TableCell>{part.reason}</TableCell>
                   <TableCell>{getStatusBadge(part.status)}</TableCell>
                   <TableCell>
@@ -211,7 +211,7 @@ const PartAnalysis = () => {
         <Card>
           <CardHeader>
             <CardTitle>
-              Analyze Part: {selectedPart.raw_materials.material_code} - {selectedPart.raw_materials.name}
+              Analyze Part: {selectedPart.parts.part_code} - {selectedPart.parts.name}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">

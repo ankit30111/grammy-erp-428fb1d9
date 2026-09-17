@@ -13,12 +13,12 @@ export const useBOM = () => {
           products (
             id,
             name,
-            product_code
+            part_code
           ),
-          raw_materials (
+          parts (
             id,
             name,
-            material_code,
+            part_code,
             vendor_id,
             vendors (
               id,
@@ -41,14 +41,14 @@ export const useBOMByProduct = (productId: string) => {
         .from('bom')
         .select(`
           *,
-          raw_materials (
+          parts (
             id,
             name,
-            material_code,
+            part_code,
             category
           )
         `)
-        .eq('product_id', productId);
+        .eq('part_id', productId);
       
       if (error) throw error;
       return data;

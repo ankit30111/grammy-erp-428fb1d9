@@ -34,13 +34,13 @@ const ProductionLineManager = ({ productionOrderId }: ProductionLineManagerProps
         .from("production_orders")
         .select(`
           *,
-          products!product_id (
+          products!part_id (
             name,
-            bom!product_id (
+            bom!part_id (
               *,
-              raw_materials!raw_material_id (
+              parts!part_id (
                 id,
-                material_code,
+                part_code,
                 name,
                 category
               )
@@ -70,9 +70,9 @@ const ProductionLineManager = ({ productionOrderId }: ProductionLineManagerProps
         .from("kit_items")
         .select(`
           *,
-          raw_materials!raw_material_id (
+          parts!part_id (
             id,
-            material_code,
+            part_code,
             name,
             category
           ),
@@ -104,7 +104,7 @@ const ProductionLineManager = ({ productionOrderId }: ProductionLineManagerProps
           status,
           scheduled_date,
           production_lines,
-          products!product_id (name)
+          products!part_id (name)
         `)
         .in("status", ["IN_PROGRESS", "SCHEDULED"])
         .order("scheduled_date");
@@ -129,7 +129,7 @@ const ProductionLineManager = ({ productionOrderId }: ProductionLineManagerProps
     };
 
     sentMaterials.forEach(sentItem => {
-      const bomItem = bom.find(b => b.raw_material_id === sentItem.raw_material_id);
+      const bomItem = bom.find(b => b.part_id === sentItem.part_id);
       if (bomItem) {
         const materialData = {
           ...sentItem,
@@ -284,9 +284,9 @@ const ProductionLineManager = ({ productionOrderId }: ProductionLineManagerProps
                 return (
                   <div key={material.id} className="flex justify-between items-center p-3 border rounded">
                     <div>
-                      <span className="font-mono text-sm font-medium">{material.raw_materials.material_code}</span>
-                      <p className="text-sm text-muted-foreground">{material.raw_materials.name}</p>
-                      <Badge variant="outline" className="text-xs mt-1">{material.raw_materials.category}</Badge>
+                      <span className="font-mono text-sm font-medium">{material.parts.part_code}</span>
+                      <p className="text-sm text-muted-foreground">{material.parts.name}</p>
+                      <Badge variant="outline" className="text-xs mt-1">{material.parts.category}</Badge>
                     </div>
                     <div className="text-right">
                       <p className="text-sm">

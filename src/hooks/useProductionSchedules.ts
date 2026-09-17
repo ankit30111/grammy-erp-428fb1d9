@@ -18,7 +18,7 @@ export const useProductionSchedules = () => {
             products (
               id,
               name,
-              product_code
+              part_code
             ),
             customers (
               id,
@@ -120,7 +120,7 @@ export const useCreateProductionSchedule = () => {
       // IMMEDIATE FIX: Fetch projection data BEFORE any mutations to avoid RLS conflicts
       const { data: projection, error: projectionError } = await supabase
         .from('projections')
-        .select('product_id, quantity, scheduled_quantity')
+        .select('part_id, quantity, scheduled_quantity')
         .eq('id', scheduleData.projection_id)
         .maybeSingle();
 
@@ -169,7 +169,7 @@ export const useCreateProductionSchedule = () => {
         .from('production_orders')
         .insert({
           production_schedule_id: schedule.id,
-          product_id: projection.product_id,
+          part_id: projection.part_id,
           quantity: scheduleData.quantity,
           scheduled_date: scheduleData.scheduled_date,
           voucher_number: voucherNumber,

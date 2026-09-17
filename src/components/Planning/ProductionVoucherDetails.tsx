@@ -36,7 +36,7 @@ const ProductionVoucherDetails = ({ scheduleId, voucherNumber, isOpen, onClose }
     queryFn: async () => {
       if (!scheduleId || !materialRequirements.length) return [];
       
-      const materialIds = materialRequirements.map(req => req.raw_material_id);
+      const materialIds = materialRequirements.map(req => req.part_id);
       
       const { data, error } = await supabase
         .from("purchase_order_items")
@@ -48,9 +48,9 @@ const ProductionVoucherDetails = ({ scheduleId, voucherNumber, isOpen, onClose }
             delivery_target_date,
             vendors(name)
           ),
-          raw_materials(material_code, name)
+          parts(part_code, name)
         `)
-        .in("raw_material_id", materialIds)
+        .in("part_id", materialIds)
         .in("received_status", ["PENDING", "PARTIAL"]);
       
       if (error) throw error;
@@ -62,14 +62,14 @@ const ProductionVoucherDetails = ({ scheduleId, voucherNumber, isOpen, onClose }
   const getMaterialStatus = (materialId: string, shortageQty: number) => {
     if (shortageQty === 0) return { status: "Available", color: "secondary", icon: CheckCircle };
     
-    const hasPO = purchaseOrderStatus.some(po => po.raw_material_id === materialId);
+    const hasPO = purchaseOrderStatus.some(po => po.part_id === materialId);
     if (hasPO) return { status: "PO Raised", color: "warning", icon: Clock };
     
     return { status: "Short", color: "destructive", icon: AlertTriangle };
   };
 
   const getPODetails = (materialId: string) => {
-    return purchaseOrderStatus.filter(po => po.raw_material_id === materialId);
+    return purchaseOrderStatus.filter(po => po.part_id === materialId);
   };
 
   return (
@@ -98,13 +98,13 @@ const ProductionVoucherDetails = ({ scheduleId, voucherNumber, isOpen, onClose }
             </TableHeader>
             <TableBody>
               {materialRequirements.map((req) => {
-                const materialStatus = getMaterialStatus(req.raw_material_id, req.shortage_quantity);
-                const poDetails = getPODetails(req.raw_material_id);
+                const materialStatus = getMaterialStatus(req.part_id, req.shortage_quantity);
+                const poDetails = getPODetails(req.part_id);
                 const StatusIcon = materialStatus.icon;
                 
                 return (
-                  <TableRow key={req.raw_material_id}>
-                    <TableCell className="font-medium">{req.material_code}</TableCell>
+                  <TableRow key={req.part_id}>
+                    <TableCell className="font-medium">{req.part_code}</TableCell>
                     <TableCell>{req.material_name}</TableCell>
                     <TableCell>{req.total_required}</TableCell>
                     <TableCell>{req.available_quantity}</TableCell>

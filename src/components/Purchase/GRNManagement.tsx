@@ -242,8 +242,8 @@ const GRNManagement = () => {
               <TableBody>
                 {grn.grn_items?.map((item) => (
                   <TableRow key={item.id}>
-                    <TableCell className="font-mono">{item.raw_materials?.material_code}</TableCell>
-                    <TableCell>{item.raw_materials?.name}</TableCell>
+                    <TableCell className="font-mono">{item.parts?.part_code}</TableCell>
+                    <TableCell>{item.parts?.name}</TableCell>
                     <TableCell>{item.po_quantity}</TableCell>
                     <TableCell>
                       {editingItem === item.id ? (

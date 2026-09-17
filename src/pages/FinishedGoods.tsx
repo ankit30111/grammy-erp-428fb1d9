@@ -28,7 +28,7 @@ const FinishedGoods = () => {
       const [inventoryRes, productionRes, dispatchRes] = await Promise.allSettled([
         supabase.from('finished_goods_inventory').select(`
           *,
-          products!inner(name, product_code)
+          products!inner(name, part_code)
         `),
         supabase.from('production_orders').select('*').eq('status', 'COMPLETED').gte('updated_at', today),
         supabase.from('dispatch_orders').select('*').gte('created_at', today),

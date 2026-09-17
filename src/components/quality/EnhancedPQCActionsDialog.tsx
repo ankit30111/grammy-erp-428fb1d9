@@ -53,7 +53,7 @@ const EnhancedPQCActionsDialog = ({ productionOrderId, isOpen, onClose }: Enhanc
     queryFn: async () => {
       const { data: productionOrder } = await supabase
         .from("production_orders")
-        .select("product_id")
+        .select("part_id")
         .eq("id", productionOrderId)
         .single();
 
@@ -63,9 +63,9 @@ const EnhancedPQCActionsDialog = ({ productionOrderId, isOpen, onClose }: Enhanc
         .from("bom")
         .select(`
           *,
-          raw_materials!inner(material_code, name)
+          parts!inner(part_code, name)
         `)
-        .eq("product_id", productionOrder.product_id);
+        .eq("part_id", productionOrder.part_id);
 
       return bom || [];
     },
@@ -224,7 +224,7 @@ const EnhancedPQCActionsDialog = ({ productionOrderId, isOpen, onClose }: Enhanc
 
     const rejectionData = {
       production_order_id: productionOrderId,
-      raw_material_id: selectedPartCode,
+      part_id: selectedPartCode,
       reason: rejectionReason,
       quantity_rejected: quantity,
       remarks: rejectionRemarks,
@@ -324,8 +324,8 @@ const EnhancedPQCActionsDialog = ({ productionOrderId, isOpen, onClose }: Enhanc
                     </SelectTrigger>
                     <SelectContent>
                       {bomItems.map((item) => (
-                        <SelectItem key={item.raw_material_id} value={item.raw_material_id}>
-                          {item.raw_materials.material_code} - {item.raw_materials.name}
+                        <SelectItem key={item.part_id} value={item.part_id}>
+                          {item.parts.part_code} - {item.parts.name}
                         </SelectItem>
                       ))}
                     </SelectContent>

@@ -53,7 +53,7 @@ const CAPA = () => {
           vendors!inner(name, vendor_code),
           grn_items!inner(
             grn!inner(grn_number),
-            raw_materials!inner(name, material_code)
+            parts!inner(name, part_code)
           )
         `)
         .in('capa_status', ['AWAITED', 'RECEIVED'])
@@ -71,7 +71,7 @@ const CAPA = () => {
         .from("line_rejections")
         .select(`
           *,
-          raw_materials!inner(name, material_code),
+          parts!inner(name, part_code),
           production_orders!inner(voucher_number),
           rca_reports!left(
             id,
@@ -100,7 +100,7 @@ const CAPA = () => {
             complaint_reason,
             customers!inner(name)
           ),
-          raw_materials!inner(name, material_code)
+          parts!inner(name, part_code)
         `)
         .order("created_at", { ascending: false });
       
@@ -118,7 +118,7 @@ const CAPA = () => {
           *,
           production_orders!inner(
             voucher_number,
-            products!inner(name, product_code)
+            products!inner(name, part_code)
           )
         `)
         .order("initiated_at", { ascending: false });
@@ -386,9 +386,9 @@ const CAPA = () => {
                           </TableCell>
                           <TableCell>
                             <div className="flex flex-col">
-                              <span className="font-medium">{capa.grn_items?.raw_materials?.name}</span>
+                              <span className="font-medium">{capa.grn_items?.parts?.name}</span>
                               <span className="text-sm text-muted-foreground">
-                                {capa.grn_items?.raw_materials?.material_code}
+                                {capa.grn_items?.parts?.part_code}
                               </span>
                             </div>
                           </TableCell>
@@ -431,7 +431,7 @@ const CAPA = () => {
                                   variant="outline"
                                   size="sm"
                                   onClick={() => handleCAPAUpload(capa.id, 'vendor', {
-                                    materialName: capa.grn_items?.raw_materials?.name,
+                                    materialName: capa.grn_items?.parts?.name,
                                     vendorName: capa.vendors?.name,
                                     grnNumber: capa.grn_items?.grn?.grn_number
                                   })}
@@ -493,9 +493,9 @@ const CAPA = () => {
                             </TableCell>
                             <TableCell>
                               <div className="flex flex-col">
-                                <span className="font-medium">{rejection.raw_materials?.name}</span>
+                                <span className="font-medium">{rejection.parts?.name}</span>
                                 <span className="text-sm text-muted-foreground">
-                                  {rejection.raw_materials?.material_code}
+                                  {rejection.parts?.part_code}
                                 </span>
                               </div>
                             </TableCell>
@@ -515,7 +515,7 @@ const CAPA = () => {
                                     size="sm"
                                     onClick={() => handleCAPAUpload(rejection.id, 'line_rejection', {
                                       productionOrder: rejection.production_orders?.voucher_number,
-                                      materialName: rejection.raw_materials?.name
+                                      materialName: rejection.parts?.name
                                     })}
                                     className="gap-1"
                                   >
@@ -583,9 +583,9 @@ const CAPA = () => {
                           <TableCell>{part.customer_complaints?.customers?.name}</TableCell>
                           <TableCell>
                             <div className="flex flex-col">
-                              <span className="font-medium">{part.raw_materials?.name}</span>
+                              <span className="font-medium">{part.parts?.name}</span>
                               <span className="text-sm text-muted-foreground">
-                                {part.raw_materials?.material_code}
+                                {part.parts?.part_code}
                               </span>
                             </div>
                           </TableCell>
@@ -627,7 +627,7 @@ const CAPA = () => {
                                   size="sm"
                                   onClick={() => handleCAPAUpload(part.id, 'part_analysis', {
                                     complaintId: part.customer_complaints?.id?.slice(-6),
-                                    materialName: part.raw_materials?.name
+                                    materialName: part.parts?.name
                                   })}
                                   className="gap-1"
                                 >
@@ -688,7 +688,7 @@ const CAPA = () => {
                             <div className="flex flex-col">
                               <span className="font-medium">{capa.production_orders?.products?.name}</span>
                               <span className="text-sm text-muted-foreground">
-                                {capa.production_orders?.products?.product_code}
+                                {capa.production_orders?.products?.part_code}
                               </span>
                             </div>
                           </TableCell>

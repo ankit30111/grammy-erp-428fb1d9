@@ -37,7 +37,7 @@ interface EditProjectionDialogProps {
 export const EditProjectionDialog = ({ projection, isOpen, onClose }: EditProjectionDialogProps) => {
   const [formData, setFormData] = useState({
     customer_id: "",
-    product_id: "",
+    part_id: "",
     quantity: "",
     delivery_month: "",
   });
@@ -51,7 +51,7 @@ export const EditProjectionDialog = ({ projection, isOpen, onClose }: EditProjec
     if (projection) {
       setFormData({
         customer_id: projection.customer_id,
-        product_id: projection.product_id,
+        part_id: projection.part_id,
         quantity: projection.quantity.toString(),
         delivery_month: projection.delivery_month,
       });
@@ -74,7 +74,7 @@ export const EditProjectionDialog = ({ projection, isOpen, onClose }: EditProjec
   };
 
   const handleSubmit = async () => {
-    if (!formData.customer_id || !formData.product_id || !formData.quantity || !formData.delivery_month) {
+    if (!formData.customer_id || !formData.part_id || !formData.quantity || !formData.delivery_month) {
       toast({
         title: "Missing fields",
         description: "Please fill in all required fields",
@@ -88,7 +88,7 @@ export const EditProjectionDialog = ({ projection, isOpen, onClose }: EditProjec
         id: projection.id,
         updates: {
           customer_id: formData.customer_id,
-          product_id: formData.product_id,
+          part_id: formData.part_id,
           quantity: parseInt(formData.quantity),
           delivery_month: formData.delivery_month,
         }
@@ -143,8 +143,8 @@ export const EditProjectionDialog = ({ projection, isOpen, onClose }: EditProjec
           <div>
             <Label htmlFor="product">Product</Label>
             <Select
-              value={formData.product_id}
-              onValueChange={(value) => handleSelectChange("product_id", value)}
+              value={formData.part_id}
+              onValueChange={(value) => handleSelectChange("part_id", value)}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select product" />

@@ -159,7 +159,7 @@ export const EnhancedProjectBOMDialog: React.FC<EnhancedProjectBOMDialogProps> =
 
   const exportBOM = async (format: 'csv' | 'excel') => {
     const csvData = bomMaterials.map(material => ({
-      'Part Code': material.temporary_part_code || material.material_code || 'N/A',
+      'Part Code': material.temporary_part_code || material.part_code || 'N/A',
       'Material Name': material.material_name,
       'Quantity': material.quantity,
       'Unit': material.unit,
@@ -286,7 +286,7 @@ export const EnhancedProjectBOMDialog: React.FC<EnhancedProjectBOMDialogProps> =
                             )}
                           </div>
                           <div className="text-sm text-muted-foreground">
-                            {material.temporary_part_code || material.material_code || 'No code assigned'}
+                            {material.temporary_part_code || material.part_code || 'No code assigned'}
                           </div>
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                             <div>

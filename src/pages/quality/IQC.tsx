@@ -50,7 +50,7 @@ const IQC = () => {
           purchase_orders(po_number),
           grn_items!inner(
             *,
-            raw_materials!inner(name, material_code)
+            parts!inner(name, part_code)
           )
         `)
         .order('created_at', { ascending: false });
@@ -91,7 +91,7 @@ const IQC = () => {
         .select(`
           id,
           grn_id,
-          raw_material_id,
+          part_id,
           received_quantity,
           accepted_quantity,
           rejected_quantity,
@@ -105,7 +105,7 @@ const IQC = () => {
             vendors:vendor_id!inner(name, vendor_code),
             purchase_orders(po_number)
           ),
-          raw_materials:raw_material_id!inner(name, material_code),
+          parts:part_id!inner(name, part_code),
           iqc_vendor_capa!left(
             id,
             capa_status,
@@ -201,8 +201,8 @@ const IQC = () => {
     const searchLower = searchTerm.toLowerCase();
     return (
       item.grn?.grn_number?.toLowerCase().includes(searchLower) ||
-      item.raw_materials?.name?.toLowerCase().includes(searchLower) ||
-      item.raw_materials?.material_code?.toLowerCase().includes(searchLower) ||
+      item.parts?.name?.toLowerCase().includes(searchLower) ||
+      item.parts?.part_code?.toLowerCase().includes(searchLower) ||
       item.grn?.vendors?.name?.toLowerCase().includes(searchLower)
     );
   });
@@ -402,9 +402,9 @@ const IQC = () => {
                             <TableCell className="p-2 whitespace-normal break-words font-medium text-blue-600">
                               {item.grn?.purchase_orders?.po_number || "Non-PO"}
                             </TableCell>
-                            <TableCell className="p-2 whitespace-normal break-words font-mono text-xs">{item.raw_materials?.material_code}</TableCell>
+                            <TableCell className="p-2 whitespace-normal break-words font-mono text-xs">{item.parts?.part_code}</TableCell>
                             <TableCell className="p-2 whitespace-normal break-words">
-                              {item.raw_materials?.name}
+                              {item.parts?.name}
                             </TableCell>
                             <TableCell className="p-2 whitespace-normal break-words">
                               {item.grn?.vendors?.name}
@@ -417,7 +417,7 @@ const IQC = () => {
                               <IQCReportViewer
                                 reportUrl={item.iqc_report_url}
                                 itemId={item.id}
-                                materialName={item.raw_materials?.name || 'Unknown Material'}
+                                materialName={item.parts?.name || 'Unknown Material'}
                               />
                             </TableCell>
                             <TableCell className="p-2">

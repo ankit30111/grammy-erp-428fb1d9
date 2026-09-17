@@ -25,7 +25,7 @@ const CompletedProduction = () => {
             *,
             projections!inner(
               customers!inner(name),
-              products!inner(name, product_code)
+              products!inner(name, part_code)
             )
           )
         `)
@@ -120,7 +120,7 @@ const CompletedProduction = () => {
                         {order.production_schedules?.projections?.products?.name}
                       </div>
                       <div className="text-sm text-muted-foreground">
-                        {order.production_schedules?.projections?.products?.product_code}
+                        {order.production_schedules?.projections?.products?.part_code}
                       </div>
                     </div>
                   </TableCell>

@@ -28,7 +28,7 @@ const IndividualComplaintsManagement = () => {
         .select(`
           *,
           customers!inner(name),
-          products(name, product_code),
+          products(name, part_code),
           customer_complaint_batches(receipt_type),
           customer_complaint_batch_items(item_type, part_description)
         `)
@@ -189,7 +189,7 @@ const IndividualComplaintsManagement = () => {
                     ) : complaint.products ? (
                       <div>
                         <div className="font-medium">{complaint.products.name}</div>
-                        <div className="text-sm text-muted-foreground">{complaint.products.product_code}</div>
+                        <div className="text-sm text-muted-foreground">{complaint.products.part_code}</div>
                       </div>
                     ) : (
                       <span className="text-muted-foreground">-</span>

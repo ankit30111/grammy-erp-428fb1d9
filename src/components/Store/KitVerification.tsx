@@ -36,7 +36,7 @@ const KitVerification = () => {
           ),
           kit_items(
             *,
-            raw_materials(material_code, name),
+            parts(part_code, name),
             verified_by_production
           )
         `)
@@ -67,7 +67,7 @@ const KitVerification = () => {
           ),
           kit_items(
             *,
-            raw_materials(material_code, name),
+            parts(part_code, name),
             verified_by_production
           )
         `)
@@ -280,8 +280,8 @@ const KitVerification = () => {
                 <TableBody>
                   {selectedKit.kit_items?.map((item: any) => (
                     <TableRow key={item.id}>
-                      <TableCell className="font-mono">{item.raw_materials?.material_code}</TableCell>
-                      <TableCell>{item.raw_materials?.name}</TableCell>
+                      <TableCell className="font-mono">{item.parts?.part_code}</TableCell>
+                      <TableCell>{item.parts?.name}</TableCell>
                       <TableCell>{item.required_quantity}</TableCell>
                       <TableCell>{item.issued_quantity || 0}</TableCell>
                       <TableCell>

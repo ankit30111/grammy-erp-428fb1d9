@@ -22,11 +22,11 @@ interface PackedSpareOrder {
   };
   spare_order_items: Array<{
     id: string;
-    raw_material_id: string;
+    part_id: string;
     quantity: number;
-    raw_materials: {
+    parts: {
       id: string;
-      material_code: string;
+      part_code: string;
       name: string;
       category: string;
     };
@@ -58,11 +58,11 @@ const SpareDispatch = () => {
         ),
         spare_order_items (
           id,
-          raw_material_id,
+          part_id,
           quantity,
-          raw_materials:raw_material_id (
+          parts:part_id (
             id,
-            material_code,
+            part_code,
             name,
             category
           )

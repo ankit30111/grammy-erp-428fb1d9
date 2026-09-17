@@ -33,7 +33,7 @@ const LineRejectionManager = () => {
         .from("line_rejections")
         .select(`
           *,
-          raw_materials!inner(material_code, name),
+          parts!inner(part_code, name),
           production_orders!inner(voucher_number, products!inner(name))
         `)
         .order("rejection_date", { ascending: false });
@@ -120,9 +120,9 @@ const LineRejectionManager = () => {
       if (!rejection) throw new Error("Rejection not found");
 
       const { data: materialVendor } = await supabase
-        .from("raw_material_vendors")
+        .from("part_vendors")
         .select("vendor_id")
-        .eq("raw_material_id", rejection.raw_material_id)
+        .eq("part_id", rejection.part_id)
         .eq("is_primary", true)
         .single();
 
@@ -300,7 +300,7 @@ const LineRejectionManager = () => {
                         {rejection.production_orders?.voucher_number}
                       </TableCell>
                       <TableCell>
-                        {rejection.raw_materials.material_code}
+                        {rejection.parts.part_code}
                       </TableCell>
                       <TableCell>
                         <Badge variant={getReasonColor(rejection.reason) as any}>

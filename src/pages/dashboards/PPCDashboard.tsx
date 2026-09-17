@@ -174,9 +174,9 @@ const PPCDashboard = () => {
             <CardContent>
               <div className="space-y-3">
                 {shortages.slice(0, 5).map(shortage => (
-                  <div key={shortage.raw_material_id} className="flex items-center justify-between p-3 border rounded-lg">
+                  <div key={shortage.part_id} className="flex items-center justify-between p-3 border rounded-lg">
                     <div>
-                      <div className="font-medium">{shortage.material_code} - {shortage.material_name}</div>
+                      <div className="font-medium">{shortage.part_code} - {shortage.material_name}</div>
                       <div className="text-sm text-muted-foreground">
                         Required: {shortage.shortage_quantity + shortage.available_quantity} | 
                         Available: {shortage.available_quantity} | 

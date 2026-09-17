@@ -50,9 +50,9 @@ export const GRNItemsTable = ({
             <TableRow key={item.id}>
               <TableCell className="font-mono">{item.grn?.grn_number}</TableCell>
               <TableCell className="font-mono text-blue-600">
-                {item.raw_materials?.material_code}
+                {item.parts?.part_code}
               </TableCell>
-              <TableCell>{item.raw_materials?.name}</TableCell>
+              <TableCell>{item.parts?.name}</TableCell>
               <TableCell>{item.grn?.vendors?.name}</TableCell>
               <TableCell>
                 {item.grn?.received_date ? format(new Date(item.grn.received_date), 'MMM dd, yyyy') : 'N/A'}

@@ -35,7 +35,7 @@ const IQCRejections = () => {
             purchase_orders!inner(po_number),
             vendors!inner(name, contact_person_name, contact_number, email)
           ),
-          raw_materials!inner(material_code, name)
+          parts!inner(part_code, name)
         `)
         .eq("iqc_status", "REJECTED")
         .order("iqc_completed_at", { ascending: false });
@@ -51,7 +51,7 @@ const IQCRejections = () => {
         po_number: item.grn?.purchase_orders?.po_number,
         grn: { grn_number: item.grn?.grn_number },
         vendors: item.grn?.vendors,
-        raw_materials: item.raw_materials,
+        parts: item.parts,
         total_quantity: item.received_quantity,
         accepted_quantity: item.accepted_quantity || 0,
         rejected_quantity: item.rejected_quantity || 0
@@ -152,7 +152,7 @@ const IQCRejections = () => {
                       <TableCell className="font-medium">{rejection.po_number}</TableCell>
                       <TableCell>{rejection.grn?.grn_number}</TableCell>
                       <TableCell>{rejection.vendors?.name}</TableCell>
-                      <TableCell className="font-mono">{rejection.raw_materials?.material_code}</TableCell>
+                      <TableCell className="font-mono">{rejection.parts?.part_code}</TableCell>
                       <TableCell>{rejection.total_quantity}</TableCell>
                       <TableCell className="text-green-600">{rejection.accepted_quantity}</TableCell>
                       <TableCell className="text-red-600">{rejection.rejected_quantity}</TableCell>
@@ -208,7 +208,7 @@ const IQCRejections = () => {
                       <TableCell className="font-medium">{rejection.po_number}</TableCell>
                       <TableCell>{rejection.grn?.grn_number}</TableCell>
                       <TableCell>{rejection.vendors?.name}</TableCell>
-                      <TableCell className="font-mono">{rejection.raw_materials?.material_code}</TableCell>
+                      <TableCell className="font-mono">{rejection.parts?.part_code}</TableCell>
                       <TableCell className="text-red-600">{rejection.rejected_quantity}</TableCell>
                       <TableCell>{new Date(rejection.sent_back_at).toLocaleDateString()}</TableCell>
                       <TableCell>
@@ -246,7 +246,7 @@ const IQCRejections = () => {
               </div>
               
               <div className="grid grid-cols-2 gap-4 text-sm">
-                <div><strong>Material:</strong> {selectedRejection.raw_materials?.material_code}</div>
+                <div><strong>Material:</strong> {selectedRejection.parts?.part_code}</div>
                 <div><strong>Rejected Qty:</strong> {selectedRejection.rejected_quantity}</div>
               </div>
               

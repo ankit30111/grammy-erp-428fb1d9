@@ -61,9 +61,9 @@ export const PartAnalysisCard = ({ part }: PartAnalysisCardProps) => {
         <CardTitle className="flex items-center justify-between text-base">
           <div className="flex items-center gap-2">
             {getStatusIcon(part.status)}
-            <span>{part.raw_materials?.material_code}</span>
+            <span>{part.parts?.part_code}</span>
             <span className="font-normal text-muted-foreground">
-              - {part.raw_materials?.name}
+              - {part.parts?.name}
             </span>
           </div>
           {getStatusBadge(part.status)}

@@ -30,13 +30,13 @@ export function ProductBOMView({ product, open, onOpenChange }: ProductBOMViewPr
         .from('bom')
         .select(`
           *,
-          raw_materials (
-            material_code,
+          parts (
+            part_code,
             name,
             category
           )
         `)
-        .eq('product_id', product.id)
+        .eq('part_id', product.id)
         .order('bom_type');
 
       if (error) throw error;
@@ -67,7 +67,7 @@ export function ProductBOMView({ product, open, onOpenChange }: ProductBOMViewPr
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>BOM for {product.name} ({product.product_code})</DialogTitle>
+          <DialogTitle>BOM for {product.name} ({product.part_code})</DialogTitle>
         </DialogHeader>
         
         {loading ? (
@@ -95,13 +95,13 @@ export function ProductBOMView({ product, open, onOpenChange }: ProductBOMViewPr
                         <div key={item.id} className="flex items-center justify-between p-3 bg-gray-50 rounded">
                           <div className="flex flex-col">
                             <div className="flex items-center gap-2">
-                              <span className="font-medium">{item.raw_materials?.material_code}</span>
+                              <span className="font-medium">{item.parts?.part_code}</span>
                               {item.is_critical && (
                                 <Badge variant="destructive" className="text-xs">Critical</Badge>
                               )}
                             </div>
                             <span className="text-sm text-muted-foreground">
-                              {item.raw_materials?.name} - {item.raw_materials?.category}
+                              {item.parts?.name} - {item.parts?.category}
                             </span>
                           </div>
                           <div className="text-right">
