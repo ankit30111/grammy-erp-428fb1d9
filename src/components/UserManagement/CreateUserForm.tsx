@@ -34,7 +34,7 @@ interface CreateUserFormProps {
  * `invoke` throws a FunctionsHttpError whose own `message` is the useless
  * "non-2xx status code" string — the readable reason is in the response body.
  */
-async function readFunctionError(error: any, fallback: string): Promise<string> {
+export async function readFunctionError(error: any, fallback: string): Promise<string> {
   try {
     const res = error?.context;
     if (res && typeof res.text === "function") {
