@@ -7,22 +7,23 @@ import { useRealTimeQuery } from "@/hooks/useRealTimeQuery";
 import { useMultiTableRealTime } from "@/hooks/useMultiTableRealTime";
 import { useDashboardScope } from "@/contexts/DashboardScopeContext";
 import { useProductionLinesList } from "@/hooks/useProductionLinesList";
+import { fetchProductionOrderLines, groupLinesByOrder } from "@/hooks/useProductionOrderLines";
 
 export const ProductionStatusWidget = () => {
   const { scopePlantId } = useDashboardScope();
   const scopeKey = scopePlantId ?? "all";
-  const { names: dynamicLines } = useProductionLinesList(scopePlantId ?? undefined);
+  const { rows: dynamicLines } = useProductionLinesList(scopePlantId ?? undefined);
 
   // Current production line status with real-time updates
   const { data: lineStatus } = useRealTimeQuery({
-    queryKey: ['production-line-status', scopeKey, dynamicLines.join('|')],
+    queryKey: ['production-line-status', scopeKey, dynamicLines.map(l => l.id).join('|')],
     queryFn: async () => {
       const today = new Date().toISOString().split('T')[0];
-      
+
       let q = supabase
         .from('production_orders')
         .select(`
-          production_lines,
+          id,
           status,
           voucher_number,
           parts (name)
@@ -32,24 +33,26 @@ export const ProductionStatusWidget = () => {
       if (scopePlantId) q = q.eq('plant_id', scopePlantId);
       const { data, error } = await q;
       if (error) throw error;
-      
-      // Use dynamic lines from the active plant (or all known if rollup).
-      const lines = dynamicLines.length > 0 ? dynamicLines : ['Line 1', 'Line 2', 'Sub Assembly 1', 'Sub Assembly 2'];
-      const lineStatuses = lines.map(line => {
-        const activeOrders = data?.filter(order => 
-          order.production_lines && Object.keys(order.production_lines).includes(line)
+
+      // Which line(s) each voucher runs on lives in production_order_lines.
+      const assignmentRows = await fetchProductionOrderLines((data ?? []).map(o => o.id));
+      const assignmentsByOrder = groupLinesByOrder(assignmentRows);
+
+      const lineStatuses = dynamicLines.map(line => {
+        const activeOrders = data?.filter(order =>
+          (assignmentsByOrder[order.id] ?? []).some(r => r.production_line_id === line.id)
         );
-        
+
         const currentOrder = activeOrders?.find(order => order.status === 'IN_PROGRESS');
-        
+
         return {
-          line,
+          line: line.name,
           status: currentOrder ? 'ACTIVE' : activeOrders?.length ? 'SCHEDULED' : 'IDLE',
           currentProduct: currentOrder?.parts?.name || null,
           voucherNumber: currentOrder?.voucher_number || null
         };
       });
-      
+
       return lineStatuses;
     },
     tableName: 'production_orders',

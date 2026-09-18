@@ -13,6 +13,9 @@ export const useProductionSchedules = () => {
         .from('production_schedules')
         .select(`
           *,
+          production_lines (
+            name
+          ),
           projections (
             id,
             parts (

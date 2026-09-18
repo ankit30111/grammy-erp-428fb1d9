@@ -10,13 +10,15 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import HourlyProductionEntry from "./HourlyProductionEntry";
 import ProductionCompletionDialog from "./ProductionCompletionDialog";
+import { fetchOrderIdsOnLine } from "@/hooks/useProductionOrderLines";
 
 interface ProductionLineDetailViewProps {
+  lineId: string;
   lineName: string;
   onBack: () => void;
 }
 
-const ProductionLineDetailView = ({ lineName, onBack }: ProductionLineDetailViewProps) => {
+const ProductionLineDetailView = ({ lineId, lineName, onBack }: ProductionLineDetailViewProps) => {
   const [selectedVoucher, setSelectedVoucher] = useState<string | null>(null);
   const [showCompletionDialog, setShowCompletionDialog] = useState(false);
   const { toast } = useToast();
@@ -24,42 +26,38 @@ const ProductionLineDetailView = ({ lineName, onBack }: ProductionLineDetailView
 
   // Fetch production orders assigned to this line
   const { data: lineProduction = [] } = useQuery({
-    queryKey: ["line-production", lineName],
+    queryKey: ["line-production", lineId],
     queryFn: async () => {
       console.log(`🔍 Fetching production for line: ${lineName}`);
-      
+
+      // production_order_lines owns the line assignment — start from the vouchers on this line.
+      const orderIds = await fetchOrderIdsOnLine(lineId);
+      if (orderIds.length === 0) return [];
+
       const { data, error } = await supabase
         .from("production_orders")
         .select(`
           *,
           parts!inner(name)
         `)
+        .in("id", orderIds)
         .in("status", ["IN_PROGRESS", "SCHEDULED"])
-        .not("production_lines", "is", null)
         .order("planned_date", { ascending: true });
-      
+
       if (error) {
         console.error(`❌ Error fetching line production for ${lineName}:`, error);
         throw error;
       }
-      
-      // Filter orders that are assigned to this specific line
-      const filteredData = (data || []).filter(order => {
-        const productionLines = order.production_lines || {};
-        const isAssigned = Object.values(productionLines).includes(lineName);
-        console.log(`Order ${order.voucher_number}: assigned to ${lineName} = ${isAssigned}`);
-        return isAssigned;
-      });
-      
-      console.log(`📊 Line ${lineName} production:`, filteredData);
-      return filteredData;
+
+      console.log(`📊 Line ${lineName} production:`, data);
+      return data || [];
     },
     refetchInterval: 5000, // Refresh every 5 seconds
   });
 
   // Fetch hourly production data
   const { data: hourlyData = [] } = useQuery({
-    queryKey: ["hourly-production", lineName],
+    queryKey: ["hourly-production", lineId],
     queryFn: async () => {
       const voucherIds = lineProduction.map(p => p.id);
       if (voucherIds.length === 0) return [];
@@ -68,7 +66,7 @@ const ProductionLineDetailView = ({ lineName, onBack }: ProductionLineDetailView
         .from("hourly_production")
         .select("*")
         .in("production_order_id", voucherIds)
-        .order("hour", { ascending: true });
+        .order("hour_slot", { ascending: true });
       
       if (error) throw error;
       return data || [];

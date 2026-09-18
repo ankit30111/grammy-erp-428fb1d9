@@ -92,7 +92,7 @@ export const ProductionCalendarView = ({ selectedDate, onDateSelect }: Productio
                     </div>
                     <div className="flex justify-between">
                       <span>Production Line:</span>
-                      <span className="font-medium">{schedule.production_line}</span>
+                      <span className="font-medium">{schedule.production_lines?.name}</span>
                     </div>
                   </div>
                 </div>

@@ -12,6 +12,11 @@ import { useToast } from "@/hooks/use-toast";
 import { Package, Settings } from "lucide-react";
 import EnhancedDispatchVerificationRow from "./EnhancedDispatchVerificationRow";
 import { useProductionLinesList } from "@/hooks/useProductionLinesList";
+import {
+  finishedGoodLine,
+  replaceProductionOrderLines,
+  useProductionOrderLinesForOrder,
+} from "@/hooks/useProductionOrderLines";
 
 interface ProductionVoucherDetailViewProps {
   production: any;
@@ -23,7 +28,8 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
   const [lineAssignments, setLineAssignments] = useState<Record<string, string>>({});
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { names: productionLines } = useProductionLinesList();
+  const { rows: productionLines } = useProductionLinesList();
+  const { data: existingLineRows } = useProductionOrderLinesForOrder(production?.id, isOpen);
 
   // Fetch BOM data for the product
   const { data: bomData = [] } = useQuery({
@@ -91,20 +97,15 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
     refetchInterval: 3000, // Refresh every 3 seconds for real-time updates
   });
 
-  // Initialize line assignments from existing production order data
+  // Initialize line assignments from production_order_lines.
+  // The finished-good row (part_id IS NULL) is the main assembly; rows carrying a
+  // part_id belong to individual BOM parts and are re-derived from the section on save.
   useEffect(() => {
-    if (production?.production_lines) {
-      try {
-        const existingAssignments = typeof production.production_lines === 'string' 
-          ? JSON.parse(production.production_lines) 
-          : production.production_lines;
-        setLineAssignments(existingAssignments || {});
-      } catch (error) {
-        console.log("No existing line assignments found");
-        setLineAssignments({});
-      }
-    }
-  }, [production]);
+    const finishedGood = finishedGoodLine(existingLineRows);
+    setLineAssignments(
+      finishedGood ? { main_assembly: finishedGood.production_line_id } : {}
+    );
+  }, [existingLineRows]);
 
   // ENHANCED: Individual dispatch verification mutation with discrepancy handling
   const verifyDispatchMutation = useMutation({
@@ -214,13 +215,31 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
   const saveLineAssignments = useMutation({
     mutationFn: async () => {
       console.log("🏭 Saving line assignments:", lineAssignments);
-      
-      // Update production order with line assignments and change status to IN_PROGRESS
+
+      // The main assembly section is the finished good itself (part_id null);
+      // the other sections are the BOM parts that run on the chosen line.
+      const rows: { production_line_id: string; part_id: string | null }[] = [];
+      if (lineAssignments.main_assembly) {
+        rows.push({ production_line_id: lineAssignments.main_assembly, part_id: null });
+      }
+      (["sub_assembly", "accessory"] as const).forEach((sectionKey) => {
+        const lineId = lineAssignments[sectionKey];
+        if (!lineId) return;
+        const partIds = Object.keys(groupedMaterials[sectionKey] ?? {});
+        if (partIds.length === 0) {
+          rows.push({ production_line_id: lineId, part_id: null });
+          return;
+        }
+        partIds.forEach((partId) => rows.push({ production_line_id: lineId, part_id: partId }));
+      });
+
+      await replaceProductionOrderLines(production.id, rows);
+
+      // Change status to make it appear in production lines
       const { error } = await supabase
         .from("production_orders")
         .update({
-          production_lines: lineAssignments,
-          status: 'IN_PROGRESS',  // Change status to make it appear in production lines
+          status: 'IN_PROGRESS',
           updated_at: new Date().toISOString()
         })
         .eq("id", production.id);
@@ -243,6 +262,7 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
       queryClient.invalidateQueries({ queryKey: ["line-production"] });
       queryClient.invalidateQueries({ queryKey: ["scheduled-productions"] });
       queryClient.invalidateQueries({ queryKey: ["production-orders"] });
+      queryClient.invalidateQueries({ queryKey: ["production-order-lines"] });
     },
   });
 
@@ -299,8 +319,8 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
                 </SelectTrigger>
                 <SelectContent>
                   {productionLines.map((line) => (
-                    <SelectItem key={line} value={line}>
-                      {line}
+                    <SelectItem key={line.id} value={line.id}>
+                      {line.name}
                     </SelectItem>
                   ))}
                 </SelectContent>

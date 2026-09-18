@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { TrendingUp, Package, Clock } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useProductionOrderLinesForOrder } from "@/hooks/useProductionOrderLines";
 
 interface ProductionStatusSummaryProps {
   productionId: string;
@@ -14,13 +15,7 @@ interface ProductionStatusSummaryProps {
   onClose: () => void;
 }
 
-interface ProductionLineAssignments {
-  sub_assembly?: string;
-  main_assembly?: string;
-  accessory?: string;
-}
-
-const ProductionStatusSummary = ({ 
+const ProductionStatusSummary = ({
   productionId, 
   voucherNumber, 
   isOpen, 
@@ -39,12 +34,15 @@ const ProductionStatusSummary = ({
         `)
         .eq("id", productionId)
         .single();
-      
+
       if (error) throw error;
       return data;
     },
     enabled: isOpen,
   });
+
+  // A voucher may run on several lines — show every assignment.
+  const { data: lineAssignments = [] } = useProductionOrderLinesForOrder(productionId, isOpen);
 
   // Fetch hourly production data grouped by line assignments
   const { data: hourlyData = [] } = useQuery({
@@ -54,7 +52,7 @@ const ProductionStatusSummary = ({
         .from("hourly_production")
         .select("*")
         .eq("production_order_id", productionId)
-        .order("hour", { ascending: true });
+        .order("hour_slot", { ascending: true });
       
       if (error) throw error;
       return data || [];
@@ -68,14 +66,14 @@ const ProductionStatusSummary = ({
   const targetQuantity = productionOrder.quantity;
   const completionPercentage = Math.round((totalProduced / targetQuantity) * 100);
 
-  // Get line assignments from production_lines jsonb field with proper typing
-  const lineAssignments = (productionOrder.production_lines as ProductionLineAssignments) || {};
-  
-  const assemblySections = [
-    { key: 'sub_assembly' as const, name: 'Sub Assembly', line: lineAssignments.sub_assembly },
-    { key: 'main_assembly' as const, name: 'Main Assembly', line: lineAssignments.main_assembly },
-    { key: 'accessory' as const, name: 'Accessories', line: lineAssignments.accessory }
-  ];
+  // One card per line assignment. part_id null is the finished good itself.
+  const assemblySections = lineAssignments.map((assignment) => ({
+    key: assignment.id,
+    name: assignment.part_id
+      ? assignment.parts?.name ?? assignment.parts?.part_code ?? 'Sub Assembly'
+      : productionOrder.parts?.name ?? 'Main Assembly',
+    line: assignment.production_lines?.name,
+  }));
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -175,7 +173,7 @@ const ProductionStatusSummary = ({
                     return (
                       <div key={entry.id} className="flex items-center justify-between p-2 border rounded">
                         <div className="flex items-center gap-4">
-                          <Badge variant="outline">{entry.hour}</Badge>
+                          <Badge variant="outline">{entry.hour_slot}</Badge>
                           <span className="text-sm">
                             <span className="font-medium">{entry.produced_quantity}</span> units produced
                           </span>

@@ -2408,6 +2408,8 @@ export type Database = {
       hourly_production: {
         Row: {
           created_at: string
+          downtime_minutes: number
+          efficiency_percentage: number | null
           hour_slot: string
           id: string
           manpower: number | null
@@ -2421,6 +2423,8 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          downtime_minutes?: number
+          efficiency_percentage?: number | null
           hour_slot: string
           id?: string
           manpower?: number | null
@@ -2434,6 +2438,8 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          downtime_minutes?: number
+          efficiency_percentage?: number | null
           hour_slot?: string
           id?: string
           manpower?: number | null

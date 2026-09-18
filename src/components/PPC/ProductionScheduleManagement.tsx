@@ -11,6 +11,7 @@ import { useBOM } from "@/hooks/useBOM";
 import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { useProductionLinesList } from "@/hooks/useProductionLinesList";
 
 const ProductionScheduleManagement = () => {
   const { data: schedules, isLoading } = useProductionSchedules();
@@ -20,12 +21,10 @@ const ProductionScheduleManagement = () => {
   const [productionLines, setProductionLines] = useState<Record<string, string>>({});
   const { toast } = useToast();
 
-  const productionLineOptions = [
-    "Line 1",
-    "Line 2", 
-    "Sub Assembly 1",
-    "Sub Assembly 2"
-  ];
+  // Production lines are plant assets — pick one and store its id.
+  const { rows: productionLineOptions } = useProductionLinesList();
+  const lineNameById = (lineId: string) =>
+    productionLineOptions.find((line) => line.id === lineId)?.name ?? lineId;
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -93,15 +92,15 @@ const ProductionScheduleManagement = () => {
       // Update schedule status and production line
       updateSchedule.mutate({
         scheduleId,
-        updates: { 
+        updates: {
           status: 'IN_PRODUCTION',
-          production_line: selectedLine
+          production_line_id: selectedLine
         }
       });
 
       toast({
         title: "Production Started",
-        description: `Production started on ${selectedLine}`,
+        description: `Production started on ${lineNameById(selectedLine)}`,
       });
     } catch (error) {
       console.error('Error starting production:', error);
@@ -170,12 +169,12 @@ const ProductionScheduleManagement = () => {
     try {
       updateSchedule.mutate({
         scheduleId,
-        updates: { production_line: selectedLine }
+        updates: { production_line_id: selectedLine }
       });
 
       toast({
         title: "Production Line Assigned",
-        description: `Production line ${selectedLine} assigned successfully`,
+        description: `Production line ${lineNameById(selectedLine)} assigned successfully`,
       });
     } catch (error) {
       console.error('Error assigning production line:', error);
@@ -238,8 +237,8 @@ const ProductionScheduleManagement = () => {
                   <TableCell>{format(new Date(schedule.scheduled_date), 'MMM dd, yyyy')}</TableCell>
                   <TableCell>{schedule.quantity}</TableCell>
                   <TableCell>
-                    {schedule.production_line ? (
-                      <span className="font-medium">{schedule.production_line}</span>
+                    {schedule.production_line_id ? (
+                      <span className="font-medium">{schedule.production_lines?.name}</span>
                     ) : schedule.status === 'SCHEDULED' ? (
                       <div className="flex gap-2">
                         <Select
@@ -251,8 +250,8 @@ const ProductionScheduleManagement = () => {
                           </SelectTrigger>
                           <SelectContent>
                             {productionLineOptions.map((line) => (
-                              <SelectItem key={line} value={line}>
-                                {line}
+                              <SelectItem key={line.id} value={line.id}>
+                                {line.name}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -277,7 +276,7 @@ const ProductionScheduleManagement = () => {
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-2">
-                      {schedule.status === 'SCHEDULED' && schedule.production_line && (
+                      {schedule.status === 'SCHEDULED' && schedule.production_line_id && (
                         <Button
                           size="sm"
                           onClick={() => handleBlockMaterials(schedule.id)}
@@ -306,7 +305,7 @@ const ProductionScheduleManagement = () => {
                           size="sm"
                           onClick={() => handleStartProduction(schedule.id)}
                           className="gap-2"
-                          disabled={!schedule.production_line}
+                          disabled={!schedule.production_line_id}
                         >
                           <Play className="h-4 w-4" />
                           Start Production

@@ -2,7 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { usePlant } from "@/contexts/PlantContext";
 
-export type LineTypeKey = "line" | "sub_assembly" | "cell";
+/** Live DB enum `production_line_type` is upper case; older rows/readers used lower case. */
+export type LineTypeKey = "LINE" | "SUB_ASSEMBLY" | "line" | "sub_assembly" | "cell";
 
 export interface ProductionLineEntry {
   id: string;
@@ -13,6 +14,8 @@ export interface ProductionLineEntry {
 }
 
 const TYPE_LABEL: Record<LineTypeKey, string> = {
+  LINE: "Main Assembly",
+  SUB_ASSEMBLY: "Sub Assembly",
   line: "Main Assembly",
   sub_assembly: "Sub Assembly",
   cell: "Cell",

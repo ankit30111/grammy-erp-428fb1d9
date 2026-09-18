@@ -6,9 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Edit, Eye, Save, X } from "lucide-react";
+import { Edit, Eye, Save, Send, X } from "lucide-react";
 import { useState, useEffect } from "react";
-import { usePurchaseOrders } from "@/hooks/usePurchaseOrders";
+import { usePurchaseOrders, useUpdatePOStatus } from "@/hooks/usePurchaseOrders";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -19,6 +19,7 @@ export const EditablePurchaseOrders = () => {
   const [editFormData, setEditFormData] = useState<any>({});
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const updatePOStatus = useUpdatePOStatus();
 
   // Set up real-time subscription for GRN updates
   useEffect(() => {
@@ -121,13 +122,13 @@ export const EditablePurchaseOrders = () => {
                   <CardTitle className="flex items-center gap-2">
                     {po.po_number}
                     <Badge variant={
-                      po.status === 'PENDING' ? 'warning' : 
-                      po.status === 'APPROVED' ? 'default' : 
+                      po.status === 'PENDING_APPROVAL' ? 'warning' :
+                      po.status === 'APPROVED' ? 'default' :
                       'secondary'
                     }>
                       {po.status}
                     </Badge>
-                    {po.status === 'PENDING' && (
+                    {po.status === 'PENDING_APPROVAL' && (
                       <Badge variant="outline" className="text-blue-600 border-blue-300">
                         Awaiting Approval
                       </Badge>
@@ -152,20 +153,32 @@ export const EditablePurchaseOrders = () => {
                         </Button>
                       </>
                     ) : (
-                      <Button 
-                        size="sm" 
-                        variant="outline" 
-                        onClick={() => handleEdit(po)}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
+                      <>
+                        {po.status === 'DRAFT' && (
+                          <Button
+                            size="sm"
+                            onClick={() => updatePOStatus.mutate({ poId: po.id, status: 'PENDING_APPROVAL' })}
+                            disabled={updatePOStatus.isPending}
+                          >
+                            <Send className="h-4 w-4 mr-1" />
+                            Send for Approval
+                          </Button>
+                        )}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleEdit(po)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      </>
                     )}
                   </div>
                 </div>
               </CardHeader>
               <CardContent>
                 {/* Status workflow information */}
-                {po.status === 'PENDING' && (
+                {po.status === 'PENDING_APPROVAL' && (
                   <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                     <p className="text-sm font-medium text-yellow-800 mb-1">Approval Required</p>
                     <p className="text-xs text-yellow-600">
@@ -303,7 +316,12 @@ export const EditablePurchaseOrders = () => {
                 <div className="mt-4 p-3 bg-blue-50 rounded-lg">
                   <p className="text-sm font-medium text-blue-800 mb-1">Purchase Order Workflow:</p>
                   <p className="text-xs text-blue-600">
-                    PO Created → {po.status === 'PENDING' ? '⏳ Pending Approval' : '✅ Approved'} → GRN Created → IQC Approval → Store Physical Verification → Inventory Update
+                    PO Created → {
+                      po.status === 'DRAFT' ? '📝 Draft — not yet sent for approval'
+                      : po.status === 'PENDING_APPROVAL' ? '⏳ Pending Approval'
+                      : po.status === 'CANCELLED' ? '✖ Cancelled'
+                      : '✅ Approved'
+                    } → GRN Created → IQC Approval → Store Physical Verification → Inventory Update
                   </p>
                 </div>
 

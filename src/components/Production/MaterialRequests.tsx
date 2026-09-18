@@ -35,8 +35,10 @@ const MaterialRequests = () => {
           voucher_number,
           quantity,
           status,
-          production_lines (
-            name
+          production_order_lines (
+            production_lines (
+              name
+            )
           ),
           parts!inner(
             id,
@@ -218,10 +220,13 @@ const MaterialRequests = () => {
     }
   };
 
-  const getProductionLineDisplay = (productionLines: any) => {
-    if (!productionLines || typeof productionLines !== 'object') return 'Not Assigned';
-    
-    const lines = Object.values(productionLines).filter(Boolean);
+  // A voucher can run on several lines — show all of them.
+  const getProductionLineDisplay = (orderLines: any) => {
+    if (!Array.isArray(orderLines)) return 'Not Assigned';
+
+    const lines = Array.from(
+      new Set(orderLines.map((row: any) => row?.production_lines?.name).filter(Boolean))
+    );
     return lines.length > 0 ? lines.join(', ') : 'Not Assigned';
   };
 
@@ -279,7 +284,7 @@ const MaterialRequests = () => {
                                 {production.voucher_number} - {production.parts.name}
                               </span>
                               <span className="text-xs text-muted-foreground">
-                                Qty: {production.quantity} | Lines: {getProductionLineDisplay(production.production_lines)}
+                                Qty: {production.quantity} | Lines: {getProductionLineDisplay(production.production_order_lines)}
                               </span>
                             </div>
                           </SelectItem>
