@@ -311,7 +311,12 @@ export const useIQCInspection = (grn: any) => {
       queryClient.invalidateQueries({ queryKey: ['grn-items'] });
       toast({
         title: "Inspection Completed",
-        description: "GRN items have been inspected successfully. CAPA workflows have been initiated for rejected/segregated items.",
+        // Says only what actually happened. It previously claimed "CAPA workflows
+        // have been initiated for rejected/segregated items" - nothing in this
+        // hook creates a CAPA, and the CAPA tables it would have written to no
+        // longer exist. Telling someone a quality action was taken when it was
+        // not is worse than telling them nothing.
+        description: "Inspection results saved. Accepted stock has moved to the main store; rejected stock is in the reject location.",
       });
       setInspectionResults({});
       setValidationErrors({});
