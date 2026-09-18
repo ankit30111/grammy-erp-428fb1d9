@@ -11,7 +11,9 @@ export function HRDashboard() {
       const [employeesCount, activeEmployees, pendingReviews, trainingInProgress] = await Promise.all([
         supabase.from('employees').select('id', { count: 'exact' }),
         supabase.from('employees').select('id', { count: 'exact' }).eq('status', 'active'),
-        supabase.from('performance_reviews').select('id', { count: 'exact' }).is('completion_date', null),
+        // performance_reviews has no completion_date. A review is outstanding
+        // while it carries no overall rating.
+        supabase.from('performance_reviews').select('id', { count: 'exact' }).is('overall_rating', null),
         supabase.from('employee_training').select('id', { count: 'exact' }).eq('status', 'enrolled')
       ]);
 

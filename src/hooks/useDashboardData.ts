@@ -98,8 +98,9 @@ export const useQualityDashboardData = () => {
   return useQuery({
     queryKey: ['quality-dashboard', scopePlantId ?? 'all'],
     queryFn: async () => {
-      let itemsQ = supabase.from('grn_items').select('iqc_outcome');
-      if (scopePlantId) itemsQ = itemsQ.eq('plant_id', scopePlantId);
+      // grn_items carries no plant_id; the plant is on the parent grn.
+      let itemsQ = supabase.from('grn_items').select('iqc_outcome, grn!inner(plant_id)');
+      if (scopePlantId) itemsQ = itemsQ.eq('grn.plant_id', scopePlantId);
       const [grnItemsData, lineRejectionsData] = await Promise.all([
         itemsQ,
         supabase.from('line_rejections').select('*')

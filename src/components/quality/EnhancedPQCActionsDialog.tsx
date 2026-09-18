@@ -36,12 +36,16 @@ const EnhancedPQCActionsDialog = ({ productionOrderId, isOpen, onClose }: Enhanc
   const { data: todayReportsCount = 0 } = useQuery({
     queryKey: ["today-reports-count", productionOrderId],
     queryFn: async () => {
-      const today = new Date().toDateString();
+      // pqc_reports records inspected_at; there is no upload_date. toDateString()
+      // also produced "Thu Sep 18 2026", which Postgres cannot compare to a date at
+      // all - the query errored and the count silently stayed at zero.
+      const startOfToday = new Date();
+      startOfToday.setHours(0, 0, 0, 0);
       const { data, error } = await supabase
         .from("pqc_reports")
         .select("id")
         .eq("production_order_id", productionOrderId)
-        .gte("upload_date", today);
+        .gte("inspected_at", startOfToday.toISOString());
 
       if (error) throw error;
       return data?.length || 0;

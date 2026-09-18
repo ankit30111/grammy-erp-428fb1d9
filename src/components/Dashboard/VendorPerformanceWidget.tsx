@@ -18,7 +18,7 @@ export const VendorPerformanceWidget = () => {
         .from('purchase_orders')
         .select(`
           id,
-          expected_delivery_date,
+          promised_delivery_date,
           status,
           vendors (name),
           grn (received_date)
@@ -34,9 +34,9 @@ export const VendorPerformanceWidget = () => {
           acc[vendorName] = { onTime: 0, total: 0 };
         }
         
-        if (po.grn?.length && po.expected_delivery_date) {
+        if (po.grn?.length && po.promised_delivery_date) {
           const receivedDate = new Date(po.grn[0].received_date);
-          const expectedDate = new Date(po.expected_delivery_date);
+          const expectedDate = new Date(po.promised_delivery_date);
           const isOnTime = receivedDate <= expectedDate;
           
           acc[vendorName].total += 1;
@@ -65,11 +65,12 @@ export const VendorPerformanceWidget = () => {
           iqc_outcome,
           iqc_accepted_quantity,
           iqc_rejected_quantity,
-          grn (
+          grn!inner (
+            plant_id,
             vendors (name)
           )
         `);
-      if (scopePlantId) q = q.eq('plant_id', scopePlantId);
+      if (scopePlantId) q = q.eq('grn.plant_id', scopePlantId);
       const { data, error } = await q;
       if (error) throw error;
       

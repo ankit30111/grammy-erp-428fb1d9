@@ -38,8 +38,24 @@ def walk():
                     continue
                 yield p
 
-# .from('x') and the chained calls that follow, up to the next .from( or end
-CHAIN = re.compile(r"\.from\(\s*['\"]([a-z_0-9]+)['\"]\s*\)(.{0,2500}?)(?=\.from\(|\Z)", re.S)
+# .from('x') and the chained calls that follow, up to the next .from( or end.
+#
+# This was one regex with a lookahead: (.{0,2500}?)(?=\.from\(|\Z). The last chain
+# in a file was silently dropped whenever it sat more than 2500 characters from the
+# end - the lookahead could reach neither the next .from( nor \Z, the match failed,
+# and the query was never checked at all. ProjectGanttChart's query against
+# pre_existing_projects, a table that does not exist, went unreported for exactly
+# this reason. An audit that quietly skips what it cannot parse is worse than no
+# audit, so the chain boundaries are now found explicitly.
+FROM = re.compile(r"\.from\(\s*['\"]([a-z_0-9]+)['\"]\s*\)")
+
+
+def chains(src):
+    """Yield (table, chain_text, start_offset) for every .from('x') in the file."""
+    hits = list(FROM.finditer(src))
+    for i, m in enumerate(hits):
+        end = hits[i + 1].start() if i + 1 < len(hits) else len(src)
+        yield m.group(1), src[m.end():min(end, m.end() + 2500)], m.start()
 KEYS   = re.compile(r"\.(insert|update|upsert)\(\s*\{(.*?)\}\s*\)", re.S)
 KEY    = re.compile(r"^\s*([a-z_0-9]+)\s*:", re.M)
 EQ     = re.compile(r"\.(?:eq|neq|gt|gte|lt|lte|is|in|like|ilike|order)\(\s*['\"]([a-z_0-9.]+)['\"]")
@@ -51,9 +67,8 @@ def rel(p): return os.path.relpath(p, os.path.dirname(HERE))
 
 for path in walk():
     src = open(path, errors='ignore').read()
-    for m in CHAIN.finditer(src):
-        table, chain = m.group(1), m.group(2)
-        line = src[:m.start()].count('\n') + 1
+    for table, chain, offset in chains(src):
+        line = src[:offset].count('\n') + 1
 
         if table not in TABLES:
             findings['dead_table'].append(f"{rel(path)}:{line}  .from('{table}') — table does not exist")
@@ -79,7 +94,21 @@ for path in walk():
         sm = SELECT.search(chain)
         if sm:
             body = sm.group(1)
-            body = re.sub(r"\([^()]*\)", "", body)      # drop embeds
+            # Drop embeds entirely - name, modifier, alias and body. Nested embeds
+            # need a loop: one pass only removes the innermost parentheses, which
+            # used to leave the outer embed's tokens behind and report them as
+            # columns of the parent table.
+            prev = None
+            while prev != body:
+                prev = body
+                body = re.sub(
+                    r"(?:[a-z_0-9]+\s*:\s*)?"        # optional alias:
+                    r"[a-z_0-9]+"                     # embedded table (or FK hint)
+                    r"(?:\s*![a-z_0-9]+)?"            # !inner / !left / !fk_name
+                    r"\s*\([^()]*\)",                 # its own field list
+                    "", body)
+            # A bare "table!inner" with no body is still an embed hint, not a column.
+            body = re.sub(r"[a-z_0-9]+\s*!\s*[a-z_0-9]+", "", body)
             for fld in re.findall(r"[a-z_0-9]+", body):
                 if fld in ('count', 'sum', 'avg', 'min', 'max', 'exact', 'head', 'planned'):
                     continue

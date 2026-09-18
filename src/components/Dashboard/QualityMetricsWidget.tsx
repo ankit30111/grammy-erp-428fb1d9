@@ -14,8 +14,9 @@ export const QualityMetricsWidget = () => {
   const { data: iqcStatus } = useRealTimeQuery({
     queryKey: ['iqc-status', scopeKey],
     queryFn: async () => {
-      let q = supabase.from('grn_items').select('iqc_outcome');
-      if (scopePlantId) q = q.eq('plant_id', scopePlantId);
+      // grn_items carries no plant_id; the plant is on the parent grn.
+      let q = supabase.from('grn_items').select('iqc_outcome, grn!inner(plant_id)');
+      if (scopePlantId) q = q.eq('grn.plant_id', scopePlantId);
       const { data, error } = await q;
       if (error) throw error;
       

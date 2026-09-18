@@ -30,7 +30,9 @@ const ProjectGanttChart = () => {
             *,
             customers (name)
           `)
-          .neq('status', 'APPROVED'),
+          // npd_projects tracks stage, not status. LAUNCHED and DROPPED are the
+          // two terminal stages; everything else is still in flight.
+          .not('stage', 'in', '(LAUNCHED,DROPPED)'),
         supabase
           .from('pre_existing_projects')
           .select(`
