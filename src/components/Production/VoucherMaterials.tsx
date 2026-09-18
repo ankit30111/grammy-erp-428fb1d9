@@ -73,25 +73,32 @@ export function useVoucherMaterials(
         .in("part_id", partIds);
       if (balError) throw balError;
 
-      // Active holds from other vouchers. A voucher does not block itself.
-      let holdQuery = supabase
+      // Active holds placed by anything OTHER than this voucher. A voucher does
+      // not block itself.
+      //
+      // The exclusion is done here rather than with .neq() on the query: in
+      // PostgREST, neq drops rows where the column is NULL. Spare orders, DASH,
+      // samples and rework all hold stock without a production order, so a .neq
+      // filter silently dropped every one of them and the Held column understated
+      // what was actually reserved.
+      const { data: holds, error: holdError } = await supabase
         .from("stock_holds")
         .select("part_id, quantity, production_order_id")
         .eq("plant_id", plantId!)
         .eq("status", "ACTIVE")
         .in("part_id", partIds);
-      if (productionOrderId) {
-        holdQuery = holdQuery.neq("production_order_id", productionOrderId);
-      }
-      const { data: holds, error: holdError } = await holdQuery;
       if (holdError) throw holdError;
+
+      const otherHolds = productionOrderId
+        ? (holds ?? []).filter((h: any) => h.production_order_id !== productionOrderId)
+        : (holds ?? []);
 
       const availableBy = new Map<string, number>();
       (balances ?? []).forEach((b: any) =>
         availableBy.set(b.part_id, (availableBy.get(b.part_id) ?? 0) + Number(b.quantity ?? 0))
       );
       const heldBy = new Map<string, number>();
-      (holds ?? []).forEach((h: any) =>
+      otherHolds.forEach((h: any) =>
         heldBy.set(h.part_id, (heldBy.get(h.part_id) ?? 0) + Number(h.quantity ?? 0))
       );
 

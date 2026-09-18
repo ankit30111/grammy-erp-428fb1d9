@@ -9,6 +9,8 @@ Finds, without anyone clicking anything:
   4. .eq('col', ...) / .in('col', [...]) on columns that do not exist
   5. enum-valued columns compared or written with a value outside the enum
   6. .rpc('fn') where the function does not exist or the app cannot execute it
+  7. tables the app READS but nothing ever writes - a feature with a reader and
+     no writer, which looks like "no data yet" forever
 """
 import json, re, os, sys
 from collections import defaultdict
@@ -153,9 +155,63 @@ for path in walk():
             findings['dead_rpc'].append(
                 f"{rel(path)}:{line}  .rpc('{m.group(1)}') — function does not exist, or the app cannot execute it")
 
+# Tables the app reads but never writes.
+#
+# This is the class of bug the audit kept missing, and it is the expensive one:
+# every table, column, enum and function referenced can exist and be spelled
+# correctly, and the feature can still be dead because nothing ever puts a row in.
+#
+# stock_holds was exactly this. VoucherMaterials read it, materialShortageCalculator
+# read it, the netting maths depended on it - and the one insert that fed it was
+# refused by a check constraint on every attempt, silently, into a toast. Three
+# vouchers each believed they had the whole warehouse. Nothing in checks 1-6 could
+# see it: the table existed, the columns existed, the query was valid.
+#
+# A table read-but-never-written is not always wrong - some are filled by triggers,
+# by a migration backfill, or by another system. So this is a question, not a
+# verdict: DB_WRITERS lists the tables known to be written from SQL rather than
+# from the app, and anything else that only ever appears after .select() gets
+# named here to be checked by a human.
+# Each entry says WHY it is written outside the app, so the list cannot quietly
+# become a place to hide real findings.
+DB_WRITERS = {
+    'stock_ledger':             'post_stock_movement() is the only entry point',
+    'stock_balance':            'derived from stock_ledger by trigger',
+    'stock_holds':              'maintained by sync_voucher_holds() from the voucher',
+    'audit_log':                'audit triggers',
+    'projections':              'scheduled/vouchered totals recomputed by trigger',
+    'purchase_order_items':     'received_quantity maintained by the GRN trigger',
+    'finished_goods_inventory': 'receive_finished_goods() / allocate_finished_goods()',
+    'dispatch_order_items':     'written by allocate_finished_goods()',
+    'kit_feedback':             'raised by record_kit_receipt()',
+    'production_order_lines':   'written with the schedule',
+    'department_permissions':   'written by the set_department_modules() RPC',
+    'stock_locations':          'reference data, seeded by migration',
+}
+
+READ = re.compile(r"\.select\(")
+WRITE = re.compile(r"\.(insert|update|upsert|delete)\(")
+
+read_tables, written_tables = set(), set()
+for path in walk():
+    src = open(path, errors='ignore').read()
+    for table, chain, _ in chains(src):
+        if table not in TABLES:
+            continue
+        if READ.search(chain):
+            read_tables.add(table)
+        if WRITE.search(chain):
+            written_tables.add(table)
+
+for t in sorted(read_tables - written_tables - set(DB_WRITERS)):
+    findings['read_never_written'].append(
+        f"{t} — the app reads this table and never writes to it. Filled by a trigger, "
+        f"or is the writing half missing?")
+
 ORDER = [
     ('dead_table',     'QUERIES A TABLE THAT NO LONGER EXISTS'),
     ('dead_rpc',       'CALLS A FUNCTION THAT DOES NOT EXIST'),
+    ('read_never_written', 'READ BY THE APP, NEVER WRITTEN BY IT  (check each: trigger-fed, or half-built?)'),
     ('bad_enum',       'WRITES OR COMPARES A VALUE THE ENUM DOES NOT ALLOW'),
     ('bad_write_col',  'WRITES A COLUMN THAT DOES NOT EXIST'),
     ('bad_filter_col', 'FILTERS ON A COLUMN THAT DOES NOT EXIST'),

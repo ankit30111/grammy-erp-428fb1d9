@@ -6,9 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Edit, Eye, Save, Send, X } from "lucide-react";
+import { Edit, Eye, Save, X } from "lucide-react";
 import { useState, useEffect } from "react";
-import { usePurchaseOrders, useUpdatePOStatus } from "@/hooks/usePurchaseOrders";
+import { usePurchaseOrders } from "@/hooks/usePurchaseOrders";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -19,7 +19,6 @@ export const EditablePurchaseOrders = () => {
   const [editFormData, setEditFormData] = useState<any>({});
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const updatePOStatus = useUpdatePOStatus();
 
   // Set up real-time subscription for GRN updates
   useEffect(() => {
@@ -137,6 +136,11 @@ export const EditablePurchaseOrders = () => {
                   <div className="flex gap-2">
                     {editingPO === po.id ? (
                       <>
+                        {['APPROVED', 'PARTIALLY_RECEIVED', 'RECEIVED'].includes(po.status) && (
+                          <span className="text-xs text-amber-600 self-center mr-1">
+                            Saving sends this back for approval
+                          </span>
+                        )}
                         <Button 
                           size="sm" 
                           onClick={handleSave}
@@ -154,20 +158,21 @@ export const EditablePurchaseOrders = () => {
                       </>
                     ) : (
                       <>
-                        {po.status === 'DRAFT' && (
-                          <Button
-                            size="sm"
-                            onClick={() => updatePOStatus.mutate({ poId: po.id, status: 'PENDING_APPROVAL' })}
-                            disabled={updatePOStatus.isPending}
-                          >
-                            <Send className="h-4 w-4 mr-1" />
-                            Send for Approval
-                          </Button>
-                        )}
+                        {/*
+                          "Send for Approval" is gone: a PO is created straight
+                          into PENDING_APPROVAL. Editing an approved one puts it
+                          back in the queue on its own, enforced by a trigger, so
+                          there is nothing here for anyone to remember to press.
+                        */}
                         <Button
                           size="sm"
                           variant="outline"
                           onClick={() => handleEdit(po)}
+                          title={
+                            ['APPROVED', 'PARTIALLY_RECEIVED', 'RECEIVED'].includes(po.status)
+                              ? 'Editing an approved PO sends it back for approval'
+                              : undefined
+                          }
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
@@ -317,10 +322,12 @@ export const EditablePurchaseOrders = () => {
                   <p className="text-sm font-medium text-blue-800 mb-1">Purchase Order Workflow:</p>
                   <p className="text-xs text-blue-600">
                     PO Created → {
-                      po.status === 'DRAFT' ? '📝 Draft — not yet sent for approval'
-                      : po.status === 'PENDING_APPROVAL' ? '⏳ Pending Approval'
-                      : po.status === 'CANCELLED' ? '✖ Cancelled'
-                      : '✅ Approved'
+                      po.status === 'PENDING_APPROVAL' ? 'Pending approval'
+                      : po.status === 'CANCELLED' ? 'Cancelled'
+                      : po.status === 'APPROVED' ? 'Approved'
+                      : po.status === 'PARTIALLY_RECEIVED' ? 'Approved, partly received'
+                      : po.status === 'RECEIVED' ? 'Approved, fully received'
+                      : po.status
                     } → GRN Created → IQC Approval → Store Physical Verification → Inventory Update
                   </p>
                 </div>
