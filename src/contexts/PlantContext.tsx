@@ -9,6 +9,19 @@ export interface Plant {
   is_active: boolean;
 }
 
+/**
+ * Grammy runs as a single company. There is no plant switcher: the one active
+ * plant is resolved automatically and every insert is stamped with it.
+ *
+ * The plant_id columns and the row-level security that reads them are kept
+ * deliberately. Removing them to "simplify" would mean re-adding scoping to
+ * every table later, and the scoping is already correct and proven.
+ *
+ * `plants` and `setActivePlant` remain on the context so a second plant can be
+ * reintroduced without rewriting consumers - but note the real gap first:
+ * projections carry no plant, so with more than one plant the plant is decided
+ * implicitly at scheduling time rather than when the order is raised.
+ */
 interface PlantContextType {
   plants: Plant[];
   activePlant: Plant | null;
