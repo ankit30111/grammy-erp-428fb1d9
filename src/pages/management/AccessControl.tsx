@@ -162,6 +162,16 @@ function UsersTab() {
                       {!u.is_active && (
                         <Badge variant="secondary" className="text-[14px]">inactive</Badge>
                       )}
+                      {/*
+                        A profile row can exist with no sign-in identity behind it.
+                        Such an account looked identical to a working one, and the
+                        only hint was "User not found" when someone tried to reset
+                        its password - an error that points at the password rather
+                        than at an account that never had a login.
+                      */}
+                      {u.has_login === false && (
+                        <Badge variant="destructive" className="text-[14px]">no login</Badge>
+                      )}
                     </div>
                   </div>
                 </button>
@@ -361,6 +371,23 @@ function UserAccessEditor({
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
+        {/*
+          There is no sign-in identity behind this profile, so nobody can log in as
+          it and Reset password has nothing to reset - it fails with "User not
+          found", which reads as a password problem rather than a missing account.
+          Say so before anyone tries.
+        */}
+        {user.has_login === false && (
+          <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm flex gap-2">
+            <AlertTriangle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+            <span>
+              This account has <strong>no login</strong>. The profile exists, but
+              there is no sign-in identity behind it, so nobody can sign in as{" "}
+              <span className="font-mono">{user.email}</span> and there is no
+              password to reset. Delete it and create the user again.
+            </span>
+          </div>
+        )}
         {role === "admin" && (
           <div className="rounded-md border border-amber-500/30 bg-amber-50 dark:bg-amber-950/20 p-3 text-sm flex gap-2">
             <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
@@ -409,6 +436,12 @@ function UserAccessEditor({
               variant="outline"
               size="sm"
               className="gap-1.5"
+              disabled={user.has_login === false}
+              title={
+                user.has_login === false
+                  ? "This account has no login, so there is no password to reset"
+                  : undefined
+              }
               onClick={() => setPwOpen(true)}
             >
               <KeyRound className="h-4 w-4" /> Reset password
