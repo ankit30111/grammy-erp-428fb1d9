@@ -3,6 +3,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { RefreshCw, Search } from "lucide-react";
+import { LOGBOOK_FILTER_TYPES, MOVEMENT_TYPE_LABELS } from "@/constants/movementTypes";
 
 interface MovementFiltersProps {
   searchTerm: string;
@@ -39,13 +40,11 @@ export const MovementFilters = ({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Movements ({totalMovements})</SelectItem>
-            <SelectItem value="ISSUED_TO_PRODUCTION">Issued to Production</SelectItem>
-            <SelectItem value="PRODUCTION_RETURN">Production Returns</SelectItem>
-            <SelectItem value="PRODUCTION_FEEDBACK_RETURN">Feedback Returns</SelectItem>
-            <SelectItem value="GRN_RECEIPT">GRN Receipts</SelectItem>
-            <SelectItem value="MATERIAL_REQUEST_CREATED">Material Requests</SelectItem>
-            <SelectItem value="STOCK_ADJUSTMENT">Stock Adjustments</SelectItem>
-            <SelectItem value="STOCK_RECONCILIATION">Stock Reconciliation</SelectItem>
+            {LOGBOOK_FILTER_TYPES.map((type) => (
+              <SelectItem key={type} value={type}>
+                {MOVEMENT_TYPE_LABELS[type]}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
         <Button
