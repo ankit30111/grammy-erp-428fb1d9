@@ -43,7 +43,7 @@ const IQCInspectionDialog = ({ grn, isOpen, onClose }: IQCInspectionDialogProps)
   };
 
   // Handle status change
-  const handleStatusChange = (itemId: string, status: 'APPROVED' | 'REJECTED' | 'SEGREGATED') => {
+  const handleStatusChange = (itemId: string, status: 'ACCEPTED' | 'REJECTED' | 'PARTIAL') => {
     const item = grn.grn_items.find((i: any) => i.id === itemId);
     if (!item) return;
 
@@ -53,7 +53,7 @@ const IQCInspectionDialog = ({ grn, isOpen, onClose }: IQCInspectionDialogProps)
     if (status === 'REJECTED') {
       acceptedQty = 0;
       rejectedQty = item.received_quantity;
-    } else if (status === 'SEGREGATED') {
+    } else if (status === 'PARTIAL') {
       // For segregated, we'll let the user input the quantities
       acceptedQty = Math.floor(item.received_quantity / 2); // Default half-half
       rejectedQty = item.received_quantity - acceptedQty;
@@ -186,7 +186,7 @@ const IQCInspectionDialog = ({ grn, isOpen, onClose }: IQCInspectionDialogProps)
                         value={inspectionResults[item.id]?.status}
                         onValueChange={(value) => handleStatusChange(
                           item.id, 
-                          value as 'APPROVED' | 'REJECTED' | 'SEGREGATED'
+                          value as 'ACCEPTED' | 'REJECTED' | 'PARTIAL'
                         )}
                         className="flex items-center space-x-6 mt-2"
                       >
@@ -195,7 +195,7 @@ const IQCInspectionDialog = ({ grn, isOpen, onClose }: IQCInspectionDialogProps)
                           <Label htmlFor={`pass-${item.id}`} className="text-green-600">Pass</Label>
                         </div>
                         <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="SEGREGATED" id={`segregate-${item.id}`} />
+                          <RadioGroupItem value="PARTIAL" id={`segregate-${item.id}`} />
                           <Label htmlFor={`segregate-${item.id}`} className="text-amber-600">Segregate</Label>
                         </div>
                         <div className="flex items-center space-x-2">
@@ -205,7 +205,7 @@ const IQCInspectionDialog = ({ grn, isOpen, onClose }: IQCInspectionDialogProps)
                       </RadioGroup>
                     </div>
                     
-                    {inspectionResults[item.id]?.status === 'SEGREGATED' && (
+                    {inspectionResults[item.id]?.status === 'PARTIAL' && (
                       <div className="space-y-3">
                         <div className="grid grid-cols-2 gap-4">
                           <div>

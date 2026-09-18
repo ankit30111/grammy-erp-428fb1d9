@@ -10,8 +10,16 @@ import {
   type StockMovement,
 } from '@/utils/stockLedger';
 
+/**
+ * The verdict vocabulary must match the iqc_outcome enum exactly:
+ * PENDING | ACCEPTED | REJECTED | PARTIAL.
+ *
+ * It previously used APPROVED / REJECTED / SEGREGATED. APPROVED and SEGREGATED
+ * are not members of that enum, so submitting an inspection was rejected by the
+ * database. SEGREGATED - part accepted, part rejected - is PARTIAL.
+ */
 export interface InspectionResult {
-  status: 'APPROVED' | 'REJECTED' | 'SEGREGATED';
+  status: 'ACCEPTED' | 'REJECTED' | 'PARTIAL';
   remarks: string;
   acceptedQuantity: number;
   rejectedQuantity: number;
@@ -36,7 +44,7 @@ export const useIQCInspection = (grn: any) => {
     grn.grn_items.forEach((item: any) => {
       if (!item.iqc_outcome || item.iqc_outcome === 'PENDING') {
         initialResults[item.id] = {
-          status: 'APPROVED',
+          status: 'ACCEPTED',
           remarks: '',
           acceptedQuantity: item.received_quantity || 0,
           rejectedQuantity: 0,
@@ -184,7 +192,7 @@ export const useIQCInspection = (grn: any) => {
           const updateData: any = {
             iqc_outcome: result.status,
             iqc_at: new Date().toISOString(),
-            iqc_completed_by: user.id,
+            iqc_by: user.id,
             iqc_accepted_quantity: result.acceptedQuantity,
             iqc_rejected_quantity: result.rejectedQuantity,
             iqc_report_url: reportUrl || null
@@ -281,29 +289,14 @@ export const useIQCInspection = (grn: any) => {
 
 
 
-        // Update GRN status if all items are completed
-        const allItemsInspected = grn.grn_items.every((item: any) => 
-          item.iqc_outcome !== 'PENDING' || !!inspectionResults[item.id]
-        );
-
-        console.log('All items inspected:', allItemsInspected);
-
-        if (allItemsInspected) {
-          console.log('Updating GRN status to IQC_COMPLETED for GRN:', grn.id);
-          const { error: grnError } = await supabase
-            .from("grn")
-            .update({ status: "IQC_COMPLETED" })
-            .eq("id", grn.id);
-
-          if (grnError) {
-            console.error('GRN status update error:', grnError);
-            throw new Error(`Failed to update GRN status: ${grnError.message}`);
-          }
-          
-          console.log('Successfully updated GRN status');
-        }
-
-        console.log('IQC submission completed successfully');
+        // grn.status is NOT updated here. The recalc_grn_status trigger owns that
+        // column and derives it from the items: it flips to IQC_DONE by itself once
+        // every line has a non-PENDING iqc_outcome, and to STORE_CONFIRMED once
+        // every line is counted in by the store.
+        //
+        // The old code wrote "IQC_COMPLETED", which is not a member of grn_status,
+        // so submitting an inspection failed outright - and had it succeeded it
+        // would have been a second writer racing the trigger.
 
       } catch (error) {
         console.error('IQC submission error:', error);

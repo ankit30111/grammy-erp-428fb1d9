@@ -23,6 +23,7 @@ export const useGRNReceiving = () => {
           grn (
             grn_number,
             received_date,
+            plant_id,
             vendors (
               name,
               vendor_code
@@ -33,9 +34,9 @@ export const useGRNReceiving = () => {
             name
           )
         `)
-        .in('iqc_outcome', ['APPROVED', 'SEGREGATED'])
+        .in('iqc_outcome', ['ACCEPTED', 'PARTIAL'])
         .neq('iqc_accepted_quantity', 0)
-        .is('store_confirmed', false)
+        .is('store_confirmed_at', null)
         .order('created_at', { ascending: false });
       
       if (error) throw error;
@@ -57,10 +58,9 @@ export const useGRNReceiving = () => {
       const { error } = await supabase
         .from('grn_items')
         .update({
-          store_physical_quantity: physicalQuantity,
-          physical_verification_date: new Date().toISOString(),
-          physical_verified_by: user.id,
-          store_confirmed: true,
+          store_counted_quantity: physicalQuantity,
+          // store_confirmed_at being set IS the confirmation - there is no
+          // separate boolean flag any more, so the two cannot disagree.
           store_confirmed_at: new Date().toISOString(),
           store_confirmed_by: user.id,
         })
@@ -70,10 +70,11 @@ export const useGRNReceiving = () => {
 
       // Post only the variance against the quantity IQC already released to MAIN
       const delta = physicalQuantity - Number(item?.iqc_accepted_quantity || 0);
-      if (item?.plant_id && delta !== 0 && !(await hasLedgerEntry('GRN_ITEM_STORE_VARIANCE', itemId))) {
-        const mainId = await getStockLocationId(item.plant_id, 'MAIN');
+      const plantId = item?.grn?.plant_id;
+      if (plantId && delta !== 0 && !(await hasLedgerEntry('GRN_ITEM_STORE_VARIANCE', itemId))) {
+        const mainId = await getStockLocationId(plantId, 'MAIN');
         await postStockMovement({
-          plant_id: item.plant_id,
+          plant_id: plantId,
           part_id: item.part_id,
           location_id: mainId,
           qty_delta: delta,

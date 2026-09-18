@@ -35,7 +35,9 @@ export const useStoreDashboardData = () => {
         .from('stock_balance')
         .select('quantity, stock_locations!inner(code)')
         .eq('stock_locations.code', 'MAIN');
-      let grnQ = supabase.from('grn').select('*').eq('status', 'RECEIVED');
+      // "Pending GRN" = received but not yet through inspection and store count.
+      // ('RECEIVED' is not a grn_status; this tile counted nothing.)
+      let grnQ = supabase.from('grn').select('id').in('status', ['IQC_PENDING', 'IQC_DONE']);
       // Daily dispatches = anything that left stock today. Taken from the sign of
       // qty_delta rather than matching a movement_type string: the old query looked
       // for type 'OUT', which nothing in the app has ever posted, so this tile read
