@@ -1,5 +1,8 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { ArrowLeft, ChevronDown, ChevronRight, FileDown, Package, RefreshCw } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -7,8 +10,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { generateProductionVoucherPDF, generateProductionVoucherFilename, type ProductionVoucherData } from "@/utils/pdfTemplates";
 import { PageHeader } from "@/components/shell/PageHeader";
-import { DataTable, type DataTableColumn } from "@/components/shell/DataTable";
-import { StatePill } from "@/components/shell/StatePill";
 import { fetchStockBalanceRows, getStockLocationId, hasLedgerEntry, postStockMovement } from "@/utils/stockLedger";
 import { MOVEMENT_TYPES } from "@/constants/movementTypes";
 
@@ -530,16 +531,6 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
   });
 
   const materialRows = tableRows.filter((row) => !row.__group);
-  const columns: DataTableColumn<VoucherTableRow>[] = [
-    { key: "material", header: "Material", width: 96 },
-    { key: "description", header: "Description", width: "auto", truncate: true },
-    { key: "required", header: "Req.", width: 76, align: "right" },
-    { key: "stock", header: "Stock", width: 76, align: "right" },
-    { key: "movement", header: "Sent → Recd.", width: 104, align: "right" },
-    { key: "toSend", header: "To send", width: 92, align: "right" },
-    { key: "balance", header: "Balance", width: 84, align: "right" },
-  ];
-
   const totals = materialRows.reduce(
     (sum, row) => ({
       required: sum.required + (row.required ?? 0),
@@ -558,7 +549,7 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
   const statusState = productionOrder.status === "COMPLETED" ? "ok" : productionOrder.status === "IN_PRODUCTION" ? "warn" : "idle";
 
   return (
-    <div className="min-w-0 space-y-3">
+    <div className="space-y-4">
       <PageHeader
         title={`Production Voucher ${productionOrder.voucher_number}`}
         breadcrumb={[
@@ -569,96 +560,109 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
         meta={syncLabel}
         actions={(
           <Button variant="outline" size="sm" onClick={() => refetchInventory()}>
-            <RefreshCw className="h-3.5 w-3.5" />
+            <RefreshCw className="h-4 w-4 mr-1" />
             Refresh inventory
           </Button>
         )}
       />
 
-      <section className="flex min-h-14 flex-wrap items-center gap-x-4 gap-y-2 border-y border-hairline bg-surface-2 px-3 py-2" aria-label="Voucher summary">
-        <div className="flex min-w-0 items-center gap-3">
-          <span className="font-mono text-[17px] font-semibold text-foreground">{productionOrder.voucher_number}</span>
-          <StatePill state={statusState}>{productionOrder.status?.replace("_", " ")}</StatePill>
-        </div>
-        <div className="ml-auto grid grid-cols-4 gap-x-6">
+      <Card>
+        <CardContent className="flex flex-wrap items-center gap-x-10 gap-y-3 py-4">
+          <div className="flex items-center gap-3">
+            <span className="font-mono text-lg font-semibold">{productionOrder.voucher_number}</span>
+            <Badge variant={productionOrder.status === "COMPLETED" ? "default" : "secondary"}>
+              {String(productionOrder.status).replace(/_/g, " ")}
+            </Badge>
+          </div>
           {[
             ["Product", productionOrder.parts?.name || "—"],
-            ["Order qty", orderQuantity],
+            ["Order qty", Number(orderQuantity).toLocaleString()],
             ["BOM lines", materialRows.length],
             ["Short lines", shortLines],
           ].map(([label, value]) => (
-            <div key={String(label)} className="min-w-0 text-right">
-              <div className="font-mono text-[15px] font-medium uppercase tracking-[0.09em] text-muted-foreground">{label}</div>
-              <div className="max-w-40 truncate font-mono text-[17px] font-medium tabular-nums text-foreground" title={String(value)}>{value}</div>
+            <div key={String(label)}>
+              <div className="text-xs text-muted-foreground">{label}</div>
+              <div className="font-medium truncate max-w-56" title={String(value)}>{value}</div>
             </div>
           ))}
-        </div>
-      </section>
+        </CardContent>
+      </Card>
 
-      <DataTable
-        columns={columns}
-        rows={tableRows}
-        getRowKey={(row) => row.id}
-        getRowState={(row) => {
-          if (row.hasInsufficientStock || ((row.stock ?? 0) === 0 && (row.balance ?? 0) > 0)) return "bad";
-          if ((row.pending ?? 0) > 0 || (row.toSend ?? 0) > 0) return "warn";
-          if (row.isFullyReceived) return "ok";
-          return null;
-        }}
-        renderCell={(row, column, { expanded, toggleExpanded }) => {
-          switch (column.key) {
-            case "material":
-              return (
-                <button type="button" onClick={toggleExpanded} className="flex w-full items-center gap-1.5 text-left font-mono font-semibold text-foreground" aria-expanded={expanded}>
-                  {expanded ? <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" /> : <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
-                  <span className="truncate">{row.materialCode}</span>
-                </button>
-              );
-            case "description": return row.description ?? "—";
-            case "required": return (row.required ?? 0).toLocaleString();
-            case "stock": return <span className={(row.stock ?? 0) === 0 ? "text-muted-foreground" : "text-foreground"}>{(row.stock ?? 0).toLocaleString()}</span>;
-            case "movement":
-              return row.sent === row.received ? (
-                <span className={(row.sent ?? 0) > 0 ? "font-semibold text-success" : "text-muted-foreground"}>{(row.sent ?? 0).toLocaleString()}</span>
-              ) : (
-                <span><span>{(row.sent ?? 0).toLocaleString()}</span><span className="mx-1 text-muted-foreground">→</span><span>{(row.received ?? 0).toLocaleString()}</span></span>
-              );
-            case "toSend": {
-              const value = row.toSend ?? 0;
-              return (
-                <Input
-                  type="number"
-                  min="0"
-                  max={Math.min(row.stock ?? 0, Math.max(0, (row.required ?? 0) - (row.received ?? 0)))}
-                  value={value || ""}
-                  onChange={(event) => handleQuantityChange(row.id, event.target.value)}
-                  className={`ml-auto h-[26px] w-[62px] rounded-[3px] px-1.5 text-right font-mono text-[14.5px] tabular-nums shadow-none ring-offset-0 hover:border-input focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/15 focus-visible:ring-offset-0 ${value > 0 ? "border-input bg-background" : "border-transparent bg-transparent"} ${row.hasInsufficientStock ? "border-destructive" : ""}`}
-                  placeholder="0"
-                  disabled={row.isFullyReceived}
-                />
-              );
-            }
-            case "balance": return (row.balance ?? 0) > 0 ? <span className="font-semibold text-destructive">{(row.balance ?? 0).toLocaleString()}</span> : <span className="text-muted-foreground">0</span>;
-            default: return null;
-          }
-        }}
-        renderExpanded={(row) => (
-          <div className="grid grid-cols-4 gap-4 text-[15px]">
-            <div><span className="text-muted-foreground">Category</span><div className="mt-0.5 font-medium text-foreground">{row.category || "Uncategorised"}</div></div>
-            <div><span className="text-muted-foreground">Available stock</span><div className="mt-0.5 font-mono tabular-nums text-foreground">{(row.stock ?? 0).toLocaleString()}</div></div>
-            <div><span className="text-muted-foreground">In motion</span><div className="mt-0.5 font-mono tabular-nums text-warning">{(row.pending ?? 0).toLocaleString()}</div></div>
-            <div><span className="text-muted-foreground">Line condition</span><div className="mt-0.5"><StatePill state={row.hasInsufficientStock ? "bad" : row.isFullyReceived ? "ok" : (row.pending ?? 0) > 0 ? "warn" : "idle"}>{row.hasInsufficientStock ? "Insufficient stock" : row.isFullyReceived ? "Confirmed" : (row.pending ?? 0) > 0 ? "In motion" : "Available"}</StatePill></div></div>
-          </div>
-        )}
-        footer={{
-          material: "Totals",
-          required: totals.required.toLocaleString(),
-          stock: totals.stock.toLocaleString(),
-          movement: <span>{totals.sent.toLocaleString()}<span className="mx-1 text-muted-foreground">→</span>{totals.received.toLocaleString()}</span>,
-          toSend: totals.toSend.toLocaleString(),
-          balance: <span className={totals.balance > 0 ? "text-destructive" : "text-muted-foreground"}>{totals.balance.toLocaleString()}</span>,
-        }}
-      />
+      <div className="rounded-lg border overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Material</TableHead>
+              <TableHead>Description</TableHead>
+              <TableHead className="text-right">Required</TableHead>
+              <TableHead className="text-right">In Stock</TableHead>
+              <TableHead className="text-right">Sent / Received</TableHead>
+              <TableHead className="text-right">To Send</TableHead>
+              <TableHead className="text-right">Balance</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {tableRows.map((row) => (
+              <TableRow key={row.id}>
+                <TableCell className="font-mono font-medium whitespace-nowrap">
+                  {row.materialCode}
+                </TableCell>
+                <TableCell className="max-w-xs truncate" title={row.description ?? ""}>
+                  {row.description ?? "—"}
+                </TableCell>
+                <TableCell className="text-right font-mono">
+                  {(row.required ?? 0).toLocaleString()}
+                </TableCell>
+                <TableCell className="text-right font-mono">
+                  <span className={(row.stock ?? 0) === 0 ? "text-muted-foreground" : ""}>
+                    {(row.stock ?? 0).toLocaleString()}
+                  </span>
+                </TableCell>
+                <TableCell className="text-right font-mono">
+                  {(row.sent ?? 0).toLocaleString()}
+                  <span className="mx-1 text-muted-foreground">→</span>
+                  {(row.received ?? 0).toLocaleString()}
+                </TableCell>
+                <TableCell className="text-right">
+                  <Input
+                    type="number"
+                    min="0"
+                    max={Math.min(row.stock ?? 0, Math.max(0, (row.required ?? 0) - (row.received ?? 0)))}
+                    value={(row.toSend ?? 0) || ""}
+                    onChange={(event) => handleQuantityChange(row.id, event.target.value)}
+                    placeholder="0"
+                    disabled={row.isFullyReceived}
+                    className={`ml-auto h-8 w-24 text-right font-mono ${row.hasInsufficientStock ? "border-destructive" : ""}`}
+                  />
+                </TableCell>
+                <TableCell className="text-right font-mono font-semibold">
+                  {(row.balance ?? 0) > 0 ? (
+                    <span className="text-destructive">{(row.balance ?? 0).toLocaleString()}</span>
+                  ) : (
+                    <span className="text-muted-foreground">0</span>
+                  )}
+                </TableCell>
+              </TableRow>
+            ))}
+            <TableRow className="bg-muted/50 font-semibold hover:bg-muted/50">
+              <TableCell colSpan={2}>Totals</TableCell>
+              <TableCell className="text-right font-mono">{totals.required.toLocaleString()}</TableCell>
+              <TableCell className="text-right font-mono">{totals.stock.toLocaleString()}</TableCell>
+              <TableCell className="text-right font-mono">
+                {totals.sent.toLocaleString()}
+                <span className="mx-1 text-muted-foreground">→</span>
+                {totals.received.toLocaleString()}
+              </TableCell>
+              <TableCell className="text-right font-mono">{totals.toSend.toLocaleString()}</TableCell>
+              <TableCell className="text-right font-mono">
+                <span className={totals.balance > 0 ? "text-destructive" : "text-muted-foreground"}>
+                  {totals.balance.toLocaleString()}
+                </span>
+              </TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
+      </div>
 
       <div className="sticky bottom-0 z-20 flex min-h-12 flex-wrap items-center gap-3 border-t border-border bg-background/95 py-2 backdrop-blur-sm">
         <p className="mr-auto text-[16px] text-muted-foreground">
