@@ -52,9 +52,24 @@ col_enum = {
     """)
 }
 
+# Functions the app can call through supabase.rpc(). Only those actually
+# executable by the app role are listed - a function that exists but has no
+# EXECUTE grant fails at runtime exactly like one that does not exist.
+schema["functions"] = [
+    r["proname"]
+    for r in run("""
+      select distinct p.proname
+      from pg_proc p
+      join pg_namespace n on n.oid = p.pronamespace and n.nspname = 'public'
+      where has_function_privilege('authenticated', p.oid, 'EXECUTE')
+      order by 1
+    """)
+]
+
 json.dump(schema, open(os.path.join(HERE, ".schema-cache.json"), "w"))
 json.dump(col_enum, open(os.path.join(HERE, ".col-enum-cache.json"), "w"))
 print(
     f"tables {len(schema['tables'])}  columns {len(schema['columns'])}  "
-    f"enums {len(schema['enums'])}  enum-typed columns {len(col_enum)}"
+    f"enums {len(schema['enums'])}  enum-typed columns {len(col_enum)}  "
+    f"callable functions {len(schema.get('functions', []))}"
 )
