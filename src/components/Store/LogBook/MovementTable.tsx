@@ -2,23 +2,7 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format } from "date-fns";
 import { getMovementIcon, getMovementBadge, getQuantityStyle, getQuantityPrefix } from "./MovementUtils";
-
-interface MaterialMovement {
-  id: string;
-  created_at: string;
-  movement_type: string;
-  part_id: string;
-  quantity: number;
-  reference_id: string;
-  reference_type: string;
-  reference_number: string;
-  notes: string;
-  parts?: {
-    part_code: string;
-    name: string;
-    category: string;
-  };
-}
+import type { MaterialMovement } from "./useMovementData";
 
 interface MovementTableProps {
   movements: MaterialMovement[];
@@ -35,6 +19,8 @@ export const MovementTable = ({ movements }: MovementTableProps) => {
             <TableHead>Material Code</TableHead>
             <TableHead>Material Name</TableHead>
             <TableHead>Quantity</TableHead>
+            <TableHead>Location</TableHead>
+            <TableHead>Balance After</TableHead>
             <TableHead>Reference</TableHead>
             <TableHead>Notes</TableHead>
           </TableRow>
@@ -61,9 +47,15 @@ export const MovementTable = ({ movements }: MovementTableProps) => {
               </TableCell>
               <TableCell>{movement.parts?.name}</TableCell>
               <TableCell className="font-semibold">
-                <span className={getQuantityStyle(movement.movement_type)}>
-                  {getQuantityPrefix(movement.movement_type)}{movement.quantity}
+                <span className={getQuantityStyle(movement.qtyDelta)}>
+                  {getQuantityPrefix(movement.qtyDelta)}{movement.quantity}
                 </span>
+              </TableCell>
+              <TableCell className="text-sm" title={movement.location_name ?? undefined}>
+                {movement.location_code ?? "—"}
+              </TableCell>
+              <TableCell className="font-mono text-sm text-muted-foreground">
+                {movement.balance_after ?? "—"}
               </TableCell>
               <TableCell>
                 <div>

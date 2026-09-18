@@ -10,7 +10,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { usePlantId } from "@/hooks/usePlantId";
-import { fetchStockBalanceRows } from "@/utils/stockLedger";
+import {
+  fetchStockBalanceRows,
+  getStockLocationId,
+  postStockMovements,
+  type StockMovement,
+} from "@/utils/stockLedger";
+import { MOVEMENT_TYPES } from "@/constants/movementTypes";
 import { useToast } from "@/hooks/use-toast";
 import { AlertTriangle, CheckCircle, Scale, Search, Filter } from "lucide-react";
 
@@ -87,25 +93,31 @@ const StockReconciliation = () => {
       reasonCode: string;
       remarks: string;
     }>) => {
-      // Create reconciliation records for approval
-      const { data: reconciliationRecords, error } = await supabase
-        .from("material_movements")
-        .insert(
-          reconciliationData.map(item => ({
-            part_id: item.materialId,
-            movement_type: "STOCK_RECONCILIATION",
-            quantity: Math.abs(item.variance),
-            reference_id: crypto.randomUUID(),
-            reference_type: "RECONCILIATION",
-            reference_number: `REC-${new Date().getTime()}`,
-            notes: `Stock Reconciliation: System ${item.systemQuantity}, Physical ${item.physicalQuantity}, Variance ${item.variance}. Reason: ${item.reasonCode} - ${item.remarks}`
-          }))
-        )
-        .select();
+      // Post the reconciliation variances to the stock ledger
+      if (!plantId) throw new Error("No active plant selected");
 
-      if (error) throw error;
+      const mainId = await getStockLocationId(plantId, "MAIN");
+      const referenceNumber = `REC-${new Date().getTime()}`;
 
-      return reconciliationRecords;
+      const movements: StockMovement[] = reconciliationData
+        // qty_delta must never be zero (DB check constraint)
+        .filter(item => item.variance !== 0)
+        .map(item => ({
+          plant_id: plantId,
+          part_id: item.materialId,
+          location_id: mainId,
+          // Signed variance: physical minus system. Positive = stock found,
+          // negative = stock missing.
+          qty_delta: item.variance,
+          movement_type: MOVEMENT_TYPES.STOCK_RECONCILIATION,
+          reason_code: item.reasonCode || null,
+          reference_type: "RECONCILIATION",
+          reference_id: crypto.randomUUID(),
+          reference_number: referenceNumber,
+          notes: `Stock Reconciliation: System ${item.systemQuantity}, Physical ${item.physicalQuantity}, Variance ${item.variance}. Reason: ${item.reasonCode} - ${item.remarks}`,
+        }));
+
+      await postStockMovements(movements);
     },
     onSuccess: () => {
       toast({

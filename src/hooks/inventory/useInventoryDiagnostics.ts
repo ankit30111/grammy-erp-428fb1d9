@@ -3,6 +3,7 @@ import { useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { usePlantId } from "@/hooks/usePlantId";
 import { fetchStockQuantity } from "@/utils/stockLedger";
+import { MOVEMENT_TYPES } from "@/constants/movementTypes";
 
 export const useCheckMaterialInventory = () => {
   const plantId = usePlantId();
@@ -45,10 +46,11 @@ export const useCheckMaterialInventory = () => {
 
       // Get production dispatches (materials issued to production)
       const { data: productionDispatches, error: dispatchError } = await supabase
-        .from("material_movements")
-        .select("quantity")
+        .from("stock_ledger")
+        .select("qty_delta")
         .eq("part_id", material.id)
-        .eq("movement_type", "ISSUED_TO_PRODUCTION")
+        .eq("plant_id", plantId)
+        .eq("movement_type", MOVEMENT_TYPES.ISSUED_TO_PRODUCTION)
         .order("created_at", { ascending: false });
 
       if (dispatchError) throw dispatchError;
@@ -64,7 +66,10 @@ export const useCheckMaterialInventory = () => {
 
       // Calculate totals
       const totalFromGRN = grnItems?.reduce((sum, item) => sum + item.accepted_quantity, 0) || 0;
-      const totalProductionDispatches = productionDispatches?.reduce((sum, dispatch) => sum + dispatch.quantity, 0) || 0;
+      // qty_delta is signed and negative for issues, so the dispatched total is
+      // the sum of absolute values — it is subtracted again below via
+      // totalStoreOutput, which expects a positive quantity.
+      const totalProductionDispatches = productionDispatches?.reduce((sum, dispatch) => sum + Math.abs(Number(dispatch.qty_delta) || 0), 0) || 0;
       const totalMaterialRequests = materialRequests?.reduce((sum, request) => sum + (request.approved_quantity || 0), 0) || 0;
       const totalStoreOutput = totalProductionDispatches + totalMaterialRequests;
       const currentInventory = inventory?.quantity || 0;

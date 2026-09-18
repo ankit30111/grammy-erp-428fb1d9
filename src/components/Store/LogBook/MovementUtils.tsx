@@ -45,28 +45,11 @@ export const getMovementBadge = (type: string) => {
   }
 };
 
-export const getQuantityStyle = (movementType: string) => {
-  const returnTypes = ['PRODUCTION_RETURN', 'PRODUCTION_FEEDBACK_RETURN', 'GRN_RECEIPT'];
-  const requestTypes = ['MATERIAL_REQUEST_CREATED'];
-  
-  if (returnTypes.some(t => movementType.includes(t))) {
-    return 'text-green-600';
-  } else if (requestTypes.some(t => movementType.includes(t))) {
-    return 'text-orange-600';
-  } else {
-    return 'text-blue-600';
-  }
-};
+/**
+ * Direction comes from the ledger's signed qty_delta, not from guessing at the
+ * movement type string. Positive = into stock, negative = out of stock.
+ */
+export const getQuantityStyle = (qtyDelta: number) =>
+  qtyDelta > 0 ? 'text-green-600' : 'text-blue-600';
 
-export const getQuantityPrefix = (movementType: string) => {
-  const returnTypes = ['PRODUCTION_RETURN', 'PRODUCTION_FEEDBACK_RETURN', 'GRN_RECEIPT'];
-  const requestTypes = ['MATERIAL_REQUEST_CREATED', 'PRODUCTION_DISCREPANCY_REJECTED'];
-  
-  if (returnTypes.some(t => movementType.includes(t))) {
-    return '+';
-  } else if (requestTypes.some(t => movementType.includes(t))) {
-    return '±';
-  } else {
-    return '-';
-  }
-};
+export const getQuantityPrefix = (qtyDelta: number) => (qtyDelta > 0 ? '+' : '-');
