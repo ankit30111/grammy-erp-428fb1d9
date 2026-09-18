@@ -24,18 +24,24 @@ export const useCheckMaterialInventory = () => {
         throw materialError;
       }
 
-      // Get all GRN items for this material in this plant (store confirmed only)
+      // Store-confirmed GRN lines for this material in this plant.
+      //
+      // grn_items has no store_confirmed boolean and no plant_id. Confirmation is
+      // recorded by store_confirmed_at being set, and the plant lives on the parent
+      // grn row. Filtering on the two columns that do not exist returned every row
+      // in the table for every plant, confirmed or not, which is how a diagnostic
+      // screen ends up reporting differences that are not real.
       const { data: grnItems, error: grnError } = await supabase
         .from("grn_items")
         .select(`
           iqc_accepted_quantity,
-          store_confirmed,
+          store_counted_quantity,
           store_confirmed_at,
-          grn!inner(grn_number, received_date)
+          grn!inner(grn_number, received_date, plant_id)
         `)
         .eq("part_id", material.id)
-        .eq("store_confirmed", true)
-        .eq("plant_id", plantId);
+        .not("store_confirmed_at", "is", null)
+        .eq("grn.plant_id", plantId);
 
       if (grnError) throw grnError;
 

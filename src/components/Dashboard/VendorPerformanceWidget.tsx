@@ -18,7 +18,7 @@ export const VendorPerformanceWidget = () => {
         .from('purchase_orders')
         .select(`
           id,
-          expected_delivery_date,
+          promised_delivery_date,
           status,
           vendors (name),
           grn (received_date)
@@ -34,9 +34,9 @@ export const VendorPerformanceWidget = () => {
           acc[vendorName] = { onTime: 0, total: 0 };
         }
         
-        if (po.grn?.length && po.expected_delivery_date) {
+        if (po.grn?.length && po.promised_delivery_date) {
           const receivedDate = new Date(po.grn[0].received_date);
-          const expectedDate = new Date(po.expected_delivery_date);
+          const expectedDate = new Date(po.promised_delivery_date);
           const isOnTime = receivedDate <= expectedDate;
           
           acc[vendorName].total += 1;
@@ -65,11 +65,12 @@ export const VendorPerformanceWidget = () => {
           iqc_outcome,
           iqc_accepted_quantity,
           iqc_rejected_quantity,
-          grn (
+          grn!inner (
+            plant_id,
             vendors (name)
           )
         `);
-      if (scopePlantId) q = q.eq('plant_id', scopePlantId);
+      if (scopePlantId) q = q.eq('grn.plant_id', scopePlantId);
       const { data, error } = await q;
       if (error) throw error;
       
@@ -102,21 +103,23 @@ export const VendorPerformanceWidget = () => {
   const { data: openCAPAs } = useRealTimeQuery({
     queryKey: ['open-capas'],
     queryFn: async () => {
+      // iqc_vendor_capa was replaced by one capa table covering every source.
+      // Open means raised or answered but not yet ruled on.
       const { data, error } = await supabase
-        .from('iqc_vendor_capa')
+        .from('capa')
         .select('id')
-        .eq('capa_status', 'AWAITED');
-      
+        .in('status', ['OPEN', 'SUBMITTED']);
+
       if (error) throw error;
       return data?.length || 0;
     },
-    tableName: 'iqc_vendor_capa',
+    tableName: 'capa',
   });
 
   // Set up multi-table subscriptions for this widget
   useMultiTableRealTime({
     queryKey: ['vendor-performance', 'vendor-quality', 'open-capas'],
-    tables: ['purchase_orders', 'grn_items', 'iqc_vendor_capa', 'grn']
+    tables: ['purchase_orders', 'grn_items', 'capa', 'grn']
   });
 
   return (

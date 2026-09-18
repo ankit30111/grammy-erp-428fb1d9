@@ -7,7 +7,7 @@ import { Calendar, Clock } from "lucide-react";
 
 interface GanttData {
   projectName: string;
-  type: 'NPD' | 'Pre-Existing';
+  type: 'NPD';
   status: string;
   startDate: string;
   endDate: string;
@@ -23,28 +23,20 @@ const ProjectGanttChart = () => {
     queryFn: async () => {
       console.log('Fetching project gantt data...');
       
-      const [npdData, preExistingData] = await Promise.all([
+      // pre_existing_projects was dropped in the rebuild with no replacement.
+      const [npdData] = await Promise.all([
         supabase
           .from('npd_projects')
           .select(`
             *,
             customers (name)
           `)
-          .neq('status', 'APPROVED'),
-        supabase
-          .from('pre_existing_projects')
-          .select(`
-            *,
-            customers (name)
-          `)
-          .neq('status', 'FINALIZED')
+          // npd_projects tracks stage, not status. LAUNCHED and DROPPED are the
+          // two terminal stages; everything else is still in flight.
+          .not('stage', 'in', '(LAUNCHED,DROPPED)'),
       ]);
 
       if (npdData.error) throw npdData.error;
-      if (preExistingData.error) throw preExistingData.error;
-
-      console.log('NPD Data:', npdData.data);
-      console.log('Pre-existing Data:', preExistingData.data);
 
       const processedData: GanttData[] = [];
 
@@ -186,58 +178,6 @@ const ProjectGanttChart = () => {
         }
       });
 
-      // Process Pre-Existing projects with enhanced validation
-      preExistingData.data?.forEach(project => {
-        if (!isValidProject(project)) {
-          console.warn('Skipping invalid pre-existing project:', project);
-          return;
-        }
-
-        try {
-          const startDate = parseDate(project.created_at);
-          let endDate = parseDate(project.estimated_completion_date);
-          
-          // If no completion date or invalid, set to 60 days from start
-          if (!project.estimated_completion_date || isNaN(endDate.getTime())) {
-            endDate = new Date(startDate.getTime() + 60 * 24 * 60 * 60 * 1000);
-          }
-          
-          // Ensure end date is after start date
-          if (endDate <= startDate) {
-            endDate = new Date(startDate.getTime() + 60 * 24 * 60 * 60 * 1000);
-          }
-
-          const progress = calculateProgress(startDate, endDate);
-          const daysRemaining = calculateDaysRemaining(endDate);
-
-          // Validate final values before adding to data
-          if (!Number.isFinite(progress) || Number.isNaN(progress) ||
-              !Number.isFinite(daysRemaining) || Number.isNaN(daysRemaining)) {
-            console.warn('Skipping pre-existing project due to invalid calculations:', project.project_name);
-            return;
-          }
-
-          let color = '#10b981'; // green
-          if (project.status === 'CUSTOMIZATION') color = '#f59e0b'; // amber
-          else if (project.status === 'CUSTOMER_APPROVAL') color = '#8b5cf6'; // purple
-
-          processedData.push({
-            projectName: project.project_name,
-            type: 'Pre-Existing',
-            status: project.status.replace('_', ' '),
-            startDate: startDate.toISOString().split('T')[0],
-            endDate: endDate.toISOString().split('T')[0],
-            progress: progress,
-            customer: project.customers?.name || 'N/A',
-            daysRemaining: daysRemaining,
-            color
-          });
-
-          console.log('Added pre-existing project:', project.project_name, 'Progress:', progress, 'Days remaining:', daysRemaining);
-        } catch (error) {
-          console.error('Error processing pre-existing project:', project.project_name, error);
-        }
-      });
 
       console.log('Final processed data:', processedData);
       
@@ -310,19 +250,18 @@ const ProjectGanttChart = () => {
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
               <div className="text-center p-4 bg-blue-50 rounded-lg">
                 <div className="text-2xl font-bold text-blue-600">
                   {ganttData?.filter(p => p.type === 'NPD').length || 0}
                 </div>
                 <div className="text-sm text-blue-700">NPD Projects</div>
               </div>
-              <div className="text-center p-4 bg-green-50 rounded-lg">
-                <div className="text-2xl font-bold text-green-600">
-                  {ganttData?.filter(p => p.type === 'Pre-Existing').length || 0}
-                </div>
-                <div className="text-sm text-green-700">Customization Projects</div>
-              </div>
+              {/*
+                The "Customization Projects" tile counted pre_existing_projects,
+                a table dropped in the rebuild. It would have read 0 forever, which
+                looks like "none in progress" rather than "this feature is gone".
+              */}
               <div className="text-center p-4 bg-orange-50 rounded-lg">
                 <div className="text-2xl font-bold text-orange-600">
                   {ganttData?.filter(p => p.daysRemaining < 30).length || 0}

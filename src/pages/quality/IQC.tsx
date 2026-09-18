@@ -173,20 +173,26 @@ const IQC = () => {
     }
   };
 
+  // The six old CAPA tables collapsed into one `capa` table whose status is an
+  // enum: OPEN | SUBMITTED | ACCEPTED | REJECTED | CLOSED. The old labels
+  // (capa_status AWAITED / RECEIVED / IMPLEMENTED) no longer exist, so every row
+  // fell through to the default and printed "undefined".
   const getCAPAStatusBadge = (capaData: any) => {
     if (!capaData) return <Badge variant="secondary">No CAPA</Badge>;
-    
-    switch (capaData.capa_status) {
-      case 'AWAITED':
-        return <Badge variant="secondary">CAPA Awaited</Badge>;
-      case 'RECEIVED':
-        return <Badge variant="outline">CAPA Received</Badge>;
+
+    switch (capaData.status) {
+      case 'OPEN':
+        return <Badge variant="warning">CAPA open</Badge>;
+      case 'SUBMITTED':
+        return <Badge variant="outline">Vendor replied</Badge>;
       case 'ACCEPTED':
-        return <Badge variant="default">CAPA Approved</Badge>;
-      case 'IMPLEMENTED':
-        return <Badge variant="default" className="bg-green-600">CAPA Implemented</Badge>;
+        return <Badge variant="default">CAPA accepted</Badge>;
+      case 'REJECTED':
+        return <Badge variant="destructive">CAPA rejected</Badge>;
+      case 'CLOSED':
+        return <Badge variant="default" className="bg-green-600">CAPA closed</Badge>;
       default:
-        return <Badge variant="secondary">{capaData.capa_status}</Badge>;
+        return <Badge variant="secondary">{capaData.status ?? "No CAPA"}</Badge>;
     }
   };
 
@@ -396,7 +402,7 @@ const IQC = () => {
                     </TableHeader>
                     <TableBody>
                       {filteredCompletedItems.map((item) => {
-                        const capaData = item.iqc_vendor_capa?.[0];
+                        const capaData = item.capa?.[0];
                         const needsCAPA = item.iqc_outcome === 'REJECTED' || item.iqc_outcome === 'PARTIAL';
                         
                         return (
@@ -426,9 +432,9 @@ const IQC = () => {
                             <TableCell className="p-2">
                               <div className="space-y-1">
                                 {needsCAPA ? getCAPAStatusBadge(capaData) : <Badge variant="secondary" className="text-xs">Not Req.</Badge>}
-                                {capaData && capaData.capa_status === 'AWAITED' && (
+                                {capaData && capaData.status === 'OPEN' && (
                                   <div className="text-xs text-red-600">
-                                    {getDaysOpen(capaData.initiated_at)}d
+                                    {getDaysOpen(capaData.created_at)}d
                                   </div>
                                 )}
                               </div>

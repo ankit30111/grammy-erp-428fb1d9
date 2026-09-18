@@ -22,23 +22,25 @@ const EnhancedBOMTable = ({ productionOrderId, productId, productionQuantity }: 
     requiredQty: number;
   } | null>(null);
 
-  // Fetch BOM data with bom_type included
   const { data: bomData = [] } = useQuery({
     queryKey: ["enhanced-bom", productId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("bom")
         .select(`
-          *,
-          parts!child_part_id(
+          id,
+          quantity,
+          uom,
+          parts!child_part_id (
             id,
             part_code,
             name,
             category
           )
         `)
-        .eq("parent_part_id", productId);
-      
+        .eq("parent_part_id", productId)
+        .eq("is_active", true);
+
       if (error) throw error;
       return data || [];
     },
@@ -53,9 +55,9 @@ const EnhancedBOMTable = ({ productionOrderId, productId, productionQuantity }: 
         .from("kit_items")
         .select(`
           part_id,
+          issued_quantity,
           received_quantity,
-          verified_by_production,
-          kit_preparation!inner(
+          kit_preparation!inner (
             production_order_id
           )
         `)
@@ -63,18 +65,17 @@ const EnhancedBOMTable = ({ productionOrderId, productId, productionQuantity }: 
 
       if (error) throw error;
 
-      // Group by material and calculate cumulative quantities
-      const materialStats = new Map();
-      
-      data?.forEach(item => {
+      // Sent is what the store issued; received is what production counted. The
+      // old version added received_quantity into BOTH totals and gated the second
+      // on a column that does not exist, so "sent" and "received" were the same
+      // number and "received" was always zero.
+      const materialStats = new Map<string, { totalSent: number; totalReceived: number }>();
+
+      data?.forEach((item: any) => {
         const materialId = item.part_id;
         const existing = materialStats.get(materialId) || { totalSent: 0, totalReceived: 0 };
-        
-        existing.totalSent += item.received_quantity;
-        if (item.verified_by_production) {
-          existing.totalReceived += item.received_quantity;
-        }
-        
+        existing.totalSent += Number(item.issued_quantity ?? 0);
+        existing.totalReceived += Number(item.received_quantity ?? 0);
         materialStats.set(materialId, existing);
       });
 
@@ -101,16 +102,6 @@ const EnhancedBOMTable = ({ productionOrderId, productId, productionQuantity }: 
     if (received > 0) return 'partial';
     return 'pending';
   };
-
-  // Group materials by BOM type
-  const groupedBomData = bomData.reduce((acc, bomItem) => {
-    const bomType = bomItem.bom_type || 'main_assembly';
-    if (!acc[bomType]) {
-      acc[bomType] = [];
-    }
-    acc[bomType].push(bomItem);
-    return acc;
-  }, {} as Record<string, typeof bomData>);
 
   const renderMaterialSection = (sectionTitle: string, materials: typeof bomData) => {
     if (!materials || materials.length === 0) return null;
@@ -219,11 +210,12 @@ const EnhancedBOMTable = ({ productionOrderId, productId, productionQuantity }: 
 
   return (
     <>
-      <div className="space-y-6">
-        {renderMaterialSection("Sub Assembly", groupedBomData.sub_assembly)}
-        {renderMaterialSection("Main Assembly", groupedBomData.main_assembly)}
-        {renderMaterialSection("Accessories", groupedBomData.accessory)}
-      </div>
+      {/*
+        This used to render three sections keyed on bom.bom_type. That column was
+        dropped in the rebuild, so every section was empty and the whole screen
+        was blank. One flat list, which is what a recursive BOM actually is.
+      */}
+      <div className="space-y-6">{renderMaterialSection("Materials", bomData)}</div>
 
       {selectedMaterial && (
         <MaterialDispatchHistoryDialog

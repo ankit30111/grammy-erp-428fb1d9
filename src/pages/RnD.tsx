@@ -24,35 +24,24 @@ const RnD = () => {
       
       if (error) throw error;
       
+      // npd_stage is CONCEPT | DESIGN | BOM | SAMPLE | VALIDATION | LAUNCHED |
+      // DROPPED. PROTOTYPE, TESTING and APPROVED are not members, so those three
+      // counts were always zero and "Active Development" never moved.
+      const count = (...stages: string[]) =>
+        data.filter(p => stages.includes(p.stage)).length;
+
       const total = data.length;
-      const concept = data.filter(p => p.stage === 'CONCEPT').length;
-      const prototype = data.filter(p => p.stage === 'PROTOTYPE').length;
-      const testing = data.filter(p => p.stage === 'TESTING').length;
-      const approved = data.filter(p => p.stage === 'APPROVED').length;
-      const inProgress = concept + prototype + testing;
-      
-      return { total, concept, prototype, testing, approved, inProgress };
+      const concept = count('CONCEPT');
+      const designing = count('DESIGN', 'BOM');
+      const sampling = count('SAMPLE', 'VALIDATION');
+      const launched = count('LAUNCHED');
+      const dropped = count('DROPPED');
+      const inProgress = total - launched - dropped;
+
+      return { total, concept, designing, sampling, launched, dropped, inProgress };
     }
   });
 
-  // Fetch Pre-Existing project statistics
-  const { data: preExistingStats } = useQuery({
-    queryKey: ['pre-existing-stats'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('pre_existing_projects')
-        .select('status');
-      
-      if (error) throw error;
-      
-      const total = data.length;
-      const customization = data.filter(p => p.status === 'CUSTOMIZATION').length;
-      const customerApproval = data.filter(p => p.status === 'CUSTOMER_APPROVAL').length;
-      const finalized = data.filter(p => p.status === 'FINALIZED').length;
-      
-      return { total, customization, customerApproval, finalized };
-    }
-  });
 
   return (
     <DashboardLayout>
@@ -114,52 +103,27 @@ const RnD = () => {
             </CardContent>
           </Card>
 
-          {/* Pre-Existing Product Widget */}
-          <Card 
-            className="cursor-pointer transition-all hover:shadow-lg hover:scale-105"
-            onClick={() => navigate('/rnd/pre-existing')}
-          >
+          {/*
+            Pre-Existing Product tracking was built on pre_existing_projects, which
+            was dropped in the rebuild with no replacement. The card used to show
+            four counts that would all read 0 forever - which looks like "nothing in
+            progress" rather than "this feature no longer exists". It says so.
+          */}
+          <Card className="border-dashed">
             <CardHeader className="pb-3">
-              <CardTitle className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Package className="h-5 w-5 text-green-600" />
-                  <span>Pre-Existing Product</span>
-                </div>
-                <ArrowRight className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="flex items-center gap-2 text-muted-foreground">
+                <Package className="h-5 w-5" />
+                <span>Pre-Existing Product</span>
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-2">
               <p className="text-sm text-muted-foreground">
-                Brand-specific customization of existing products including packaging, UI, and documentation.
+                Brand-specific customization of existing products.
               </p>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-green-600">{preExistingStats?.total || 0}</div>
-                  <div className="text-xs text-muted-foreground">Total Projects</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-purple-600">{preExistingStats?.customization || 0}</div>
-                  <div className="text-xs text-muted-foreground">Under Customization</div>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <div className="flex items-center gap-2">
-                    <Users className="h-3 w-3 text-blue-500" />
-                    <span className="text-xs">Ready for Customer Approval</span>
-                  </div>
-                  <Badge variant="secondary">{preExistingStats?.customerApproval || 0}</Badge>
-                </div>
-                <div className="flex justify-between items-center">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle className="h-3 w-3 text-green-500" />
-                    <span className="text-xs">Finalized</span>
-                  </div>
-                  <Badge variant="outline">{preExistingStats?.finalized || 0}</Badge>
-                </div>
-              </div>
+              <p className="text-sm font-medium">
+                Not available after the rebuild — this module has no data behind it
+                yet.
+              </p>
             </CardContent>
           </Card>
         </div>
@@ -169,7 +133,7 @@ const RnD = () => {
           <Card>
             <CardContent className="pt-6">
               <div className="text-center">
-                <div className="text-2xl font-bold text-blue-600">{(npdStats?.total || 0) + (preExistingStats?.total || 0)}</div>
+                <div className="text-2xl font-bold text-blue-600">{npdStats?.total || 0}</div>
                 <p className="text-sm text-muted-foreground">Total R&D Projects</p>
               </div>
             </CardContent>
@@ -178,7 +142,7 @@ const RnD = () => {
           <Card>
             <CardContent className="pt-6">
               <div className="text-center">
-                <div className="text-2xl font-bold text-orange-600">{(npdStats?.inProgress || 0) + (preExistingStats?.customization || 0)}</div>
+                <div className="text-2xl font-bold text-orange-600">{npdStats?.inProgress || 0}</div>
                 <p className="text-sm text-muted-foreground">Active Development</p>
               </div>
             </CardContent>
@@ -187,8 +151,8 @@ const RnD = () => {
           <Card>
             <CardContent className="pt-6">
               <div className="text-center">
-                <div className="text-2xl font-bold text-purple-600">{preExistingStats?.customerApproval || 0}</div>
-                <p className="text-sm text-muted-foreground">Awaiting Approval</p>
+                <div className="text-2xl font-bold text-purple-600">{npdStats?.sampling || 0}</div>
+                <p className="text-sm text-muted-foreground">In Sampling</p>
               </div>
             </CardContent>
           </Card>
@@ -196,8 +160,8 @@ const RnD = () => {
           <Card>
             <CardContent className="pt-6">
               <div className="text-center">
-                <div className="text-2xl font-bold text-green-600">{(npdStats?.approved || 0) + (preExistingStats?.finalized || 0)}</div>
-                <p className="text-sm text-muted-foreground">Completed Projects</p>
+                <div className="text-2xl font-bold text-green-600">{npdStats?.launched || 0}</div>
+                <p className="text-sm text-muted-foreground">Launched</p>
               </div>
             </CardContent>
           </Card>

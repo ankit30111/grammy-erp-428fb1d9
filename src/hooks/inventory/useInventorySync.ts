@@ -20,18 +20,22 @@ export const useManualInventorySync = () => {
       if (!plantId) throw new Error("No active plant selected");
       console.log("🔧 Reconciling store receipts against the stock ledger...");
 
+      // The quantity the store physically counted is store_counted_quantity;
+      // store_physical_quantity, store_confirmed and grn_items.plant_id do not
+      // exist. Confirmation is store_confirmed_at being set, and the plant is on
+      // the parent grn.
       const { data: confirmedItems, error } = await supabase
         .from("grn_items")
         .select(`
           part_id,
-          store_physical_quantity,
+          store_counted_quantity,
           iqc_accepted_quantity,
           store_confirmed_at,
-          grn!inner(grn_number),
-          parts(part_code, name)
+          grn!inner(grn_number, plant_id),
+          parts!part_id(part_code, name)
         `)
-        .eq("store_confirmed", true)
-        .eq("plant_id", plantId);
+        .not("store_confirmed_at", "is", null)
+        .eq("grn.plant_id", plantId);
 
       if (error) {
         console.error("❌ Error fetching confirmed items:", error);
@@ -44,7 +48,7 @@ export const useManualInventorySync = () => {
 
       const receivedTotals = new Map<string, number>();
       confirmedItems?.forEach((item: any) => {
-        const received = item.store_physical_quantity ?? item.iqc_accepted_quantity ?? 0;
+        const received = item.store_counted_quantity ?? item.iqc_accepted_quantity ?? 0;
         receivedTotals.set(
           item.part_id,
           (receivedTotals.get(item.part_id) || 0) + received

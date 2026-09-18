@@ -3,11 +3,20 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { MOVEMENT_TYPES } from "@/constants/movementTypes";
 
+/**
+ * A RANGE of serial numbers assigned to one production voucher.
+ *
+ * This used to be read from and written to production_serial_numbers, which holds
+ * one row per unit (production_order_id, serial_number, status) and has none of
+ * these columns. Every assignment therefore failed, and the PPC Serial Number
+ * Assignment screen has never worked. The range now has its own table; the
+ * per-unit rows remain what came off the line.
+ */
 export interface ProductionSerialNumber {
   id: string;
   production_order_id: string;
-  starting_serial_number?: string;
-  ending_serial_number?: string;
+  starting_serial_number: string;
+  ending_serial_number: string;
   quantity: number;
   status: string;
   assigned_by?: string;
@@ -73,8 +82,9 @@ export const useProductionVouchersWithDispatch = () => {
 
       // Get existing serial number assignments
       const { data: serialNumbers, error: serialError } = await supabase
-        .from("production_serial_numbers")
-        .select("*");
+        .from("serial_number_assignments")
+        .select("*")
+        .neq("status", "CANCELLED");
 
       if (serialError) throw serialError;
 
@@ -116,13 +126,11 @@ export const useCreateSerialNumberAssignment = () => {
       assigned_by?: string;
       notes?: string;
     }) => {
+      // plant_id and assigned_at are set by triggers on the table - the browser
+      // does not get to choose which plant a voucher belongs to.
       const { data: result, error } = await supabase
-        .from("production_serial_numbers")
-        .insert({
-          ...data,
-          assigned_at: new Date().toISOString(),
-          status: "ASSIGNED"
-        })
+        .from("serial_number_assignments")
+        .insert({ ...data, status: "ASSIGNED" })
         .select()
         .single();
 
@@ -164,7 +172,7 @@ export const useUpdateSerialNumberAssignment = () => {
       }>;
     }) => {
       const { data, error } = await supabase
-        .from("production_serial_numbers")
+        .from("serial_number_assignments")
         .update(updates)
         .eq("id", id)
         .select()

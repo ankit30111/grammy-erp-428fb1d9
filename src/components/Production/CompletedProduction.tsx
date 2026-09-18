@@ -29,7 +29,10 @@ const CompletedProduction = () => {
             )
           )
         `)
-        .in("status", ["COMPLETED", "PENDING_OQC", "OQC_APPROVED"])
+        // schedule_status has no PENDING_OQC or OQC_APPROVED. Passing them made
+        // Postgres reject the whole query, so this tab showed nothing at all -
+        // including the COMPLETED orders it would have matched.
+        .in("status", ["COMPLETED", "OQC_PASSED", "OQC_FAILED"])
         .order("updated_at", { ascending: false });
       
       if (error) throw error;
@@ -48,9 +51,9 @@ const CompletedProduction = () => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'COMPLETED': return 'default';
-      case 'PENDING_OQC': return 'warning';
-      case 'OQC_APPROVED': return 'default';
+      case 'COMPLETED': return 'warning';   // produced, OQC not yet ruled
+      case 'OQC_PASSED': return 'default';
+      case 'OQC_FAILED': return 'destructive';
       default: return 'secondary';
     }
   };
