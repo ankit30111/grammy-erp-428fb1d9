@@ -45,25 +45,43 @@ const GRNFormInputs = ({
           <Label htmlFor="po-select">Purchase Order</Label>
           <div className="flex gap-2">
             <Select value={selectedPO} onValueChange={onPOSelection}>
-              <SelectTrigger>
-                <SelectValue placeholder={
-                  availablePOs.length === 0 
-                    ? "No POs available" 
-                    : "Select PO"
-                } />
+              {/*
+                The trigger is a fixed-height single-line control. SelectValue clones
+                the chosen item's children into it, so a two-line stacked item spilled
+                out of the box and over the fields beside it. The trigger now renders
+                its own compact line - PO number and vendor, truncated - and the
+                two-line detail stays in the dropdown where there is room for it.
+              */}
+              <SelectTrigger className="min-w-0">
+                <span className="truncate text-left">
+                  {selectedPO
+                    ? (() => {
+                        const po = availablePOs.find((p) => p.id === selectedPO);
+                        return po ? `${po.po_number} — ${po.vendors?.name ?? ""}` : "Select PO";
+                      })()
+                    : availablePOs.length === 0
+                      ? "No POs available"
+                      : "Select PO"}
+                </span>
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="max-w-[min(28rem,90vw)]">
                 {availablePOs.map((po) => {
                   const pendingItemsCount = po.purchase_order_items?.filter((item: any) => 
                     (item.pending_quantity || item.quantity) > 0
                   ).length || 0;
                   
                   return (
-                    <SelectItem key={po.id} value={po.id}>
-                      <div className="flex flex-col">
-                        <span className="font-medium">{po.po_number} - {po.vendors?.name}</span>
-                        <span className="text-xs text-muted-foreground">
-                          {pendingItemsCount} pending item(s) • Status: {po.status}
+                    <SelectItem
+                      key={po.id}
+                      value={po.id}
+                      textValue={`${po.po_number} ${po.vendors?.name ?? ""}`}
+                    >
+                      <div className="flex flex-col min-w-0">
+                        <span className="font-medium truncate">
+                          {po.po_number} — {po.vendors?.name}
+                        </span>
+                        <span className="text-xs text-muted-foreground truncate">
+                          {pendingItemsCount} pending item(s) · {po.status}
                         </span>
                       </div>
                     </SelectItem>

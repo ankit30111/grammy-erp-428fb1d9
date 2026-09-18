@@ -70,7 +70,6 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
           id,
           part_id,
           received_quantity,
-          verified_by_production,
           created_at,
           parts!inner(
             id,
@@ -146,8 +145,9 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
         const { error: kitUpdateError } = await supabase
           .from("kit_items")
           .update({
-            received_quantity: receivedQuantity,
-            verified_by_production: true
+            // Recording a received quantity IS production confirming the kit.
+            // verified_by_production was a second column saying the same thing.
+            received_quantity: receivedQuantity
           })
           .eq("id", kitItemId);
 
@@ -238,14 +238,14 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
 
   // ENHANCED: Group ALL BOM materials by category first, then merge dispatch data
   const groupedMaterials = bomData.reduce((acc, bomItem) => {
-    const bomType = bomItem.bom_type || 'main_assembly';
+    const bomType = 'materials';
     
     if (!acc[bomType]) {
       acc[bomType] = {};
     }
     
     // Initialize with BOM data and empty dispatches
-    acc[bomType][bomItem.part_id] = {
+    acc[bomType][bomItem.child_part_id] = {
       rawMaterial: bomItem.parts,
       bomItem: bomItem,
       dispatches: [],
@@ -257,8 +257,8 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
 
   // Now merge dispatch data for materials that have been sent
   sentMaterials.forEach(item => {
-    const bomItem = bomData.find(b => b.part_id === item.part_id);
-    const bomType = bomItem?.bom_type || 'main_assembly';
+    const bomItem = bomData.find(b => b.child_part_id === item.part_id);
+    const bomType = 'materials';
     
     if (groupedMaterials[bomType] && groupedMaterials[bomType][item.part_id]) {
       groupedMaterials[bomType][item.part_id].dispatches.push(item);
