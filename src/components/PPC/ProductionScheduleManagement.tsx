@@ -4,20 +4,17 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar, Factory, Clock, Package, Play, CheckCircle } from "lucide-react";
+import { Calendar, Factory, Clock, Play, CheckCircle } from "lucide-react";
 import { useProductionSchedules, useUpdateProductionSchedule } from "@/hooks/useProductionSchedules";
 import { format } from "date-fns";
-import { useBOM } from "@/hooks/useBOM";
 import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useProductionLinesList } from "@/hooks/useProductionLinesList";
-import { getStockLocationId } from "@/utils/stockLedger";
 
 const ProductionScheduleManagement = () => {
   const { data: schedules, isLoading } = useProductionSchedules();
   const updateSchedule = useUpdateProductionSchedule();
-  const { data: bomData } = useBOM();
   const [selectedSchedule, setSelectedSchedule] = useState<string | null>(null);
   const [productionLines, setProductionLines] = useState<Record<string, string>>({});
   const { toast } = useToast();
@@ -34,61 +31,6 @@ const ProductionScheduleManagement = () => {
       case 'IN_PRODUCTION': return 'default';
       case 'COMPLETED': return 'default';
       default: return 'secondary';
-    }
-  };
-
-  const handleBlockMaterials = async (scheduleId: string) => {
-    // First, get the schedule details
-    const schedule = schedules?.find(s => s.id === scheduleId);
-    if (!schedule) return;
-
-    // Get BOM for the product
-    // bom rows are parent_part_id -> child_part_id; the components of a
-    // finished product are the rows whose parent is that product.
-    const productBOM = bomData?.filter(bom =>
-      bom.parent_part_id === schedule.projections?.parts?.id
-    );
-
-    if (!productBOM?.length) {
-      console.error('No BOM found for product');
-      return;
-    }
-
-    try {
-      // material_blocking was replaced by stock_holds in the rebuild.
-      const locationId = await getStockLocationId(schedule.plant_id, 'MAIN');
-
-      const materialHolds = productBOM.map(bomItem => ({
-        plant_id: schedule.plant_id,
-        location_id: locationId,
-        part_id: bomItem.child_part_id,
-        quantity: bomItem.quantity * schedule.quantity,
-        needed_on: schedule.scheduled_date,
-        source: 'VOUCHER' as const,
-        status: 'ACTIVE' as const,
-        reference_type: 'PRODUCTION_SCHEDULE',
-        reference_id: scheduleId,
-      }));
-
-      const { error } = await supabase
-        .from('stock_holds')
-        .insert(materialHolds);
-
-      if (error) throw error;
-
-      // schedule_status has no "materials blocked" member — the schedule stays
-      // PLANNED until the kit is prepared.
-      updateSchedule.mutate({
-        scheduleId,
-        updates: { status: 'PLANNED' }
-      });
-    } catch (error) {
-      console.error('Error blocking materials:', error);
-      toast({
-        title: "Error",
-        description: "Failed to block materials",
-        variant: "destructive",
-      });
     }
   };
 
@@ -293,16 +235,19 @@ const ProductionScheduleManagement = () => {
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-2">
-                      {schedule.status === 'PLANNED' && schedule.production_line_id && (
-                        <Button
-                          size="sm"
-                          onClick={() => handleBlockMaterials(schedule.id)}
-                          className="gap-2"
-                        >
-                          <Package className="h-4 w-4" />
-                          Block Materials
-                        </Button>
-                      )}
+                      {/*
+                        "Block Materials" is gone. Holding material is not something
+                        anyone should have to remember to press: the voucher's own
+                        holds are now created and maintained by the database from the
+                        BOM the moment the voucher exists, and released when the kit
+                        is issued or the voucher is cancelled.
+
+                        The button also never worked. It inserted a hold with
+                        source = 'VOUCHER' and no production_order_id, which the
+                        hold_voucher_needs_order check constraint refuses, so every
+                        press failed into a toast and stock_holds stayed empty - which
+                        is why every voucher saw the whole warehouse as free.
+                      */}
                       {schedule.status === 'PLANNED' && (
                         <Button
                           size="sm"

@@ -83,7 +83,10 @@ export const useCreatePurchaseOrder = () => {
           plant_id: plantId,
           vendor_id: orderData.vendor_id,
           projection_id: orderData.projection_id ?? null,
-          status: orderData.status || "DRAFT",
+          // A PO goes for approval the moment it is created. DRAFT was a state
+          // only a button could get it out of, so forgetting the button looked
+          // exactly like deciding not to send it, and nobody chases a draft.
+          status: orderData.status || "PENDING_APPROVAL",
           notes: orderData.notes ?? null,
           currency: orderData.currency ?? "INR",
           po_date: orderData.po_date ?? new Date().toISOString().slice(0, 10),
