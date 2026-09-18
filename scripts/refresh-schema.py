@@ -37,7 +37,12 @@ select json_build_object(
              join pg_namespace ns on ns.oid=t.typnamespace where ns.nspname='public'
              group by t.typname) s),
  'tables', (select json_agg(table_name) from information_schema.tables
-            where table_schema='public' and table_type='BASE TABLE')
+            where table_schema='public' and table_type='BASE TABLE'),
+ -- Views are legitimate .from() targets too. Collected separately because you
+ -- cannot insert into one, so the read-but-never-written check must skip them
+ -- rather than report every view as a half-built feature.
+ 'views', (select coalesce(json_agg(table_name), '[]'::json) from information_schema.tables
+           where table_schema='public' and table_type='VIEW')
 ) as schema
 """)[0]["schema"]
 
@@ -70,6 +75,7 @@ json.dump(schema, open(os.path.join(HERE, ".schema-cache.json"), "w"))
 json.dump(col_enum, open(os.path.join(HERE, ".col-enum-cache.json"), "w"))
 print(
     f"tables {len(schema['tables'])}  columns {len(schema['columns'])}  "
+    f"views {len(schema.get('views', []))}  "
     f"enums {len(schema['enums'])}  enum-typed columns {len(col_enum)}  "
     f"callable functions {len(schema.get('functions', []))}"
 )
