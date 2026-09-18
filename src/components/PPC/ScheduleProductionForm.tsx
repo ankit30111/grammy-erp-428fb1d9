@@ -54,7 +54,7 @@ const ScheduleProductionForm = ({
         scheduled_date: format(date, 'yyyy-MM-dd'),
         quantity: parseInt(quantity),
         // Production line is now optional - can be assigned later
-        production_line: selectedLine || null,
+        production_line_id: selectedLine || null,
       });
 
       // Reset form

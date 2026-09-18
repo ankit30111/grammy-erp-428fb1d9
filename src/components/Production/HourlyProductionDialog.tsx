@@ -64,7 +64,7 @@ const HourlyProductionDialog = ({ open, onOpenChange, productionLine }: HourlyPr
         .eq("production_order_id", currentOrder.id)
         .gte("created_at", `${today}T00:00:00`)
         .lt("created_at", `${today}T23:59:59`)
-        .order("hour", { ascending: true });
+        .order("hour_slot", { ascending: true });
       
       if (error) throw error;
       return data || [];
@@ -84,11 +84,11 @@ const HourlyProductionDialog = ({ open, onOpenChange, productionLine }: HourlyPr
         .from("hourly_production")
         .insert({
           production_order_id: currentOrder.id,
-          hour: data.hour,
+          hour_slot: data.hour,
           produced_quantity: parseInt(data.production),
           downtime_minutes: parseInt(data.downtime) || 0,
           efficiency_percentage: parseInt(data.efficiency) || 0,
-          remarks: data.remarks || null
+          notes: data.remarks || null
         });
       
       if (error) throw error;
@@ -306,7 +306,7 @@ const HourlyProductionDialog = ({ open, onOpenChange, productionLine }: HourlyPr
                 <TableBody>
                   {hourlyProduction.map((entry, index) => (
                     <TableRow key={index}>
-                      <TableCell className="font-medium">{entry.hour}</TableCell>
+                      <TableCell className="font-medium">{entry.hour_slot}</TableCell>
                       <TableCell>{entry.produced_quantity}</TableCell>
                       <TableCell>{entry.downtime_minutes}</TableCell>
                       <TableCell>
@@ -317,7 +317,7 @@ const HourlyProductionDialog = ({ open, onOpenChange, productionLine }: HourlyPr
                           {entry.efficiency_percentage}%
                         </span>
                       </TableCell>
-                      <TableCell>{entry.remarks || '-'}</TableCell>
+                      <TableCell>{entry.notes || '-'}</TableCell>
                     </TableRow>
                   ))}
                   {hourlyProduction.length === 0 && (

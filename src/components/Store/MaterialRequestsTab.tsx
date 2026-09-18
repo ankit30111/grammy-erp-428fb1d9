@@ -50,8 +50,10 @@ const MaterialRequestsTab = memo(() => {
           ),
           production_orders!inner(
             voucher_number,
-            production_lines (
-              name
+            production_order_lines (
+              production_lines (
+                name
+              )
             ),
             parts!inner(
               name
@@ -262,10 +264,13 @@ const MaterialRequestsTab = memo(() => {
     }
   };
 
-  const getProductionLineDisplay = (productionLines: any) => {
-    if (!productionLines || typeof productionLines !== 'object') return 'Not Assigned';
-    
-    const lines = Object.values(productionLines).filter(Boolean);
+  // A voucher can run on several lines — show all of them.
+  const getProductionLineDisplay = (orderLines: any) => {
+    if (!Array.isArray(orderLines)) return 'Not Assigned';
+
+    const lines = Array.from(
+      new Set(orderLines.map((row: any) => row?.production_lines?.name).filter(Boolean))
+    );
     return lines.length > 0 ? lines.join(', ') : 'Not Assigned';
   };
 
@@ -372,7 +377,7 @@ const MaterialRequestsTab = memo(() => {
                             </TableCell>
                             <TableCell>
                               <span className="text-sm">
-                                {getProductionLineDisplay(request.production_orders?.production_lines)}
+                                {getProductionLineDisplay(request.production_orders?.production_order_lines)}
                               </span>
                             </TableCell>
                             <TableCell>

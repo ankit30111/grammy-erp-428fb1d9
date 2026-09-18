@@ -28,6 +28,11 @@ const ScheduledProductions = () => {
             name,
             part_code
           ),
+          production_order_lines (
+            production_lines (
+              name
+            )
+          ),
           production_schedules!production_schedule_id (
             production_lines (
               name
@@ -72,28 +77,16 @@ const ScheduledProductions = () => {
     }
   };
 
-  // Enhanced function to display production line assignments by category
+  // A voucher can run on several lines — show all of them.
   const getProductionLineDisplay = (production: any) => {
-    if (!production.production_lines || Object.keys(production.production_lines).length === 0) {
-      return "Not Assigned";
-    }
+    const orderLines = production?.production_order_lines;
+    if (!Array.isArray(orderLines)) return "Not Assigned";
 
-    const assignments = production.production_lines;
-    const categoryDisplayNames = {
-      'sub_assembly': 'Sub Assembly',
-      'main_assembly': 'Main Assembly',
-      'accessory': 'Accessory'
-    };
+    const lines = Array.from(
+      new Set(orderLines.map((row: any) => row?.production_lines?.name).filter(Boolean))
+    );
 
-    const assignmentParts = [];
-    
-    Object.entries(assignments).forEach(([category, line]) => {
-      if (line && categoryDisplayNames[category as keyof typeof categoryDisplayNames]) {
-        assignmentParts.push(`${categoryDisplayNames[category as keyof typeof categoryDisplayNames]}: ${line}`);
-      }
-    });
-
-    return assignmentParts.length > 0 ? assignmentParts.join(', ') : "Not Assigned";
+    return lines.length > 0 ? lines.join(', ') : "Not Assigned";
   };
 
   if (isLoading) {

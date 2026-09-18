@@ -7,9 +7,10 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import ProductionLineDetailView from "./ProductionLineDetailView";
 import { useProductionLinesList } from "@/hooks/useProductionLinesList";
+import { fetchProductionOrderLines, groupLinesByOrder } from "@/hooks/useProductionOrderLines";
 
 const ProductionLinesOverview = () => {
-  const [selectedLine, setSelectedLine] = useState<string | null>(null);
+  const [selectedLine, setSelectedLine] = useState<{ id: string; name: string } | null>(null);
   const { withType: productionLines } = useProductionLinesList();
 
   // Fetch production orders that have line assignments
@@ -25,30 +26,33 @@ const ProductionLinesOverview = () => {
           parts!inner(name)
         `)
         .in("status", ["IN_PROGRESS", "SCHEDULED"])
-        .not("production_lines", "is", null)
         .order("planned_date", { ascending: true });
-      
+
       if (error) {
         console.error("❌ Error fetching production line data:", error);
         throw error;
       }
-      
-      console.log("📊 Production line data:", data);
-      return data || [];
+
+      const orders = data || [];
+      // Line assignments now live in production_order_lines — a voucher may run on several.
+      const assignmentRows = await fetchProductionOrderLines(orders.map((o) => o.id));
+      const assignmentsByOrder = groupLinesByOrder(assignmentRows);
+
+      console.log("📊 Production line data:", orders);
+      return orders
+        .map((order) => ({
+          ...order,
+          lineIds: (assignmentsByOrder[order.id] ?? []).map((r) => r.production_line_id),
+        }))
+        .filter((order) => order.lineIds.length > 0);
     },
     refetchInterval: 30000, // Refresh every 30 seconds
   });
 
-  const getLineStatus = (lineName: string) => {
+  const getLineStatus = (lineId: string, lineName: string) => {
     console.log(`🔍 Getting status for line: ${lineName}`);
-    
-    const lineOrders = lineData.filter(order => {
-      // Check if this line is assigned to any section of the production order
-      const productionLines = order.production_lines || {};
-      const isAssignedToLine = Object.values(productionLines).includes(lineName);
-      console.log(`Order ${order.voucher_number}: production_lines=${JSON.stringify(productionLines)}, assigned to ${lineName}=${isAssignedToLine}`);
-      return isAssignedToLine;
-    });
+
+    const lineOrders = lineData.filter(order => order.lineIds.includes(lineId));
 
     console.log(`📋 Line ${lineName} orders:`, lineOrders);
     
@@ -83,9 +87,10 @@ const ProductionLinesOverview = () => {
 
   if (selectedLine) {
     return (
-      <ProductionLineDetailView 
-        lineName={selectedLine} 
-        onBack={() => setSelectedLine(null)} 
+      <ProductionLineDetailView
+        lineId={selectedLine.id}
+        lineName={selectedLine.name}
+        onBack={() => setSelectedLine(null)}
       />
     );
   }
@@ -101,13 +106,13 @@ const ProductionLinesOverview = () => {
 
       <div className="grid grid-cols-2 gap-6">
         {productionLines.map((line) => {
-          const lineStatus = getLineStatus(line.name);
-          
+          const lineStatus = getLineStatus(line.id, line.name);
+
           return (
-            <Card 
-              key={line.id} 
+            <Card
+              key={line.id}
               className="cursor-pointer hover:shadow-lg transition-shadow"
-              onClick={() => setSelectedLine(line.name)}
+              onClick={() => setSelectedLine({ id: line.id, name: line.name })}
             >
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center justify-between">

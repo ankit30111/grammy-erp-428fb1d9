@@ -6,10 +6,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { Clock, Factory, Calendar, AlertCircle } from "lucide-react";
 import { usePlantId } from "@/hooks/usePlantId";
 import { useProductionLinesList } from "@/hooks/useProductionLinesList";
+import { fetchProductionOrderLines, groupLinesByOrder } from "@/hooks/useProductionOrderLines";
 
 const ProductionQueueDashboard = () => {
   const plantId = usePlantId();
-  const { names: PRODUCTION_LINES } = useProductionLinesList();
+  const { rows: PRODUCTION_LINES } = useProductionLinesList();
 
   // Fetch active-plant production orders with line assignments
   const { data: productionOrders = [] } = useQuery({
@@ -27,17 +28,23 @@ const ProductionQueueDashboard = () => {
         .order("planned_date");
 
       if (error) throw error;
-      return data || [];
+
+      const orders = data || [];
+      // Line assignments now live in production_order_lines.
+      const assignmentRows = await fetchProductionOrderLines(orders.map((o) => o.id));
+      const assignmentsByOrder = groupLinesByOrder(assignmentRows);
+
+      return orders.map((order) => ({
+        ...order,
+        lineIds: (assignmentsByOrder[order.id] ?? []).map((r) => r.production_line_id),
+      }));
     },
     refetchInterval: 30000, // Refresh every 30 seconds
   });
 
   // Group orders by production line
-  const getLineOrders = (lineName: string) => {
-    return productionOrders.filter(order => {
-      const lines = order.production_lines || {};
-      return Object.values(lines).includes(lineName);
-    });
+  const getLineOrders = (lineId: string) => {
+    return productionOrders.filter(order => order.lineIds.includes(lineId));
   };
 
   // Calculate estimated end time (simplified - 1 hour per unit)
@@ -48,19 +55,19 @@ const ProductionQueueDashboard = () => {
     return end;
   };
 
-  const renderLineCard = (lineName: string) => {
-    const lineOrders = getLineOrders(lineName);
+  const renderLineCard = (line: { id: string; name: string }) => {
+    const lineOrders = getLineOrders(line.id);
     const ongoing = lineOrders.find(order => order.status === "IN_PROGRESS");
     const scheduled = lineOrders.filter(order => order.status === "SCHEDULED");
     const isIdle = lineOrders.length === 0;
 
     return (
-      <Card key={lineName} className="h-full">
+      <Card key={line.id} className="h-full">
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Factory className="h-5 w-5" />
-              {lineName}
+              {line.name}
             </div>
             <Badge variant={isIdle ? "secondary" : ongoing ? "default" : "outline"}>
               {isIdle ? "IDLE" : ongoing ? "BUSY" : "SCHEDULED"}
@@ -137,7 +144,7 @@ const ProductionQueueDashboard = () => {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {PRODUCTION_LINES.map(renderLineCard)}
+            {PRODUCTION_LINES.map((line) => renderLineCard(line))}
           </div>
         </CardContent>
       </Card>
@@ -168,7 +175,7 @@ const ProductionQueueDashboard = () => {
           <CardContent className="p-4">
             <div className="text-center">
               <p className="text-2xl font-bold text-gray-600">
-                {PRODUCTION_LINES.filter(line => getLineOrders(line).length === 0).length}
+                {PRODUCTION_LINES.filter(line => getLineOrders(line.id).length === 0).length}
               </p>
               <p className="text-sm text-muted-foreground">Idle Lines</p>
             </div>

@@ -81,7 +81,6 @@ export const ScheduleProductionDialog = ({
           projection_id: projection.id,
           quantity: quantityNum,
           scheduled_date: format(scheduledDate, "yyyy-MM-dd"),
-          production_line: "Line 1", // Default line
           status: "SCHEDULED"
         })
         .select()

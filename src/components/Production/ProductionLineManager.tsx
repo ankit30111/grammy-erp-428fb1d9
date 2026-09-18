@@ -9,6 +9,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Clock, Factory, List } from "lucide-react";
 import { useProductionLinesList } from "@/hooks/useProductionLinesList";
+import {
+  fetchProductionOrderLines,
+  groupLinesByOrder,
+  replaceProductionOrderLines,
+} from "@/hooks/useProductionOrderLines";
 
 interface ProductionLineManagerProps {
   productionOrderId: string;
@@ -17,7 +22,9 @@ interface ProductionLineManagerProps {
 const ProductionLineManager = ({ productionOrderId }: ProductionLineManagerProps) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { names: PRODUCTION_LINES } = useProductionLinesList();
+  const { rows: PRODUCTION_LINES } = useProductionLinesList();
+  const lineNameById = (lineId: string) =>
+    PRODUCTION_LINES.find((line) => line.id === lineId)?.name ?? lineId;
   const [lineAssignments, setLineAssignments] = useState({
     main_assembly: '',
     sub_assembly: '',
@@ -103,7 +110,6 @@ const ProductionLineManager = ({ productionOrderId }: ProductionLineManagerProps
           voucher_number,
           status,
           planned_date,
-          production_lines,
           parts!part_id (name)
         `)
         .in("status", ["IN_PROGRESS", "SCHEDULED"])
@@ -113,9 +119,17 @@ const ProductionLineManager = ({ productionOrderId }: ProductionLineManagerProps
         console.error("❌ Error fetching line status:", error);
         throw error;
       }
-      
-      console.log("🏭 Production line status:", data);
-      return data || [];
+
+      const orders = data || [];
+      // Which line(s) each voucher runs on now lives in production_order_lines.
+      const assignmentRows = await fetchProductionOrderLines(orders.map((o) => o.id));
+      const assignmentsByOrder = groupLinesByOrder(assignmentRows);
+
+      console.log("🏭 Production line status:", orders);
+      return orders.map((order) => ({
+        ...order,
+        lineIds: (assignmentsByOrder[order.id] ?? []).map((r) => r.production_line_id),
+      }));
     },
   });
 
@@ -157,11 +171,8 @@ const ProductionLineManager = ({ productionOrderId }: ProductionLineManagerProps
   };
 
   // Get line schedule information for queue management
-  const getLineSchedule = (lineName: string) => {
-    const lineOrders = lineStatus.filter(order => {
-      const lines = order.production_lines || {};
-      return Object.values(lines).includes(lineName);
-    });
+  const getLineSchedule = (lineId: string) => {
+    const lineOrders = lineStatus.filter(order => order.lineIds.includes(lineId));
 
     const ongoing = lineOrders.find(order => order.status === "IN_PROGRESS");
     const scheduled = lineOrders.filter(order => order.status === "SCHEDULED");
@@ -177,23 +188,47 @@ const ProductionLineManager = ({ productionOrderId }: ProductionLineManagerProps
       // Check which lines are being assigned and their current status
       const assignedLines = Object.values(assignments).filter(Boolean);
       console.log("📋 Lines being assigned:", assignedLines);
-      
-      // Update production order with line assignments and queue appropriately
+
+      // The main assembly section is the finished good itself (part_id null);
+      // the other sections are the BOM parts that run on the chosen line.
+      const grouped = groupMaterialsByType();
+      const rows: { production_line_id: string; part_id: string | null }[] = [];
+
+      if (assignments.main_assembly) {
+        rows.push({ production_line_id: assignments.main_assembly, part_id: null });
+      }
+      (["sub_assembly", "accessory"] as const).forEach((sectionKey) => {
+        const lineId = assignments[sectionKey];
+        if (!lineId) return;
+        const partIds = Array.from(
+          new Set(grouped[sectionKey].map((m: any) => m.part_id).filter(Boolean))
+        ) as string[];
+        if (partIds.length === 0) {
+          // No identified BOM parts for this section — still record that the
+          // voucher runs on the chosen line.
+          rows.push({ production_line_id: lineId, part_id: null });
+          return;
+        }
+        partIds.forEach((partId) => rows.push({ production_line_id: lineId, part_id: partId }));
+      });
+
+      await replaceProductionOrderLines(productionOrderId, rows);
+
+      // Mark as scheduled when lines are assigned
       const { data, error } = await supabase
         .from("production_orders")
         .update({
-          production_lines: assignments,
-          status: "SCHEDULED"  // Mark as scheduled when lines are assigned
+          status: "SCHEDULED"
         })
         .eq("id", productionOrderId)
         .select()
         .single();
-      
+
       if (error) {
         console.error("❌ Error updating line assignments:", error);
         throw error;
       }
-      
+
       console.log("✅ Line assignments updated:", data);
       return data;
     },
@@ -209,6 +244,7 @@ const ProductionLineManager = ({ productionOrderId }: ProductionLineManagerProps
       queryClient.invalidateQueries({ queryKey: ["production-line-status"] });
       queryClient.invalidateQueries({ queryKey: ["production-queue"] });
       queryClient.invalidateQueries({ queryKey: ["scheduled-productions"] });
+      queryClient.invalidateQueries({ queryKey: ["production-order-lines"] });
     },
     onError: (error: Error) => {
       console.error("❌ Failed to assign production lines:", error);
@@ -220,11 +256,11 @@ const ProductionLineManager = ({ productionOrderId }: ProductionLineManagerProps
     }
   });
 
-  const handleLineAssignment = (assemblyType: string, lineName: string) => {
-    console.log(`🔧 Assigning ${assemblyType} to ${lineName}`);
+  const handleLineAssignment = (assemblyType: string, lineId: string) => {
+    console.log(`🔧 Assigning ${assemblyType} to ${lineNameById(lineId)}`);
     setLineAssignments(prev => ({
       ...prev,
-      [assemblyType]: lineName
+      [assemblyType]: lineId
     }));
   };
 
@@ -268,8 +304,8 @@ const ProductionLineManager = ({ productionOrderId }: ProductionLineManagerProps
               </SelectTrigger>
               <SelectContent>
                 {PRODUCTION_LINES.map((line) => (
-                  <SelectItem key={line} value={line}>
-                    {line}
+                  <SelectItem key={line.id} value={line.id}>
+                    {line.name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -311,7 +347,7 @@ const ProductionLineManager = ({ productionOrderId }: ProductionLineManagerProps
             <div className="mt-4 p-3 bg-blue-50 rounded-lg border">
               <h4 className="font-medium text-blue-900 mb-2 flex items-center gap-2">
                 <Clock className="h-4 w-4" />
-                Line Schedule: {assignedLine}
+                Line Schedule: {lineNameById(assignedLine)}
               </h4>
               {lineSchedule.ongoing && (
                 <div className="mb-2">

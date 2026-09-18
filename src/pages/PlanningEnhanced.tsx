@@ -85,7 +85,7 @@ const PlanningEnhanced: React.FC = () => {
         projection_id: selectedProjection,
         scheduled_date: format(selectedDate, 'yyyy-MM-dd'),
         quantity: parseInt(quantity),
-        production_line: "TBD", // Will be assigned in production page
+        // Line is assigned later, in the production page (production_order_lines).
       });
 
       // Reset form

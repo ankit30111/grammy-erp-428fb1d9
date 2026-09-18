@@ -55,23 +55,24 @@ export const ProductionOverviewWidget = () => {
         .select(`
           produced_quantity,
           efficiency_percentage,
+          production_lines (
+            name
+          ),
           production_orders!inner(
-            production_lines,
             planned_date
           )
         `)
         .gte('production_orders.planned_date', format(new Date(), 'yyyy-MM-dd'));
-      
+
       if (error) throw error;
-      
+
       // Calculate average efficiency by line
       const lineStats = data?.reduce((acc: any, record: any) => {
-        const lines = record.production_orders?.production_lines || {};
-        Object.keys(lines).forEach(line => {
-          if (!acc[line]) acc[line] = { total: 0, count: 0 };
-          acc[line].total += record.efficiency_percentage;
-          acc[line].count += 1;
-        });
+        const line = record.production_lines?.name;
+        if (!line) return acc;
+        if (!acc[line]) acc[line] = { total: 0, count: 0 };
+        acc[line].total += record.efficiency_percentage ?? 0;
+        acc[line].count += 1;
         return acc;
       }, {});
       

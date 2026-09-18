@@ -33,7 +33,7 @@ const HourlyProductionEntry = ({ voucherId, voucherNumber }: HourlyProductionEnt
         .from("hourly_production")
         .select("*")
         .eq("production_order_id", voucherId)
-        .order("hour", { ascending: true });
+        .order("hour_slot", { ascending: true });
       
       if (error) throw error;
       return data || [];
@@ -48,11 +48,11 @@ const HourlyProductionEntry = ({ voucherId, voucherNumber }: HourlyProductionEnt
         .from("hourly_production")
         .insert({
           production_order_id: voucherId,
-          hour: entryData.hour,
+          hour_slot: entryData.hour,
           produced_quantity: parseInt(entryData.produced_quantity),
           downtime_minutes: parseInt(entryData.downtime_minutes) || 0,
           efficiency_percentage: parseInt(entryData.efficiency_percentage) || 100,
-          remarks: entryData.remarks || null
+          notes: entryData.remarks || null
         });
       
       if (error) throw error;
@@ -209,7 +209,7 @@ const HourlyProductionEntry = ({ voucherId, voucherNumber }: HourlyProductionEnt
                   <TableBody>
                     {existingData.map((entry) => (
                       <TableRow key={entry.id}>
-                        <TableCell>{entry.hour}</TableCell>
+                        <TableCell>{entry.hour_slot}</TableCell>
                         <TableCell>{entry.produced_quantity}</TableCell>
                         <TableCell>{entry.efficiency_percentage}%</TableCell>
                       </TableRow>
