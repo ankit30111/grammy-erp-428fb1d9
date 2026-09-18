@@ -321,13 +321,12 @@ export const EnhancedProjectBOMDialog: React.FC<EnhancedProjectBOMDialogProps> =
         }}
       />
 
-      {selectedMaterialId && (
-        <SampleTrackingView
-          bomId={projectId}
-          materialId={selectedMaterialId}
-          onClose={() => setSelectedMaterialId(null)}
-        />
-      )}
+      {/*
+        Sample rounds hang off the project, not off a single BOM line
+        (npd_sample_tracking has project_id and sample_round, and no link to a
+        material), so there is no per-material view to open. The Samples tab above
+        shows the project's rounds.
+      */}
     </>
   );
 };

@@ -98,24 +98,15 @@ const OQC = () => {
 
       // If passed, create finished goods inventory entry
       if (status === "OQC_PASSED") {
-        const { data: order, error: orderError } = await supabase
-          .from("production_orders")
-          .select("part_id, quantity, voucher_number")
-          .eq("id", orderId)
-          .single();
-
-        if (orderError) throw orderError;
-        if (order) {
-          await supabase
-            .from("finished_goods_inventory")
-            .insert({
-              part_id: order.part_id,
-              quantity: order.quantity,
-              quality_status: "APPROVED",
-              production_date: new Date().toISOString().split('T')[0],
-              lot_number: order.voucher_number
-            });
-        }
+        // Booking finished goods in is one call rather than an insert from here.
+        // The old insert wrote quantity, quality_status and production_date - none
+        // of which are columns - and left out plant_id and production_order_id,
+        // both NOT NULL. Passing OQC therefore never produced finished goods, and
+        // the failure was swallowed because the result was never checked.
+        const { error: fgError } = await supabase.rpc("receive_finished_goods", {
+          p_production_order_id: orderId,
+        });
+        if (fgError) throw fgError;
       }
     },
     onSuccess: (_, variables) => {

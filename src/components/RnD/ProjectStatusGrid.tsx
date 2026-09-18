@@ -11,7 +11,7 @@ import { useState } from "react";
 interface ProjectData {
   id: string;
   project_name: string;
-  type: 'NPD' | 'Pre-Existing';
+  type: 'NPD';
   status: string;
   priority: string;
   customer: string;
@@ -31,23 +31,17 @@ const ProjectStatusGrid = () => {
     queryFn: async () => {
       console.log('Fetching project status data...');
       
-      const [npdData, preExistingData] = await Promise.all([
-        supabase
-          .from('npd_projects')
-          .select(`
-            *,
-            customers (name)
-          `),
-        supabase
-          .from('pre_existing_projects')
-          .select(`
-            *,
-            customers (name)
-          `)
-      ]);
+      // pre_existing_projects was dropped in the rebuild with no replacement.
+      // Querying it made this whole grid throw, so NPD projects disappeared too -
+      // one dead table took a working feature down with it.
+      const npdData = await supabase
+        .from('npd_projects')
+        .select(`
+          *,
+          customers (name)
+        `);
 
       if (npdData.error) throw npdData.error;
-      if (preExistingData.error) throw preExistingData.error;
 
       const processedData: ProjectData[] = [];
 
@@ -95,24 +89,6 @@ const ProjectStatusGrid = () => {
         });
       });
 
-      // Process Pre-Existing projects
-      preExistingData.data?.forEach(project => {
-        const daysRemaining = calculateDaysRemaining(project.estimated_completion_date);
-        const progressPercentage = calculateProgress(project.created_at, project.estimated_completion_date);
-        
-        processedData.push({
-          id: project.id,
-          project_name: project.project_name,
-          type: 'Pre-Existing',
-          status: project.status.replace('_', ' '),
-          priority: project.priority,
-          customer: project.customers?.name || 'N/A',
-          created_at: project.created_at,
-          estimated_completion_date: project.estimated_completion_date,
-          daysRemaining,
-          progressPercentage
-        });
-      });
 
       return processedData.sort((a, b) => a.project_name.localeCompare(b.project_name));
     }

@@ -54,12 +54,11 @@ const PartAnalysis = () => {
 
       const { error } = await supabase
         .from("customer_complaint_parts")
-        .update({
-          ...updateData,
-          analyzed_by: user.data.user.id,
-          analyzed_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
+        // customer_complaint_parts has no analyzed_by/analyzed_at/closed_by/
+        // closed_at columns, and updated_at is owned by the touch trigger. Sending
+        // them made every save fail, so no analysis was ever recorded. The verdict
+        // and analysis text are what the table actually holds.
+        .update(updateData)
         .eq("id", selectedPart.id);
 
       if (error) throw error;
@@ -92,12 +91,7 @@ const PartAnalysis = () => {
 
       const { error } = await supabase
         .from("customer_complaint_parts")
-        .update({
-          status: "CLOSED",
-          closed_by: user.data.user.id,
-          closed_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
+        .update({ status: "CLOSED" })
         .eq("id", selectedPart.id);
 
       if (error) throw error;

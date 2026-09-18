@@ -574,11 +574,12 @@ const PurchaseOrderApprovalsEnhanced = () => {
                                       // Update PO status
                                       const { error: poError } = await supabase
                                         .from('purchase_orders')
-                                        .update({
-                                          status: 'CANCELLED',
-                                          rejection_reason: reason,
-                                          updated_at: currentTime
-                                        })
+                                        // purchase_orders has no rejection_reason.
+                                        // The reason already lives on the workflow
+                                        // row written just above; storing it twice
+                                        // is two records of one fact. updated_at is
+                                        // owned by the touch trigger.
+                                        .update({ status: 'CANCELLED' })
                                         .eq('id', po.id);
 
                                       if (poError) throw poError;

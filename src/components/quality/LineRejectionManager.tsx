@@ -180,10 +180,12 @@ const LineRejectionManager = () => {
       const user = await supabase.auth.getUser();
       if (!user.data.user) throw new Error("User not authenticated");
 
+      // vendor_capa is now capa, and capa_status is an enum - "Closed" would
+      // have been rejected even if the table had still existed.
       const { data, error } = await supabase
-        .from("vendor_capa")
+        .from("capa")
         .update({
-          status: "Closed",
+          status: "CLOSED",
           closed_by: user.data.user.id,
           closed_at: new Date().toISOString()
         })

@@ -67,11 +67,18 @@ const ProductionVoucherDetails = ({ scheduleId, voucherNumber, isOpen, onClose }
           ),
           parts(part_code, name)
         `)
-        .in("part_id", materialIds)
-        .in("received_status", ["PENDING", "PARTIAL"]);
-      
+        .in("part_id", materialIds);
+
       if (error) throw error;
-      return data;
+
+      // purchase_order_items has no received_status. Whether a line is still
+      // outstanding is received_quantity against quantity, which the receiving
+      // trigger keeps current - one number rather than a status somebody has to
+      // remember to update. PostgREST cannot compare two columns, so the
+      // comparison is done here.
+      return (data ?? []).filter(
+        (row: any) => Number(row.received_quantity ?? 0) < Number(row.quantity)
+      );
     },
     enabled: !!scheduleId && isOpen && materialRequirements.length > 0
   });

@@ -1,407 +1,266 @@
-import React, { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
-import { Clock, Package, CheckCircle, XCircle, AlertTriangle, Calendar } from 'lucide-react';
-import { format, differenceInDays } from 'date-fns';
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
+} from "@/components/ui/dialog";
+import { FlaskConical, Plus } from "lucide-react";
+import { format } from "date-fns";
+
+/**
+ * Sample rounds for one NPD project.
+ *
+ * The previous version was written against a different model: it filtered
+ * npd_sample_tracking on npd_bom_material_id, embedded npd_bom_materials, and
+ * wrote part_status, temporary_part_code, sample_target_date, is_temporary_part
+ * and final_part_code. None of those columns exist. npd_sample_tracking hangs off
+ * the PROJECT, not off a BOM line, and records rounds: which round, when it was
+ * asked for, when it came back, how many, and how it went.
+ *
+ * So every query here returned an error the screen discarded, and every write
+ * failed. It has been rebuilt against what the schema actually holds rather than
+ * having the missing columns invented back, because a sample round is a property
+ * of the project iteration - asking a vendor for round 2 is one event, not one per
+ * line in the BOM.
+ */
+
+const OUTCOMES = ["AWAITED", "PASSED", "FAILED", "PARTIAL"] as const;
+
+const outcomeVariant = (outcome: string | null) => {
+  switch (outcome) {
+    case "PASSED":
+      return "default" as const;
+    case "FAILED":
+      return "destructive" as const;
+    case "PARTIAL":
+      return "warning" as const;
+    default:
+      return "secondary" as const;
+  }
+};
 
 interface SampleTrackingViewProps {
-  bomId?: string;
-  materialId?: string;
+  /** The NPD project id. Named bomId by the callers, which pass projectId. */
+  bomId: string;
   onClose?: () => void;
 }
 
-export const SampleTrackingView: React.FC<SampleTrackingViewProps> = ({
-  bomId,
-  materialId,
-  onClose
-}) => {
-  const [selectedSample, setSelectedSample] = useState<any>(null);
-  const [updateData, setUpdateData] = useState<any>({});
+export const SampleTrackingView = ({ bomId }: SampleTrackingViewProps) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-
-  // Fetch sample tracking data
-  const { data: sampleData = [] } = useQuery({
-    queryKey: ['npd-sample-tracking', bomId, materialId],
-    queryFn: async () => {
-      let query = supabase
-        .from('npd_sample_tracking')
-        .select(`
-          *,
-          npd_bom_materials (
-            id,
-            description,
-            temporary_part_code,
-            vendor_name,
-            part_status,
-            sample_target_date,
-            is_critical
-          )
-        `);
-
-      if (materialId) {
-        query = query.eq('npd_bom_material_id', materialId);
-      } else if (bomId) {
-        query = query.eq('npd_bom_materials.npd_project_bom_id', bomId);
-      }
-
-      const { data, error } = await query.order('created_at', { ascending: false });
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!(bomId || materialId)
+  const [adding, setAdding] = useState(false);
+  const [form, setForm] = useState({
+    quantity: "",
+    requested_on: new Date().toISOString().split("T")[0],
+    notes: "",
   });
 
-  // Update sample status mutation
-  const updateSampleMutation = useMutation({
-    mutationFn: async ({ sampleId, updates, materialUpdates }: any) => {
-      // Update sample tracking
-      if (Object.keys(updates).length > 0) {
-        const { error: sampleError } = await supabase
-          .from('npd_sample_tracking')
-          .update({
-            ...updates,
-            updated_by: (await supabase.auth.getUser()).data.user?.id
-          })
-          .eq('id', sampleId);
+  const { data: rounds = [], isLoading } = useQuery({
+    queryKey: ["npd-sample-tracking", bomId],
+    enabled: !!bomId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("npd_sample_tracking")
+        .select("id, sample_round, requested_on, received_on, quantity, outcome, notes")
+        .eq("project_id", bomId)
+        .order("sample_round", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
 
-        if (sampleError) throw sampleError;
+  const addRound = useMutation({
+    mutationFn: async () => {
+      const qty = Number(form.quantity);
+      if (!Number.isFinite(qty) || qty <= 0) {
+        throw new Error("Enter how many samples were asked for");
       }
+      // Round numbers follow the rounds already recorded rather than being typed
+      // in, so two people cannot both create "round 3".
+      const nextRound =
+        rounds.reduce((m: number, r: any) => Math.max(m, Number(r.sample_round ?? 0)), 0) + 1;
 
-      // Update material status if needed
-      if (Object.keys(materialUpdates).length > 0) {
-        const sample = sampleData.find(s => s.id === sampleId);
-        if (sample) {
-          const { error: materialError } = await supabase
-            .from('npd_bom_materials')
-            .update(materialUpdates)
-            .eq('id', sample.npd_bom_material_id);
-
-          if (materialError) throw materialError;
-        }
-      }
+      const { error } = await supabase.from("npd_sample_tracking").insert({
+        project_id: bomId,
+        sample_round: nextRound,
+        requested_on: form.requested_on || null,
+        quantity: qty,
+        outcome: "AWAITED",
+        notes: form.notes.trim() || null,
+      });
+      if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['npd-sample-tracking'] });
-      queryClient.invalidateQueries({ queryKey: ['npd-bom-materials'] });
-      toast({ title: "Sample status updated successfully" });
-      setSelectedSample(null);
-      setUpdateData({});
+      queryClient.invalidateQueries({ queryKey: ["npd-sample-tracking", bomId] });
+      toast({ title: "Sample round recorded" });
+      setAdding(false);
+      setForm({ quantity: "", requested_on: new Date().toISOString().split("T")[0], notes: "" });
     },
-    onError: (error) => {
-      toast({ title: "Error updating sample", description: error.message, variant: "destructive" });
-    }
+    onError: (e: Error) =>
+      toast({ title: "Could not record the round", description: e.message, variant: "destructive" }),
   });
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'UNDER_DEVELOPMENT': return <Clock className="h-4 w-4 text-blue-500" />;
-      case 'SAMPLE_SENT': return <Package className="h-4 w-4 text-yellow-500" />;
-      case 'SAMPLE_RECEIVED': return <CheckCircle className="h-4 w-4 text-green-500" />;
-      case 'SAMPLE_APPROVED': return <CheckCircle className="h-4 w-4 text-green-600" />;
-      case 'SAMPLE_REJECTED': return <XCircle className="h-4 w-4 text-red-500" />;
-      case 'FINALIZED_AND_CODED': return <CheckCircle className="h-4 w-4 text-purple-500" />;
-      default: return <Clock className="h-4 w-4 text-gray-500" />;
-    }
-  };
+  const recordOutcome = useMutation({
+    mutationFn: async ({ id, outcome }: { id: string; outcome: string }) => {
+      const { error } = await supabase
+        .from("npd_sample_tracking")
+        .update({
+          outcome,
+          // Anything other than still-waiting means the samples are back.
+          received_on: outcome === "AWAITED" ? null : new Date().toISOString().split("T")[0],
+        })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["npd-sample-tracking", bomId] });
+      toast({ title: "Outcome recorded" });
+    },
+    onError: (e: Error) =>
+      toast({ title: "Could not record the outcome", description: e.message, variant: "destructive" }),
+  });
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'UNDER_DEVELOPMENT': return 'bg-blue-100 text-blue-800';
-      case 'SAMPLE_SENT': return 'bg-yellow-100 text-yellow-800';
-      case 'SAMPLE_RECEIVED': return 'bg-green-100 text-green-800';
-      case 'SAMPLE_APPROVED': return 'bg-green-100 text-green-800';
-      case 'SAMPLE_REJECTED': return 'bg-red-100 text-red-800';
-      case 'FINALIZED_AND_CODED': return 'bg-purple-100 text-purple-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const isOverdue = (targetDate: string, currentStatus: string) => {
-    if (!targetDate || ['SAMPLE_APPROVED', 'FINALIZED_AND_CODED'].includes(currentStatus)) return false;
-    return differenceInDays(new Date(), new Date(targetDate)) > 0;
-  };
-
-  const handleStatusUpdate = (action: string) => {
-    const sample = selectedSample;
-    const material = sample?.npd_bom_materials;
-    
-    let sampleUpdates: any = {};
-    let materialUpdates: any = {};
-    const today = new Date().toISOString().split('T')[0];
-
-    switch (action) {
-      case 'SAMPLE_SENT':
-        sampleUpdates.sample_sent_date = updateData.sample_sent_date || today;
-        materialUpdates.part_status = 'SAMPLE_SENT';
-        break;
-      case 'SAMPLE_RECEIVED':
-        sampleUpdates.sample_received_date = updateData.sample_received_date || today;
-        materialUpdates.part_status = 'SAMPLE_RECEIVED';
-        break;
-      case 'SAMPLE_APPROVED':
-        sampleUpdates.sample_approval_date = updateData.sample_approval_date || today;
-        sampleUpdates.approval_notes = updateData.approval_notes;
-        materialUpdates.part_status = 'SAMPLE_APPROVED';
-        break;
-      case 'SAMPLE_REJECTED':
-        sampleUpdates.sample_rejection_date = updateData.sample_rejection_date || today;
-        sampleUpdates.rejection_reason = updateData.rejection_reason;
-        materialUpdates.part_status = 'SAMPLE_REJECTED';
-        break;
-      case 'FINALIZE_AND_CODE':
-        materialUpdates.part_status = 'FINALIZED_AND_CODED';
-        materialUpdates.final_part_code = updateData.final_part_code;
-        materialUpdates.is_temporary_part = false;
-        break;
-    }
-
-    if (updateData.quality_notes) {
-      sampleUpdates.quality_notes = updateData.quality_notes;
-    }
-
-    updateSampleMutation.mutate({
-      sampleId: sample.id,
-      updates: sampleUpdates,
-      materialUpdates
-    });
-  };
-
-  const content = (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h3 className="text-lg font-semibold">Sample Tracking</h3>
-        {onClose && (
-          <Button variant="outline" onClick={onClose}>
-            Close
-          </Button>
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0">
+        <CardTitle className="flex items-center gap-2">
+          <FlaskConical className="h-5 w-5" />
+          Sample Rounds
+        </CardTitle>
+        <Button size="sm" onClick={() => setAdding(true)} className="gap-2">
+          <Plus className="h-4 w-4" />
+          New round
+        </Button>
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <div className="py-10 text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto" />
+          </div>
+        ) : rounds.length === 0 ? (
+          <div className="py-10 text-center">
+            <FlaskConical className="h-10 w-10 mx-auto text-muted-foreground mb-2" />
+            <p className="text-muted-foreground">No sample rounds recorded yet</p>
+          </div>
+        ) : (
+          <div className="rounded-lg border overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Round</TableHead>
+                  <TableHead>Requested</TableHead>
+                  <TableHead>Received</TableHead>
+                  <TableHead className="text-right">Quantity</TableHead>
+                  <TableHead>Outcome</TableHead>
+                  <TableHead>Notes</TableHead>
+                  <TableHead className="text-right">Record outcome</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {rounds.map((r: any) => (
+                  <TableRow key={r.id}>
+                    <TableCell className="font-medium">#{r.sample_round}</TableCell>
+                    <TableCell className="whitespace-nowrap text-sm">
+                      {r.requested_on ? format(new Date(r.requested_on), "dd MMM yyyy") : "—"}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap text-sm">
+                      {r.received_on ? format(new Date(r.received_on), "dd MMM yyyy") : "—"}
+                    </TableCell>
+                    <TableCell className="text-right font-mono">
+                      {r.quantity === null ? "—" : Number(r.quantity).toLocaleString()}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={outcomeVariant(r.outcome)}>{r.outcome ?? "AWAITED"}</Badge>
+                    </TableCell>
+                    <TableCell className="max-w-xs">
+                      <span className="block truncate text-sm" title={r.notes ?? ""}>
+                        {r.notes || "—"}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Select
+                        value={r.outcome ?? "AWAITED"}
+                        onValueChange={(v) => recordOutcome.mutate({ id: r.id, outcome: v })}
+                      >
+                        <SelectTrigger className="w-36 ml-auto">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {OUTCOMES.map((o) => (
+                            <SelectItem key={o} value={o}>
+                              {o}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         )}
-      </div>
+      </CardContent>
 
-      <div className="grid gap-4">
-        {sampleData.map((sample) => {
-          const material = sample.npd_bom_materials;
-          const isOverdueStatus = isOverdue(material?.sample_target_date, material?.part_status);
-
-          return (
-            <Card key={sample.id} className={`${isOverdueStatus ? 'border-red-200 bg-red-50' : ''}`}>
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    {getStatusIcon(material?.part_status)}
-                    <span>{material?.description}</span>
-                    {material?.is_critical && (
-                      <Badge variant="destructive">Critical</Badge>
-                    )}
-                  </div>
-                  <Badge className={getStatusColor(material?.part_status)}>
-                    {material?.part_status?.replace('_', ' ')}
-                  </Badge>
-                </CardTitle>
-                <CardDescription>
-                  {material?.temporary_part_code} • Vendor: {material?.vendor_name || 'TBD'}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                  <div>
-                    <span className="font-medium">Request Date:</span>
-                    <p>{sample.sample_request_date ? format(new Date(sample.sample_request_date), 'MMM dd, yyyy') : 'Not set'}</p>
-                  </div>
-                  <div>
-                    <span className="font-medium">Target Date:</span>
-                    <p className={isOverdueStatus ? 'text-red-600 font-medium' : ''}>
-                      {material?.sample_target_date ? format(new Date(material.sample_target_date), 'MMM dd, yyyy') : 'Not set'}
-                      {isOverdueStatus && <span className="ml-1">⚠️</span>}
-                    </p>
-                  </div>
-                  <div>
-                    <span className="font-medium">Sent Date:</span>
-                    <p>{sample.sample_sent_date ? format(new Date(sample.sample_sent_date), 'MMM dd, yyyy') : 'Not sent'}</p>
-                  </div>
-                  <div>
-                    <span className="font-medium">Received Date:</span>
-                    <p>{sample.sample_received_date ? format(new Date(sample.sample_received_date), 'MMM dd, yyyy') : 'Not received'}</p>
-                  </div>
-                </div>
-
-                {sample.quality_notes && (
-                  <div>
-                    <span className="font-medium">Quality Notes:</span>
-                    <p className="text-sm text-muted-foreground">{sample.quality_notes}</p>
-                  </div>
-                )}
-
-                {sample.rejection_reason && (
-                  <div>
-                    <span className="font-medium">Rejection Reason:</span>
-                    <p className="text-sm text-red-600">{sample.rejection_reason}</p>
-                  </div>
-                )}
-
-                <div className="flex gap-2 flex-wrap">
-                  {material?.part_status === 'UNDER_DEVELOPMENT' && (
-                    <Button size="sm" onClick={() => setSelectedSample(sample)}>
-                      Mark as Sent
-                    </Button>
-                  )}
-                  {material?.part_status === 'SAMPLE_SENT' && (
-                    <Button size="sm" onClick={() => setSelectedSample(sample)}>
-                      Mark as Received
-                    </Button>
-                  )}
-                  {material?.part_status === 'SAMPLE_RECEIVED' && (
-                    <>
-                      <Button size="sm" onClick={() => setSelectedSample(sample)}>
-                        Approve Sample
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={() => setSelectedSample(sample)}>
-                        Reject Sample
-                      </Button>
-                    </>
-                  )}
-                  {material?.part_status === 'SAMPLE_APPROVED' && (
-                    <Button size="sm" onClick={() => setSelectedSample(sample)}>
-                      Finalize & Code
-                    </Button>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-
-        {sampleData.length === 0 && (
-          <Card className="p-8 text-center text-muted-foreground">
-            No sample tracking data found
-          </Card>
-        )}
-      </div>
-    </div>
+      <Dialog open={adding} onOpenChange={setAdding}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>New sample round</DialogTitle>
+            <DialogDescription>
+              The round number follows the rounds already recorded.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="qty">Quantity requested</Label>
+              <Input
+                id="qty"
+                type="number"
+                min={1}
+                value={form.quantity}
+                onChange={(e) => setForm({ ...form, quantity: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="req">Requested on</Label>
+              <Input
+                id="req"
+                type="date"
+                value={form.requested_on}
+                onChange={(e) => setForm({ ...form, requested_on: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="notes">Notes</Label>
+              <Textarea
+                id="notes"
+                value={form.notes}
+                onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                placeholder="What is being checked in this round?"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAdding(false)}>
+              Cancel
+            </Button>
+            <Button disabled={addRound.isPending} onClick={() => addRound.mutate()}>
+              Record round
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </Card>
   );
-
-  if (materialId) {
-    return (
-      <>
-        {content}
-        
-        {selectedSample && (
-          <Dialog open={!!selectedSample} onOpenChange={() => setSelectedSample(null)}>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Update Sample Status</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div>
-                  <h4 className="font-medium">{selectedSample.npd_bom_materials?.description}</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Current Status: {selectedSample.npd_bom_materials?.part_status?.replace('_', ' ')}
-                  </p>
-                </div>
-
-                {selectedSample.npd_bom_materials?.part_status === 'UNDER_DEVELOPMENT' && (
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="sample_sent_date">Sample Sent Date</Label>
-                      <Input
-                        id="sample_sent_date"
-                        type="date"
-                        value={updateData.sample_sent_date || new Date().toISOString().split('T')[0]}
-                        onChange={(e) => setUpdateData({ ...updateData, sample_sent_date: e.target.value })}
-                      />
-                    </div>
-                    <Button onClick={() => handleStatusUpdate('SAMPLE_SENT')}>
-                      Mark as Sent
-                    </Button>
-                  </div>
-                )}
-
-                {selectedSample.npd_bom_materials?.part_status === 'SAMPLE_SENT' && (
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="sample_received_date">Sample Received Date</Label>
-                      <Input
-                        id="sample_received_date"
-                        type="date"
-                        value={updateData.sample_received_date || new Date().toISOString().split('T')[0]}
-                        onChange={(e) => setUpdateData({ ...updateData, sample_received_date: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="quality_notes">Quality Notes</Label>
-                      <Textarea
-                        id="quality_notes"
-                        value={updateData.quality_notes || ''}
-                        onChange={(e) => setUpdateData({ ...updateData, quality_notes: e.target.value })}
-                        placeholder="Initial quality assessment notes"
-                      />
-                    </div>
-                    <Button onClick={() => handleStatusUpdate('SAMPLE_RECEIVED')}>
-                      Mark as Received
-                    </Button>
-                  </div>
-                )}
-
-                {selectedSample.npd_bom_materials?.part_status === 'SAMPLE_RECEIVED' && (
-                  <div className="space-y-4">
-                    <div className="flex gap-2">
-                      <Button onClick={() => handleStatusUpdate('SAMPLE_APPROVED')}>
-                        Approve Sample
-                      </Button>
-                      <Button variant="outline" onClick={() => handleStatusUpdate('SAMPLE_REJECTED')}>
-                        Reject Sample
-                      </Button>
-                    </div>
-                    <div>
-                      <Label htmlFor="approval_notes">Approval/Rejection Notes</Label>
-                      <Textarea
-                        id="approval_notes"
-                        value={updateData.approval_notes || updateData.rejection_reason || ''}
-                        onChange={(e) => setUpdateData({ 
-                          ...updateData, 
-                          approval_notes: e.target.value,
-                          rejection_reason: e.target.value 
-                        })}
-                        placeholder="Detailed notes about the decision"
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {selectedSample.npd_bom_materials?.part_status === 'SAMPLE_APPROVED' && (
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="final_part_code">Final Part Code</Label>
-                      <Input
-                        id="final_part_code"
-                        value={updateData.final_part_code || ''}
-                        onChange={(e) => setUpdateData({ ...updateData, final_part_code: e.target.value })}
-                        placeholder="Official part code after approval"
-                      />
-                    </div>
-                    <Button 
-                      onClick={() => handleStatusUpdate('FINALIZE_AND_CODE')}
-                      disabled={!updateData.final_part_code}
-                    >
-                      Finalize & Code Part
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </DialogContent>
-          </Dialog>
-        )}
-      </>
-    );
-  }
-
-  return content;
 };
+
+export default SampleTrackingView;

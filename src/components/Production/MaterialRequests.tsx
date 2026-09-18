@@ -77,7 +77,7 @@ const MaterialRequests = () => {
         .select(`
           id,
           quantity,
-          bom_type,
+          uom,
           parts!child_part_id(
             id,
             part_code,
@@ -85,7 +85,8 @@ const MaterialRequests = () => {
             category
           )
         `)
-        .eq("parent_part_id", selectedProduction.parts.id);
+        .eq("parent_part_id", selectedProduction.parts.id)
+        .eq("is_active", true);
       
       if (error) {
         console.error("❌ Error fetching BOM materials:", error);
@@ -311,7 +312,7 @@ const MaterialRequests = () => {
                                 {bomItem.parts.part_code} - {bomItem.parts.name}
                               </span>
                               <span className="text-xs text-muted-foreground">
-                                Category: {bomItem.parts.category} | Type: {bomItem.bom_type} | BOM Qty: {bomItem.quantity}
+                                Category: {bomItem.parts.category} | BOM Qty: {bomItem.quantity} {bomItem.uom ?? ""}
                               </span>
                             </div>
                           </SelectItem>

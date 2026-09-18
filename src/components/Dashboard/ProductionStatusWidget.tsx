@@ -67,10 +67,11 @@ export const ProductionStatusWidget = () => {
         .select(`
           id,
           parts (name, part_code),
-          grn (grn_number)
+          grn!inner (grn_number, plant_id)
         `)
         .eq('iqc_outcome', 'PENDING');
-      if (scopePlantId) q = q.eq('plant_id', scopePlantId);
+      // grn_items carries no plant_id; the plant is on the parent grn.
+      if (scopePlantId) q = q.eq('grn.plant_id', scopePlantId);
       const { data, error } = await q;
       if (error) throw error;
       return data?.length || 0;

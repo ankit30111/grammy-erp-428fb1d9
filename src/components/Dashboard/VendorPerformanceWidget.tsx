@@ -103,21 +103,23 @@ export const VendorPerformanceWidget = () => {
   const { data: openCAPAs } = useRealTimeQuery({
     queryKey: ['open-capas'],
     queryFn: async () => {
+      // iqc_vendor_capa was replaced by one capa table covering every source.
+      // Open means raised or answered but not yet ruled on.
       const { data, error } = await supabase
-        .from('iqc_vendor_capa')
+        .from('capa')
         .select('id')
-        .eq('capa_status', 'AWAITED');
-      
+        .in('status', ['OPEN', 'SUBMITTED']);
+
       if (error) throw error;
       return data?.length || 0;
     },
-    tableName: 'iqc_vendor_capa',
+    tableName: 'capa',
   });
 
   // Set up multi-table subscriptions for this widget
   useMultiTableRealTime({
     queryKey: ['vendor-performance', 'vendor-quality', 'open-capas'],
-    tables: ['purchase_orders', 'grn_items', 'iqc_vendor_capa', 'grn']
+    tables: ['purchase_orders', 'grn_items', 'capa', 'grn']
   });
 
   return (
