@@ -59,7 +59,13 @@ export const useCreateGRN = () => {
             grn_number: '', // Empty string will be replaced by trigger
             purchase_order_id: grnData.purchase_order_id || null, // Allow null for non-PO GRNs
             vendor_id: grnData.vendor_id,
-            status: 'RECEIVED', // Set to RECEIVED for both PO and non-PO GRNs
+            // status is deliberately NOT set here. The recalc_grn_status trigger
+            // owns this column and derives it from the items: DRAFT with no items,
+            // IQC_PENDING once they exist, IQC_DONE when every line is inspected,
+            // STORE_CONFIRMED when every line is counted in. The column defaults to
+            // DRAFT, and the trigger corrects it the moment items are inserted.
+            // (The old code wrote 'RECEIVED', which is a po_status value and not a
+            // member of grn_status at all, so every GRN insert was rejected.)
             notes: grnData.notes,
             received_date: grnData.received_date || new Date().toISOString().split('T')[0],
             plant_id: plantId,

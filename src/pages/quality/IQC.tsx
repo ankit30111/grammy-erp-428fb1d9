@@ -118,7 +118,7 @@ const IQC = () => {
         `)
         .not("iqc_outcome", "is", null)
         .neq("iqc_outcome", "PENDING")
-        .in("iqc_outcome", ["APPROVED", "REJECTED", "SEGREGATED", "FAILED"])
+        .in("iqc_outcome", ["ACCEPTED", "REJECTED", "PARTIAL"])
         .not('iqc_report_url', 'is', null)
         .neq('iqc_report_url', '');
 
@@ -143,9 +143,9 @@ const IQC = () => {
   };
 
   const getStatusBadge = (grn: any) => {
-    const allApproved = grn.grn_items.every((item: any) => item.iqc_outcome === 'APPROVED');
+    const allApproved = grn.grn_items.every((item: any) => item.iqc_outcome === 'ACCEPTED');
     const hasRejected = grn.grn_items.some((item: any) => item.iqc_outcome === 'REJECTED');
-    const hasSegregated = grn.grn_items.some((item: any) => item.iqc_outcome === 'SEGREGATED');
+    const hasSegregated = grn.grn_items.some((item: any) => item.iqc_outcome === 'PARTIAL');
     const hasPending = grn.grn_items.some((item: any) => !item.iqc_outcome || item.iqc_outcome === 'PENDING');
     
     if (hasPending) return <Badge variant="secondary">Pending IQC</Badge>;
@@ -157,11 +157,11 @@ const IQC = () => {
 
   const getItemStatusBadge = (status: string) => {
     switch (status) {
-      case 'APPROVED':
+      case 'ACCEPTED':
         return <Badge variant="default">Approved</Badge>;
       case 'REJECTED':
         return <Badge variant="destructive">Rejected</Badge>;
-      case 'SEGREGATED':
+      case 'PARTIAL':
         return <Badge variant="outline">Segregated</Badge>;
       case 'FAILED':
         return <Badge variant="destructive">Failed</Badge>;
@@ -178,7 +178,7 @@ const IQC = () => {
         return <Badge variant="secondary">CAPA Awaited</Badge>;
       case 'RECEIVED':
         return <Badge variant="outline">CAPA Received</Badge>;
-      case 'APPROVED':
+      case 'ACCEPTED':
         return <Badge variant="default">CAPA Approved</Badge>;
       case 'IMPLEMENTED':
         return <Badge variant="default" className="bg-green-600">CAPA Implemented</Badge>;
@@ -394,7 +394,7 @@ const IQC = () => {
                     <TableBody>
                       {filteredCompletedItems.map((item) => {
                         const capaData = item.iqc_vendor_capa?.[0];
-                        const needsCAPA = item.iqc_outcome === 'REJECTED' || item.iqc_outcome === 'SEGREGATED';
+                        const needsCAPA = item.iqc_outcome === 'REJECTED' || item.iqc_outcome === 'PARTIAL';
                         
                         return (
                           <TableRow key={item.id} className="h-16">
