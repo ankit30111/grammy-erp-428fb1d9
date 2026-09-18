@@ -8,6 +8,9 @@ import GRNFormInputs from "./GRNFormInputs";
 import GRNItemsTable from "./GRNItemsTable";
 
 interface GRNItem {
+  /** The PO line this receipt is against. Without it the PO's received/pending
+   *  tracking cannot update - recalc_po_item_received returns early on NULL. */
+  purchase_order_item_id: string;
   part_id: string;
   part_code: string;
   material_name: string;
@@ -34,6 +37,7 @@ const GRNForm = () => {
       const items: GRNItem[] = po.purchase_order_items
         .filter(item => (item.pending_quantity || item.quantity) > 0) // Only show items with pending quantities
         .map(item => ({
+          purchase_order_item_id: item.id,
           part_id: item.part_id,
           part_code: item.parts?.part_code || '',
           material_name: item.parts?.name || '',
@@ -104,8 +108,8 @@ const GRNForm = () => {
         received_date: receivedDate,
         notes: `Invoice Number: ${invoiceNumber}`,
         items: grnItems.filter(item => item.received_quantity > 0).map(item => ({
+          purchase_order_item_id: item.purchase_order_item_id,
           part_id: item.part_id,
-          po_quantity: item.po_quantity,
           received_quantity: item.received_quantity
         }))
       };
