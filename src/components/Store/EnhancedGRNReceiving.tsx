@@ -61,7 +61,7 @@ const EnhancedGRNReceiving = ({
             parts (id, name, part_code)
           )
         `)
-        .eq("status", "IQC_COMPLETED")
+        .eq("status", "IQC_DONE")
         .order("received_date", { ascending: false });
 
       if (error) throw error;
@@ -70,8 +70,8 @@ const EnhancedGRNReceiving = ({
       return (data || []).filter(grn =>
         grn.grn_items.some((item: any) =>
           !item.store_confirmed &&
-          (item.iqc_outcome === 'APPROVED' ||
-           (item.iqc_outcome === 'SEGREGATED' && item.iqc_accepted_quantity > 0))
+          (item.iqc_outcome === 'ACCEPTED' ||
+           (item.iqc_outcome === 'PARTIAL' && item.iqc_accepted_quantity > 0))
         )
       );
     },
@@ -101,7 +101,7 @@ const EnhancedGRNReceiving = ({
             parts (id, name, part_code)
           )
         `)
-        .eq("status", "STORE_RECEIVED")
+        .eq("status", "STORE_CONFIRMED")
         .order("received_date", { ascending: false })
         .limit(20);
 
@@ -134,9 +134,9 @@ const EnhancedGRNReceiving = ({
     
     grn.grn_items.forEach((item: any) => {
       if (!item.store_confirmed) {
-        if (item.iqc_outcome === 'APPROVED') {
+        if (item.iqc_outcome === 'ACCEPTED') {
           initialQuantities[item.id] = item.received_quantity;
-        } else if (item.iqc_outcome === 'SEGREGATED') {
+        } else if (item.iqc_outcome === 'PARTIAL') {
           initialQuantities[item.id] = item.iqc_accepted_quantity;
         }
       }
@@ -222,12 +222,9 @@ const EnhancedGRNReceiving = ({
         item.store_confirmed || verifiedQuantities[item.id] !== undefined
       );
       
-      if (allItemsConfirmed) {
-        await supabase
-          .from("grn")
-          .update({ status: "STORE_RECEIVED" })
-          .eq("id", selectedGRN.id);
-      }
+      // grn.status is derived by the recalc_grn_status database trigger from the
+      // state of its grn_items — the app must never write it directly.
+      void allItemsConfirmed;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["pending-store-grns"] });
@@ -414,10 +411,10 @@ const EnhancedGRNReceiving = ({
                   <TableBody>
                     {selectedGRN.grn_items.filter((item: any) => 
                       !item.store_confirmed && 
-                      (item.iqc_outcome === 'APPROVED' || 
-                      (item.iqc_outcome === 'SEGREGATED' && item.iqc_accepted_quantity > 0))
+                      (item.iqc_outcome === 'ACCEPTED' || 
+                      (item.iqc_outcome === 'PARTIAL' && item.iqc_accepted_quantity > 0))
                     ).map((item: any) => {
-                      const maxQty = item.iqc_outcome === 'APPROVED' 
+                      const maxQty = item.iqc_outcome === 'ACCEPTED' 
                         ? item.received_quantity 
                         : item.iqc_accepted_quantity;
                       

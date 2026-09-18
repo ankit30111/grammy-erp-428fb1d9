@@ -29,7 +29,7 @@ export const ProductionStatusWidget = () => {
           parts (name)
         `)
         .eq('planned_date', today)
-        .in('status', ['PENDING', 'IN_PROGRESS']);
+        .in('status', ['PLANNED', 'IN_PRODUCTION']);
       if (scopePlantId) q = q.eq('plant_id', scopePlantId);
       const { data, error } = await q;
       if (error) throw error;
@@ -43,7 +43,7 @@ export const ProductionStatusWidget = () => {
           (assignmentsByOrder[order.id] ?? []).some(r => r.production_line_id === line.id)
         );
 
-        const currentOrder = activeOrders?.find(order => order.status === 'IN_PROGRESS');
+        const currentOrder = activeOrders?.find(order => order.status === 'IN_PRODUCTION');
 
         return {
           line: line.name,

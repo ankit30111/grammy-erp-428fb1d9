@@ -5125,6 +5125,8 @@ export type Database = {
         | "KIT_SENT"
         | "IN_PRODUCTION"
         | "COMPLETED"
+        | "OQC_PASSED"
+        | "OQC_FAILED"
         | "CANCELLED"
       skill_level: "beginner" | "intermediate" | "advanced" | "expert"
       stock_location_type: "STORE" | "QUARANTINE" | "REJECT"
@@ -5386,6 +5388,8 @@ export const Constants = {
         "KIT_SENT",
         "IN_PRODUCTION",
         "COMPLETED",
+        "OQC_PASSED",
+        "OQC_FAILED",
         "CANCELLED",
       ],
       skill_level: ["beginner", "intermediate", "advanced", "expert"],

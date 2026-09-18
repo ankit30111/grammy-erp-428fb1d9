@@ -15,9 +15,28 @@ interface BOMStageManagerProps {
   onStageTransition: (newStage: string, notes?: string) => void;
 }
 
+// npd_project_bom (and its own bom_stage vocabulary) is gone — the project's
+// stage now lives on npd_projects.stage, typed with the npd_stage enum
+// (CONCEPT | DESIGN | BOM | SAMPLE | VALIDATION | LAUNCHED | DROPPED).
 const STAGES = [
   {
-    id: 'TEST_BOM',
+    id: 'CONCEPT',
+    name: 'Concept',
+    description: 'Idea and feasibility, before any BOM exists',
+    icon: Clock,
+    color: 'bg-slate-100 text-slate-800',
+    requirements: []
+  },
+  {
+    id: 'DESIGN',
+    name: 'Design',
+    description: 'Layout planning and design work',
+    icon: Cog,
+    color: 'bg-blue-100 text-blue-800',
+    requirements: []
+  },
+  {
+    id: 'BOM',
     name: 'Test BOM',
     description: 'Preliminary BOM for feasibility and layout planning',
     icon: Clock,
@@ -25,7 +44,7 @@ const STAGES = [
     requirements: []
   },
   {
-    id: 'SAMPLING_STAGE',
+    id: 'SAMPLE',
     name: 'Sampling Stage',
     description: 'Vendor samples requested for uncoded parts',
     icon: CheckCircle,
@@ -33,23 +52,15 @@ const STAGES = [
     requirements: ['All uncoded parts must have samples requested']
   },
   {
-    id: 'TESTING_STAGE',
-    name: 'Testing Stage',
-    description: 'Functional and compatibility testing of components',
-    icon: Cog,
-    color: 'bg-orange-100 text-orange-800',
-    requirements: ['All samples must be received', 'Testing protocols defined']
-  },
-  {
-    id: 'PP_STAGE',
-    name: 'PP (Pilot Production)',
-    description: 'Low-volume run with final BOM version',
+    id: 'VALIDATION',
+    name: 'Testing & Pilot',
+    description: 'Functional testing and low-volume pilot run with the final BOM',
     icon: Factory,
-    color: 'bg-purple-100 text-purple-800',
-    requirements: ['All parts tested and approved', 'BOM finalized']
+    color: 'bg-orange-100 text-orange-800',
+    requirements: ['All samples must be received', 'BOM finalized']
   },
   {
-    id: 'MP_STAGE',
+    id: 'LAUNCHED',
     name: 'MP (Mass Production)',
     description: 'Approved and locked BOM for mass production',
     icon: CheckCircle,
@@ -67,21 +78,9 @@ export const BOMStageManager: React.FC<BOMStageManagerProps> = ({
   const [targetStage, setTargetStage] = useState('');
   const [transitionNotes, setTransitionNotes] = useState('');
 
-  // Fetch stage history
-  const { data: stageHistory = [] } = useQuery({
-    queryKey: ['npd-bom-stage-history', bomId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('npd_bom_stage_history')
-        .select('*')
-        .eq('npd_project_bom_id', bomId)
-        .order('transition_date', { ascending: false });
-
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!bomId
-  });
+  // npd_bom_stage_history has NO replacement after the rebuild — there is
+  // nowhere left to read stage transitions from.
+  const stageHistory: Array<Record<string, any>> = [];
 
   // Fetch BOM materials to check readiness
   const { data: bomMaterials = [] } = useQuery({
@@ -90,7 +89,7 @@ export const BOMStageManager: React.FC<BOMStageManagerProps> = ({
       const { data, error } = await supabase
         .from('npd_bom_materials')
         .select('*')
-        .eq('npd_project_bom_id', bomId);
+        .eq('project_id', bomId);
 
       if (error) throw error;
       return data || [];
@@ -112,49 +111,40 @@ export const BOMStageManager: React.FC<BOMStageManagerProps> = ({
 
   const checkStageReadiness = (stageId: string) => {
     const issues: string[] = [];
-    
+
+    // After the rebuild npd_bom_materials only carries part_id / status, so
+    // "uncoded" simply means no linked part row. is_temporary_part,
+    // part_status and avl_generated no longer exist.
+    const uncoded = bomMaterials.filter((m: any) => !m.part_id);
+
     switch (stageId) {
-      case 'SAMPLING_STAGE':
-        const uncodedParts = bomMaterials.filter(m => m.is_temporary_part);
-        if (uncodedParts.length === 0) {
+      case 'SAMPLE':
+        if (uncoded.length === 0) {
           issues.push('No uncoded parts require sampling');
         }
         break;
-      
-      case 'TESTING_STAGE':
-        const pendingSamples = bomMaterials.filter(m => 
-          m.is_temporary_part && 
-          !['SAMPLE_RECEIVED', 'SAMPLE_APPROVED'].includes(m.part_status)
+
+      case 'VALIDATION': {
+        const pendingSamples = uncoded.filter(
+          (m: any) => !['SAMPLE_RECEIVED', 'SAMPLE_APPROVED'].includes(m.status)
         );
         if (pendingSamples.length > 0) {
           issues.push(`${pendingSamples.length} samples still pending`);
         }
         break;
-      
-      case 'PP_STAGE':
-        const unapprovedParts = bomMaterials.filter(m => 
-          m.is_temporary_part && m.part_status !== 'SAMPLE_APPROVED'
-        );
-        if (unapprovedParts.length > 0) {
-          issues.push(`${unapprovedParts.length} parts not yet approved`);
-        }
-        break;
-      
-      case 'MP_STAGE':
-        const uncodedFinalParts = bomMaterials.filter(m => 
-          m.is_temporary_part && m.part_status !== 'FINALIZED_AND_CODED'
+      }
+
+      case 'LAUNCHED': {
+        const uncodedFinalParts = uncoded.filter(
+          (m: any) => m.status !== 'FINALIZED_AND_CODED'
         );
         if (uncodedFinalParts.length > 0) {
           issues.push(`${uncodedFinalParts.length} parts not yet finalized and coded`);
         }
-        
-        const missingAVL = bomMaterials.filter(m => !m.avl_generated);
-        if (missingAVL.length > 0) {
-          issues.push(`${missingAVL.length} parts missing AVL`);
-        }
         break;
+      }
     }
-    
+
     return issues;
   };
 
@@ -255,6 +245,16 @@ export const BOMStageManager: React.FC<BOMStageManagerProps> = ({
             })}
           </div>
         </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Stage History</CardTitle>
+          <CardDescription>
+            Not available after the rebuild — the BOM stage-history table was
+            removed and has no replacement, so past transitions are not recorded.
+          </CardDescription>
+        </CardHeader>
       </Card>
 
       {stageHistory.length > 0 && (

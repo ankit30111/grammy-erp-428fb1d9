@@ -18,17 +18,21 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
+// pre_existing_projects was folded into npd_projects. Column mapping:
+//   base_product_id             -> target_part_id
+//   estimated_completion_date   -> target_launch_date
+//   status                      -> stage (npd_stage enum)
+//   customization_type / _details / brand_requirements -> notes (no columns)
+//   priority                    -> no replacement column
 interface PreExistingProject {
   id: string;
   project_name: string;
+  project_code: string;
   customer_id: string;
-  base_product_id: string;
-  customization_type: string;
-  status: string;
-  priority: string;
-  estimated_completion_date: string;
-  customization_details: string;
-  brand_requirements: string;
+  target_part_id: string;
+  stage: string;
+  target_launch_date: string;
+  notes: string;
   created_at: string;
   customers: { name: string };
   parts: { name: string };
@@ -66,11 +70,11 @@ const PreExisting = () => {
     queryKey: ['pre-existing-projects'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('pre_existing_projects')
+        .from('npd_projects')
         .select(`
           *,
           customers (name),
-          parts (name)
+          parts:target_part_id (name)
         `)
         .order('created_at', { ascending: false });
       
@@ -98,8 +102,9 @@ const PreExisting = () => {
     queryKey: ['products'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('products')
+        .from('parts')
         .select('id, name')
+        .eq('source_type', 'FINISHED_GOOD')
         .eq('is_active', true);
       
       if (error) throw error;
@@ -111,8 +116,23 @@ const PreExisting = () => {
   const createProjectMutation = useMutation({
     mutationFn: async (project: NewPreExistingProject) => {
       const { data, error } = await supabase
-        .from('pre_existing_projects')
-        .insert([project])
+        .from('npd_projects')
+        .insert([{
+          project_code: `NPD-${Date.now().toString().slice(-6)}`,
+          project_name: project.project_name,
+          customer_id: project.customer_id,
+          target_part_id: project.base_product_id,
+          target_launch_date: project.estimated_completion_date || null,
+          stage: 'CONCEPT',
+          // npd_projects has no customization/brand/priority columns, so those
+          // answers are folded into the single notes field.
+          notes: [
+            project.customization_type && `Customization: ${project.customization_type}`,
+            project.priority && `Priority: ${project.priority}`,
+            project.brand_requirements && `Brand requirements: ${project.brand_requirements}`,
+            project.customization_details && `Details: ${project.customization_details}`
+          ].filter(Boolean).join('\n') || null,
+        }])
         .select()
         .single();
       
@@ -146,20 +166,15 @@ const PreExisting = () => {
     }
   });
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'CUSTOMIZATION': return 'bg-blue-100 text-blue-800';
-      case 'CUSTOMER_APPROVAL': return 'bg-yellow-100 text-yellow-800';
-      case 'FINALIZED': return 'bg-green-100 text-green-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'HIGH': return 'bg-red-100 text-red-800';
-      case 'MEDIUM': return 'bg-orange-100 text-orange-800';
-      case 'LOW': return 'bg-green-100 text-green-800';
+  const getStatusColor = (stage: string) => {
+    switch (stage) {
+      case 'CONCEPT': return 'bg-slate-100 text-slate-800';
+      case 'DESIGN': return 'bg-blue-100 text-blue-800';
+      case 'BOM': return 'bg-blue-100 text-blue-800';
+      case 'SAMPLE': return 'bg-yellow-100 text-yellow-800';
+      case 'VALIDATION': return 'bg-orange-100 text-orange-800';
+      case 'LAUNCHED': return 'bg-green-100 text-green-800';
+      case 'DROPPED': return 'bg-red-100 text-red-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -359,9 +374,7 @@ const PreExisting = () => {
                     <TableHead>Project Name</TableHead>
                     <TableHead>Customer</TableHead>
                     <TableHead>Base Product</TableHead>
-                    <TableHead>Customization Type</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Priority</TableHead>
+                    <TableHead>Stage</TableHead>
                     <TableHead>Est. Completion</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -371,20 +384,14 @@ const PreExisting = () => {
                       <TableCell className="font-medium">{project.project_name}</TableCell>
                       <TableCell>{project.customers?.name}</TableCell>
                       <TableCell>{project.parts?.name}</TableCell>
-                      <TableCell>{project.customization_type}</TableCell>
                       <TableCell>
-                        <Badge className={getStatusColor(project.status)}>
-                          {project.status.replace('_', ' ')}
+                        <Badge className={getStatusColor(project.stage)}>
+                          {project.stage}
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <Badge className={getPriorityColor(project.priority)}>
-                          {project.priority}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {project.estimated_completion_date ? 
-                          new Date(project.estimated_completion_date).toLocaleDateString() : 
+                        {project.target_launch_date ?
+                          new Date(project.target_launch_date).toLocaleDateString() :
                           'Not set'
                         }
                       </TableCell>

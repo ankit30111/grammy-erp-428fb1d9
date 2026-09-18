@@ -27,9 +27,9 @@ export const QualityMetricsWidget = () => {
       
       const total = data?.length || 0;
       return {
-        passed: Math.round(((statusCount?.APPROVED || 0) / total) * 100),
+        passed: Math.round(((statusCount?.ACCEPTED || 0) / total) * 100),
         failed: Math.round(((statusCount?.REJECTED || 0) / total) * 100),
-        segregated: Math.round(((statusCount?.SEGREGATED || 0) / total) * 100),
+        segregated: Math.round(((statusCount?.PARTIAL || 0) / total) * 100),
         pending: Math.round(((statusCount?.PENDING || 0) / total) * 100)
       };
     },
@@ -99,7 +99,7 @@ export const QualityMetricsWidget = () => {
       if (error) throw error;
       
       const total = data?.length || 0;
-      const resolved = data?.filter(c => c.status === 'Closed').length || 0;
+      const resolved = data?.filter(c => c.status === 'CLOSED').length || 0;
       
       return {
         total,

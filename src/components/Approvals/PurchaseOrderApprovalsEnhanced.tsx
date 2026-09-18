@@ -72,11 +72,13 @@ const PurchaseOrderApprovalsEnhanced = () => {
 
       // Check for existing workflows for these POs
       const poIds = data?.map(po => po.id) || [];
-      const { data: workflowData } = await supabase
+      const { data: workflowData, error: workflowError } = await supabase
         .from('approval_workflows')
         .select('reference_id, status')
         .eq('workflow_type', 'PURCHASE_ORDER')
         .in('reference_id', poIds);
+
+      if (workflowError) throw workflowError;
 
       const workflowMap = new Map(workflowData?.map(w => [w.reference_id, w.status]) || []);
 
@@ -272,13 +274,17 @@ const PurchaseOrderApprovalsEnhanced = () => {
   };
 
   const checkExistingWorkflow = async (poId: string): Promise<boolean> => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('approval_workflows')
       .select('id')
       .eq('workflow_type', 'PURCHASE_ORDER')
       .eq('reference_id', poId)
-      .single();
-    
+      .maybeSingle();
+
+    if (error) {
+      console.error('Failed to check existing approval workflow:', error);
+      throw error;
+    }
     return !!data;
   };
 

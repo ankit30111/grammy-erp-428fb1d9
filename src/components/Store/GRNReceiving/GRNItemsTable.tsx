@@ -22,8 +22,8 @@ export const GRNItemsTable = ({
   isPending
 }: GRNItemsTableProps) => {
   const getAcceptedQuantity = (item: any) => {
-    // For SEGREGATED items, show the accepted quantity, for APPROVED items show received quantity
-    return item.iqc_outcome === 'SEGREGATED' ? item.iqc_accepted_quantity : item.received_quantity;
+    // For PARTIAL items, show the accepted quantity, for ACCEPTED items show received quantity
+    return item.iqc_outcome === 'PARTIAL' ? item.iqc_accepted_quantity : item.received_quantity;
   };
 
   return (
@@ -59,8 +59,8 @@ export const GRNItemsTable = ({
               </TableCell>
               <TableCell>
                 <Badge 
-                  variant={item.iqc_outcome === 'APPROVED' ? 'default' : 'secondary'}
-                  className={item.iqc_outcome === 'APPROVED' ? 'bg-green-100 text-green-800' : ''}
+                  variant={item.iqc_outcome === 'ACCEPTED' ? 'default' : 'secondary'}
+                  className={item.iqc_outcome === 'ACCEPTED' ? 'bg-green-100 text-green-800' : ''}
                 >
                   {item.iqc_outcome}
                 </Badge>

@@ -37,12 +37,13 @@ const EnhancedPQCActionsDialog = ({ productionOrderId, isOpen, onClose }: Enhanc
     queryKey: ["today-reports-count", productionOrderId],
     queryFn: async () => {
       const today = new Date().toDateString();
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("pqc_reports")
         .select("id")
         .eq("production_order_id", productionOrderId)
         .gte("upload_date", today);
-      
+
+      if (error) throw error;
       return data?.length || 0;
     },
   });
@@ -51,15 +52,16 @@ const EnhancedPQCActionsDialog = ({ productionOrderId, isOpen, onClose }: Enhanc
   const { data: bomItems = [] } = useQuery({
     queryKey: ["production-bom", productionOrderId],
     queryFn: async () => {
-      const { data: productionOrder } = await supabase
+      const { data: productionOrder, error: poError } = await supabase
         .from("production_orders")
         .select("part_id")
         .eq("id", productionOrderId)
         .single();
 
+      if (poError) throw poError;
       if (!productionOrder) return [];
 
-      const { data: bom } = await supabase
+      const { data: bom, error: bomError } = await supabase
         .from("bom")
         .select(`
           *,
@@ -67,6 +69,7 @@ const EnhancedPQCActionsDialog = ({ productionOrderId, isOpen, onClose }: Enhanc
         `)
         .eq("parent_part_id", productionOrder.part_id);
 
+      if (bomError) throw bomError;
       return bom || [];
     },
   });

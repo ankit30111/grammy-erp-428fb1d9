@@ -83,18 +83,19 @@ export const PartSelectionDialog: React.FC<PartSelectionDialogProps> = ({
       const part = rawMaterials.find(p => p.id === partId);
       if (!part) throw new Error('Part not found');
 
+      // npd_bom_materials now keys on project_id and carries only:
+      // part_id, proposed_part_code, description, quantity, uom, vendor_id,
+      // target_price, currency, status, notes.
       const { error } = await supabase
         .from('npd_bom_materials')
         .insert({
-          npd_project_bom_id: bomId,
+          project_id: bomId!,
+          part_id: part.id,
           description: part.name,
-          part_code: part.part_code,
           quantity,
-          unit: 'PCS',
-          specifications: part.specification,
-          part_type: 'EXISTING',
-          is_temporary_part: false,
-          part_status: 'FINALIZED_AND_CODED'
+          uom: 'PCS',
+          notes: part.specification,
+          status: 'FINALIZED_AND_CODED'
         });
 
       if (error) throw error;
@@ -116,40 +117,40 @@ export const PartSelectionDialog: React.FC<PartSelectionDialogProps> = ({
         .rpc('generate_temp_part_code', { part_category: partData.category });
 
       if (codeError) throw codeError;
+      if (!bomId) throw new Error('No NPD project selected');
 
       const { data: materialData, error: materialError } = await supabase
         .from('npd_bom_materials')
         .insert({
-          npd_project_bom_id: bomId,
-          material_name: partData.material_name,
-          description: partData.description,
-          expected_function: partData.expected_function,
+          project_id: bomId,
+          proposed_part_code: tempCode as unknown as string,
+          description: partData.description || partData.material_name,
           quantity: partData.quantity,
-          unit: partData.unit,
-          vendor_name: partData.vendor_name,
-          vendor_contact: partData.vendor_contact,
-          cost_estimate: partData.cost_estimate,
-          lead_time_days: partData.lead_time_days,
-          sample_target_date: partData.sample_target_date,
-          specifications: partData.specifications,
-          is_critical: partData.is_critical,
-          part_type: 'NEW_UNCODED',
-          is_temporary_part: true,
-          temporary_part_code: tempCode,
-          part_status: 'UNDER_DEVELOPMENT'
+          uom: partData.unit,
+          target_price: partData.cost_estimate ?? null,
+          notes: ([
+            partData.expected_function && `Function: ${partData.expected_function}`,
+            partData.specifications && `Spec: ${partData.specifications}`,
+            partData.vendor_name && `Vendor: ${partData.vendor_name}`,
+            partData.vendor_contact && `Contact: ${partData.vendor_contact}`,
+            partData.lead_time_days && `Lead time: ${partData.lead_time_days} days`,
+            partData.sample_target_date && `Sample target: ${partData.sample_target_date}`,
+            partData.is_critical ? 'Critical part' : ''
+          ].filter(Boolean) as string[]).join(' | ') || null,
+          status: 'UNDER_DEVELOPMENT'
         })
         .select()
         .single();
 
       if (materialError) throw materialError;
 
-      // Create initial sample tracking record
+      // npd_sample_tracking is project-scoped now (no per-material link).
       await supabase
         .from('npd_sample_tracking')
         .insert({
-          npd_bom_material_id: materialData.id,
-          sample_request_date: new Date().toISOString().split('T')[0],
-          created_by: (await supabase.auth.getUser()).data.user?.id
+          project_id: bomId!,
+          quantity: partData.quantity,
+          requested_on: new Date().toISOString().split('T')[0]
         });
     },
     onSuccess: () => {

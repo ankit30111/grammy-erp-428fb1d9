@@ -57,7 +57,7 @@ const GRNManagement = () => {
       case 'PENDING': return 'warning';
       case 'ACCEPTED': return 'default';
       case 'REJECTED': return 'destructive';
-      case 'SEGREGATED': return 'secondary';
+      case 'PARTIAL': return 'secondary';
       default: return 'secondary';
     }
   };
@@ -119,7 +119,7 @@ const GRNManagement = () => {
     updateGRNItem.mutate({
       itemId,
       updates: {
-        iqc_outcome: 'SEGREGATED',
+        iqc_outcome: 'PARTIAL',
         iqc_approved_at: new Date().toISOString(),
         iqc_accepted_quantity: acceptedQty,
         iqc_rejected_quantity: 0, // Calculate if needed
@@ -296,7 +296,7 @@ const GRNManagement = () => {
                     <TableCell>
                       {item.store_confirmed ? (
                         <Badge variant="default">Received to Store</Badge>
-                      ) : item.iqc_outcome === 'ACCEPTED' || item.iqc_outcome === 'SEGREGATED' ? (
+                      ) : item.iqc_outcome === 'ACCEPTED' || item.iqc_outcome === 'PARTIAL' ? (
                         <Badge variant="secondary">Ready for Store</Badge>
                       ) : (
                         <Badge variant="outline">Pending IQC</Badge>
@@ -337,7 +337,7 @@ const GRNManagement = () => {
                             </Button>
                           </>
                         )}
-                        {(item.iqc_outcome === 'ACCEPTED' || item.iqc_outcome === 'SEGREGATED') && !item.store_confirmed && (
+                        {(item.iqc_outcome === 'ACCEPTED' || item.iqc_outcome === 'PARTIAL') && !item.store_confirmed && (
                           <Badge variant="secondary" className="text-xs">
                             Forwarded to Store
                           </Badge>

@@ -63,14 +63,15 @@ const ScheduledProductions = () => {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'SCHEDULED':
-      case 'PENDING':
+      case 'PLANNED':
         return <Badge variant="secondary">Scheduled</Badge>;
-      case 'IN_PROGRESS':
+      case 'IN_PRODUCTION':
         return <Badge variant="default">In Progress</Badge>;
-      case 'MATERIALS_SENT':
+      case 'KIT_PREPARED':
+        return <Badge variant="outline">Kit Prepared</Badge>;
+      case 'KIT_SENT':
         return <Badge variant="outline">Materials Sent</Badge>;
-      case 'PENDING_OQC':
+      case 'COMPLETED':
         return <Badge variant="outline">Pending OQC</Badge>;
       default:
         return <Badge variant="secondary">{status}</Badge>;

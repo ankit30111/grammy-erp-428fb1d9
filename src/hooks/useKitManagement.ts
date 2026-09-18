@@ -45,8 +45,11 @@ export const useKitManagement = () => {
             )
           )
         `)
-        .in("status", ["PENDING", "IN_PROGRESS"])
-        .in("kit_status", ["KIT SCHEDULED", "KIT PREPARING", "KIT READY", "KIT VERIFIED", "KIT SENT", "KIT SHORTAGE"])
+        .in("status", ["PLANNED", "IN_PRODUCTION"])
+        // production_orders.kit_status no longer exists - kit state has one owner
+        // now, kit_preparation.status. An order is in the kit screen when it has a
+        // kit_preparation row that is not yet finished.
+        .not("kit_preparation", "is", null)
         .order("planned_date", { ascending: true });
 
       if (error) throw error;

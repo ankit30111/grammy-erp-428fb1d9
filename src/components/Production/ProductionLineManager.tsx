@@ -112,7 +112,7 @@ const ProductionLineManager = ({ productionOrderId }: ProductionLineManagerProps
           planned_date,
           parts!part_id (name)
         `)
-        .in("status", ["IN_PROGRESS", "SCHEDULED"])
+        .in("status", ["IN_PRODUCTION", "PLANNED"])
         .order("planned_date");
 
       if (error) {
@@ -174,8 +174,8 @@ const ProductionLineManager = ({ productionOrderId }: ProductionLineManagerProps
   const getLineSchedule = (lineId: string) => {
     const lineOrders = lineStatus.filter(order => order.lineIds.includes(lineId));
 
-    const ongoing = lineOrders.find(order => order.status === "IN_PROGRESS");
-    const scheduled = lineOrders.filter(order => order.status === "SCHEDULED");
+    const ongoing = lineOrders.find(order => order.status === "IN_PRODUCTION");
+    const scheduled = lineOrders.filter(order => order.status === "PLANNED");
 
     return { ongoing, scheduled };
   };
@@ -218,7 +218,7 @@ const ProductionLineManager = ({ productionOrderId }: ProductionLineManagerProps
       const { data, error } = await supabase
         .from("production_orders")
         .update({
-          status: "SCHEDULED"
+          status: "PLANNED"
         })
         .eq("id", productionOrderId)
         .select()

@@ -5,36 +5,24 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Calendar, CheckCircle, Clock, Users, AlertTriangle, TrendingUp, XCircle } from "lucide-react";
+import { Calendar, CheckCircle, Clock, Users, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { useCAPATracking } from "@/hooks/useCAPATracking";
 
 interface CAPATracking {
   id: string;
+  capa_number: string;
+  /** `source` on the unified `capa` table replaced the old per-table category. */
   capa_category: string;
-  reference_id: string;
   part_or_process: string;
   vendor_name: string | null;
   approved_at: string | null;
-  approved_by: string | null;
-  implementation_assigned_to: string | null;
-  implementation_deadline: string | null;
+  /** capa.status — ACCEPTED while being implemented, CLOSED once done. */
   implementation_status: string;
-  implementation_remarks: string | null;
-  implementation_completed_at: string | null;
-  implementation_completed_by: string | null;
-}
-
-interface ComplianceStats {
-  totalChecks: number;
-  implementedChecks: number;
-  lastCheckDate: string | null;
-  lastCheckResult: boolean | null;
+  implementation_deadline: string | null;
 }
 
 const CAPATrackingTab = () => {
@@ -42,12 +30,8 @@ const CAPATrackingTab = () => {
   const [loading, setLoading] = useState(true);
   const [selectedCapa, setSelectedCapa] = useState<CAPATracking | null>(null);
   const [implementationStatus, setImplementationStatus] = useState("");
-  const [implementationRemarks, setImplementationRemarks] = useState("");
-  const [assignedTo, setAssignedTo] = useState("");
   const [deadline, setDeadline] = useState("");
-  const [complianceData, setComplianceData] = useState<Record<string, ComplianceStats>>({});
   const { toast } = useToast();
-  const { fetchCAPAImplementationHistory } = useCAPATracking();
 
   useEffect(() => {
     fetchCAPATracking();
@@ -55,20 +39,37 @@ const CAPATrackingTab = () => {
 
   const fetchCAPATracking = async () => {
     try {
+      // capa_approvals_view is gone — approved CAPAs are `capa` rows with
+      // status ACCEPTED (the old APPROVED).
       const { data, error } = await supabase
-        .from('capa_approvals_view')
-        .select('*')
-        .eq('status', 'APPROVED')
-        .order('approved_at', { ascending: false });
+        .from('capa')
+        .select(`
+          id,
+          capa_number,
+          source,
+          status,
+          due_date,
+          updated_at,
+          parts (name, part_code),
+          vendors (name)
+        `)
+        .in('status', ['ACCEPTED', 'CLOSED'])
+        .order('updated_at', { ascending: false });
 
       if (error) throw error;
-      
-      setCAPATracking(data || []);
-      
-      // Fetch compliance data for each CAPA
-      if (data) {
-        fetchComplianceData(data);
-      }
+
+      setCAPATracking(
+        (data || []).map((row: any) => ({
+          id: row.id,
+          capa_number: row.capa_number,
+          capa_category: row.source || 'UNKNOWN',
+          part_or_process: row.parts?.name || row.parts?.part_code || row.capa_number,
+          vendor_name: row.vendors?.name ?? null,
+          approved_at: row.updated_at,
+          implementation_status: row.status,
+          implementation_deadline: row.due_date,
+        }))
+      );
     } catch (error) {
       console.error('Error fetching CAPA tracking:', error);
       toast({
@@ -81,80 +82,28 @@ const CAPATrackingTab = () => {
     }
   };
 
-  const fetchComplianceData = async (capas: CAPATracking[]) => {
-    const compliancePromises = capas.map(async (capa) => {
-      const { data, error } = await supabase
-        .from('capa_implementation_checks')
-        .select('implemented, verified_at')
-        .eq('capa_category', capa.capa_category.toUpperCase())
-        .eq('reference_id', capa.id)
-        .order('verified_at', { ascending: false });
-
-      if (error) {
-        console.error('Error fetching compliance data:', error);
-        return { capaId: capa.id, stats: null };
-      }
-
-      const totalChecks = data?.length || 0;
-      const implementedChecks = data?.filter(check => check.implemented).length || 0;
-      const lastCheck = data?.[0];
-
-      return {
-        capaId: capa.id,
-        stats: {
-          totalChecks,
-          implementedChecks,
-          lastCheckDate: lastCheck?.verified_at || null,
-          lastCheckResult: lastCheck?.implemented || null
-        }
-      };
-    });
-
-    const complianceResults = await Promise.all(compliancePromises);
-    const complianceMap: Record<string, ComplianceStats> = {};
-    
-    complianceResults.forEach(({ capaId, stats }) => {
-      if (stats) {
-        complianceMap[capaId] = stats;
-      }
-    });
-
-    setComplianceData(complianceMap);
-  };
-
   const handleUpdateImplementation = async () => {
     if (!selectedCapa) return;
 
     try {
-      const updateData: any = {
-        implementation_status: implementationStatus,
-        implementation_remarks: implementationRemarks,
-        implementation_assigned_to: assignedTo || null,
-        implementation_deadline: deadline || null
+      // One `capa` table now — and the only implementation fields that survived
+      // the rebuild are status and due_date.
+      const updateData: Record<string, unknown> = {
+        status: implementationStatus,
+        due_date: deadline || null,
       };
 
-      if (implementationStatus === 'IMPLEMENTED') {
-        updateData.implementation_completed_at = new Date().toISOString();
-        updateData.implementation_completed_by = (await supabase.auth.getUser()).data.user?.id;
+      if (implementationStatus === 'CLOSED') {
+        updateData.closed_at = new Date().toISOString();
+        updateData.closed_by = (await supabase.auth.getUser()).data.user?.id ?? null;
       }
 
-      // Update the appropriate table based on CAPA category
-      let updateResult;
-      if (selectedCapa.capa_category === 'VENDOR') {
-        const { error } = await supabase
-          .from('iqc_vendor_capa')
-          .update(updateData)
-          .eq('id', selectedCapa.id);
-        updateResult = { error };
-      } else if (selectedCapa.capa_category === 'PRODUCTION') {
-        const { error } = await supabase
-          .from('production_capa')
-          .update(updateData)
-          .eq('id', selectedCapa.id);
-        updateResult = { error };
-      }
+      const { error } = await supabase
+        .from('capa')
+        .update(updateData)
+        .eq('id', selectedCapa.id);
 
-      if (updateResult?.error) throw updateResult.error;
+      if (error) throw error;
 
       toast({
         title: "Success",
@@ -163,8 +112,6 @@ const CAPATrackingTab = () => {
 
       setSelectedCapa(null);
       setImplementationStatus("");
-      setImplementationRemarks("");
-      setAssignedTo("");
       setDeadline("");
       fetchCAPATracking();
     } catch (error) {
@@ -179,9 +126,11 @@ const CAPATrackingTab = () => {
 
   const getCategoryColor = (category: string) => {
     switch (category) {
-      case 'VENDOR': return 'bg-blue-100 text-blue-800';
+      case 'VENDOR':
+      case 'IQC': return 'bg-blue-100 text-blue-800';
       case 'PRODUCTION': return 'bg-green-100 text-green-800';
       case 'LINE_REJECTION': return 'bg-red-100 text-red-800';
+      case 'CUSTOMER':
       case 'PART_ANALYSIS': return 'bg-purple-100 text-purple-800';
       default: return 'bg-gray-100 text-gray-800';
     }
@@ -189,66 +138,29 @@ const CAPATrackingTab = () => {
 
   const getImplementationStatusColor = (status: string) => {
     switch (status) {
-      case 'IMPLEMENTED': return 'bg-green-100 text-green-800';
-      case 'PARTIALLY_IMPLEMENTED': return 'bg-yellow-100 text-yellow-800';
-      case 'PENDING': return 'bg-red-100 text-red-800';
-      case 'IN_PROGRESS': return 'bg-blue-100 text-blue-800';
+      case 'CLOSED': return 'bg-green-100 text-green-800';
+      case 'ACCEPTED': return 'bg-blue-100 text-blue-800';
+      case 'OPEN': return 'bg-red-100 text-red-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
 
   const getImplementationIcon = (status: string) => {
     switch (status) {
-      case 'IMPLEMENTED': return <CheckCircle className="h-4 w-4" />;
-      case 'IN_PROGRESS': return <Clock className="h-4 w-4" />;
-      case 'PENDING': return <AlertTriangle className="h-4 w-4" />;
+      case 'CLOSED': return <CheckCircle className="h-4 w-4" />;
+      case 'ACCEPTED': return <Clock className="h-4 w-4" />;
+      case 'OPEN': return <AlertTriangle className="h-4 w-4" />;
       default: return <Clock className="h-4 w-4" />;
     }
   };
 
-  const renderComplianceIndicator = (capaId: string) => {
-    const stats = complianceData[capaId];
-    
-    if (!stats || stats.totalChecks === 0) {
-      return (
-        <div className="flex items-center gap-1 text-gray-500">
-          <AlertTriangle className="h-3 w-3" />
-          <span className="text-xs">No checks yet</span>
-        </div>
-      );
-    }
-
-    const complianceRate = (stats.implementedChecks / stats.totalChecks) * 100;
-    const lastCheckIcon = stats.lastCheckResult ? 
-      <CheckCircle className="h-3 w-3 text-green-600" /> : 
-      <XCircle className="h-3 w-3 text-red-600" />;
-
-    return (
-      <div className="flex items-center gap-2">
-        <div className="flex items-center gap-1">
-          {lastCheckIcon}
-          <span className="text-xs">
-            {stats.implementedChecks}/{stats.totalChecks}
-          </span>
-        </div>
-        <Badge 
-          variant="outline" 
-          className={`text-xs ${
-            complianceRate >= 80 ? 'bg-green-50 text-green-700 border-green-200' :
-            complianceRate >= 50 ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
-            'bg-red-50 text-red-700 border-red-200'
-          }`}
-        >
-          {Math.round(complianceRate)}%
-        </Badge>
-        {stats.lastCheckDate && (
-          <span className="text-xs text-muted-foreground">
-            {new Date(stats.lastCheckDate).toLocaleDateString()}
-          </span>
-        )}
-      </div>
-    );
-  };
+  // capa_implementation_checks has no replacement table after the rebuild, so
+  // there is no IQC compliance data to show. Say so rather than render zeroes.
+  const renderComplianceIndicator = (_capaId: string) => (
+    <span className="text-xs text-muted-foreground">
+      Not available after rebuild
+    </span>
+  );
 
   if (loading) {
     return <div className="p-4">Loading CAPA tracking...</div>;
@@ -279,7 +191,6 @@ const CAPATrackingTab = () => {
                 <TableHead>Implementation Status</TableHead>
                 <TableHead>IQC Compliance</TableHead>
                 <TableHead>Deadline</TableHead>
-                <TableHead>Assigned To</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -311,7 +222,6 @@ const CAPATrackingTab = () => {
                       {capa.implementation_deadline ? new Date(capa.implementation_deadline).toLocaleDateString() : 'Not set'}
                     </div>
                   </TableCell>
-                  <TableCell>{capa.implementation_assigned_to || 'Unassigned'}</TableCell>
                   <TableCell>
                     <Dialog>
                       <DialogTrigger asChild>
@@ -321,8 +231,6 @@ const CAPATrackingTab = () => {
                           onClick={() => {
                             setSelectedCapa(capa);
                             setImplementationStatus(capa.implementation_status);
-                            setImplementationRemarks(capa.implementation_remarks || "");
-                            setAssignedTo(capa.implementation_assigned_to || "");
                             setDeadline(capa.implementation_deadline || "");
                           }}
                         >
@@ -342,10 +250,9 @@ const CAPATrackingTab = () => {
                                   <SelectValue placeholder="Select status" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="PENDING">Pending</SelectItem>
-                                  <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
-                                  <SelectItem value="PARTIALLY_IMPLEMENTED">Partially Implemented</SelectItem>
-                                  <SelectItem value="IMPLEMENTED">Implemented</SelectItem>
+                                  <SelectItem value="OPEN">Pending</SelectItem>
+                                  <SelectItem value="ACCEPTED">In Progress</SelectItem>
+                                  <SelectItem value="CLOSED">Implemented</SelectItem>
                                 </SelectContent>
                               </Select>
                             </div>
@@ -360,37 +267,16 @@ const CAPATrackingTab = () => {
                             </div>
                           </div>
                           <div className="space-y-2">
-                            <Label htmlFor="assigned-to">Assigned To</Label>
-                            <Input
-                              id="assigned-to"
-                              value={assignedTo}
-                              onChange={(e) => setAssignedTo(e.target.value)}
-                              placeholder="Enter user ID or department"
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="implementation-remarks">Implementation Remarks</Label>
-                            <Textarea
-                              id="implementation-remarks"
-                              value={implementationRemarks}
-                              onChange={(e) => setImplementationRemarks(e.target.value)}
-                              placeholder="Add implementation notes, progress updates, or completion details..."
-                              rows={4}
-                            />
-                          </div>
-
-                          {/* Show IQC compliance history */}
-                          {complianceData[selectedCapa?.id || ''] && (
-                            <div className="space-y-2">
-                              <Label>IQC Compliance Summary</Label>
-                              <div className="p-3 bg-muted rounded-lg">
-                                {renderComplianceIndicator(selectedCapa?.id || '')}
-                                <p className="text-xs text-muted-foreground mt-1">
-                                  This CAPA has been verified during IQC inspections
-                                </p>
-                              </div>
+                            <Label>IQC Compliance Summary</Label>
+                            <div className="p-3 bg-muted rounded-lg">
+                              <p className="text-xs text-muted-foreground">
+                                Not available after the rebuild — the CAPA
+                                implementation-check table was removed, and
+                                assignee / free-text implementation remarks no
+                                longer have a column to live in.
+                              </p>
                             </div>
-                          )}
+                          </div>
 
                           <div className="flex justify-end gap-2">
                             <Button variant="outline" onClick={() => setSelectedCapa(null)}>

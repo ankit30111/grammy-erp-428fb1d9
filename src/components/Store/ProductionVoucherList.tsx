@@ -33,8 +33,8 @@ const columns: DataTableColumn<ProductionVoucherRow>[] = [
 
 const getState = (status: string): "ok" | "warn" | "bad" | "idle" => {
   const normalized = status.toUpperCase();
-  if (normalized === "COMPLETED" || normalized === "OQC_PASSED") return "ok";
-  if (normalized === "IN_PROGRESS" || normalized === "SCHEDULED") return "warn";
+  if (normalized === "COMPLETED" || normalized === "COMPLETED") return "ok";
+  if (normalized === "IN_PRODUCTION" || normalized === "PLANNED") return "warn";
   if (normalized === "REJECTED" || normalized === "FAILED") return "bad";
   return "idle";
 };

@@ -12,7 +12,7 @@ export const usePPCDashboardData = () => {
       if (scopePlantId) schedulesQ = schedulesQ.eq('plant_id', scopePlantId);
       const [projectionsData, shortagesData, schedulesData] = await Promise.all([
         supabase.from('projections').select('*').gte('created_at', new Date(new Date().setDate(1)).toISOString()),
-        supabase.from('material_shortages_calculated').select('*').gt('shortage_quantity', 0),
+        supabase.from('shortages').select('*').gt('shortage_quantity', 0),
         schedulesQ
       ]);
 
@@ -20,7 +20,7 @@ export const usePPCDashboardData = () => {
         totalProjections: projectionsData.data?.length || 0,
         pendingProjections: projectionsData.data?.filter(p => p.status === 'New').length || 0,
         materialShortages: shortagesData.data?.length || 0,
-        scheduledProduction: schedulesData.data?.filter(s => s.status === 'SCHEDULED').length || 0
+        scheduledProduction: schedulesData.data?.filter(s => s.status === 'PLANNED').length || 0
       };
     }
   });
@@ -81,7 +81,7 @@ export const useProductionDashboardData = () => {
 
       const scheduled = ordersData.data?.filter(o => o.status === 'PENDING').length || 0;
       const completed = ordersData.data?.filter(o => o.status === 'COMPLETED').length || 0;
-      const inProgress = ordersData.data?.filter(o => o.status === 'IN_PROGRESS').length || 0;
+      const inProgress = ordersData.data?.filter(o => o.status === 'IN_PRODUCTION').length || 0;
 
       return {
         scheduledVouchers: scheduled,
@@ -106,7 +106,7 @@ export const useQualityDashboardData = () => {
       ]);
 
       const totalIQC = grnItemsData.data?.length || 0;
-      const passedIQC = grnItemsData.data?.filter(g => g.iqc_outcome === 'APPROVED').length || 0;
+      const passedIQC = grnItemsData.data?.filter(g => g.iqc_outcome === 'ACCEPTED').length || 0;
       const rejectedIQC = grnItemsData.data?.filter(g => g.iqc_outcome === 'REJECTED').length || 0;
 
       return {

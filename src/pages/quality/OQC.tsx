@@ -98,12 +98,13 @@ const OQC = () => {
 
       // If passed, create finished goods inventory entry
       if (status === "OQC_PASSED") {
-        const { data: order } = await supabase
+        const { data: order, error: orderError } = await supabase
           .from("production_orders")
           .select("part_id, quantity, voucher_number")
           .eq("id", orderId)
           .single();
 
+        if (orderError) throw orderError;
         if (order) {
           await supabase
             .from("finished_goods_inventory")

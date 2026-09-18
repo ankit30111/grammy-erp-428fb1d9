@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { MOVEMENT_TYPES } from '@/constants/movementTypes';
 import { useToast } from '@/hooks/use-toast';
 import {
   getStockLocationId,
@@ -251,7 +252,7 @@ export const useIQCInspection = (grn: any) => {
               ...base,
               location_id: quarantineId,
               qty_delta: -result.acceptedQuantity,
-              movement_type: 'IQC_ACCEPT_OUT',
+              movement_type: MOVEMENT_TYPES.IQC_ACCEPT_OUT,
               reason_code: 'IQC_ACCEPTED',
               notes: `IQC accepted ${result.acceptedQuantity} — released from quarantine`,
             } as StockMovement);
@@ -259,7 +260,7 @@ export const useIQCInspection = (grn: any) => {
               ...base,
               location_id: mainId,
               qty_delta: result.acceptedQuantity,
-              movement_type: 'IQC_ACCEPT_IN',
+              movement_type: MOVEMENT_TYPES.IQC_ACCEPT_IN,
               reason_code: 'IQC_ACCEPTED',
               notes: `IQC accepted ${result.acceptedQuantity} — into main store`,
             } as StockMovement);
@@ -270,7 +271,7 @@ export const useIQCInspection = (grn: any) => {
               ...base,
               location_id: quarantineId,
               qty_delta: -result.rejectedQuantity,
-              movement_type: 'IQC_REJECT_OUT',
+              movement_type: MOVEMENT_TYPES.IQC_REJECT_OUT,
               reason_code: 'IQC_REJECTED',
               notes: `IQC rejected ${result.rejectedQuantity} — out of quarantine`,
             } as StockMovement);
@@ -278,7 +279,7 @@ export const useIQCInspection = (grn: any) => {
               ...base,
               location_id: rejectId,
               qty_delta: result.rejectedQuantity,
-              movement_type: 'IQC_REJECT_IN',
+              movement_type: MOVEMENT_TYPES.IQC_REJECT_IN,
               reason_code: 'IQC_REJECTED',
               notes: `IQC rejected ${result.rejectedQuantity} — into rejected material`,
             } as StockMovement);

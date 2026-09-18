@@ -303,10 +303,12 @@ const RawMaterialsManagement = () => {
   const openDocument = async (fileName: string) => {
     try {
       const { supabase } = await import("@/integrations/supabase/client");
-      const { data } = await supabase.storage
+      const { data, error } = await supabase.storage
         .from("raw-material-documents")
         .createSignedUrl(fileName, 60 * 60); // 1 hour expiry
-      
+
+      if (error) throw error;
+
       if (data?.signedUrl) {
         window.open(data.signedUrl, '_blank');
       } else {

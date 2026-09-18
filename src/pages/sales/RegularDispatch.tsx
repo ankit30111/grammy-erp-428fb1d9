@@ -122,8 +122,9 @@ const RegularDispatch = () => {
 
   const fetchProducts = async () => {
     const { data, error } = await supabase
-      .from('products')
+      .from('parts')
       .select('id, part_code, name')
+      .eq('source_type', 'FINISHED_GOOD')
       .eq('is_active', true)
       .order('name');
     

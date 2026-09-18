@@ -49,8 +49,8 @@ const LineRejectionManager = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("rca_reports")
-        .select("*");
-      
+        .select("*, capa(line_rejection_id)");
+
       if (error) throw error;
       return data || [];
     },
@@ -60,13 +60,15 @@ const LineRejectionManager = () => {
   const { data: vendorCAPAs = [] } = useQuery({
     queryKey: ["vendor-capas"],
     queryFn: async () => {
+      // vendor_capa collapsed into `capa` (source = 'VENDOR').
       const { data, error } = await supabase
-        .from("vendor_capa")
+        .from("capa")
         .select(`
           *,
-          vendors!inner(name)
-        `);
-      
+          vendors(name)
+        `)
+        .eq("source", "VENDOR");
+
       if (error) throw error;
       return data || [];
     },
@@ -77,13 +79,22 @@ const LineRejectionManager = () => {
       const user = await supabase.auth.getUser();
       if (!user.data.user) throw new Error("User not authenticated");
 
+      // rca_reports now hangs off `capa`, not directly off the line rejection,
+      // and rca_file_url -> report_url. received_quantity has no column.
+      const { data: capaRow, error: capaError } = await supabase
+        .from("capa")
+        .select("id")
+        .eq("line_rejection_id", rejectionId)
+        .maybeSingle();
+      if (capaError) throw capaError;
+      if (!capaRow) throw new Error("No CAPA raised for this line rejection yet");
+
       const { data, error } = await supabase
         .from("rca_reports")
         .insert([{
-          line_rejection_id: rejectionId,
-          received_quantity: quantity,
-          rca_file_url: fileUrl || "pending_upload",
-          uploaded_by: user.data.user.id
+          capa_id: capaRow.id,
+          report_url: fileUrl || "pending_upload",
+          created_by: user.data.user.id
         }])
         .select()
         .single();
@@ -127,13 +138,18 @@ const LineRejectionManager = () => {
         .single();
 
       const { data, error } = await supabase
-        .from("vendor_capa")
+        .from("capa")
         .insert([{
+          capa_number: `CAPA-LR-${Date.now()}`,
+          source: "VENDOR",
+          plant_id: rejection.plant_id,
+          part_id: rejection.part_id,
           line_rejection_id: rejectionId,
           vendor_id: materialVendor?.vendor_id || vendorId,
-          capa_file_url: fileUrl || "pending_upload",
-          initiated_by: user.data.user.id,
-          status: "Open"
+          document_url: fileUrl || null,
+          problem_statement: rejection.defect || "Line rejection",
+          raised_by: user.data.user.id,
+          status: "OPEN"
         }])
         .select()
         .single();
@@ -246,7 +262,7 @@ const LineRejectionManager = () => {
   };
 
   const hasRCA = (rejectionId: string) => {
-    return rcaReports.some(rca => rca.line_rejection_id === rejectionId);
+    return rcaReports.some((rca: any) => rca.capa?.line_rejection_id === rejectionId);
   };
 
   const hasCAPAForRejection = (rejectionId: string) => {

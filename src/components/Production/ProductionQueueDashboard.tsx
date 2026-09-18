@@ -24,7 +24,7 @@ const ProductionQueueDashboard = () => {
           parts!part_id (name)
         `)
         .eq("plant_id", plantId!)
-        .in("status", ["IN_PROGRESS", "SCHEDULED"])
+        .in("status", ["IN_PRODUCTION", "PLANNED"])
         .order("planned_date");
 
       if (error) throw error;
@@ -57,8 +57,8 @@ const ProductionQueueDashboard = () => {
 
   const renderLineCard = (line: { id: string; name: string }) => {
     const lineOrders = getLineOrders(line.id);
-    const ongoing = lineOrders.find(order => order.status === "IN_PROGRESS");
-    const scheduled = lineOrders.filter(order => order.status === "SCHEDULED");
+    const ongoing = lineOrders.find(order => order.status === "IN_PRODUCTION");
+    const scheduled = lineOrders.filter(order => order.status === "PLANNED");
     const isIdle = lineOrders.length === 0;
 
     return (
@@ -155,7 +155,7 @@ const ProductionQueueDashboard = () => {
           <CardContent className="p-4">
             <div className="text-center">
               <p className="text-2xl font-bold text-green-600">
-                {productionOrders.filter(o => o.status === "IN_PROGRESS").length}
+                {productionOrders.filter(o => o.status === "IN_PRODUCTION").length}
               </p>
               <p className="text-sm text-muted-foreground">Ongoing Productions</p>
             </div>
@@ -165,7 +165,7 @@ const ProductionQueueDashboard = () => {
           <CardContent className="p-4">
             <div className="text-center">
               <p className="text-2xl font-bold text-blue-600">
-                {productionOrders.filter(o => o.status === "SCHEDULED").length}
+                {productionOrders.filter(o => o.status === "PLANNED").length}
               </p>
               <p className="text-sm text-muted-foreground">Scheduled Productions</p>
             </div>

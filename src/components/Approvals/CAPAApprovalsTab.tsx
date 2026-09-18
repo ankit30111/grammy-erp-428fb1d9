@@ -13,14 +13,13 @@ import { SignedStorageLink } from "@/components/ui/signed-storage-link";
 
 interface CAPAApproval {
   id: string;
+  capa_number: string;
+  /** `source` on the unified `capa` table replaced the old per-table category. */
   capa_category: string;
-  reference_id: string;
   part_or_process: string;
   capa_document_url: string | null;
   status: string;
   submitted_at: string | null;
-  submitted_by: string | null;
-  remarks: string | null;
   vendor_name: string | null;
   created_at: string;
 }
@@ -39,14 +38,38 @@ const CAPAApprovalsTab = () => {
 
   const fetchCAPAApprovals = async () => {
     try {
+      // The six old CAPA tables (and capa_approvals_view) collapsed into `capa`.
+      // Old status RECEIVED == awaiting approval == SUBMITTED.
       const { data, error } = await supabase
-        .from('capa_approvals_view')
-        .select('*')
-        .eq('status', 'RECEIVED')
+        .from('capa')
+        .select(`
+          id,
+          capa_number,
+          source,
+          status,
+          document_url,
+          created_at,
+          parts (name, part_code),
+          vendors (name)
+        `)
+        .eq('status', 'SUBMITTED')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setCAPAApprovals(data || []);
+
+      setCAPAApprovals(
+        (data || []).map((row: any) => ({
+          id: row.id,
+          capa_number: row.capa_number,
+          capa_category: row.source || 'UNKNOWN',
+          part_or_process: row.parts?.name || row.parts?.part_code || row.capa_number,
+          capa_document_url: row.document_url,
+          status: row.status,
+          submitted_at: row.created_at,
+          vendor_name: row.vendors?.name ?? null,
+          created_at: row.created_at,
+        }))
+      );
     } catch (error) {
       console.error('Error fetching CAPA approvals:', error);
       toast({
@@ -63,75 +86,24 @@ const CAPAApprovalsTab = () => {
     if (!selectedCapa || !actionType) return;
 
     try {
-      const newStatus = actionType === 'approve' ? 'APPROVED' : 'AWAITED';
-      let updateData: any = {};
+      // One table now, so one update — the old per-category branches are gone.
+      const updateData: Record<string, unknown> =
+        actionType === 'approve'
+          ? {
+              status: 'ACCEPTED',
+            }
+          : {
+              // Rejected CAPAs go back to OPEN so the document can be re-uploaded.
+              status: 'OPEN',
+              document_url: null,
+            };
 
-      // Update the appropriate table based on CAPA category
-      if (selectedCapa.capa_category === 'VENDOR') {
-        updateData = {
-          capa_status: newStatus,
-          approved_at: actionType === 'approve' ? new Date().toISOString() : null,
-          approved_by: actionType === 'approve' ? (await supabase.auth.getUser()).data.user?.id : null,
-          rejection_reason: actionType === 'reject' ? remarks : null,
-          // Clear document URL if rejected to allow re-upload
-          capa_document_url: actionType === 'reject' ? null : undefined
-        };
-        
-        const { error } = await supabase
-          .from('iqc_vendor_capa')
-          .update(updateData)
-          .eq('id', selectedCapa.id);
-        
-        if (error) throw error;
-      } else if (selectedCapa.capa_category === 'PRODUCTION') {
-        updateData = {
-          capa_status: newStatus,
-          approved_at: actionType === 'approve' ? new Date().toISOString() : null,
-          approved_by: actionType === 'approve' ? (await supabase.auth.getUser()).data.user?.id : null,
-          rejection_reason: actionType === 'reject' ? remarks : null,
-          // Clear document URL if rejected to allow re-upload
-          capa_document_url: actionType === 'reject' ? null : undefined
-        };
-        
-        const { error } = await supabase
-          .from('production_capa')
-          .update(updateData)
-          .eq('id', selectedCapa.id);
-        
-        if (error) throw error;
-      } else if (selectedCapa.capa_category === 'LINE_REJECTION') {
-        updateData = {
-          approval_status: newStatus === 'APPROVED' ? 'APPROVED' : 'PENDING',
-          approved_at: actionType === 'approve' ? new Date().toISOString() : null,
-          approved_by: actionType === 'approve' ? (await supabase.auth.getUser()).data.user?.id : null,
-          rejection_reason: actionType === 'reject' ? remarks : null,
-          // Clear document URL if rejected to allow re-upload
-          rca_file_url: actionType === 'reject' ? null : undefined
-        };
-        
-        const { error } = await supabase
-          .from('rca_reports')
-          .update(updateData)
-          .eq('id', selectedCapa.id);
-        
-        if (error) throw error;
-      } else if (selectedCapa.capa_category === 'PART_ANALYSIS') {
-        updateData = {
-          status: actionType === 'approve' ? 'CLOSED' : 'PENDING',
-          closed_at: actionType === 'approve' ? new Date().toISOString() : null,
-          closed_by: actionType === 'approve' ? (await supabase.auth.getUser()).data.user?.id : null,
-          remarks: remarks,
-          // Clear document URL if rejected to allow re-upload
-          capa_document_url: actionType === 'reject' ? null : undefined
-        };
-        
-        const { error } = await supabase
-          .from('customer_complaint_parts')
-          .update(updateData)
-          .eq('id', selectedCapa.id);
-        
-        if (error) throw error;
-      }
+      const { error } = await supabase
+        .from('capa')
+        .update(updateData)
+        .eq('id', selectedCapa.id);
+
+      if (error) throw error;
 
       toast({
         title: "Success",
@@ -154,9 +126,11 @@ const CAPAApprovalsTab = () => {
 
   const getCategoryColor = (category: string) => {
     switch (category) {
-      case 'VENDOR': return 'bg-blue-100 text-blue-800';
+      case 'VENDOR':
+      case 'IQC': return 'bg-blue-100 text-blue-800';
       case 'PRODUCTION': return 'bg-green-100 text-green-800';
       case 'LINE_REJECTION': return 'bg-red-100 text-red-800';
+      case 'CUSTOMER':
       case 'PART_ANALYSIS': return 'bg-purple-100 text-purple-800';
       default: return 'bg-gray-100 text-gray-800';
     }
@@ -164,8 +138,8 @@ const CAPAApprovalsTab = () => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'RECEIVED': return 'bg-blue-100 text-blue-800';
-      case 'PENDING': return 'bg-orange-100 text-orange-800';
+      case 'SUBMITTED': return 'bg-blue-100 text-blue-800';
+      case 'OPEN': return 'bg-orange-100 text-orange-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };

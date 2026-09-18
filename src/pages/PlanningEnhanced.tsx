@@ -54,7 +54,7 @@ const PlanningEnhanced: React.FC = () => {
 
   // Get scheduled but not sent to production
   const scheduledNotSentToProduction = schedules?.filter(schedule => 
-    schedule.status === 'SCHEDULED'
+    schedule.status === 'PLANNED'
   ) || [];
 
   const selectedProjectionData = projections?.find(p => p.id === selectedProjection);

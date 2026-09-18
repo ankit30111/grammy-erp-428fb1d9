@@ -25,7 +25,7 @@ const ProductionLinesOverview = () => {
           *,
           parts!inner(name)
         `)
-        .in("status", ["IN_PROGRESS", "SCHEDULED"])
+        .in("status", ["IN_PRODUCTION", "PLANNED"])
         .order("planned_date", { ascending: true });
 
       if (error) {
@@ -56,8 +56,8 @@ const ProductionLinesOverview = () => {
 
     console.log(`📋 Line ${lineName} orders:`, lineOrders);
     
-    const ongoingProduction = lineOrders.find(order => order.status === "IN_PROGRESS");
-    const scheduledCount = lineOrders.filter(order => order.status === "SCHEDULED").length;
+    const ongoingProduction = lineOrders.find(order => order.status === "IN_PRODUCTION");
+    const scheduledCount = lineOrders.filter(order => order.status === "PLANNED").length;
 
     if (ongoingProduction) {
       return {

@@ -106,14 +106,13 @@ const IQC = () => {
             purchase_orders(po_number)
           ),
           parts:part_id!inner(name, part_code),
-          iqc_vendor_capa!left(
+          capa!left(
             id,
-            capa_status,
-            capa_document_url,
-            initiated_at,
-            received_at,
-            approved_at,
-            implemented_at
+            capa_number,
+            status,
+            document_url,
+            created_at,
+            closed_at
           )
         `)
         .not("iqc_outcome", "is", null)
@@ -131,8 +130,12 @@ const IQC = () => {
           .lte("iqc_at", endDate.toISOString());
       }
 
-      const { data } = await query.order("iqc_at", { ascending: false });
-      
+      const { data, error } = await query.order("iqc_at", { ascending: false });
+      // Never swallow the error. The previous version destructured only `data`,
+      // so when this query failed - which it did, every time, because it
+      // embedded the dropped iqc_vendor_capa table - the tab rendered an empty
+      // list with no indication that anything had gone wrong.
+      if (error) throw error;
       return data || [];
     },
   });

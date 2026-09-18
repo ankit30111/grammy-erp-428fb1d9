@@ -33,8 +33,8 @@ export default function ProductBasicInfoTab({ form, setForm, isEditing }: Produc
           <SelectTrigger><SelectValue placeholder="Select model..." /></SelectTrigger>
           <SelectContent>
             {grammyProducts?.map((p: any) => (
-              <SelectItem key={p.id} value={p.product_code || p.name}>
-                {p.product_code} — {p.name}
+              <SelectItem key={p.id} value={p.part_code || p.name}>
+                {p.part_code} — {p.name}
               </SelectItem>
             ))}
             <SelectItem value="__new__">+ Create New Model</SelectItem>

@@ -40,8 +40,8 @@ export const CollaborationPanel: React.FC<CollaborationPanelProps> = ({ bomId })
     queryFn: async () => {
       const { data, error } = await supabase
         .from('npd_bom_materials')
-        .select('id, description, temporary_part_code, part_code')
-        .eq('npd_project_bom_id', bomId)
+        .select('id, description, proposed_part_code, parts (part_code)')
+        .eq('project_id', bomId)
         .order('description');
 
       if (error) throw error;
@@ -50,52 +50,22 @@ export const CollaborationPanel: React.FC<CollaborationPanelProps> = ({ bomId })
     enabled: !!bomId
   });
 
-  // Fetch comments for selected material
-  const { data: comments = [] } = useQuery({
-    queryKey: ['npd-bom-comments', selectedMaterialId],
-    queryFn: async () => {
-      if (!selectedMaterialId) return [];
-      
-      const { data, error } = await supabase
-        .from('npd_bom_comments')
-        .select('*')
-        .eq('npd_bom_material_id', selectedMaterialId)
-        .order('created_at', { ascending: false });
+  // npd_bom_comments has NO replacement after the rebuild — per-material
+  // comments are not stored anywhere, so there is nothing to read.
+  const comments: Array<Record<string, any>> = [];
 
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!selectedMaterialId
-  });
-
-  // Add comment mutation
-  const addCommentMutation = useMutation({
-    mutationFn: async (commentData: any) => {
-      const { error } = await supabase
-        .from('npd_bom_comments')
-        .insert({
-          npd_bom_material_id: selectedMaterialId,
-          comment_text: commentData.comment_text,
-          comment_type: commentData.comment_type,
-          department: commentData.department,
-          created_by: (await supabase.auth.getUser()).data.user?.id
-        });
-
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['npd-bom-comments', selectedMaterialId] });
-      toast({ title: "Comment added successfully" });
-      setNewComment({
-        comment_text: '',
-        comment_type: 'GENERAL',
-        department: ''
+  // Adding comments is disabled for the same reason: npd_bom_comments is gone.
+  const addCommentMutation = {
+    mutate: (_commentData: any) => {
+      toast({
+        title: "Not available after the rebuild",
+        description:
+          "BOM comments were dropped in the database rebuild and have no replacement table.",
+        variant: "destructive",
       });
     },
-    onError: (error) => {
-      toast({ title: "Error adding comment", description: error.message, variant: "destructive" });
-    }
-  });
+    isPending: false,
+  };
 
   const handleAddComment = () => {
     if (!selectedMaterialId || !newComment.comment_text.trim()) {
@@ -132,7 +102,7 @@ export const CollaborationPanel: React.FC<CollaborationPanelProps> = ({ bomId })
               <SelectContent>
                 {bomMaterials.map((material) => (
                   <SelectItem key={material.id} value={material.id}>
-                    {material.description} ({material.temporary_part_code || material.part_code})
+                    {material.description} ({material.proposed_part_code || material.parts?.part_code})
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -252,7 +222,8 @@ export const CollaborationPanel: React.FC<CollaborationPanelProps> = ({ bomId })
 
               {comments.length === 0 && (
                 <div className="text-center py-8 text-muted-foreground">
-                  No comments yet. Be the first to add feedback!
+                  Not available after the rebuild — BOM comments were dropped
+                  from the database and have no replacement.
                 </div>
               )}
             </div>
