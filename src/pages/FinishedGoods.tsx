@@ -28,7 +28,7 @@ const FinishedGoods = () => {
       const [inventoryRes, productionRes, dispatchRes] = await Promise.allSettled([
         supabase.from('finished_goods_inventory').select(`
           *,
-          products!inner(name, part_code)
+          parts!inner(name, part_code)
         `),
         supabase.from('production_orders').select('*').eq('status', 'COMPLETED').gte('updated_at', today),
         supabase.from('dispatch_orders').select('*').gte('created_at', today),
@@ -87,12 +87,12 @@ const FinishedGoods = () => {
   });
 
   const stockByProduct = finishedGoodsData?.inventory?.reduce((acc: any[], item) => {
-    const existing = acc.find(p => p.product === item.products?.name);
+    const existing = acc.find(p => p.product === item.parts?.name);
     if (existing) {
       existing.quantity += item.quantity;
     } else {
       acc.push({
-        product: item.products?.name || 'Unknown',
+        product: item.parts?.name || 'Unknown',
         quantity: item.quantity
       });
     }
@@ -206,7 +206,7 @@ const FinishedGoods = () => {
                     const age = Math.floor((new Date().getTime() - new Date(item.production_date || item.created_at).getTime()) / (1000 * 3600 * 24));
                     return (
                       <TableRow key={item.id}>
-                        <TableCell className="font-medium">{item.products?.name}</TableCell>
+                        <TableCell className="font-medium">{item.parts?.name}</TableCell>
                         <TableCell>{item.lot_number || 'N/A'}</TableCell>
                         <TableCell>{item.quantity.toLocaleString()}</TableCell>
                         <TableCell>{item.production_date ? new Date(item.production_date).toLocaleDateString() : 'N/A'}</TableCell>

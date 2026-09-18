@@ -17,7 +17,7 @@ export const useProductionOrders = () => {
             *,
             projections!projection_id (
               customers!customer_id (name),
-              products!part_id (name)
+              parts!part_id (name)
             )
           )
         `)
@@ -41,7 +41,6 @@ export const useUpdateProductionOrder = () => {
       id: string;
       updates: Partial<{
         status: string;
-        kit_status: string;
       }>;
     }) => {
       const { data, error } = await supabase

@@ -25,14 +25,14 @@ export const validateStockForComponent = async (
       .from("bom")
       .select(`
         *,
-        parts!inner(
+        parts!child_part_id(
           id,
           part_code,
           name,
           inventory(quantity)
         )
       `)
-      .eq("part_id", productId)
+      .eq("parent_part_id", productId)
       .eq("bom_type", bomType);
 
     if (bomError) throw bomError;

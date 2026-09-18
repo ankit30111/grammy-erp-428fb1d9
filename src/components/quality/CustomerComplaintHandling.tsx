@@ -37,8 +37,8 @@ const CustomerComplaintHandling = () => {
         .from("customer_complaints")
         .select(`
           *,
-          customers!inner(name),
-          products!inner(name, part_code)
+          customers!inner(name, brand_name),
+          parts!inner(name, part_code)
         `)
         .in("status", ["Open", "CAPA SHARED WITH CUSTOMER"])
         .order("created_at", { ascending: false });
@@ -58,9 +58,9 @@ const CustomerComplaintHandling = () => {
         .from("bom")
         .select(`
           *,
-          parts!inner(id, name, part_code)
+          parts!child_part_id(id, name, part_code)
         `)
-        .eq("part_id", selectedComplaint.part_id);
+        .eq("parent_part_id", selectedComplaint.part_id);
       
       if (error) throw error;
       return data || [];
@@ -173,11 +173,11 @@ const CustomerComplaintHandling = () => {
                   <TableCell>{complaint.customers?.name}</TableCell>
                   <TableCell>
                     <div>
-                      <div className="font-medium">{complaint.products?.name}</div>
-                      <div className="text-sm text-muted-foreground">{complaint.products?.part_code}</div>
+                      <div className="font-medium">{complaint.parts?.name}</div>
+                      <div className="text-sm text-muted-foreground">{complaint.parts?.part_code}</div>
                     </div>
                   </TableCell>
-                  <TableCell>{complaint.brand_name}</TableCell>
+                  <TableCell>{complaint.customers?.brand_name}</TableCell>
                   <TableCell>{complaint.quantity}</TableCell>
                   <TableCell>{format(new Date(complaint.complaint_date), 'MMM dd, yyyy')}</TableCell>
                   <TableCell>{getStatusBadge(complaint.status)}</TableCell>
@@ -201,7 +201,7 @@ const CustomerComplaintHandling = () => {
       {selectedComplaint && (
         <Card>
           <CardHeader>
-            <CardTitle>Analyze Complaint - {selectedComplaint.products?.name}</CardTitle>
+            <CardTitle>Analyze Complaint - {selectedComplaint.parts?.name}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="grid grid-cols-2 gap-4">

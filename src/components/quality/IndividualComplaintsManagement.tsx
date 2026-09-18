@@ -27,8 +27,8 @@ const IndividualComplaintsManagement = () => {
         .from("customer_complaints")
         .select(`
           *,
-          customers!inner(name),
-          products(name, part_code),
+          customers!inner(name, brand_name),
+          parts(name, part_code),
           customer_complaint_batches(receipt_type),
           customer_complaint_batch_items(item_type, part_description)
         `)
@@ -68,7 +68,7 @@ const IndividualComplaintsManagement = () => {
     const matchesSearch = !searchTerm || 
       complaint.complaint_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       complaint.customers?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      complaint.products?.name?.toLowerCase().includes(searchTerm.toLowerCase());
+      complaint.parts?.name?.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesStatus = statusFilter === "all" || complaint.status === statusFilter;
     
@@ -186,16 +186,16 @@ const IndividualComplaintsManagement = () => {
                         <div className="font-medium">Data Analysis</div>
                         <div className="text-muted-foreground">No physical product</div>
                       </div>
-                    ) : complaint.products ? (
+                    ) : complaint.parts ? (
                       <div>
-                        <div className="font-medium">{complaint.products.name}</div>
-                        <div className="text-sm text-muted-foreground">{complaint.products.part_code}</div>
+                        <div className="font-medium">{complaint.parts.name}</div>
+                        <div className="text-sm text-muted-foreground">{complaint.parts.part_code}</div>
                       </div>
                     ) : (
                       <span className="text-muted-foreground">-</span>
                     )}
                   </TableCell>
-                  <TableCell>{complaint.brand_name}</TableCell>
+                  <TableCell>{complaint.customers?.brand_name}</TableCell>
                   <TableCell>{format(new Date(complaint.complaint_date), 'MMM dd, yyyy')}</TableCell>
                   <TableCell>{getStatusBadge(complaint.status)}</TableCell>
                   <TableCell>

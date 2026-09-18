@@ -32,9 +32,8 @@ const PartAnalysis = () => {
           *,
           customer_complaints!inner(
             id,
-            customers!inner(name),
-            products!inner(name, part_code),
-            brand_name,
+            customers!inner(name, brand_name),
+            parts!inner(name, part_code),
             bill_number
           ),
           parts!inner(name, part_code)
@@ -180,8 +179,8 @@ const PartAnalysis = () => {
                   <TableCell>{part.customer_complaints.customers?.name}</TableCell>
                   <TableCell>
                     <div>
-                      <div className="font-medium">{part.customer_complaints.products?.name}</div>
-                      <div className="text-sm text-muted-foreground">{part.customer_complaints.products?.part_code}</div>
+                      <div className="font-medium">{part.customer_complaints.parts?.name}</div>
+                      <div className="text-sm text-muted-foreground">{part.customer_complaints.parts?.part_code}</div>
                     </div>
                   </TableCell>
                   <TableCell className="font-mono">{part.parts.part_code}</TableCell>
@@ -217,8 +216,8 @@ const PartAnalysis = () => {
           <CardContent className="space-y-6">
             <div className="grid grid-cols-2 gap-4 p-4 bg-muted rounded-lg">
               <div><strong>Customer:</strong> {selectedPart.customer_complaints.customers?.name}</div>
-              <div><strong>Product:</strong> {selectedPart.customer_complaints.products?.name}</div>
-              <div><strong>Brand:</strong> {selectedPart.customer_complaints.brand_name}</div>
+              <div><strong>Product:</strong> {selectedPart.customer_complaints.parts?.name}</div>
+              <div><strong>Brand:</strong> {selectedPart.customer_complaints.customers?.brand_name}</div>
               <div><strong>Serial Number:</strong> {selectedPart.serial_number}</div>
               <div><strong>Reason:</strong> {selectedPart.reason}</div>
               <div><strong>Bill Number:</strong> {selectedPart.customer_complaints.bill_number}</div>

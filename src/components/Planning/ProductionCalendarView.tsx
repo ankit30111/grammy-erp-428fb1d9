@@ -75,7 +75,7 @@ export const ProductionCalendarView = ({ selectedDate, onDateSelect }: Productio
                   <div className="flex justify-between items-start mb-2">
                     <div>
                       <h4 className="font-medium">
-                        {schedule.projections?.products?.name}
+                        {schedule.projections?.parts?.name}
                       </h4>
                       <p className="text-sm text-muted-foreground">
                         Customer: {schedule.projections?.customers?.name}

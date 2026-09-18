@@ -45,7 +45,7 @@ const ProductionVoucherDetails = ({ scheduleId, voucherNumber, isOpen, onClose }
           purchase_orders!inner(
             po_number,
             status,
-            delivery_target_date,
+            promised_delivery_date,
             vendors(name)
           ),
           parts(part_code, name)
@@ -140,8 +140,8 @@ const ProductionVoucherDetails = ({ scheduleId, voucherNumber, isOpen, onClose }
                       )}
                     </TableCell>
                     <TableCell>
-                      {poDetails.length > 0 && poDetails[0].purchase_orders.delivery_target_date ? (
-                        format(new Date(poDetails[0].purchase_orders.delivery_target_date), "PPP")
+                      {poDetails.length > 0 && poDetails[0].purchase_orders.promised_delivery_date ? (
+                        format(new Date(poDetails[0].purchase_orders.promised_delivery_date), "PPP")
                       ) : (
                         "-"
                       )}

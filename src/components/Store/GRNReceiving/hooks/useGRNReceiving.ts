@@ -33,15 +33,15 @@ export const useGRNReceiving = () => {
             name
           )
         `)
-        .in('iqc_status', ['APPROVED', 'SEGREGATED'])
-        .neq('accepted_quantity', 0)
+        .in('iqc_outcome', ['APPROVED', 'SEGREGATED'])
+        .neq('iqc_accepted_quantity', 0)
         .is('store_confirmed', false)
         .order('created_at', { ascending: false });
       
       if (error) throw error;
       
       // Filter items that have actual accepted quantity > 0
-      return data?.filter(item => (item.accepted_quantity || 0) > 0) || [];
+      return data?.filter(item => (item.iqc_accepted_quantity || 0) > 0) || [];
     },
   });
 
@@ -69,7 +69,7 @@ export const useGRNReceiving = () => {
       if (error) throw error;
 
       // Post only the variance against the quantity IQC already released to MAIN
-      const delta = physicalQuantity - Number(item?.accepted_quantity || 0);
+      const delta = physicalQuantity - Number(item?.iqc_accepted_quantity || 0);
       if (item?.plant_id && delta !== 0 && !(await hasLedgerEntry('GRN_ITEM_STORE_VARIANCE', itemId))) {
         const mainId = await getStockLocationId(item.plant_id, 'MAIN');
         await postStockMovement({

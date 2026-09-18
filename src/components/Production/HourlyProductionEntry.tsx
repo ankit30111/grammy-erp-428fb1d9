@@ -17,7 +17,7 @@ const HourlyProductionEntry = ({ voucherId, voucherNumber }: HourlyProductionEnt
   const [isOpen, setIsOpen] = useState(false);
   const [hourlyData, setHourlyData] = useState({
     hour: "",
-    production_units: "",
+    produced_quantity: "",
     downtime_minutes: "",
     efficiency_percentage: "",
     remarks: ""
@@ -49,7 +49,7 @@ const HourlyProductionEntry = ({ voucherId, voucherNumber }: HourlyProductionEnt
         .insert({
           production_order_id: voucherId,
           hour: entryData.hour,
-          production_units: parseInt(entryData.production_units),
+          produced_quantity: parseInt(entryData.produced_quantity),
           downtime_minutes: parseInt(entryData.downtime_minutes) || 0,
           efficiency_percentage: parseInt(entryData.efficiency_percentage) || 100,
           remarks: entryData.remarks || null
@@ -66,7 +66,7 @@ const HourlyProductionEntry = ({ voucherId, voucherNumber }: HourlyProductionEnt
       queryClient.invalidateQueries({ queryKey: ["line-production"] });
       setHourlyData({
         hour: "",
-        production_units: "",
+        produced_quantity: "",
         downtime_minutes: "",
         efficiency_percentage: "",
         remarks: ""
@@ -83,7 +83,7 @@ const HourlyProductionEntry = ({ voucherId, voucherNumber }: HourlyProductionEnt
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!hourlyData.hour || !hourlyData.production_units) {
+    if (!hourlyData.hour || !hourlyData.produced_quantity) {
       toast({
         title: "Missing Information",
         description: "Please fill in the hour and production units",
@@ -94,7 +94,7 @@ const HourlyProductionEntry = ({ voucherId, voucherNumber }: HourlyProductionEnt
     addHourlyEntry.mutate(hourlyData);
   };
 
-  const totalProduced = existingData.reduce((sum, entry) => sum + entry.production_units, 0);
+  const totalProduced = existingData.reduce((sum, entry) => sum + entry.produced_quantity, 0);
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -132,8 +132,8 @@ const HourlyProductionEntry = ({ voucherId, voucherNumber }: HourlyProductionEnt
                 <Input
                   type="number"
                   min="0"
-                  value={hourlyData.production_units}
-                  onChange={(e) => setHourlyData(prev => ({ ...prev, production_units: e.target.value }))}
+                  value={hourlyData.produced_quantity}
+                  onChange={(e) => setHourlyData(prev => ({ ...prev, produced_quantity: e.target.value }))}
                   placeholder="Enter units produced"
                   required
                 />
@@ -210,7 +210,7 @@ const HourlyProductionEntry = ({ voucherId, voucherNumber }: HourlyProductionEnt
                     {existingData.map((entry) => (
                       <TableRow key={entry.id}>
                         <TableCell>{entry.hour}</TableCell>
-                        <TableCell>{entry.production_units}</TableCell>
+                        <TableCell>{entry.produced_quantity}</TableCell>
                         <TableCell>{entry.efficiency_percentage}%</TableCell>
                       </TableRow>
                     ))}

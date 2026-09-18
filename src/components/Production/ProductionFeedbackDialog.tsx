@@ -39,7 +39,7 @@ const ProductionFeedbackDialog = ({ productionOrderId, voucherNumber, isOpen, on
         .from("production_orders")
         .select(`
           *,
-          products!part_id (
+          parts!part_id (
             name,
             bom!part_id (
               *,
@@ -101,7 +101,7 @@ const ProductionFeedbackDialog = ({ productionOrderId, voucherNumber, isOpen, on
         const { error: kitUpdateError } = await supabase
           .from("kit_items")
           .update({
-            actual_quantity: feedback.actualUsed,
+            received_quantity: feedback.actualUsed,
             verified_by_production: true
           })
           .eq("part_id", feedback.materialId)
@@ -205,7 +205,7 @@ const ProductionFeedbackDialog = ({ productionOrderId, voucherNumber, isOpen, on
       .filter(item => feedback[item.part_id])
       .map(item => ({
         materialId: item.part_id,
-        sentQuantity: item.actual_quantity,
+        sentQuantity: item.received_quantity,
         actualUsed: feedback[item.part_id].actualUsed,
         reason: feedback[item.part_id].reason
       }))
@@ -258,7 +258,7 @@ const ProductionFeedbackDialog = ({ productionOrderId, voucherNumber, isOpen, on
               <div className="grid grid-cols-3 gap-4">
                 <div>
                   <span className="text-sm text-muted-foreground">Product:</span>
-                  <p className="font-medium">{productionOrder?.products?.name}</p>
+                  <p className="font-medium">{productionOrder?.parts?.name}</p>
                 </div>
                 <div>
                   <span className="text-sm text-muted-foreground">Production Quantity:</span>
@@ -295,7 +295,7 @@ const ProductionFeedbackDialog = ({ productionOrderId, voucherNumber, isOpen, on
                 </TableHeader>
                 <TableBody>
                   {sentMaterials?.map((item) => {
-                    const sentQty = item.actual_quantity;
+                    const sentQty = item.received_quantity;
                     const actualUsed = feedback[item.part_id]?.actualUsed ?? sentQty;
                     const difference = sentQty - actualUsed;
                     const isAlreadyVerified = item.verified_by_production;

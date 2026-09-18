@@ -24,13 +24,13 @@ const ProductionDetailsDialog = ({ open, onOpenChange, productionOrder }: Produc
         .from("bom")
         .select(`
           *,
-          parts!inner(
+          parts!child_part_id(
             part_code,
             name,
             category
           )
         `)
-        .eq("part_id", productionOrder.part_id);
+        .eq("parent_part_id", productionOrder.part_id);
       
       if (error) throw error;
       return data || [];
@@ -137,7 +137,7 @@ const ProductionDetailsDialog = ({ open, onOpenChange, productionOrder }: Produc
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                 <div>
                   <span className="font-medium">Product:</span>
-                  <div>{productionOrder.products?.name}</div>
+                  <div>{productionOrder.parts?.name}</div>
                 </div>
                 <div>
                   <span className="font-medium">Quantity:</span>

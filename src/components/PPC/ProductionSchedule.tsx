@@ -51,7 +51,7 @@ const ProductionSchedule = ({
                   <TableRow key={schedule.id}>
                     <TableCell className="font-medium">{schedule.id.slice(0, 8)}</TableCell>
                     <TableCell>{schedule.projections?.customers?.name}</TableCell>
-                    <TableCell>{schedule.projections?.products?.name}</TableCell>
+                    <TableCell>{schedule.projections?.parts?.name}</TableCell>
                     <TableCell>{schedule.quantity}</TableCell>
                     <TableCell>{schedule.production_line}</TableCell>
                     <TableCell>

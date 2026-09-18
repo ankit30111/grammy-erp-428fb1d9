@@ -62,9 +62,9 @@ export const VendorPerformanceWidget = () => {
       let q = supabase
         .from('grn_items')
         .select(`
-          iqc_status,
-          accepted_quantity,
-          rejected_quantity,
+          iqc_outcome,
+          iqc_accepted_quantity,
+          iqc_rejected_quantity,
           grn (
             vendors (name)
           )
@@ -79,9 +79,9 @@ export const VendorPerformanceWidget = () => {
           acc[vendorName] = { passed: 0, total: 0 };
         }
         
-        if (item.iqc_status && item.iqc_status !== 'PENDING') {
+        if (item.iqc_outcome && item.iqc_outcome !== 'PENDING') {
           acc[vendorName].total += 1;
-          if (item.iqc_status === 'APPROVED') {
+          if (item.iqc_outcome === 'APPROVED') {
             acc[vendorName].passed += 1;
           }
         }

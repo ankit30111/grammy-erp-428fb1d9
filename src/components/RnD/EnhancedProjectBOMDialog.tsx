@@ -160,7 +160,7 @@ export const EnhancedProjectBOMDialog: React.FC<EnhancedProjectBOMDialogProps> =
   const exportBOM = async (format: 'csv' | 'excel') => {
     const csvData = bomMaterials.map(material => ({
       'Part Code': material.temporary_part_code || material.part_code || 'N/A',
-      'Material Name': material.material_name,
+      'Material Name': material.description,
       'Quantity': material.quantity,
       'Unit': material.unit,
       'Status': material.part_status,
@@ -277,7 +277,7 @@ export const EnhancedProjectBOMDialog: React.FC<EnhancedProjectBOMDialogProps> =
                       <div className="flex justify-between items-start">
                         <div className="space-y-2">
                           <div className="flex items-center gap-2">
-                            <h4 className="font-medium">{material.material_name}</h4>
+                            <h4 className="font-medium">{material.description}</h4>
                             <Badge className={getStatusColor(material.part_status)}>
                               {material.part_status.replace('_', ' ')}
                             </Badge>

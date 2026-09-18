@@ -63,9 +63,9 @@ const EnhancedPQCActionsDialog = ({ productionOrderId, isOpen, onClose }: Enhanc
         .from("bom")
         .select(`
           *,
-          parts!inner(part_code, name)
+          parts!child_part_id(part_code, name)
         `)
-        .eq("part_id", productionOrder.part_id);
+        .eq("parent_part_id", productionOrder.part_id);
 
       return bom || [];
     },
@@ -133,7 +133,7 @@ const EnhancedPQCActionsDialog = ({ productionOrderId, isOpen, onClose }: Enhanc
         .insert([{
           ...rejectionData,
           created_by: user.data.user.id,
-          rejected_by: rejectionData.reason === "User Mishandling" ? rejectionData.rejected_by : user.data.user.id
+          rejected_by: rejectionData.defect === "User Mishandling" ? rejectionData.rejected_by : user.data.user.id
         }])
         .select()
         .single();
@@ -187,7 +187,7 @@ const EnhancedPQCActionsDialog = ({ productionOrderId, isOpen, onClose }: Enhanc
       status: reportStatus,
       remarks: reportRemarks,
       time_period: new Date().getHours() < 12 ? "Morning" : "Evening",
-      report_file_url: reportFile.name // In real implementation, this would be the storage URL
+      report_url: reportFile.name // In real implementation, this would be the storage URL
     };
 
     uploadPQCReportMutation.mutate(reportData);
@@ -225,8 +225,8 @@ const EnhancedPQCActionsDialog = ({ productionOrderId, isOpen, onClose }: Enhanc
     const rejectionData = {
       production_order_id: productionOrderId,
       part_id: selectedPartCode,
-      reason: rejectionReason,
-      quantity_rejected: quantity,
+      defect: rejectionReason,
+      quantity: quantity,
       remarks: rejectionRemarks,
       rejected_by: rejectionReason === "User Mishandling" ? selectedEmployee : null,
     };

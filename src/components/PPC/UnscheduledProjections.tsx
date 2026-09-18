@@ -67,7 +67,7 @@ const UnscheduledProjections = ({
                 <TableRow key={proj.id}>
                   <TableCell className="font-medium">{proj.id.slice(0, 8)}</TableCell>
                   <TableCell>{proj.customers?.name}</TableCell>
-                  <TableCell>{proj.products?.name}</TableCell>
+                  <TableCell>{proj.parts?.name}</TableCell>
                   <TableCell>{proj.quantity}</TableCell>
                   <TableCell className="font-medium">{getRemaining(proj)}</TableCell>
                   <TableCell>{proj.delivery_month}</TableCell>

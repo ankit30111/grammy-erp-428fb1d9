@@ -174,7 +174,7 @@ const PlanningEnhanced: React.FC = () => {
                   }}
                 >
                   <div className="font-medium truncate">
-                    {schedule.projections?.products?.name}
+                    {schedule.projections?.parts?.name}
                   </div>
                   <div className="text-muted-foreground">
                     {schedule.quantity} units
@@ -193,7 +193,7 @@ const PlanningEnhanced: React.FC = () => {
     const selectedSchedule = schedules?.find(s => s.id === selectedScheduleId);
     if (!selectedSchedule) return null;
 
-    const productId = selectedSchedule.projections?.products?.id;
+    const productId = selectedSchedule.projections?.parts?.id;
     
     console.log('🎯 BOM Analysis Debug:');
     console.log('- Selected Schedule:', selectedSchedule);
@@ -212,14 +212,14 @@ const PlanningEnhanced: React.FC = () => {
           .from("bom")
           .select(`
             *,
-            parts!inner(
+            parts!child_part_id(
               id,
               part_code,
               name,
               category
             )
           `)
-          .eq("part_id", productId);
+          .eq("parent_part_id", productId);
         
         if (error) {
           console.error('❌ BOM fetch error:', error);
@@ -365,7 +365,7 @@ const PlanningEnhanced: React.FC = () => {
         <div className="flex items-center justify-between pb-4 border-b">
           <div>
             <h3 className="text-xl font-bold">
-              {selectedSchedule.projections?.products?.name}
+              {selectedSchedule.projections?.parts?.name}
             </h3>
             <p className="text-muted-foreground">
               Voucher: {voucherNumber} | Scheduled Quantity: {selectedSchedule.quantity} units
@@ -420,7 +420,7 @@ const PlanningEnhanced: React.FC = () => {
                         <div key={projection.id} className="flex items-center justify-between p-3 border rounded-lg">
                           <div>
                             <div className="font-medium">
-                              {projection.customers?.name} - {projection.products?.name}
+                              {projection.customers?.name} - {projection.parts?.name}
                             </div>
                             <div className="text-sm text-muted-foreground">
                               Total: {projection.quantity} | Scheduled: {projection.scheduled_quantity || 0} | 
@@ -481,7 +481,7 @@ const PlanningEnhanced: React.FC = () => {
                           const balanceQuantity = projection.quantity - (projection.scheduled_quantity || 0);
                           return (
                             <SelectItem key={projection.id} value={projection.id}>
-                              {projection.customers?.name} - {projection.products?.name} 
+                              {projection.customers?.name} - {projection.parts?.name} 
                               ({balanceQuantity} units remaining)
                             </SelectItem>
                           );
@@ -564,7 +564,7 @@ const PlanningEnhanced: React.FC = () => {
                               {voucherNumber}
                             </TableCell>
                             <TableCell className="font-medium">
-                              {schedule.projections?.products?.name}
+                              {schedule.projections?.parts?.name}
                             </TableCell>
                             <TableCell>
                               {schedule.projections?.customers?.name}

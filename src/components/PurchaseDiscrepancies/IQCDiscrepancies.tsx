@@ -33,7 +33,7 @@ const IQCDiscrepancies = () => {
             name
           )
         `)
-        .in('iqc_status', ['SEGREGATED', 'FAILED', 'REJECTED'])
+        .in('iqc_outcome', ['SEGREGATED', 'FAILED', 'REJECTED'])
         .order('created_at', { ascending: false });
       
       if (error) throw error;
@@ -48,9 +48,9 @@ const IQCDiscrepancies = () => {
   };
 
   const getDiscrepancyQuantity = (item: any) => {
-    if (item.iqc_status === 'SEGREGATED') {
-      return item.rejected_quantity || 0;
-    } else if (item.iqc_status === 'FAILED' || item.iqc_status === 'REJECTED') {
+    if (item.iqc_outcome === 'SEGREGATED') {
+      return item.iqc_rejected_quantity || 0;
+    } else if (item.iqc_outcome === 'FAILED' || item.iqc_outcome === 'REJECTED') {
       return item.received_quantity || 0;
     }
     return 0;
@@ -119,8 +119,8 @@ const IQCDiscrepancies = () => {
                       {getDiscrepancyQuantity(item)}
                     </TableCell>
                     <TableCell>
-                      <Badge variant={getStatusColor(item.iqc_status)}>
-                        {item.iqc_status}
+                      <Badge variant={getStatusColor(item.iqc_outcome)}>
+                        {item.iqc_outcome}
                       </Badge>
                     </TableCell>
                     <TableCell>

@@ -31,9 +31,11 @@ const OQC = () => {
         .from("production_orders")
         .select(`
           *,
-          products!inner(name, part_code),
+          parts!inner(name, part_code),
           production_schedules!inner(
-            production_line,
+            production_lines (
+              name
+            ),
             projections!inner(
               customers!inner(name)
             )
@@ -55,9 +57,11 @@ const OQC = () => {
         .from("production_orders")
         .select(`
           *,
-          products!inner(name, part_code),
+          parts!inner(name, part_code),
           production_schedules!inner(
-            production_line,
+            production_lines (
+              name
+            ),
             projections!inner(
               customers!inner(name)
             )
@@ -195,13 +199,13 @@ const OQC = () => {
                           <TableCell className="font-medium">{order.voucher_number}</TableCell>
                           <TableCell>
                             <div>
-                              <div className="font-medium">{order.products?.name}</div>
-                              <div className="text-sm text-muted-foreground">{order.products?.part_code}</div>
+                              <div className="font-medium">{order.parts?.name}</div>
+                              <div className="text-sm text-muted-foreground">{order.parts?.part_code}</div>
                             </div>
                           </TableCell>
                           <TableCell>{order.production_schedules?.projections?.customers?.name}</TableCell>
                           <TableCell>{order.quantity} units</TableCell>
-                          <TableCell>{order.production_schedules?.production_line}</TableCell>
+                          <TableCell>{order.production_schedules?.production_lines?.name}</TableCell>
                           <TableCell>{format(new Date(order.updated_at), 'MMM dd, yyyy')}</TableCell>
                           <TableCell>
                             <Badge variant="warning">
@@ -279,8 +283,8 @@ const OQC = () => {
                           <TableCell className="font-mono">{order.voucher_number}</TableCell>
                           <TableCell>
                             <div>
-                              <div className="font-medium">{order.products?.name}</div>
-                              <div className="text-sm text-muted-foreground">{order.products?.part_code}</div>
+                              <div className="font-medium">{order.parts?.name}</div>
+                              <div className="text-sm text-muted-foreground">{order.parts?.part_code}</div>
                             </div>
                           </TableCell>
                           <TableCell>{order.production_schedules?.projections?.customers?.name}</TableCell>

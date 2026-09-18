@@ -43,7 +43,7 @@ export const EditScheduleDialog = ({ isOpen, onClose, schedule, maxQuantity }: E
         <div className="space-y-4">
           <div>
             <p className="text-sm text-muted-foreground mb-2">
-              Product: {schedule?.projections?.products?.name}
+              Product: {schedule?.projections?.parts?.name}
             </p>
             <p className="text-sm text-muted-foreground mb-4">
               Customer: {schedule?.projections?.customers?.name}

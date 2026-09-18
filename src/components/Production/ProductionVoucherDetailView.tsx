@@ -35,14 +35,14 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
         .from("bom")
         .select(`
           *,
-          parts!inner(
+          parts!child_part_id(
             id,
             part_code,
             name,
             category
           )
         `)
-        .eq("part_id", production.part_id);
+        .eq("parent_part_id", production.part_id);
       
       if (error) throw error;
       return data || [];
@@ -63,7 +63,7 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
         .select(`
           id,
           part_id,
-          actual_quantity,
+          received_quantity,
           verified_by_production,
           created_at,
           parts!inner(
@@ -117,7 +117,7 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
         throw new Error("Kit item not found");
       }
 
-      const sentQuantity = kitItem.actual_quantity;
+      const sentQuantity = kitItem.received_quantity;
       const difference = sentQuantity - receivedQuantity;
       
       console.log(`📋 Verification details:`);
@@ -175,7 +175,7 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
         const { error: kitUpdateError } = await supabase
           .from("kit_items")
           .update({
-            actual_quantity: receivedQuantity,
+            received_quantity: receivedQuantity,
             verified_by_production: true
           })
           .eq("id", kitItemId);
@@ -361,7 +361,7 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
               <div className="grid grid-cols-3 gap-4">
                 <div>
                   <span className="text-sm text-muted-foreground">Product:</span>
-                  <p className="font-medium">{production?.products?.name}</p>
+                  <p className="font-medium">{production?.parts?.name}</p>
                 </div>
                 <div>
                   <span className="text-sm text-muted-foreground">Production Quantity:</span>
@@ -369,7 +369,7 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
                 </div>
                 <div>
                   <span className="text-sm text-muted-foreground">Scheduled Date:</span>
-                  <p className="font-medium">{new Date(production?.scheduled_date).toLocaleDateString()}</p>
+                  <p className="font-medium">{new Date(production?.planned_date).toLocaleDateString()}</p>
                 </div>
               </div>
             </CardContent>

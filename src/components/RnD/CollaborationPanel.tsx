@@ -40,9 +40,9 @@ export const CollaborationPanel: React.FC<CollaborationPanelProps> = ({ bomId })
     queryFn: async () => {
       const { data, error } = await supabase
         .from('npd_bom_materials')
-        .select('id, material_name, temporary_part_code, part_code')
+        .select('id, description, temporary_part_code, part_code')
         .eq('npd_project_bom_id', bomId)
-        .order('material_name');
+        .order('description');
 
       if (error) throw error;
       return data || [];
@@ -132,7 +132,7 @@ export const CollaborationPanel: React.FC<CollaborationPanelProps> = ({ bomId })
               <SelectContent>
                 {bomMaterials.map((material) => (
                   <SelectItem key={material.id} value={material.id}>
-                    {material.material_name} ({material.temporary_part_code || material.part_code})
+                    {material.description} ({material.temporary_part_code || material.part_code})
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -211,7 +211,7 @@ export const CollaborationPanel: React.FC<CollaborationPanelProps> = ({ bomId })
           <CardHeader>
             <CardTitle>Comments & Discussions</CardTitle>
             <CardDescription>
-              {bomMaterials.find(m => m.id === selectedMaterialId)?.material_name}
+              {bomMaterials.find(m => m.id === selectedMaterialId)?.description}
             </CardDescription>
           </CardHeader>
           <CardContent>

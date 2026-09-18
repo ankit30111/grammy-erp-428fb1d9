@@ -29,10 +29,9 @@ export const useKitManagement = () => {
           voucher_number,
           part_id,
           quantity,
-          kit_status,
-          scheduled_date,
+          planned_date,
           status,
-          products (name),
+          parts (name),
           kit_preparation (
             id,
             status,
@@ -41,15 +40,14 @@ export const useKitManagement = () => {
               part_id,
               required_quantity,
               issued_quantity,
-              verified_by_production,
-              actual_quantity,
+              received_quantity,
               parts (name, part_code)
             )
           )
         `)
         .in("status", ["PENDING", "IN_PROGRESS"])
         .in("kit_status", ["KIT SCHEDULED", "KIT PREPARING", "KIT READY", "KIT VERIFIED", "KIT SENT", "KIT SHORTAGE"])
-        .order("scheduled_date", { ascending: true });
+        .order("planned_date", { ascending: true });
 
       if (error) throw error;
       return data || [];
@@ -92,15 +90,7 @@ export const useKitManagement = () => {
         .eq("id", kitId);
       
       if (kitError) throw kitError;
-      
-      // Update production voucher kit status
-      const { error: voucherError } = await supabase
-        .from("production_orders")
-        .update({ kit_status: "KIT SENT" })
-        .eq("id", voucherId);
-      
-      if (voucherError) throw voucherError;
-      
+
       // Issue out of the main store through the stock ledger
       if (!plantId) throw new Error("No active plant selected");
       const mainId = await getStockLocationId(plantId, "MAIN");
@@ -160,15 +150,7 @@ export const useKitManagement = () => {
         .eq("id", kitId);
       
       if (kitError) throw kitError;
-      
-      // Update production voucher kit status
-      const { error: voucherError } = await supabase
-        .from("production_orders")
-        .update({ kit_status: "KIT SHORTAGE" })
-        .eq("id", voucherId);
-      
-      if (voucherError) throw voucherError;
-      
+
       // Create material shortages notification or log
       // This could be implemented according to business needs
     },

@@ -12,9 +12,11 @@ const OQCRejections = () => {
         .from("production_orders")
         .select(`
           *,
-          products!inner(name),
+          parts!inner(name),
           production_schedules!inner(
-            production_line,
+            production_lines (
+              name
+            ),
             projections!inner(
               customers!inner(name)
             )

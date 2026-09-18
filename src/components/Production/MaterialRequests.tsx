@@ -35,8 +35,10 @@ const MaterialRequests = () => {
           voucher_number,
           quantity,
           status,
-          production_lines,
-          products!inner(
+          production_lines (
+            name
+          ),
+          parts!inner(
             id,
             name,
             part_code
@@ -74,14 +76,14 @@ const MaterialRequests = () => {
           id,
           quantity,
           bom_type,
-          parts!inner(
+          parts!child_part_id(
             id,
             part_code,
             name,
             category
           )
         `)
-        .eq("part_id", selectedProduction.products.id);
+        .eq("parent_part_id", selectedProduction.parts.id);
       
       if (error) {
         console.error("❌ Error fetching BOM materials:", error);
@@ -104,7 +106,7 @@ const MaterialRequests = () => {
           *,
           production_orders!inner(
             voucher_number,
-            products!inner(
+            parts!inner(
               name
             )
           ),
@@ -274,7 +276,7 @@ const MaterialRequests = () => {
                           <SelectItem key={production.id} value={production.id}>
                             <div className="flex flex-col">
                               <span className="font-medium">
-                                {production.voucher_number} - {production.products.name}
+                                {production.voucher_number} - {production.parts.name}
                               </span>
                               <span className="text-xs text-muted-foreground">
                                 Qty: {production.quantity} | Lines: {getProductionLineDisplay(production.production_lines)}
@@ -382,7 +384,7 @@ const MaterialRequests = () => {
                       {request.production_orders?.voucher_number}
                     </TableCell>
                     <TableCell>
-                      {request.production_orders?.products?.name}
+                      {request.production_orders?.parts?.name}
                     </TableCell>
                     <TableCell>
                       <div>

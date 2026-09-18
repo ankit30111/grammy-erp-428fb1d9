@@ -30,7 +30,7 @@ const KitVerification = () => {
             quantity,
             production_schedules(
               projections(
-                products(name)
+                parts(name)
               )
             )
           ),
@@ -61,7 +61,7 @@ const KitVerification = () => {
             quantity,
             production_schedules(
               projections(
-                products(name)
+                parts(name)
               )
             )
           ),
@@ -164,7 +164,7 @@ const KitVerification = () => {
                       <TableRow key={kit.id}>
                         <TableCell className="font-mono">{kit.kit_number}</TableCell>
                         <TableCell>{kit.production_orders?.voucher_number}</TableCell>
-                        <TableCell>{kit.production_orders?.production_schedules?.projections?.products?.name}</TableCell>
+                        <TableCell>{kit.production_orders?.production_schedules?.projections?.parts?.name}</TableCell>
                         <TableCell>
                           <Badge variant={getStatusColor(kit.status) as any}>
                             {kit.status}
@@ -229,7 +229,7 @@ const KitVerification = () => {
                       <TableRow key={kit.id}>
                         <TableCell className="font-mono">{kit.kit_number}</TableCell>
                         <TableCell>{kit.production_orders?.voucher_number}</TableCell>
-                        <TableCell>{kit.production_orders?.production_schedules?.projections?.products?.name}</TableCell>
+                        <TableCell>{kit.production_orders?.production_schedules?.projections?.parts?.name}</TableCell>
                         <TableCell>
                           <Badge variant="default">
                             Verified
@@ -263,7 +263,7 @@ const KitVerification = () => {
                 </div>
                 <div>
                   <span className="text-sm text-muted-foreground">Product:</span>
-                  <p className="font-medium">{selectedKit.production_orders?.production_schedules?.projections?.products?.name}</p>
+                  <p className="font-medium">{selectedKit.production_orders?.production_schedules?.projections?.parts?.name}</p>
                 </div>
               </div>
               

@@ -21,7 +21,7 @@ const MonthlyKitTracker = () => {
           *,
           production_schedules!inner(
             projections!inner(
-              products!inner(name)
+              parts!inner(name)
             )
           ),
           kit_preparation(
@@ -29,7 +29,7 @@ const MonthlyKitTracker = () => {
             kit_number
           )
         `)
-        .order("scheduled_date", { ascending: false });
+        .order("planned_date", { ascending: false });
       
       if (error) throw error;
       return data || [];
@@ -60,7 +60,7 @@ const MonthlyKitTracker = () => {
 
   // Group by month
   const groupedByMonth = voucherData.reduce((acc, voucher) => {
-    const monthKey = format(new Date(voucher.scheduled_date), 'yyyy-MM');
+    const monthKey = format(new Date(voucher.planned_date), 'yyyy-MM');
     if (!acc[monthKey]) {
       acc[monthKey] = [];
     }
@@ -109,9 +109,9 @@ const MonthlyKitTracker = () => {
             {filteredData.map((voucher) => (
               <TableRow key={voucher.id}>
                 <TableCell className="font-mono">{voucher.voucher_number}</TableCell>
-                <TableCell>{voucher.production_schedules.projections.products.name}</TableCell>
+                <TableCell>{voucher.production_schedules.projections.parts.name}</TableCell>
                 <TableCell>{voucher.quantity}</TableCell>
-                <TableCell>{format(new Date(voucher.scheduled_date), 'MMM dd, yyyy')}</TableCell>
+                <TableCell>{format(new Date(voucher.planned_date), 'MMM dd, yyyy')}</TableCell>
                 <TableCell>
                   <Badge variant={getStatusColor(getKitStatus(voucher)) as any}>
                     {getKitStatus(voucher)}

@@ -127,7 +127,7 @@ export const ComplaintStatusDialog = ({ complaint, isOpen, onClose }: ComplaintS
                 <div className="flex items-center gap-2">
                   <FileText className="h-4 w-4 text-muted-foreground" />
                   <div>
-                    <div className="text-sm font-medium">{complaint.brand_name}</div>
+                    <div className="text-sm font-medium">{complaint.customers?.brand_name}</div>
                     <div className="text-xs text-muted-foreground">Brand</div>
                   </div>
                 </div>
@@ -154,7 +154,7 @@ export const ComplaintStatusDialog = ({ complaint, isOpen, onClose }: ComplaintS
                 </div>
                 <div className="col-span-2">
                   <div className="text-sm font-medium">Complaint Reason</div>
-                  <div className="text-sm text-muted-foreground">{complaint.complaint_reason}</div>
+                  <div className="text-sm text-muted-foreground">{complaint.complaint_details}</div>
                 </div>
               </div>
             </CardContent>

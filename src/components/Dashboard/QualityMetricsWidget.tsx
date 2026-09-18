@@ -14,13 +14,13 @@ export const QualityMetricsWidget = () => {
   const { data: iqcStatus } = useRealTimeQuery({
     queryKey: ['iqc-status', scopeKey],
     queryFn: async () => {
-      let q = supabase.from('grn_items').select('iqc_status');
+      let q = supabase.from('grn_items').select('iqc_outcome');
       if (scopePlantId) q = q.eq('plant_id', scopePlantId);
       const { data, error } = await q;
       if (error) throw error;
       
       const statusCount = data?.reduce((acc: any, item) => {
-        const status = item.iqc_status || 'PENDING';
+        const status = item.iqc_outcome || 'PENDING';
         acc[status] = (acc[status] || 0) + 1;
         return acc;
       }, {});
@@ -72,16 +72,16 @@ export const QualityMetricsWidget = () => {
     queryFn: async () => {
       const { data: rejections, error: rejError } = await supabase
         .from('line_rejections')
-        .select('quantity_rejected');
+        .select('quantity');
       
       const { data: production, error: prodError } = await supabase
         .from('hourly_production')
-        .select('production_units');
+        .select('produced_quantity');
       
       if (rejError || prodError) throw rejError || prodError;
       
-      const totalRejected = rejections?.reduce((sum, rej) => sum + rej.quantity_rejected, 0) || 0;
-      const totalProduced = production?.reduce((sum, prod) => sum + prod.production_units, 0) || 0;
+      const totalRejected = rejections?.reduce((sum, rej) => sum + rej.quantity, 0) || 0;
+      const totalProduced = production?.reduce((sum, prod) => sum + prod.produced_quantity, 0) || 0;
       
       return totalProduced > 0 ? ((totalRejected / totalProduced) * 100).toFixed(2) : "0.00";
     },

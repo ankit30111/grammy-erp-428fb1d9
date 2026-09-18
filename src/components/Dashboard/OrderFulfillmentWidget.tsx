@@ -55,14 +55,14 @@ export const OrderFulfillmentWidget = () => {
     queryFn: async () => {
       let q = supabase
         .from('production_orders')
-        .select('scheduled_date, status')
+        .select('planned_date, status')
         .in('status', ['PENDING', 'IN_PROGRESS']);
       if (scopePlantId) q = q.eq('plant_id', scopePlantId);
       const { data, error } = await q;
       if (error) throw error;
       
       const delayed = data?.filter(order => 
-        isPast(new Date(order.scheduled_date)) && order.status !== 'COMPLETED'
+        isPast(new Date(order.planned_date)) && order.status !== 'COMPLETED'
       ).length || 0;
       
       return delayed;

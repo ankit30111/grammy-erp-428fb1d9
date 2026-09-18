@@ -37,7 +37,7 @@ export const DeleteScheduleDialog = ({ isOpen, onClose, schedule }: DeleteSchedu
               Are you sure you want to delete this production schedule?
             </p>
             <div className="bg-muted p-3 rounded-lg">
-              <p className="font-medium">{schedule?.projections?.products?.name}</p>
+              <p className="font-medium">{schedule?.projections?.parts?.name}</p>
               <p className="text-sm text-muted-foreground">
                 Customer: {schedule?.projections?.customers?.name}
               </p>

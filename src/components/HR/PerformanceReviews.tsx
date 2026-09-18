@@ -88,8 +88,8 @@ export function PerformanceReviews() {
         .from('line_rejections')
         .select(`
           id,
-          reason,
-          quantity_rejected,
+          defect,
+          quantity,
           remarks,
           rejection_date,
           production_order_id,
@@ -102,7 +102,7 @@ export function PerformanceReviews() {
             voucher_number
           )
         `)
-        .eq('reason', 'User Mishandling')
+        .eq('defect', 'User Mishandling')
         .not('rejected_by', 'is', null)
         .order('rejection_date', { ascending: false });
       
@@ -550,7 +550,7 @@ export function PerformanceReviews() {
                           {mishandling.parts?.part_code} - {mishandling.parts?.name}
                         </TableCell>
                         <TableCell>
-                          <Badge variant="destructive">{mishandling.quantity_rejected}</Badge>
+                          <Badge variant="destructive">{mishandling.quantity}</Badge>
                         </TableCell>
                         <TableCell className="max-w-xs truncate">
                           {mishandling.remarks}

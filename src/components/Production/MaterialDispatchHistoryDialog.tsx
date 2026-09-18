@@ -49,7 +49,7 @@ const MaterialDispatchHistoryDialog = ({
         .from("kit_items")
         .select(`
           id,
-          actual_quantity,
+          received_quantity,
           verified_by_production,
           created_at,
           kit_preparation!inner(
@@ -81,14 +81,14 @@ const MaterialDispatchHistoryDialog = ({
       const kitItem = dispatchHistory.find(item => item.id === kitItemId);
       if (!kitItem) throw new Error("Kit item not found");
 
-      const sentQuantity = kitItem.actual_quantity;
+      const sentQuantity = kitItem.received_quantity;
       const difference = sentQuantity - receivedQuantity;
 
       // Update kit item verification
       const { error: updateError } = await supabase
         .from("kit_items")
         .update({
-          actual_quantity: receivedQuantity,
+          received_quantity: receivedQuantity,
           verified_by_production: true
         })
         .eq("id", kitItemId);
@@ -164,8 +164,8 @@ const MaterialDispatchHistoryDialog = ({
     }));
   };
 
-  const totalSent = dispatchHistory.reduce((sum, item) => sum + item.actual_quantity, 0);
-  const totalVerified = dispatchHistory.filter(item => item.verified_by_production).reduce((sum, item) => sum + item.actual_quantity, 0);
+  const totalSent = dispatchHistory.reduce((sum, item) => sum + item.received_quantity, 0);
+  const totalVerified = dispatchHistory.filter(item => item.verified_by_production).reduce((sum, item) => sum + item.received_quantity, 0);
   const remainingNeeded = Math.max(0, requiredQuantity - totalVerified);
 
   return (
@@ -219,7 +219,7 @@ const MaterialDispatchHistoryDialog = ({
               <TableBody>
                 {dispatchHistory.map((dispatch, index) => {
                   const isVerified = dispatch.verified_by_production;
-                  const sentQty = dispatch.actual_quantity;
+                  const sentQty = dispatch.received_quantity;
                   const receivedQty = verificationData[dispatch.id]?.receivedQty ?? sentQty;
                   const difference = sentQty - receivedQty;
                   const notes = verificationData[dispatch.id]?.notes || '';

@@ -32,11 +32,11 @@ const ProductionLineDetailView = ({ lineName, onBack }: ProductionLineDetailView
         .from("production_orders")
         .select(`
           *,
-          products!inner(name)
+          parts!inner(name)
         `)
         .in("status", ["IN_PROGRESS", "SCHEDULED"])
         .not("production_lines", "is", null)
-        .order("scheduled_date", { ascending: true });
+        .order("planned_date", { ascending: true });
       
       if (error) {
         console.error(`❌ Error fetching line production for ${lineName}:`, error);
@@ -82,7 +82,7 @@ const ProductionLineDetailView = ({ lineName, onBack }: ProductionLineDetailView
   const getTotalProduced = (voucherId: string) => {
     return hourlyData
       .filter(h => h.production_order_id === voucherId)
-      .reduce((sum, h) => sum + h.production_units, 0);
+      .reduce((sum, h) => sum + h.produced_quantity, 0);
   };
 
   const getCompletionPercentage = (voucher: any) => {
@@ -161,7 +161,7 @@ const ProductionLineDetailView = ({ lineName, onBack }: ProductionLineDetailView
                         </div>
                         <div>
                           <span className="text-sm text-muted-foreground">Product:</span>
-                          <p className="font-medium">{voucher.products?.name}</p>
+                          <p className="font-medium">{voucher.parts?.name}</p>
                         </div>
                         <div>
                           <span className="text-sm text-muted-foreground">Target Quantity:</span>
@@ -237,9 +237,9 @@ const ProductionLineDetailView = ({ lineName, onBack }: ProductionLineDetailView
                       <Badge variant="outline">#{index + 1}</Badge>
                     </TableCell>
                     <TableCell className="font-medium">{voucher.voucher_number}</TableCell>
-                    <TableCell>{voucher.products?.name}</TableCell>
+                    <TableCell>{voucher.parts?.name}</TableCell>
                     <TableCell>{voucher.quantity}</TableCell>
-                    <TableCell>{new Date(voucher.scheduled_date).toLocaleDateString()}</TableCell>
+                    <TableCell>{new Date(voucher.planned_date).toLocaleDateString()}</TableCell>
                     <TableCell>
                       <Badge variant="secondary">Queued</Badge>
                     </TableCell>

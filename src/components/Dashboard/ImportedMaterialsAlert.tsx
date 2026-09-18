@@ -37,7 +37,7 @@ const ImportedMaterialsAlert = () => {
               id,
               quantity,
               part_id,
-              products!inner(
+              parts!inner(
                 id,
                 name,
                 projections!inner(
@@ -60,7 +60,7 @@ const ImportedMaterialsAlert = () => {
           let projectionsCount = 0;
           
           material.bom?.forEach((bomItem: any) => {
-            bomItem.products?.projections?.forEach((projection: any) => {
+            bomItem.parts?.projections?.forEach((projection: any) => {
               totalRequired += bomItem.quantity * projection.quantity;
               projectionsCount++;
             });

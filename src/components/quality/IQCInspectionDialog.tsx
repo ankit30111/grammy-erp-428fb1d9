@@ -113,7 +113,7 @@ const IQCInspectionDialog = ({ grn, isOpen, onClose }: IQCInspectionDialogProps)
 
   // Find items that need inspection
   const pendingItems = grn?.grn_items?.filter((item: any) => 
-    !item.iqc_status || item.iqc_status === 'PENDING'
+    !item.iqc_outcome || item.iqc_outcome === 'PENDING'
   ) || [];
 
   if (!grn || pendingItems.length === 0) return null;

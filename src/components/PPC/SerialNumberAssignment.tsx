@@ -151,7 +151,7 @@ const SerialNumberAssignment = ({ voucher }: SerialNumberAssignmentProps) => {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
           <div>
             <Label className="text-muted-foreground">Product</Label>
-            <p className="font-medium">{voucher.products?.name}</p>
+            <p className="font-medium">{voucher.parts?.name}</p>
           </div>
           <div>
             <Label className="text-muted-foreground">Customer</Label>
@@ -163,7 +163,7 @@ const SerialNumberAssignment = ({ voucher }: SerialNumberAssignmentProps) => {
           </div>
           <div>
             <Label className="text-muted-foreground">Scheduled Date</Label>
-            <p className="font-medium">{new Date(voucher.scheduled_date).toLocaleDateString()}</p>
+            <p className="font-medium">{new Date(voucher.planned_date).toLocaleDateString()}</p>
           </div>
         </div>
 

@@ -51,7 +51,7 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
         .from("production_orders")
         .select(`
           *,
-          products!part_id (
+          parts!part_id (
             name,
             bom!part_id (
               *,
@@ -103,7 +103,7 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
         .from("kit_items")
         .select(`
           part_id,
-          actual_quantity,
+          received_quantity,
           verified_by_production,
           created_at,
           parts!part_id (
@@ -136,14 +136,14 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
   const getActualReceivedQuantity = (materialId: string) => {
     return dispatchedItems
       .filter(item => item.parts.id === materialId && item.verified_by_production)
-      .reduce((sum, item) => sum + item.actual_quantity, 0);
+      .reduce((sum, item) => sum + item.received_quantity, 0);
   };
 
   // Get total dispatched (sent) quantities regardless of production verification
   const getDispatchedQuantity = (materialId: string) => {
     return dispatchedItems
       .filter(item => item.parts.id === materialId)
-      .reduce((sum, item) => sum + item.actual_quantity, 0);
+      .reduce((sum, item) => sum + item.received_quantity, 0);
   };
 
   // Get current stock from real-time inventory
@@ -273,7 +273,7 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
               kit_preparation_id: kitPrep.id,
               part_id: plan.materialId,
               required_quantity: plan.requiredQuantity,
-              actual_quantity: plan.quantityToSend
+              received_quantity: plan.quantityToSend
             });
 
           if (itemError) {
@@ -366,7 +366,7 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
   };
 
   const handleSendMaterials = () => {
-    const bom = productionOrder?.products?.bom || [];
+    const bom = productionOrder?.parts?.bom || [];
     const materialsWithQuantities = bom.filter(item => 
       quantities[item.parts.id] && quantities[item.parts.id] > 0
     );
@@ -416,9 +416,9 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
       // Prepare PDF data
       const pdfData: ProductionVoucherData = {
         voucherNumber: productionOrder.voucher_number,
-        productName: productionOrder.products?.name || "Unknown Product",
+        productName: productionOrder.parts?.name || "Unknown Product",
         productionQuantity: productionOrder.quantity,
-        scheduledDate: productionOrder.scheduled_date,
+        scheduledDate: productionOrder.planned_date,
         dispatchedAt: new Date().toISOString(),
         dispatchedBy: "Store Department", // Could be enhanced to get current user
         materials: bom.map(bomItem => ({
@@ -481,7 +481,7 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
     );
   }
 
-  const bom = productionOrder.products?.bom || [];
+  const bom = productionOrder.parts?.bom || [];
   const orderQuantity = productionOrder.quantity;
 
   const groupedBOM = [
@@ -574,7 +574,7 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
         </div>
         <div className="ml-auto grid grid-cols-4 gap-x-6">
           {[
-            ["Product", productionOrder.products?.name || "—"],
+            ["Product", productionOrder.parts?.name || "—"],
             ["Order qty", orderQuantity],
             ["BOM lines", materialRows.length],
             ["Short lines", shortLines],

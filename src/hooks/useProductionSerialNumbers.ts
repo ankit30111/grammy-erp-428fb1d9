@@ -21,9 +21,9 @@ export interface ProductionVoucherWithDispatch {
   id: string;
   voucher_number: string;
   quantity: number;
-  scheduled_date: string;
+  planned_date: string;
   status: string;
-  products: {
+  parts: {
     name: string;
   };
   production_schedules: {
@@ -48,9 +48,9 @@ export const useProductionVouchersWithDispatch = () => {
           id,
           voucher_number,
           quantity,
-          scheduled_date,
+          planned_date,
           status,
-          products!part_id (name),
+          parts!part_id (name),
           production_schedules!production_schedule_id (
             projections!projection_id (
               customers!customer_id (name)
