@@ -96,13 +96,13 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
     refetchInterval: 3000, // Refresh every 3 seconds for real-time updates
   });
 
-  // Initialize line assignments from production_order_lines.
-  // The finished-good row (part_id IS NULL) is the main assembly; rows carrying a
-  // part_id belong to individual BOM parts and are re-derived from the section on save.
+  // Initialize the line choice from production_order_lines. The finished-good row
+  // (part_id IS NULL) is the voucher's line; the key is "materials" to match the
+  // single section the dialog now renders.
   useEffect(() => {
     const finishedGood = finishedGoodLine(existingLineRows);
     setLineAssignments(
-      finishedGood ? { main_assembly: finishedGood.production_line_id } : {}
+      finishedGood ? { materials: finishedGood.production_line_id } : {}
     );
   }, [existingLineRows]);
 
@@ -186,22 +186,18 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
     mutationFn: async () => {
       console.log("🏭 Saving line assignments:", lineAssignments);
 
-      // The main assembly section is the finished good itself (part_id null);
-      // the other sections are the BOM parts that run on the chosen line.
-      const rows: { production_line_id: string; part_id: string | null }[] = [];
-      if (lineAssignments.main_assembly) {
-        rows.push({ production_line_id: lineAssignments.main_assembly, part_id: null });
+      // The voucher runs on one line. This used to fan out over three BOM-type
+      // sections, assigning a line per section; with bom_type gone there is one
+      // materials list and one choice, and the row carries part_id null because
+      // what runs on the line is the finished good.
+      const lineId = lineAssignments.materials;
+      const rows: { production_line_id: string; part_id: string | null }[] = lineId
+        ? [{ production_line_id: lineId, part_id: null }]
+        : [];
+
+      if (rows.length === 0) {
+        throw new Error("Choose a production line before starting production");
       }
-      (["sub_assembly", "accessory"] as const).forEach((sectionKey) => {
-        const lineId = lineAssignments[sectionKey];
-        if (!lineId) return;
-        const partIds = Object.keys(groupedMaterials[sectionKey] ?? {});
-        if (partIds.length === 0) {
-          rows.push({ production_line_id: lineId, part_id: null });
-          return;
-        }
-        partIds.forEach((partId) => rows.push({ production_line_id: lineId, part_id: partId }));
-      });
 
       await replaceProductionOrderLines(production.id, rows);
 
@@ -371,16 +367,23 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
               <h3 className="text-lg font-semibold">Complete BOM - Enhanced Material Tracking with Discrepancy Management</h3>
             </div>
             
-            {renderMaterialSection("Sub Assembly", "sub_assembly", groupedMaterials.sub_assembly)}
-            {renderMaterialSection("Main Assembly", "main_assembly", groupedMaterials.main_assembly)}
-            {renderMaterialSection("Accessories", "accessory", groupedMaterials.accessory)}
+            {/*
+              Three sections used to be rendered here - Sub Assembly, Main Assembly,
+              Accessories - keyed on bom.bom_type. That column was dropped in the
+              rebuild, and the grouping above had already been changed to put every
+              BOM line in one "materials" bucket. The render was left on the three
+              old keys, so all three read groupedMaterials.sub_assembly and friends,
+              found nothing, and every section showed "0 MATERIALS / No materials
+              found for this assembly type" on a voucher with 54 BOM lines.
+            */}
+            {renderMaterialSection("Materials", "materials", groupedMaterials.materials)}
           </div>
 
           {/* Action Buttons */}
           <div className="flex justify-end gap-4 pt-4 border-t">
             <Button
               onClick={() => {
-                if (Object.keys(lineAssignments).length > 0) {
+                if (lineAssignments.materials) {
                   saveLineAssignments.mutate();
                 }
               }}

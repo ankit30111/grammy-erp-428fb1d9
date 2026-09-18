@@ -206,22 +206,45 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
       try {
         // STEP 2: Create kit preparation record with retry logic
         console.log("🔄 STEP 2: Creating kit preparation record...");
-        const { data: kitPrep, error: kitError } = await supabase
+        // One kit per voucher until production has counted it. Issuing material a
+        // second time used to create a SECOND kit against the same voucher - two
+        // rows both saying "sent", each with its own lines - so the same voucher
+        // could be issued material twice with nothing on screen showing it. A
+        // top-up adds to the open kit instead.
+        const { data: openKit, error: openKitError } = await supabase
           .from("kit_preparation")
-          .insert({
-            // kit_number is issued by set_kit_number; plant_id is NOT NULL and was
-            // missing, so creating a kit failed before it ever reached the items.
-            kit_number: "",
-            plant_id: productionOrder?.plant_id,
-            production_order_id: voucherId,
-            status: "SENT"
-          })
-          .select()
-          .single();
+          .select("id")
+          .eq("production_order_id", voucherId)
+          .in("status", ["PREPARED", "SHORTAGE", "SENT"])
+          .maybeSingle();
+        if (openKitError) throw openKitError;
 
-        if (kitError) {
-          console.error("❌ STEP 2 FAILED - Kit preparation error:", kitError);
-          throw new Error(`Failed to create kit preparation: ${kitError.message}`);
+        let kitPrep = openKit;
+        if (!kitPrep) {
+          const { data: created, error: kitError } = await supabase
+            .from("kit_preparation")
+            .insert({
+              // kit_number is issued by set_kit_number; plant_id is NOT NULL and was
+              // missing, so creating a kit failed before it ever reached the items.
+              kit_number: "",
+              plant_id: productionOrder?.plant_id,
+              production_order_id: voucherId,
+              status: "SENT",
+              sent_at: new Date().toISOString(),
+            })
+            .select()
+            .single();
+
+          if (kitError) {
+            console.error("❌ STEP 2 FAILED - Kit preparation error:", kitError);
+            throw new Error(`Failed to create kit preparation: ${kitError.message}`);
+          }
+          kitPrep = created;
+        } else {
+          await supabase
+            .from("kit_preparation")
+            .update({ status: "SENT", sent_at: new Date().toISOString() })
+            .eq("id", kitPrep.id);
         }
 
         console.log("✅ STEP 2 SUCCESS - Kit preparation created:", kitPrep.id);
@@ -274,6 +297,15 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
           });
 
           // STEP 4: Create kit item record
+          // issued_quantity, not received_quantity.
+          //
+          // This line is why Production > Kit Receipt showed "Issued by store: 0"
+          // for a kit that had physically gone out: the store wrote what it sent
+          // into received_quantity, which is production's column to fill after
+          // counting, and left issued_quantity at its default of zero. So the
+          // store's number never reached production, and production's count was
+          // pre-filled with the store's figure before anyone had counted anything -
+          // which is exactly the disagreement the kit feedback loop exists to catch.
           const { error: itemError } = await supabase
             .from("kit_items")
             .insert({
@@ -281,7 +313,7 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
               kit_preparation_id: kitPrep.id,
               part_id: plan.materialId,
               required_quantity: plan.requiredQuantity,
-              received_quantity: plan.quantityToSend
+              issued_quantity: plan.quantityToSend,
             });
 
           if (itemError) {
