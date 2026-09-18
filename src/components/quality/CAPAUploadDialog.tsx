@@ -77,42 +77,32 @@ const CAPAUploadDialog = ({
 
       if (uploadError) throw uploadError;
 
-      // Update the appropriate CAPA table with document URL and remarks
+      // The vendor / production CAPA tables collapsed into `capa`:
+      // capa_document_url -> document_url. `capa` has no remarks column, so
+      // free-text remarks are no longer stored (they are shown to the uploader
+      // only). rca_reports.rca_file_url is now report_url.
       let updateQuery;
-      const updateData: any = {
-        capa_document_url: fileName,
-        remarks: remarks || null
-      };
-
       switch (capaType) {
         case 'vendor':
-          updateQuery = supabase
-            .from('iqc_vendor_capa')
-            .update(updateData)
-            .eq('id', capaId);
-          break;
         case 'production':
           updateQuery = supabase
-            .from('production_capa')
-            .update(updateData)
+            .from('capa')
+            .update({ document_url: fileName })
             .eq('id', capaId);
           break;
         case 'line_rejection':
+          // capaId here is the line_rejections row id; `capa` links back to it.
           updateQuery = supabase
-            .from('rca_reports')
-            .update({
-              rca_file_url: fileName,
-              remarks: remarks || null
-            })
+            .from('capa')
+            .update({ document_url: fileName })
             .eq('line_rejection_id', capaId);
           break;
         case 'part_analysis':
+          // customer_complaint_parts no longer carries a document column; the
+          // document lives on the complaint's `capa` row.
           updateQuery = supabase
-            .from('customer_complaint_parts')
-            .update({
-              capa_document_url: fileName,
-              remarks: remarks || null
-            })
+            .from('capa')
+            .update({ document_url: fileName })
             .eq('id', capaId);
           break;
         default:
@@ -260,6 +250,9 @@ const CAPAUploadDialog = ({
           {/* Remarks */}
           <div className="space-y-2">
             <Label htmlFor="remarks">Remarks (Optional)</Label>
+            <p className="text-xs text-amber-700">
+              Not stored after the rebuild — the unified CAPA table has no remarks column.
+            </p>
             <Textarea
               id="remarks"
               value={remarks}

@@ -33,17 +33,18 @@ export const EnhancedProjectBOMDialog: React.FC<EnhancedProjectBOMDialogProps> =
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch project BOM
+  // npd_project_bom is gone — npd_bom_materials now hangs off the project
+  // directly, and the stage lives on npd_projects.stage (npd_stage enum).
   const { data: projectBOM, isLoading } = useQuery({
-    queryKey: ['npd-project-bom', projectId],
+    queryKey: ['npd-project', projectId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('npd_project_bom')
-        .select('*')
-        .eq('npd_project_id', projectId)
-        .single();
+        .from('npd_projects')
+        .select('id, project_name, stage')
+        .eq('id', projectId)
+        .maybeSingle();
 
-      if (error && error.code !== 'PGRST116') throw error;
+      if (error) throw error;
       return data;
     },
     enabled: isOpen && !!projectId
@@ -51,89 +52,58 @@ export const EnhancedProjectBOMDialog: React.FC<EnhancedProjectBOMDialogProps> =
 
   // Fetch BOM materials
   const { data: bomMaterials = [] } = useQuery({
-    queryKey: ['npd-bom-materials', projectBOM?.id],
+    queryKey: ['npd-bom-materials', projectId],
     queryFn: async () => {
-      if (!projectBOM?.id) return [];
-      
+      if (!projectId) return [];
+
       const { data, error } = await supabase
         .from('npd_bom_materials')
         .select(`
           *,
-          npd_sample_tracking (*)
+          parts (part_code, name),
+          vendors (name)
         `)
-        .eq('npd_project_bom_id', projectBOM.id)
+        .eq('project_id', projectId)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
       return data || [];
     },
-    enabled: !!projectBOM?.id
+    enabled: !!projectId
   });
 
-  // Create BOM mutation
-  const createBOMMutation = useMutation({
-    mutationFn: async () => {
-      const { data, error } = await supabase
-        .from('npd_project_bom')
-        .insert({
-          npd_project_id: projectId,
-          bom_name: `${projectName} BOM`,
-          description: 'NPD Project BOM',
-          bom_stage: 'TEST_BOM'
-        })
-        .select()
-        .single();
+  // There is no separate BOM header table any more, so a BOM always "exists"
+  // for a project; the old createBOMMutation has nothing to create.
 
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['npd-project-bom', projectId] });
-      toast({ title: "BOM created successfully" });
-    },
-    onError: (error) => {
-      toast({ title: "Error creating BOM", description: error.message, variant: "destructive" });
-    }
-  });
-
-  // Stage transition mutation
+  // Stage transition mutation — writes npd_projects.stage.
+  // npd_bom_stage_history has no replacement, so transitions are not logged.
   const stageTransitionMutation = useMutation({
-    mutationFn: async ({ bomId, newStage, notes }: { bomId: string; newStage: string; notes?: string }) => {
+    mutationFn: async ({ newStage }: { bomId: string; newStage: string; notes?: string }) => {
       const { error } = await supabase
-        .from('npd_project_bom')
-        .update({
-          bom_stage: newStage,
-          stage_updated_at: new Date().toISOString(),
-          stage_updated_by: (await supabase.auth.getUser()).data.user?.id
-        })
-        .eq('id', bomId);
+        .from('npd_projects')
+        .update({ stage: newStage as any })
+        .eq('id', projectId);
 
       if (error) throw error;
-
-      // Record stage history
-      await supabase
-        .from('npd_bom_stage_history')
-        .insert({
-          npd_project_bom_id: bomId,
-          from_stage: projectBOM?.bom_stage,
-          to_stage: newStage,
-          transition_by: (await supabase.auth.getUser()).data.user?.id,
-          notes
-        });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['npd-project-bom', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['npd-project', projectId] });
       toast({ title: "Stage updated successfully" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error updating stage", description: error.message, variant: "destructive" });
     }
   });
 
   const getStageColor = (stage: string) => {
     switch (stage) {
-      case 'TEST_BOM': return 'bg-blue-100 text-blue-800';
-      case 'SAMPLING_STAGE': return 'bg-yellow-100 text-yellow-800';
-      case 'TESTING_STAGE': return 'bg-orange-100 text-orange-800';
-      case 'PP_STAGE': return 'bg-purple-100 text-purple-800';
-      case 'MP_STAGE': return 'bg-green-100 text-green-800';
+      case 'CONCEPT': return 'bg-slate-100 text-slate-800';
+      case 'DESIGN': return 'bg-blue-100 text-blue-800';
+      case 'BOM': return 'bg-blue-100 text-blue-800';
+      case 'SAMPLE': return 'bg-yellow-100 text-yellow-800';
+      case 'VALIDATION': return 'bg-orange-100 text-orange-800';
+      case 'LAUNCHED': return 'bg-green-100 text-green-800';
+      case 'DROPPED': return 'bg-red-100 text-red-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -152,22 +122,21 @@ export const EnhancedProjectBOMDialog: React.FC<EnhancedProjectBOMDialogProps> =
 
   const filteredMaterials = bomMaterials.filter(material => {
     if (filterStatus === 'ALL') return true;
-    if (filterStatus === 'CODED') return !material.is_temporary_part;
-    if (filterStatus === 'UNCODED') return material.is_temporary_part;
-    return material.part_status === filterStatus;
+    // "coded" now simply means the material is linked to a real part row.
+    if (filterStatus === 'CODED') return !!material.part_id;
+    if (filterStatus === 'UNCODED') return !material.part_id;
+    return material.status === filterStatus;
   });
 
   const exportBOM = async (format: 'csv' | 'excel') => {
     const csvData = bomMaterials.map(material => ({
-      'Part Code': material.temporary_part_code || material.part_code || 'N/A',
+      'Part Code': material.proposed_part_code || material.parts?.part_code || 'N/A',
       'Material Name': material.description,
       'Quantity': material.quantity,
-      'Unit': material.unit,
-      'Status': material.part_status,
-      'Vendor': material.vendor_name || 'TBD',
-      'Cost Estimate': material.cost_estimate || 'TBD',
-      'Lead Time': material.lead_time_days || 'TBD',
-      'Critical': material.is_critical ? 'Yes' : 'No'
+      'Unit': material.uom,
+      'Status': material.status,
+      'Vendor': material.vendors?.name || 'TBD',
+      'Target Price': material.target_price ?? 'TBD'
     }));
 
     const csvContent = [
@@ -179,7 +148,7 @@ export const EnhancedProjectBOMDialog: React.FC<EnhancedProjectBOMDialogProps> =
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${projectName}_BOM_${projectBOM?.bom_stage || 'Export'}.csv`;
+    a.download = `${projectName}_BOM_${projectBOM?.stage || 'Export'}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -205,8 +174,8 @@ export const EnhancedProjectBOMDialog: React.FC<EnhancedProjectBOMDialogProps> =
               <Package className="h-5 w-5" />
               {projectName} - BOM Management
               {projectBOM && (
-                <Badge className={getStageColor(projectBOM.bom_stage)}>
-                  {projectBOM.bom_stage.replace('_', ' ')}
+                <Badge className={getStageColor(projectBOM.stage)}>
+                  {projectBOM.stage}
                 </Badge>
               )}
             </DialogTitle>
@@ -215,16 +184,11 @@ export const EnhancedProjectBOMDialog: React.FC<EnhancedProjectBOMDialogProps> =
           {!projectBOM ? (
             <Card className="p-6">
               <CardHeader>
-                <CardTitle>No BOM Found</CardTitle>
+                <CardTitle>Project not found</CardTitle>
                 <CardDescription>
-                  Create a BOM to start managing materials for this NPD project
+                  This NPD project no longer exists, so its BOM cannot be shown.
                 </CardDescription>
               </CardHeader>
-              <CardContent>
-                <Button onClick={() => createBOMMutation.mutate()}>
-                  Create BOM
-                </Button>
-              </CardContent>
             </Card>
           ) : (
             <Tabs defaultValue="materials" className="space-y-4">
@@ -259,14 +223,14 @@ export const EnhancedProjectBOMDialog: React.FC<EnhancedProjectBOMDialogProps> =
                       size="sm"
                       onClick={() => setFilterStatus('CODED')}
                     >
-                      Coded ({bomMaterials.filter(m => !m.is_temporary_part).length})
+                      Coded ({bomMaterials.filter(m => !!m.part_id).length})
                     </Button>
                     <Button
                       variant={filterStatus === 'UNCODED' ? 'default' : 'outline'}
                       size="sm"
                       onClick={() => setFilterStatus('UNCODED')}
                     >
-                      Uncoded ({bomMaterials.filter(m => m.is_temporary_part).length})
+                      Uncoded ({bomMaterials.filter(m => !m.part_id).length})
                     </Button>
                   </div>
                 </div>
@@ -278,38 +242,32 @@ export const EnhancedProjectBOMDialog: React.FC<EnhancedProjectBOMDialogProps> =
                         <div className="space-y-2">
                           <div className="flex items-center gap-2">
                             <h4 className="font-medium">{material.description}</h4>
-                            <Badge className={getStatusColor(material.part_status)}>
-                              {material.part_status.replace('_', ' ')}
+                            <Badge className={getStatusColor(material.status)}>
+                              {String(material.status ?? '').replace('_', ' ')}
                             </Badge>
-                            {material.is_critical && (
-                              <Badge variant="destructive">Critical</Badge>
-                            )}
                           </div>
                           <div className="text-sm text-muted-foreground">
-                            {material.temporary_part_code || material.part_code || 'No code assigned'}
+                            {material.proposed_part_code || material.parts?.part_code || 'No code assigned'}
                           </div>
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                             <div>
-                              <span className="font-medium">Quantity:</span> {material.quantity} {material.unit}
+                              <span className="font-medium">Quantity:</span> {material.quantity} {material.uom}
                             </div>
                             <div>
-                              <span className="font-medium">Vendor:</span> {material.vendor_name || 'TBD'}
+                              <span className="font-medium">Vendor:</span> {material.vendors?.name || 'TBD'}
                             </div>
                             <div>
-                              <span className="font-medium">Lead Time:</span> {material.lead_time_days || 'TBD'} days
-                            </div>
-                            <div>
-                              <span className="font-medium">Cost:</span> ₹{material.cost_estimate || 'TBD'}
+                              <span className="font-medium">Target Price:</span> ₹{material.target_price ?? 'TBD'}
                             </div>
                           </div>
-                          {material.expected_function && (
+                          {material.notes && (
                             <div className="text-sm">
-                              <span className="font-medium">Function:</span> {material.expected_function}
+                              <span className="font-medium">Notes:</span> {material.notes}
                             </div>
                           )}
                         </div>
                         <div className="flex gap-2">
-                          {material.is_temporary_part && (
+                          {!material.part_id && (
                             <Button
                               size="sm"
                               variant="outline"
@@ -332,21 +290,21 @@ export const EnhancedProjectBOMDialog: React.FC<EnhancedProjectBOMDialogProps> =
               </TabsContent>
 
               <TabsContent value="samples">
-                <SampleTrackingView bomId={projectBOM.id} />
+                <SampleTrackingView bomId={projectId} />
               </TabsContent>
 
               <TabsContent value="stages">
                 <BOMStageManager
-                  bomId={projectBOM.id}
-                  currentStage={projectBOM.bom_stage}
-                  onStageTransition={(newStage, notes) => 
-                    stageTransitionMutation.mutate({ bomId: projectBOM.id, newStage, notes })
+                  bomId={projectId}
+                  currentStage={projectBOM.stage}
+                  onStageTransition={(newStage, notes) =>
+                    stageTransitionMutation.mutate({ bomId: projectId, newStage, notes })
                   }
                 />
               </TabsContent>
 
               <TabsContent value="collaboration">
-                <CollaborationPanel bomId={projectBOM.id} />
+                <CollaborationPanel bomId={projectId} />
               </TabsContent>
             </Tabs>
           )}
@@ -356,16 +314,16 @@ export const EnhancedProjectBOMDialog: React.FC<EnhancedProjectBOMDialogProps> =
       <PartSelectionDialog
         isOpen={showPartSelection}
         onClose={() => setShowPartSelection(false)}
-        bomId={projectBOM?.id}
+        bomId={projectId}
         onPartAdded={() => {
-          queryClient.invalidateQueries({ queryKey: ['npd-bom-materials', projectBOM?.id] });
+          queryClient.invalidateQueries({ queryKey: ['npd-bom-materials', projectId] });
           setShowPartSelection(false);
         }}
       />
 
       {selectedMaterialId && (
         <SampleTrackingView
-          bomId={projectBOM?.id}
+          bomId={projectId}
           materialId={selectedMaterialId}
           onClose={() => setSelectedMaterialId(null)}
         />

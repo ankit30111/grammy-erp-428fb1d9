@@ -18,11 +18,12 @@ const Quality = () => {
   const { data: grnStats } = useQuery({
     queryKey: ["grn-stats"],
     queryFn: async () => {
-      const { data: pendingGRNs } = await supabase
+      const { data: pendingGRNs, error } = await supabase
         .from("grn")
         .select("id")
-        .eq("status", "RECEIVED");
-      
+        .eq("status", "IQC_PENDING");
+
+      if (error) throw error;
       return {
         pendingIQC: pendingGRNs?.length || 0
       };
@@ -32,15 +33,19 @@ const Quality = () => {
   const { data: productionStats } = useQuery({
     queryKey: ["production-stats"],
     queryFn: async () => {
-      const { data: activeProductions } = await supabase
+      const { data: activeProductions, error: activeError } = await supabase
         .from("production_orders")
         .select("id")
-        .eq("status", "IN_PROGRESS");
-      
-      const { data: pendingOQC } = await supabase
+        .eq("status", "IN_PRODUCTION");
+
+      if (activeError) throw activeError;
+
+      const { data: pendingOQC, error: pendingError } = await supabase
         .from("production_orders")
         .select("id")
         .eq("status", "COMPLETED");
+
+      if (pendingError) throw pendingError;
 
       return {
         activePQC: activeProductions?.length || 0,

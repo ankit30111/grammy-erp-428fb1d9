@@ -22,7 +22,7 @@ const MaterialRequests = () => {
     reason: ''
   });
 
-  // Fetch running production orders (IN_PROGRESS status)
+  // Fetch running production orders (IN_PRODUCTION status)
   const { data: runningProductions = [] } = useQuery({
     queryKey: ["running-production-orders"],
     queryFn: async () => {
@@ -46,7 +46,7 @@ const MaterialRequests = () => {
             part_code
           )
         `)
-        .eq("status", "IN_PROGRESS")
+        .eq("status", "IN_PRODUCTION")
         .order("voucher_number");
       
       if (error) {

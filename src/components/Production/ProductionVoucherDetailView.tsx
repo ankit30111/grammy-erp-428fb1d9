@@ -128,47 +128,17 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
       console.log(`   - Received: ${receivedQuantity}`);
       console.log(`   - Difference: ${difference}`);
 
-      // If there's a discrepancy, create a discrepancy record instead of immediate adjustment
+      // production_material_discrepancies was dropped in the database rebuild
+      // and has NO replacement, so a quantity dispute can no longer be recorded
+      // for store review. Refuse the verification rather than silently swallow
+      // the difference or pretend it was filed.
       if (difference !== 0) {
-        console.log(`🚨 DISCREPANCY DETECTED: Creating discrepancy record for store review`);
-        
-        const discrepancyType = difference > 0 ? 'SHORTAGE' : 'EXCESS';
-        
-        // Create discrepancy record
-        const { error: discrepancyError } = await supabase
-          .from("production_material_discrepancies")
-          .insert({
-            production_order_id: production.id,
-            part_id: kitItem.part_id,
-            kit_item_id: kitItemId,
-            sent_quantity: sentQuantity,
-            received_quantity: receivedQuantity,
-            discrepancy_quantity: Math.abs(difference),
-            discrepancy_type: discrepancyType,
-            reason: notes || `Production verified ${receivedQuantity} but store sent ${sentQuantity}`,
-            status: 'PENDING'
-          });
-
-        if (discrepancyError) {
-          console.error("❌ Error creating discrepancy record:", discrepancyError);
-          throw new Error(`Failed to create discrepancy record: ${discrepancyError.message}`);
-        }
-
-        console.log(`✅ DISCREPANCY RECORD CREATED - Pending store review`);
-        
-        // Mark kit item as verified but don't adjust inventory yet
-        const { error: kitUpdateError } = await supabase
-          .from("kit_items")
-          .update({
-            verified_by_production: true
-          })
-          .eq("id", kitItemId);
-
-        if (kitUpdateError) {
-          console.error("❌ Error updating kit item:", kitUpdateError);
-          throw new Error(`Failed to verify dispatch: ${kitUpdateError.message}`);
-        }
-
+        throw new Error(
+          `Quantity mismatch (sent ${sentQuantity}, received ${receivedQuantity}). ` +
+          `Discrepancy reporting is not available after the database rebuild — ` +
+          `the production_material_discrepancies table was removed with no replacement. ` +
+          `Please resolve the count with the store before verifying.`
+        );
       } else {
         // No discrepancy - proceed with normal verification
         console.log(`✅ NO DISCREPANCY - Processing normal verification`);
@@ -211,7 +181,7 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
     },
   });
 
-  // Save line assignments mutation - Updated to change status to IN_PROGRESS
+  // Save line assignments mutation - Updated to change status to IN_PRODUCTION
   const saveLineAssignments = useMutation({
     mutationFn: async () => {
       console.log("🏭 Saving line assignments:", lineAssignments);
@@ -239,7 +209,7 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
       const { error } = await supabase
         .from("production_orders")
         .update({
-          status: 'IN_PROGRESS',
+          status: 'IN_PRODUCTION',
           updated_at: new Date().toISOString()
         })
         .eq("id", production.id);
@@ -249,7 +219,7 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
         throw error;
       }
       
-      console.log("✅ Line assignments saved and status updated to IN_PROGRESS");
+      console.log("✅ Line assignments saved and status updated to IN_PRODUCTION");
     },
     onSuccess: () => {
       toast({

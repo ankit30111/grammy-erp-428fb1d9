@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useProductionLinesList } from "@/hooks/useProductionLinesList";
+import { getStockLocationId } from "@/utils/stockLedger";
 
 const ProductionScheduleManagement = () => {
   const { data: schedules, isLoading } = useProductionSchedules();
@@ -28,8 +29,7 @@ const ProductionScheduleManagement = () => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'SCHEDULED': return 'warning';
-      case 'MATERIALS_BLOCKED': return 'default';
+      case 'PLANNED': return 'warning';
       case 'KIT_PREPARED': return 'default';
       case 'IN_PRODUCTION': return 'default';
       case 'COMPLETED': return 'default';
@@ -43,8 +43,10 @@ const ProductionScheduleManagement = () => {
     if (!schedule) return;
 
     // Get BOM for the product
-    const productBOM = bomData?.filter(bom => 
-      bom.part_id === schedule.projections?.parts?.id
+    // bom rows are parent_part_id -> child_part_id; the components of a
+    // finished product are the rows whose parent is that product.
+    const productBOM = bomData?.filter(bom =>
+      bom.parent_part_id === schedule.projections?.parts?.id
     );
 
     if (!productBOM?.length) {
@@ -52,28 +54,41 @@ const ProductionScheduleManagement = () => {
       return;
     }
 
-    // Block materials for this production schedule
-    const materialBlocks = productBOM.map(bomItem => ({
-      production_schedule_id: scheduleId,
-      part_id: bomItem.part_id,
-      quantity_blocked: bomItem.quantity * schedule.quantity,
-      status: 'BLOCKED',
-    }));
-
     try {
+      // material_blocking was replaced by stock_holds in the rebuild.
+      const locationId = await getStockLocationId(schedule.plant_id, 'MAIN');
+
+      const materialHolds = productBOM.map(bomItem => ({
+        plant_id: schedule.plant_id,
+        location_id: locationId,
+        part_id: bomItem.child_part_id,
+        quantity: bomItem.quantity * schedule.quantity,
+        needed_on: schedule.scheduled_date,
+        source: 'VOUCHER' as const,
+        status: 'ACTIVE' as const,
+        reference_type: 'PRODUCTION_SCHEDULE',
+        reference_id: scheduleId,
+      }));
+
       const { error } = await supabase
-        .from('material_blocking')
-        .insert(materialBlocks);
+        .from('stock_holds')
+        .insert(materialHolds);
 
       if (error) throw error;
 
-      // Update schedule status
+      // schedule_status has no "materials blocked" member — the schedule stays
+      // PLANNED until the kit is prepared.
       updateSchedule.mutate({
         scheduleId,
-        updates: { status: 'MATERIALS_BLOCKED' }
+        updates: { status: 'PLANNED' }
       });
     } catch (error) {
       console.error('Error blocking materials:', error);
+      toast({
+        title: "Error",
+        description: "Failed to block materials",
+        variant: "destructive",
+      });
     }
   };
 
@@ -130,7 +145,9 @@ const ProductionScheduleManagement = () => {
       if (productionOrder) {
         await supabase
           .from('production_orders')
-          .update({ status: 'PENDING_OQC' })
+          // schedule_status has no PENDING_OQC member; a finished order is
+          // COMPLETED and that is what the OQC queue reads.
+          .update({ status: 'COMPLETED' })
           .eq('id', productionOrder.id);
       }
 
@@ -239,7 +256,7 @@ const ProductionScheduleManagement = () => {
                   <TableCell>
                     {schedule.production_line_id ? (
                       <span className="font-medium">{schedule.production_lines?.name}</span>
-                    ) : schedule.status === 'SCHEDULED' ? (
+                    ) : schedule.status === 'PLANNED' ? (
                       <div className="flex gap-2">
                         <Select
                           value={productionLines[schedule.id] || ""}
@@ -276,7 +293,7 @@ const ProductionScheduleManagement = () => {
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-2">
-                      {schedule.status === 'SCHEDULED' && schedule.production_line_id && (
+                      {schedule.status === 'PLANNED' && schedule.production_line_id && (
                         <Button
                           size="sm"
                           onClick={() => handleBlockMaterials(schedule.id)}
@@ -286,7 +303,7 @@ const ProductionScheduleManagement = () => {
                           Block Materials
                         </Button>
                       )}
-                      {schedule.status === 'MATERIALS_BLOCKED' && (
+                      {schedule.status === 'PLANNED' && (
                         <Button
                           size="sm"
                           variant="outline"

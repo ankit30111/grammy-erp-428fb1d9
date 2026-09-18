@@ -206,7 +206,7 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
           .from("kit_preparation")
           .insert({
             production_order_id: voucherId,
-            status: "MATERIALS_SENT"
+            status: "KIT_SENT"
           })
           .select()
           .single();
@@ -547,7 +547,7 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
   const shortLines = materialRows.filter((row) => (row.balance ?? 0) > 0).length;
   const syncSeconds = inventoryUpdatedAt ? Math.max(0, Math.floor((Date.now() - inventoryUpdatedAt) / 1000)) : 0;
   const syncLabel = syncSeconds < 5 ? "Synced just now" : `Synced ${syncSeconds}s ago`;
-  const statusState = productionOrder.status === "COMPLETED" ? "ok" : productionOrder.status === "IN_PROGRESS" ? "warn" : "idle";
+  const statusState = productionOrder.status === "COMPLETED" ? "ok" : productionOrder.status === "IN_PRODUCTION" ? "warn" : "idle";
 
   return (
     <div className="min-w-0 space-y-3">

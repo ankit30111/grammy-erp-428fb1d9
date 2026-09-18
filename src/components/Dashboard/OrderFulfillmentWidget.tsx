@@ -56,7 +56,7 @@ export const OrderFulfillmentWidget = () => {
       let q = supabase
         .from('production_orders')
         .select('planned_date, status')
-        .in('status', ['PENDING', 'IN_PROGRESS']);
+        .in('status', ['PLANNED', 'IN_PRODUCTION']);
       if (scopePlantId) q = q.eq('plant_id', scopePlantId);
       const { data, error } = await q;
       if (error) throw error;

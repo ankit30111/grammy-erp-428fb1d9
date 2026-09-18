@@ -41,7 +41,7 @@ const ProductionLineDetailView = ({ lineId, lineName, onBack }: ProductionLineDe
           parts!inner(name)
         `)
         .in("id", orderIds)
-        .in("status", ["IN_PROGRESS", "SCHEDULED"])
+        .in("status", ["IN_PRODUCTION", "PLANNED"])
         .order("planned_date", { ascending: true });
 
       if (error) {
@@ -74,8 +74,8 @@ const ProductionLineDetailView = ({ lineId, lineName, onBack }: ProductionLineDe
     enabled: lineProduction.length > 0,
   });
 
-  const ongoingProduction = lineProduction.filter(p => p.status === "IN_PROGRESS");
-  const scheduledProduction = lineProduction.filter(p => p.status === "SCHEDULED");
+  const ongoingProduction = lineProduction.filter(p => p.status === "IN_PRODUCTION");
+  const scheduledProduction = lineProduction.filter(p => p.status === "PLANNED");
 
   const getTotalProduced = (voucherId: string) => {
     return hourlyData

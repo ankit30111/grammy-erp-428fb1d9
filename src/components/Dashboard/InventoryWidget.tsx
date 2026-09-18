@@ -31,13 +31,13 @@ export const InventoryWidget = () => {
     queryKey: ['material-shortages-count', scopeKey],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('material_shortages_calculated')
+        .from('shortages')
         .select('shortage_quantity')
         .gt('shortage_quantity', 0);
       if (error) throw error;
       return data?.length || 0;
     },
-    tableName: 'material_shortages_calculated',
+    tableName: 'shortages',
   });
 
   // Open POs with real-time updates
@@ -47,7 +47,7 @@ export const InventoryWidget = () => {
       let q = supabase
         .from('purchase_orders')
         .select('id')
-        .in('status', ['PENDING', 'SENT']);
+        .in('status', ['PENDING_APPROVAL']);
       if (scopePlantId) q = q.eq('plant_id', scopePlantId);
       const { data, error } = await q;
       if (error) throw error;
@@ -60,7 +60,7 @@ export const InventoryWidget = () => {
   const { data: pendingGRNs } = useRealTimeQuery({
     queryKey: ['pending-grns-count', scopeKey],
     queryFn: async () => {
-      let q = supabase.from('grn').select('id').eq('status', 'PENDING');
+      let q = supabase.from('grn').select('id').eq('status', 'IQC_PENDING');
       if (scopePlantId) q = q.eq('plant_id', scopePlantId);
       const { data, error } = await q;
       if (error) throw error;

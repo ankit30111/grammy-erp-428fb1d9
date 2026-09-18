@@ -452,9 +452,10 @@ export const useGrammyProducts = () => {
     queryKey: ["grammy-products-models"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("products")
-        .select("id, name, product_code")
-        .order("product_code");
+        .from("parts")
+        .select("id, name, part_code")
+        .eq("source_type", "FINISHED_GOOD")
+        .order("part_code");
       if (error) throw error;
       return data;
     },

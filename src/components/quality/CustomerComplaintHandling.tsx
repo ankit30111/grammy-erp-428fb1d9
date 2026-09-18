@@ -40,7 +40,7 @@ const CustomerComplaintHandling = () => {
           customers!inner(name, brand_name),
           parts!inner(name, part_code)
         `)
-        .in("status", ["Open", "CAPA SHARED WITH CUSTOMER"])
+        .in("status", ["OPEN", "UNDER_REVIEW"])
         .order("created_at", { ascending: false });
       
       if (error) throw error;
@@ -137,12 +137,16 @@ const CustomerComplaintHandling = () => {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case "Open":
+      case "OPEN":
         return <Badge variant="destructive">Open</Badge>;
-      case "CAPA SHARED WITH CUSTOMER":
+      case "UNDER_REVIEW":
         return <Badge variant="default">CAPA Shared</Badge>;
-      case "IQC_COMPLETED":
-        return <Badge variant="secondary">IQC Completed</Badge>;
+      case "PARTS_SENT":
+        return <Badge variant="secondary">Parts Sent to IQC</Badge>;
+      case "RESOLVED":
+        return <Badge variant="secondary">Resolved</Badge>;
+      case "CLOSED":
+        return <Badge variant="outline">Closed</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }

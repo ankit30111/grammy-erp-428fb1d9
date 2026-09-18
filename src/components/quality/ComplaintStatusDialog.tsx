@@ -191,7 +191,7 @@ export const ComplaintStatusDialog = ({ complaint, isOpen, onClose }: ComplaintS
 
           {/* Action Buttons */}
           <div className="flex justify-end gap-2 pt-4 border-t">
-            {complaint.status !== 'IQC_COMPLETED' && complaintParts.length === 0 && (
+            {complaint.status !== 'PARTS_SENT' && complaintParts.length === 0 && (
               <Button variant="default">
                 Process Complaint
               </Button>

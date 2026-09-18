@@ -12,39 +12,46 @@ export const CAPAWidget = () => {
   const { data: capaStats } = useQuery({
     queryKey: ["capa-stats-enhanced"],
     queryFn: async () => {
-      // Fetch Vendor CAPAs
-      const { data: vendorCapas } = await supabase
-        .from("iqc_vendor_capa")
-        .select("id, capa_status, initiated_at");
-      
+      // iqc_vendor_capa / production_capa collapsed into `capa`
+      // (source discriminator, capa_status -> status, initiated_at -> created_at).
+      const { data: vendorCapas, error: vendorError } = await supabase
+        .from("capa")
+        .select("id, status, created_at")
+        .in("source", ["IQC", "VENDOR"]);
+      if (vendorError) throw vendorError;
+
       // Fetch Line Rejection CAPAs
-      const { data: lineRejections } = await supabase
+      const { data: lineRejections, error: lineError } = await supabase
         .from("line_rejections")
         .select(`
           id, 
           created_at,
-          rca_reports!left(id, approval_status)
+          rca_reports!left(id, capa(status))
         `);
-      
+      if (lineError) throw lineError;
+
       // Fetch Part Analysis CAPAs
-      const { data: partAnalysis } = await supabase
+      const { data: partAnalysis, error: partError } = await supabase
         .from("customer_complaint_parts")
         .select("id, status, created_at");
-      
+      if (partError) throw partError;
+
       // Fetch Production CAPAs
-      const { data: productionCapas } = await supabase
-        .from("production_capa")
-        .select("id, capa_status, initiated_at");
+      const { data: productionCapas, error: prodError } = await supabase
+        .from("capa")
+        .select("id, status, created_at")
+        .eq("source", "PRODUCTION");
+      if (prodError) throw prodError;
 
       // Calculate vendor CAPA statistics
       const vendorStats = {
         total: vendorCapas?.length || 0,
-        awaited: vendorCapas?.filter(c => c.capa_status === 'AWAITED').length || 0,
-        received: vendorCapas?.filter(c => c.capa_status === 'RECEIVED').length || 0,
+        awaited: vendorCapas?.filter(c => c.status === 'OPEN').length || 0,
+        received: vendorCapas?.filter(c => c.status === 'SUBMITTED').length || 0,
         overdue: vendorCapas?.filter(c => {
           const sevenDaysAgo = new Date();
           sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-          return c.capa_status !== 'IMPLEMENTED' && new Date(c.initiated_at) < sevenDaysAgo;
+          return c.status !== 'CLOSED' && new Date(c.created_at) < sevenDaysAgo;
         }).length || 0
       };
 
@@ -52,8 +59,8 @@ export const CAPAWidget = () => {
       const lineRejectionStats = {
         total: lineRejections?.length || 0,
         pending: lineRejections?.filter(lr => !lr.rca_reports || lr.rca_reports.length === 0).length || 0,
-        approved: lineRejections?.filter(lr => 
-          lr.rca_reports && lr.rca_reports.length > 0 && lr.rca_reports[0].approval_status === 'APPROVED'
+        approved: lineRejections?.filter((lr: any) =>
+          lr.rca_reports?.[0]?.capa?.status === 'ACCEPTED'
         ).length || 0
       };
 
@@ -67,8 +74,8 @@ export const CAPAWidget = () => {
       // Calculate production CAPA statistics
       const productionStats = {
         total: productionCapas?.length || 0,
-        awaited: productionCapas?.filter(pc => pc.capa_status === 'AWAITED').length || 0,
-        received: productionCapas?.filter(pc => pc.capa_status === 'RECEIVED').length || 0
+        awaited: productionCapas?.filter(pc => pc.status === 'OPEN').length || 0,
+        received: productionCapas?.filter(pc => pc.status === 'SUBMITTED').length || 0
       };
 
       return {

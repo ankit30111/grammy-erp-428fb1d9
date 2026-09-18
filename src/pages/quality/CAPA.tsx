@@ -46,19 +46,24 @@ const CAPA = () => {
   const { data: vendorCapas = [] } = useQuery({
     queryKey: ["vendor-capas"],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("iqc_vendor_capa")
+      // iqc_vendor_capa collapsed into `capa` (source = 'IQC' / 'VENDOR').
+      // capa_status -> status, capa_document_url -> document_url,
+      // initiated_at -> created_at, AWAITED -> OPEN, RECEIVED -> SUBMITTED.
+      const { data, error } = await supabase
+        .from("capa")
         .select(`
           *,
-          vendors!inner(name, vendor_code),
-          grn_items!inner(
-            grn!inner(grn_number),
-            parts!inner(name, part_code)
+          vendors(name, vendor_code),
+          grn_items(
+            grn(grn_number),
+            parts(name, part_code)
           )
         `)
-        .in('capa_status', ['AWAITED', 'RECEIVED'])
-        .order("initiated_at", { ascending: false });
-      
+        .in('source', ['IQC', 'VENDOR'])
+        .in('status', ['OPEN', 'SUBMITTED'])
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
       return data || [];
     },
   });
@@ -67,7 +72,7 @@ const CAPA = () => {
   const { data: lineRejectionCapas = [] } = useQuery({
     queryKey: ["line-rejection-capas"],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("line_rejections")
         .select(`
           *,
@@ -75,14 +80,13 @@ const CAPA = () => {
           production_orders!inner(voucher_number),
           rca_reports!left(
             id,
-            rca_file_url,
-            approval_status,
-            approved_at,
-            approved_by
+            report_url,
+            capa(status)
           )
         `)
         .order("created_at", { ascending: false });
-      
+
+      if (error) throw error;
       return data || [];
     },
   });
@@ -91,7 +95,7 @@ const CAPA = () => {
   const { data: partAnalysisCapas = [] } = useQuery({
     queryKey: ["part-analysis-capas"],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("customer_complaint_parts")
         .select(`
           *,
@@ -103,7 +107,8 @@ const CAPA = () => {
           parts!inner(name, part_code)
         `)
         .order("created_at", { ascending: false });
-      
+
+      if (error) throw error;
       return data || [];
     },
   });
@@ -112,17 +117,20 @@ const CAPA = () => {
   const { data: productionCapas = [] } = useQuery({
     queryKey: ["production-capas"],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("production_capa")
+      // production_capa collapsed into `capa` (source = 'PRODUCTION').
+      const { data, error } = await supabase
+        .from("capa")
         .select(`
           *,
-          production_orders!inner(
+          production_orders(
             voucher_number,
-            parts!inner(name, part_code)
+            parts(name, part_code)
           )
         `)
-        .order("initiated_at", { ascending: false });
-      
+        .eq('source', 'PRODUCTION')
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
       return data || [];
     },
   });
@@ -130,24 +138,15 @@ const CAPA = () => {
   // CAPA Upload mutation - updates status to RECEIVED and sets received_at
   const uploadCAPAMutation = useMutation({
     mutationFn: async ({ capaId, capaType }: { capaId: string; capaType: string }) => {
-      const updateData = {
-        capa_status: 'RECEIVED',
-        received_at: new Date().toISOString()
-      };
-
-      let updateQuery;
-      switch (capaType) {
-        case 'vendor':
-          updateQuery = supabase.from("iqc_vendor_capa").update(updateData).eq("id", capaId);
-          break;
-        case 'production':
-          updateQuery = supabase.from("production_capa").update(updateData).eq("id", capaId);
-          break;
-        default:
-          throw new Error("Invalid CAPA type for upload");
+      if (capaType !== 'vendor' && capaType !== 'production') {
+        throw new Error("Invalid CAPA type for upload");
       }
 
-      const { error } = await updateQuery;
+      // One `capa` table now; RECEIVED is SUBMITTED in capa_status.
+      const { error } = await supabase
+        .from("capa")
+        .update({ status: 'SUBMITTED' })
+        .eq("id", capaId);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -172,19 +171,19 @@ const CAPA = () => {
   const kpiStats = {
     vendor: {
       total: vendorCapas.length,
-      awaited: vendorCapas.filter(c => c.capa_status === 'AWAITED').length,
-      received: vendorCapas.filter(c => c.capa_status === 'RECEIVED').length,
+      awaited: vendorCapas.filter(c => c.status === 'OPEN').length,
+      received: vendorCapas.filter(c => c.status === 'SUBMITTED').length,
       overdue: vendorCapas.filter(c => {
         const sevenDaysAgo = new Date();
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-        return c.capa_status === 'AWAITED' && new Date(c.initiated_at) < sevenDaysAgo;
+        return c.status === 'OPEN' && new Date(c.created_at) < sevenDaysAgo;
       }).length,
     },
     lineRejection: {
       total: lineRejectionCapas.length,
       pending: lineRejectionCapas.filter(c => !c.rca_reports || c.rca_reports.length === 0).length,
-      rcaSubmitted: lineRejectionCapas.filter(c => c.rca_reports && c.rca_reports.length > 0 && c.rca_reports[0].approval_status === 'PENDING').length,
-      approved: lineRejectionCapas.filter(c => c.rca_reports && c.rca_reports.length > 0 && c.rca_reports[0].approval_status === 'APPROVED').length,
+      rcaSubmitted: lineRejectionCapas.filter(c => c.rca_reports?.[0]?.capa?.status === 'SUBMITTED').length,
+      approved: lineRejectionCapas.filter(c => c.rca_reports?.[0]?.capa?.status === 'ACCEPTED').length,
     },
     partAnalysis: {
       total: partAnalysisCapas.length,
@@ -195,23 +194,21 @@ const CAPA = () => {
     },
     production: {
       total: productionCapas.length,
-      awaited: productionCapas.filter(c => c.capa_status === 'AWAITED').length,
-      received: productionCapas.filter(c => c.capa_status === 'RECEIVED').length,
-      approved: productionCapas.filter(c => c.capa_status === 'APPROVED').length,
-      implemented: productionCapas.filter(c => c.capa_status === 'IMPLEMENTED').length,
+      awaited: productionCapas.filter(c => c.status === 'OPEN').length,
+      received: productionCapas.filter(c => c.status === 'SUBMITTED').length,
+      approved: productionCapas.filter(c => c.status === 'ACCEPTED').length,
+      implemented: productionCapas.filter(c => c.status === 'CLOSED').length,
     }
   };
 
   const getStatusBadge = (status: string, type: string = 'vendor') => {
     switch (status) {
-      case 'AWAITED':
+      case 'OPEN':
         return <Badge variant="secondary">Awaiting CAPA</Badge>;
-      case 'RECEIVED':
+      case 'SUBMITTED':
         return <Badge variant="outline">Under Review</Badge>;
-      case 'APPROVED':
+      case 'ACCEPTED':
         return <Badge variant="default">Approved</Badge>;
-      case 'IMPLEMENTED':
-        return <Badge variant="default" className="bg-green-600">Implemented</Badge>;
       case 'REJECTED':
         return <Badge variant="destructive">Rejected</Badge>;
       case 'PENDING':
@@ -400,20 +397,20 @@ const CAPA = () => {
                               </span>
                             </div>
                           </TableCell>
-                          <TableCell>{getStatusBadge(capa.capa_status)}</TableCell>
+                          <TableCell>{getStatusBadge(capa.status)}</TableCell>
                           <TableCell>
-                            {format(new Date(capa.initiated_at), "dd/MM/yyyy")}
+                            {format(new Date(capa.created_at), "dd/MM/yyyy")}
                           </TableCell>
                           <TableCell>
-                            <span className={getDaysOpen(capa.initiated_at) > 7 ? "text-red-600 font-medium" : ""}>
-                              {getDaysOpen(capa.initiated_at)} days
+                            <span className={getDaysOpen(capa.created_at) > 7 ? "text-red-600 font-medium" : ""}>
+                              {getDaysOpen(capa.created_at)} days
                             </span>
                           </TableCell>
                           <TableCell>
-                            {capa.capa_document_url ? (
+                            {capa.document_url ? (
                               <SignedStorageLink
                                 bucket="capa-documents"
-                                path={capa.capa_document_url}
+                                path={capa.document_url}
                                 variant="outline"
                                 size="sm"
                               >
@@ -426,7 +423,7 @@ const CAPA = () => {
                           </TableCell>
                           <TableCell>
                             <div className="flex gap-1">
-                              {capa.capa_status === 'AWAITED' && (
+                              {capa.status === 'OPEN' && (
                                 <Button
                                   variant="outline"
                                   size="sm"
@@ -441,7 +438,7 @@ const CAPA = () => {
                                   Upload CAPA
                                 </Button>
                               )}
-                              {capa.capa_status === 'RECEIVED' && (
+                              {capa.status === 'SUBMITTED' && (
                                 <Badge variant="outline">Under Review</Badge>
                               )}
                               <Button variant="outline" size="sm">
@@ -502,7 +499,7 @@ const CAPA = () => {
                             <TableCell>{rejection.quantity}</TableCell>
                             <TableCell>{rejection.defect}</TableCell>
                             <TableCell>
-                              {rcaReport ? getStatusBadge(rcaReport.approval_status, 'rca') : getStatusBadge('PENDING', 'rca')}
+                              {rcaReport ? getStatusBadge(rcaReport.capa?.status ?? 'SUBMITTED', 'rca') : getStatusBadge('PENDING', 'rca')}
                             </TableCell>
                             <TableCell>
                               {format(new Date(rejection.created_at), "dd/MM/yyyy")}
@@ -523,10 +520,10 @@ const CAPA = () => {
                                     Upload RCA
                                   </Button>
                                 )}
-                                {rcaReport && rcaReport.rca_file_url && (
+                                {rcaReport && rcaReport.report_url && (
                                   <SignedStorageLink
                                     bucket="capa-documents"
-                                    path={rcaReport.rca_file_url}
+                                    path={rcaReport.report_url}
                                     variant="outline"
                                     size="sm"
                                   >
@@ -591,33 +588,12 @@ const CAPA = () => {
                           </TableCell>
                           <TableCell>{getStatusBadge(part.status, 'part')}</TableCell>
                           <TableCell>
-                            {part.analyzed_at ? format(new Date(part.analyzed_at), "dd/MM/yyyy") : '-'}
+                            {part.created_at ? format(new Date(part.created_at), "dd/MM/yyyy") : '-'}
                           </TableCell>
                           <TableCell>
-                            <div className="flex gap-1">
-                              {part.rca_document_url && (
-                                <SignedStorageLink
-                                  bucket="capa-documents"
-                                  path={part.rca_document_url}
-                                  variant="outline"
-                                  size="sm"
-                                >
-                                  <FileText className="h-3 w-3 mr-1" />
-                                  RCA
-                                </SignedStorageLink>
-                              )}
-                              {part.capa_document_url && (
-                                <SignedStorageLink
-                                  bucket="capa-documents"
-                                  path={part.capa_document_url}
-                                  variant="outline"
-                                  size="sm"
-                                >
-                                  <FileText className="h-3 w-3 mr-1" />
-                                  CAPA
-                                </SignedStorageLink>
-                              )}
-                            </div>
+                            <span className="text-xs text-muted-foreground">
+                              Not available after rebuild
+                            </span>
                           </TableCell>
                           <TableCell>
                             <div className="flex gap-1">
@@ -692,20 +668,20 @@ const CAPA = () => {
                               </span>
                             </div>
                           </TableCell>
-                          <TableCell>{getStatusBadge(capa.capa_status)}</TableCell>
+                          <TableCell>{getStatusBadge(capa.status)}</TableCell>
                           <TableCell>
-                            {format(new Date(capa.initiated_at), "dd/MM/yyyy")}
+                            {format(new Date(capa.created_at), "dd/MM/yyyy")}
                           </TableCell>
                           <TableCell>
-                            <span className={getDaysOpen(capa.initiated_at) > 7 ? "text-red-600 font-medium" : ""}>
-                              {getDaysOpen(capa.initiated_at)} days
+                            <span className={getDaysOpen(capa.created_at) > 7 ? "text-red-600 font-medium" : ""}>
+                              {getDaysOpen(capa.created_at)} days
                             </span>
                           </TableCell>
                           <TableCell>
-                            {capa.capa_document_url ? (
+                            {capa.document_url ? (
                               <SignedStorageLink
                                 bucket="capa-documents"
-                                path={capa.capa_document_url}
+                                path={capa.document_url}
                                 variant="outline"
                                 size="sm"
                               >
@@ -718,7 +694,7 @@ const CAPA = () => {
                           </TableCell>
                           <TableCell>
                             <div className="flex gap-1">
-                              {capa.capa_status === 'AWAITED' && (
+                              {capa.status === 'OPEN' && (
                                 <Button
                                   variant="outline"
                                   size="sm"
@@ -731,7 +707,7 @@ const CAPA = () => {
                                   Upload CAPA
                                 </Button>
                               )}
-                              {capa.capa_status === 'RECEIVED' && (
+                              {capa.status === 'SUBMITTED' && (
                                 <Badge variant="outline">Under Review</Badge>
                               )}
                               <Button variant="outline" size="sm">

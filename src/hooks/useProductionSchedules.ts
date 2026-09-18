@@ -156,7 +156,7 @@ export const useCreateProductionSchedule = () => {
           scheduled_date: scheduleData.scheduled_date,
           quantity: scheduleData.quantity,
           production_line_id: scheduleData.production_line_id || null,
-          status: 'SCHEDULED',
+          status: 'PLANNED',
           plant_id: plantId,
         })
         .select()
@@ -178,7 +178,7 @@ export const useCreateProductionSchedule = () => {
           quantity: scheduleData.quantity,
           scheduled_date: scheduleData.scheduled_date,
           voucher_number: voucherNumber,
-          status: 'SCHEDULED',
+          status: 'PLANNED',
           plant_id: plantId,
         })
         .select()

@@ -81,7 +81,7 @@ export const ScheduleProductionDialog = ({
           projection_id: projection.id,
           quantity: quantityNum,
           scheduled_date: format(scheduledDate, "yyyy-MM-dd"),
-          status: "SCHEDULED"
+          status: "PLANNED"
         })
         .select()
         .single();
@@ -100,7 +100,7 @@ export const ScheduleProductionDialog = ({
           quantity: quantityNum,
           planned_date: format(scheduledDate, "yyyy-MM-dd"),
           voucher_number: voucherNumber,
-          status: "PENDING"
+          status: "PLANNED"
         });
 
       if (orderError) throw orderError;

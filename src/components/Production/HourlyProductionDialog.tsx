@@ -41,7 +41,7 @@ const HourlyProductionDialog = ({ open, onOpenChange, productionLine }: HourlyPr
           parts!inner(name),
           production_schedules!inner(production_lines!inner(name))
         `)
-        .eq("status", "IN_PROGRESS")
+        .eq("status", "IN_PRODUCTION")
         .eq("production_schedules.production_lines.name", productionLine)
         .single();
       

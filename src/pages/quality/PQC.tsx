@@ -30,7 +30,7 @@ const PQC = () => {
   const { data: activeProduction = [] } = useQuery({
     queryKey: ["active-production"],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("production_orders")
         .select(`
           *,
@@ -45,8 +45,9 @@ const PQC = () => {
             )
           )
         `)
-        .eq("status", "IN_PROGRESS");
-      
+        .eq("status", "IN_PRODUCTION");
+
+      if (error) throw error;
       return data || [];
     },
   });
@@ -55,7 +56,7 @@ const PQC = () => {
   const { data: completedProduction = [] } = useQuery({
     queryKey: ["completed-production"],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("production_orders")
         .select(`
           *,
@@ -70,7 +71,8 @@ const PQC = () => {
         .eq("status", "COMPLETED")
         .order("updated_at", { ascending: false })
         .limit(10);
-      
+
+      if (error) throw error;
       return data || [];
     },
   });

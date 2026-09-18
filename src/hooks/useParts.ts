@@ -254,8 +254,12 @@ export const useSpecificationHistory = (partId: string) => {
 };
 
 export const getDocumentUrl = async (fileName: string) => {
-  const { data } = await supabase.storage
+  const { data, error } = await supabase.storage
     .from("raw-material-documents")
     .createSignedUrl(fileName, 60 * 60);
+  if (error) {
+    console.error("Failed to sign document URL:", fileName, error);
+    throw error;
+  }
   return data?.signedUrl ?? null;
 };

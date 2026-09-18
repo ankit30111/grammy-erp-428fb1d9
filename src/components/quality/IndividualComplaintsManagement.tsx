@@ -28,9 +28,7 @@ const IndividualComplaintsManagement = () => {
         .select(`
           *,
           customers!inner(name, brand_name),
-          parts(name, part_code),
-          customer_complaint_batches(receipt_type),
-          customer_complaint_batch_items(item_type, part_description)
+          parts(name, part_code)
         `)
         .order("created_at", { ascending: false });
       
@@ -42,26 +40,26 @@ const IndividualComplaintsManagement = () => {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case "Open":
+      case "OPEN":
         return <Badge variant="destructive">Open</Badge>;
-      case "CAPA SHARED WITH CUSTOMER":
+      case "UNDER_REVIEW":
         return <Badge variant="default">CAPA Shared</Badge>;
-      case "IQC_COMPLETED":
-        return <Badge variant="secondary">IQC Completed</Badge>;
+      case "PARTS_SENT":
+        return <Badge variant="secondary">Parts Sent to IQC</Badge>;
+      case "RESOLVED":
+        return <Badge variant="secondary">Resolved</Badge>;
+      case "CLOSED":
+        return <Badge variant="outline">Closed</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
   };
 
-  const getComplaintTypeIcon = (complaint: any) => {
-    if (complaint.customer_complaint_batch_items?.item_type === 'DATA') {
-      return <Badge variant="outline" className="text-xs">DATA</Badge>;
-    }
-    if (complaint.customer_complaint_batch_items?.item_type === 'PART') {
-      return <Badge variant="outline" className="text-xs">PART</Badge>;
-    }
-    return <Badge variant="outline" className="text-xs">PRODUCT</Badge>;
-  };
+  // customer_complaint_batch_items was dropped in the rebuild with no
+  // replacement, so complaints no longer carry a DATA / PART item type.
+  const getComplaintTypeIcon = (_complaint: any) => (
+    <Badge variant="outline" className="text-xs">PRODUCT</Badge>
+  );
 
   // Filter complaints
   const filteredComplaints = complaints.filter(complaint => {
@@ -73,8 +71,7 @@ const IndividualComplaintsManagement = () => {
     const matchesStatus = statusFilter === "all" || complaint.status === statusFilter;
     
     const matchesBatch = batchFilter === "all" || 
-      (batchFilter === "batch" && complaint.batch_id) ||
-      (batchFilter === "direct" && !complaint.batch_id);
+      batchFilter === "direct";
     
     return matchesSearch && matchesStatus && matchesBatch;
   });
@@ -112,9 +109,11 @@ const IndividualComplaintsManagement = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Statuses</SelectItem>
-                  <SelectItem value="Open">Open</SelectItem>
-                  <SelectItem value="CAPA SHARED WITH CUSTOMER">CAPA Shared</SelectItem>
-                  <SelectItem value="IQC_COMPLETED">IQC Completed</SelectItem>
+                  <SelectItem value="OPEN">Open</SelectItem>
+                  <SelectItem value="UNDER_REVIEW">CAPA Shared</SelectItem>
+                  <SelectItem value="PARTS_SENT">Parts Sent to IQC</SelectItem>
+                  <SelectItem value="RESOLVED">Resolved</SelectItem>
+                  <SelectItem value="CLOSED">Closed</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -176,17 +175,7 @@ const IndividualComplaintsManagement = () => {
                   <TableCell>{getComplaintTypeIcon(complaint)}</TableCell>
                   <TableCell>{complaint.customers?.name}</TableCell>
                   <TableCell>
-                    {complaint.customer_complaint_batch_items?.item_type === 'PART' ? (
-                      <div className="text-sm">
-                        <div className="font-medium">Faulty Part</div>
-                        <div className="text-muted-foreground">{complaint.customer_complaint_batch_items.part_description}</div>
-                      </div>
-                    ) : complaint.customer_complaint_batch_items?.item_type === 'DATA' ? (
-                      <div className="text-sm">
-                        <div className="font-medium">Data Analysis</div>
-                        <div className="text-muted-foreground">No physical product</div>
-                      </div>
-                    ) : complaint.parts ? (
+                    {                    complaint.parts ? (
                       <div>
                         <div className="font-medium">{complaint.parts.name}</div>
                         <div className="text-sm text-muted-foreground">{complaint.parts.part_code}</div>

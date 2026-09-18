@@ -87,6 +87,10 @@ const CAPAImplementationSection = ({
         <p className="text-xs text-muted-foreground">
           Please verify if the following approved CAPAs have been implemented for this material/vendor
         </p>
+        <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1">
+          Not available after the rebuild: the CAPA implementation-check table was
+          removed, so these answers are shown for the inspector only and are not stored.
+        </p>
       </CardHeader>
       <CardContent className="space-y-4">
         {relevantCAPAs.map((capa) => (

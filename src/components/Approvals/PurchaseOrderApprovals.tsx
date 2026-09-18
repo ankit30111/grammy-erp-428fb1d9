@@ -36,10 +36,12 @@ const PurchaseOrderApprovals = () => {
       await Promise.all(updates);
 
       // Recalculate total amount
-      const { data: poItems } = await supabase
+      const { data: poItems, error: poItemsError } = await supabase
         .from('purchase_order_items')
         .select('quantity, unit_price')
         .eq('purchase_order_id', poId);
+
+      if (poItemsError) throw poItemsError;
 
       if (poItems) {
         const totalAmount = poItems.reduce((sum, item) => sum + (item.quantity * (item.unit_price || 0)), 0);

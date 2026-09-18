@@ -118,11 +118,11 @@ const GRN = () => {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'RECEIVED':
+      case 'IQC_PENDING':
         return <Badge variant="outline" className="bg-blue-100 text-blue-800 hover:bg-blue-100">Received</Badge>;
-      case 'IQC_COMPLETED':
+      case 'IQC_DONE':
         return <Badge variant="outline" className="bg-green-100 text-green-800 hover:bg-green-100">IQC Completed</Badge>;
-      case 'STORE_RECEIVED':
+      case 'STORE_CONFIRMED':
         return <Badge variant="default">Store Received</Badge>;
       default:
         return <Badge variant="secondary">{status}</Badge>;
@@ -299,7 +299,7 @@ const GRN = () => {
                                   <Badge 
                                     variant="outline"
                                     className={
-                                      item.iqc_outcome === 'APPROVED' ? "bg-green-100 text-green-800 hover:bg-green-100" :
+                                      item.iqc_outcome === 'ACCEPTED' ? "bg-green-100 text-green-800 hover:bg-green-100" :
                                       item.iqc_outcome === 'REJECTED' ? "bg-red-100 text-red-800 hover:bg-red-100" :
                                       "bg-yellow-100 text-yellow-800 hover:bg-yellow-100"
                                     }

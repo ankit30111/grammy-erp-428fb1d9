@@ -19,14 +19,14 @@ export function PendingApprovalsWidget() {
       let poQ = supabase
         .from("purchase_orders")
         .select("id", { count: "exact", head: true })
-        .in("status", ["pending_approval", "PENDING_APPROVAL", "PENDING"]);
+        .in("status", ["PENDING_APPROVAL"]);
       if (scopePlantId) poQ = poQ.eq("plant_id", scopePlantId);
       const [po, capa] = await Promise.all([
         poQ,
         supabase
-          .from("iqc_vendor_capa")
+          .from("capa")
           .select("id", { count: "exact", head: true })
-          .eq("capa_status", "AWAITED"),
+          .eq("status", "OPEN"),
       ]);
       return {
         po: po.count ?? 0,

@@ -1,5 +1,6 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { MOVEMENT_TYPES } from "@/constants/movementTypes";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { usePlantId } from "@/hooks/usePlantId";
@@ -119,7 +120,7 @@ export const useCreateGRN = () => {
             part_id: item.part_id,
             location_id: quarantineId,
             qty_delta: Number(item.received_quantity) || 0,
-            movement_type: 'RECEIPT',
+            movement_type: MOVEMENT_TYPES.GRN_RECEIPT,
             reason_code: 'GRN_RECEIPT',
             reference_type: 'GRN_ITEM_RECEIPT',
             reference_id: item.id,

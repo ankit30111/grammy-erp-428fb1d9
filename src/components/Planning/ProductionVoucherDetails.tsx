@@ -20,13 +20,30 @@ const ProductionVoucherDetails = ({ scheduleId, voucherNumber, isOpen, onClose }
     queryFn: async () => {
       if (!scheduleId) return [];
       
+      // material_requirements_view is gone — the same numbers now live on
+      // `shortages` (required/available/shortage per part per schedule),
+      // with part code/name joined from `parts`.
       const { data, error } = await supabase
-        .from("material_requirements_view")
-        .select("*")
-        .eq("projection_id", scheduleId);
-      
+        .from("shortages")
+        .select(`
+          part_id,
+          required_quantity,
+          available_quantity,
+          shortage_quantity,
+          parts (part_code, name)
+        `)
+        .eq("production_schedule_id", scheduleId);
+
       if (error) throw error;
-      return data;
+
+      return (data || []).map((row: any) => ({
+        part_id: row.part_id,
+        part_code: row.parts?.part_code ?? "-",
+        material_name: row.parts?.name ?? "-",
+        total_required: row.required_quantity,
+        available_quantity: row.available_quantity,
+        shortage_quantity: row.shortage_quantity,
+      }));
     },
     enabled: !!scheduleId && isOpen
   });

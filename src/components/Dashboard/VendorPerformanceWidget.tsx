@@ -81,7 +81,7 @@ export const VendorPerformanceWidget = () => {
         
         if (item.iqc_outcome && item.iqc_outcome !== 'PENDING') {
           acc[vendorName].total += 1;
-          if (item.iqc_outcome === 'APPROVED') {
+          if (item.iqc_outcome === 'ACCEPTED') {
             acc[vendorName].passed += 1;
           }
         }

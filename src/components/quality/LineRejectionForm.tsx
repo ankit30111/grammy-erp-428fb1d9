@@ -30,15 +30,16 @@ const LineRejectionForm = ({ productionOrderId }: LineRejectionFormProps) => {
   const { data: bomItems = [] } = useQuery({
     queryKey: ["production-bom", productionOrderId],
     queryFn: async () => {
-      const { data: productionOrder } = await supabase
+      const { data: productionOrder, error: poError } = await supabase
         .from("production_orders")
         .select("part_id")
         .eq("id", productionOrderId)
         .single();
 
+      if (poError) throw poError;
       if (!productionOrder) return [];
 
-      const { data: bom } = await supabase
+      const { data: bom, error: bomError } = await supabase
         .from("bom")
         .select(`
           *,
@@ -46,6 +47,7 @@ const LineRejectionForm = ({ productionOrderId }: LineRejectionFormProps) => {
         `)
         .eq("parent_part_id", productionOrder.part_id);
 
+      if (bomError) throw bomError;
       return bom || [];
     },
   });
