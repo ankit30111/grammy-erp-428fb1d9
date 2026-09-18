@@ -2584,6 +2584,105 @@ export type Database = {
           },
         ]
       }
+      kit_feedback: {
+        Row: {
+          created_at: string
+          id: string
+          issued_quantity: number
+          kit_item_id: string
+          part_id: string
+          plant_id: string
+          production_order_id: string | null
+          raised_at: string
+          raised_by: string | null
+          reason: string | null
+          received_quantity: number
+          resolved_at: string | null
+          resolved_by: string | null
+          status: Database["public"]["Enums"]["kit_feedback_status"]
+          stock_ledger_id: string | null
+          store_remarks: string | null
+          updated_at: string
+          variance: number | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          issued_quantity: number
+          kit_item_id: string
+          part_id: string
+          plant_id: string
+          production_order_id?: string | null
+          raised_at?: string
+          raised_by?: string | null
+          reason?: string | null
+          received_quantity: number
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: Database["public"]["Enums"]["kit_feedback_status"]
+          stock_ledger_id?: string | null
+          store_remarks?: string | null
+          updated_at?: string
+          variance?: number | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          issued_quantity?: number
+          kit_item_id?: string
+          part_id?: string
+          plant_id?: string
+          production_order_id?: string | null
+          raised_at?: string
+          raised_by?: string | null
+          reason?: string | null
+          received_quantity?: number
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: Database["public"]["Enums"]["kit_feedback_status"]
+          stock_ledger_id?: string | null
+          store_remarks?: string | null
+          updated_at?: string
+          variance?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kit_feedback_kit_item_id_fkey"
+            columns: ["kit_item_id"]
+            isOneToOne: false
+            referencedRelation: "kit_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kit_feedback_part_id_fkey"
+            columns: ["part_id"]
+            isOneToOne: false
+            referencedRelation: "parts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kit_feedback_plant_id_fkey"
+            columns: ["plant_id"]
+            isOneToOne: false
+            referencedRelation: "plants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kit_feedback_production_order_id_fkey"
+            columns: ["production_order_id"]
+            isOneToOne: false
+            referencedRelation: "production_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kit_feedback_stock_ledger_id_fkey"
+            columns: ["stock_ledger_id"]
+            isOneToOne: false
+            referencedRelation: "stock_ledger"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       kit_items: {
         Row: {
           created_at: string
@@ -4851,6 +4950,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_kit_feedback: {
+        Args: { p_feedback_id: string; p_remarks?: string }
+        Returns: string
+      }
       admin_list_active_employee_salaries: {
         Args: never
         Returns: {
@@ -5002,6 +5105,10 @@ export type Database = {
         Returns: Json
       }
       post_stock_movements: { Args: { p_movements: Json }; Returns: Json }
+      reject_kit_feedback: {
+        Args: { p_feedback_id: string; p_remarks: string }
+        Returns: undefined
+      }
       set_department_modules: {
         Args: { p_department_id: string; p_modules: string[] }
         Returns: undefined
@@ -5098,6 +5205,7 @@ export type Database = {
       hold_source: "VOUCHER" | "SPARE" | "DASH" | "SAMPLE" | "REWORK"
       hold_status: "ACTIVE" | "ISSUED" | "RELEASED"
       iqc_outcome: "PENDING" | "ACCEPTED" | "REJECTED" | "PARTIAL"
+      kit_feedback_status: "PENDING" | "ACCEPTED" | "REJECTED"
       npd_stage:
         | "CONCEPT"
         | "DESIGN"
@@ -5357,6 +5465,7 @@ export const Constants = {
       hold_source: ["VOUCHER", "SPARE", "DASH", "SAMPLE", "REWORK"],
       hold_status: ["ACTIVE", "ISSUED", "RELEASED"],
       iqc_outcome: ["PENDING", "ACCEPTED", "REJECTED", "PARTIAL"],
+      kit_feedback_status: ["PENDING", "ACCEPTED", "REJECTED"],
       npd_stage: [
         "CONCEPT",
         "DESIGN",

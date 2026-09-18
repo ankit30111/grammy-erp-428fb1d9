@@ -19,6 +19,7 @@ import { useInventory } from "@/hooks/useInventory";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { VoucherMaterials } from "@/components/Production/VoucherMaterials";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, getDay } from "date-fns";
 import { EditScheduleDialog } from "@/components/Planning/EditScheduleDialog";
 import { DeleteScheduleDialog } from "@/components/Planning/DeleteScheduleDialog";
@@ -188,209 +189,40 @@ const PlanningEnhanced: React.FC = () => {
     );
   };
 
-  // Enhanced BOM Production Voucher Analysis Component with product-specific BOM query
+  /**
+   * Material requirements for the selected voucher.
+   *
+   * Replaced ~200 lines that grouped by bom.bom_type - a column that no longer
+   * exists, so every section rendered "No items in this category" while the header
+   * counted 54 items. Now uses the shared VoucherMaterials table, which is the same
+   * component the Store voucher tab renders, so the two screens cannot drift apart
+   * in either numbers or appearance.
+   */
   const BOMProductionVoucherAnalysis = () => {
     const selectedSchedule = schedules?.find(s => s.id === selectedScheduleId);
     if (!selectedSchedule) return null;
 
     const productId = selectedSchedule.projections?.parts?.id;
-    
-    console.log('🎯 BOM Analysis Debug:');
-    console.log('- Selected Schedule:', selectedSchedule);
-    console.log('- Product ID:', productId);
-    console.log('- Schedule Quantity:', selectedSchedule.quantity);
-
-    // Use product-specific BOM query instead of global useBOM
-    const { data: productBOM = [], isLoading: bomLoading } = useQuery({
-      queryKey: ["product-bom", productId],
-      queryFn: async () => {
-        if (!productId) return [];
-        
-        console.log('🔍 Fetching BOM for product:', productId);
-        
-        const { data, error } = await supabase
-          .from("bom")
-          .select(`
-            *,
-            parts!child_part_id(
-              id,
-              part_code,
-              name,
-              category
-            )
-          `)
-          .eq("parent_part_id", productId);
-        
-        if (error) {
-          console.error('❌ BOM fetch error:', error);
-          throw error;
-        }
-        
-        console.log('✅ BOM data fetched:', data?.length, 'items');
-        console.log('📊 BOM breakdown by type:');
-        
-        const breakdown = data?.reduce((acc, item) => {
-          acc[item.bom_type] = (acc[item.bom_type] || 0) + 1;
-          return acc;
-        }, {});
-        
-        console.log(breakdown);
-        
-        return data || [];
-      },
-      enabled: !!productId && shortageDialogOpen,
-    });
-
-    const getBOMWithInventory = () => {
-      if (!productBOM.length || !inventory) {
-        console.log('⚠️ Missing data - BOM items:', productBOM.length, 'Inventory loaded:', !!inventory);
-        return [];
-      }
-
-      const bomWithInventory = productBOM.map(bomItem => {
-        const inventoryItem = inventory?.find(inv => inv.part_id === bomItem.part_id);
-        const requiredQty = bomItem.quantity * selectedSchedule.quantity;
-        const availableQty = inventoryItem?.quantity || 0;
-        const shortQty = Math.max(0, requiredQty - availableQty); // Only show positive shortage or 0
-
-        return {
-          ...bomItem,
-          requiredQuantity: requiredQty,
-          availableQuantity: availableQty,
-          shortQuantity: shortQty,
-          status: shortQty > 0 ? 'SHORT' : 'AVAILABLE'
-        };
-      });
-
-      console.log('📋 Final BOM with inventory:', bomWithInventory.length, 'items processed');
-      
-      // Log breakdown by category
-      const finalBreakdown = bomWithInventory.reduce((acc, item) => {
-        acc[item.bom_type] = (acc[item.bom_type] || 0) + 1;
-        return acc;
-      }, {});
-      
-      console.log('📊 Final breakdown:', finalBreakdown);
-      
-      return bomWithInventory;
-    };
-
-    const bomWithInventory = getBOMWithInventory();
-    
-    // Categorize BOM items based on actual database enum values
-    const mainAssembly = bomWithInventory.filter(item => item.bom_type === 'main_assembly');
-    const subAssembly = bomWithInventory.filter(item => item.bom_type === 'sub_assembly');
-    const accessories = bomWithInventory.filter(item => item.bom_type === 'accessory');
-
-    console.log('🏗️ Category distribution:');
-    console.log('- Main Assembly:', mainAssembly.length);
-    console.log('- Sub Assembly:', subAssembly.length);
-    console.log('- Accessories:', accessories.length);
-    console.log('- Total:', mainAssembly.length + subAssembly.length + accessories.length);
-
-    if (bomLoading) {
-      return (
-        <div className="space-y-4">
-          <div className="text-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-            <p className="mt-2 text-muted-foreground">Loading BOM data...</p>
-          </div>
-        </div>
-      );
-    }
-
-    if (!productBOM.length) {
-      return (
-        <div className="space-y-4">
-          <div className="text-center py-8">
-            <Package className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
-            <p className="text-muted-foreground">No BOM data found for this product</p>
-            <p className="text-sm text-muted-foreground mt-1">Product ID: {productId}</p>
-          </div>
-        </div>
-      );
-    }
-
-    const BOMSection = ({ title, items }: { title: string; items: any[] }) => (
-      <div className="mb-6">
-        <h4 className="font-semibold text-lg mb-3 text-blue-600">{title}</h4>
-        {items.length === 0 ? (
-          <p className="text-muted-foreground">No items in this category</p>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Material Code</TableHead>
-                <TableHead>Material Name</TableHead>
-                <TableHead>Required</TableHead>
-                <TableHead>In Stock</TableHead>
-                <TableHead>Short</TableHead>
-                <TableHead>Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {items.map((item, index) => (
-                <TableRow key={index}>
-                  <TableCell className="font-medium">
-                    {item.parts?.part_code || 'N/A'}
-                  </TableCell>
-                  <TableCell>{item.parts?.name || 'N/A'}</TableCell>
-                  <TableCell className="font-medium">{item.requiredQuantity}</TableCell>
-                  <TableCell className="font-medium">{item.availableQuantity}</TableCell>
-                  <TableCell>
-                    {item.shortQuantity > 0 ? (
-                      <Badge variant="destructive">{item.shortQuantity}</Badge>
-                    ) : (
-                      <Badge variant="secondary">0</Badge>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={item.status === 'AVAILABLE' ? 'default' : 'destructive'}>
-                      {item.status}
-                    </Badge>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
-      </div>
-    );
-
-    // Get actual voucher number from production_orders
-    const voucherNumber = selectedSchedule.production_orders?.[0]?.voucher_number || 'Generating...';
+    const voucher = selectedSchedule.production_orders?.[0];
 
     return (
       <div className="space-y-4">
-        <div className="flex items-center justify-between pb-4 border-b">
-          <div>
-            <h3 className="text-xl font-bold">
-              {selectedSchedule.projections?.parts?.name}
-            </h3>
-            <p className="text-muted-foreground">
-              Voucher: {voucherNumber} | Scheduled Quantity: {selectedSchedule.quantity} units
-            </p>
-            <p className="text-sm text-muted-foreground">
-              Total BOM Items: {bomWithInventory.length} | 
-              Main: {mainAssembly.length} | 
-              Sub: {subAssembly.length} | 
-              Acc: {accessories.length}
-            </p>
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => refetchInventory()}
-            className="gap-2"
-          >
-            <RefreshCw className="h-4 w-4" />
-            Refresh Inventory
-          </Button>
+        <div className="pb-4 border-b">
+          <h3 className="text-xl font-bold">
+            {selectedSchedule.projections?.parts?.name}
+          </h3>
+          <p className="text-muted-foreground">
+            Voucher: {voucher?.voucher_number || "Generating…"} · Scheduled quantity:{" "}
+            {selectedSchedule.quantity} units
+          </p>
         </div>
-        
-        <BOMSection title="Main Assembly" items={mainAssembly} />
-        <BOMSection title="Sub Assembly" items={subAssembly} />
-        <BOMSection title="Accessories" items={accessories} />
+
+        <VoucherMaterials
+          partId={productId}
+          quantity={Number(selectedSchedule.quantity) || 0}
+          plantId={selectedSchedule.plant_id}
+          productionOrderId={voucher?.id}
+        />
       </div>
     );
   };
