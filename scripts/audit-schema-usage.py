@@ -17,7 +17,12 @@ from collections import defaultdict
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SCHEMA = json.load(open(os.path.join(HERE, '.schema-cache.json')))
-TABLES = set(SCHEMA['tables'])
+# A view is a valid .from() target and has columns like any relation, so it
+# belongs in TABLES for checks 1-6. VIEWS is kept separately because nothing can
+# insert into a view - without it, every view would be reported as a feature with
+# a reader and no writer.
+VIEWS = set(SCHEMA.get('views', []))
+TABLES = set(SCHEMA['tables']) | VIEWS
 COLS = defaultdict(set)
 for r in SCHEMA['columns']:
     COLS[r['t']].add(r['c'])
@@ -203,7 +208,7 @@ for path in walk():
         if WRITE.search(chain):
             written_tables.add(table)
 
-for t in sorted(read_tables - written_tables - set(DB_WRITERS)):
+for t in sorted(read_tables - written_tables - set(DB_WRITERS) - VIEWS):
     findings['read_never_written'].append(
         f"{t} — the app reads this table and never writes to it. Filled by a trigger, "
         f"or is the writing half missing?")
