@@ -8,6 +8,7 @@ Finds, without anyone clicking anything:
   3. .select('a, b, c') fields that are not columns
   4. .eq('col', ...) / .in('col', [...]) on columns that do not exist
   5. enum-valued columns compared or written with a value outside the enum
+  6. .rpc('fn') where the function does not exist or the app cannot execute it
 """
 import json, re, os, sys
 from collections import defaultdict
@@ -135,8 +136,26 @@ for path in walk():
                     findings['bad_enum'].append(
                         f"{rel(path)}:{line}  {table}.{k} := '{v}' — not in {en} ({'|'.join(sorted(ENUMS[en]))})")
 
+# supabase.rpc('name') where the function is not callable by the app role.
+#
+# Four of these were live: generate_temp_part_code, get_customer_finance,
+# get_vendor_finance and log_material_movement. Each throws the moment the screen
+# that calls it is opened, and three of the four had their error swallowed. A
+# missing function is as fatal as a missing table, so it is checked the same way.
+RPC = re.compile(r"\.rpc\(\s*['\"]([a-z_0-9]+)['\"]")
+FUNCS = set(SCHEMA.get('functions', []))
+
+for path in walk():
+    src = open(path, errors='ignore').read()
+    for m in RPC.finditer(src):
+        if FUNCS and m.group(1) not in FUNCS:
+            line = src[:m.start()].count('\n') + 1
+            findings['dead_rpc'].append(
+                f"{rel(path)}:{line}  .rpc('{m.group(1)}') — function does not exist, or the app cannot execute it")
+
 ORDER = [
     ('dead_table',     'QUERIES A TABLE THAT NO LONGER EXISTS'),
+    ('dead_rpc',       'CALLS A FUNCTION THAT DOES NOT EXIST'),
     ('bad_enum',       'WRITES OR COMPARES A VALUE THE ENUM DOES NOT ALLOW'),
     ('bad_write_col',  'WRITES A COLUMN THAT DOES NOT EXIST'),
     ('bad_filter_col', 'FILTERS ON A COLUMN THAT DOES NOT EXIST'),
