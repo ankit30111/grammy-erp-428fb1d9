@@ -13,6 +13,7 @@ import { format } from "date-fns";
 import { CheckCircle, Package, AlertTriangle } from "lucide-react";
 import { usePlantId } from "@/hooks/usePlantId";
 import { getStockLocationId, hasLedgerEntry, postStockMovement } from "@/utils/stockLedger";
+import { MOVEMENT_TYPES } from "@/constants/movementTypes";
 
 interface MaterialDispatchHistoryDialogProps {
   isOpen: boolean;
@@ -102,32 +103,20 @@ const MaterialDispatchHistoryDialog = ({
 
           if (!(await hasLedgerEntry("KIT_ITEM_VERIFY_RETURN", kitItemId))) {
             const mainId = await getStockLocationId(plantId, "MAIN");
+            // Positive delta: the unused material comes back into the store.
             await postStockMovement({
               plant_id: plantId,
               part_id: rawMaterialId,
               location_id: mainId,
               qty_delta: difference,
-              movement_type: "RETURN",
+              movement_type: MOVEMENT_TYPES.PRODUCTION_RETURN,
               reason_code: "PRODUCTION_VERIFICATION",
               reference_type: "KIT_ITEM_VERIFY_RETURN",
               reference_id: kitItemId,
               reference_number: productionOrderId,
-              notes: `Production verification return: ${materialCode} - sent ${sentQuantity}, received ${receivedQuantity}. Notes: ${notes}`,
+              notes: `Production verification return: ${materialCode} - Sent ${sentQuantity}, Received ${receivedQuantity}. Notes: ${notes}`,
             });
           }
-
-          // Log return movement
-          await supabase
-            .from("material_movements")
-            .insert({
-              part_id: rawMaterialId,
-              movement_type: "PRODUCTION_RETURN",
-              quantity: difference,
-              reference_id: productionOrderId,
-              reference_type: "PRODUCTION_ORDER",
-              reference_number: productionOrderId,
-              notes: `Production verification return: ${materialCode} - Sent ${sentQuantity}, Received ${receivedQuantity}. Notes: ${notes}`
-            });
         } else {
           // Log shortage request
           await supabase

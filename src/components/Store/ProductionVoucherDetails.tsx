@@ -9,7 +9,8 @@ import { generateProductionVoucherPDF, generateProductionVoucherFilename, type P
 import { PageHeader } from "@/components/shell/PageHeader";
 import { DataTable, type DataTableColumn } from "@/components/shell/DataTable";
 import { StatePill } from "@/components/shell/StatePill";
-import { fetchStockBalanceRows, getStockLocationId, postStockMovement } from "@/utils/stockLedger";
+import { fetchStockBalanceRows, getStockLocationId, hasLedgerEntry, postStockMovement } from "@/utils/stockLedger";
+import { MOVEMENT_TYPES } from "@/constants/movementTypes";
 
 interface ProductionVoucherDetailsProps {
   voucherId: string;
@@ -230,19 +231,28 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
           console.log(`   - Expected After: ${plan.newStock}`);
           
           const mainLocationId = await getStockLocationId(plan.plantId, "MAIN");
+
+          // Deterministic reference: the kit item this dispatch line creates.
+          // The id is generated up front so the ledger entry and the kit_items
+          // row share it, and a retry of this same line cannot post twice.
+          const kitItemId = crypto.randomUUID();
+
           try {
-            await postStockMovement({
-              plant_id: plan.plantId,
-              part_id: plan.materialId,
-              location_id: mainLocationId,
-              qty_delta: -plan.quantityToSend,
-              movement_type: "ISSUE_TO_PRODUCTION",
-              reason_code: "STORE_DISPATCH",
-              reference_type: "PRODUCTION_ORDER",
-              reference_id: voucherId,
-              reference_number: productionOrder.voucher_number,
-              notes: `Store Dispatch: ${plan.materialCode} dispatched to Production Voucher ${productionOrder.voucher_number}`,
-            });
+            if (!(await hasLedgerEntry("KIT_ITEM_ISSUE", kitItemId, MOVEMENT_TYPES.ISSUED_TO_PRODUCTION))) {
+              // Negative delta: stock leaves the main store for production.
+              await postStockMovement({
+                plant_id: plan.plantId,
+                part_id: plan.materialId,
+                location_id: mainLocationId,
+                qty_delta: -plan.quantityToSend,
+                movement_type: MOVEMENT_TYPES.ISSUED_TO_PRODUCTION,
+                reason_code: "STORE_DISPATCH",
+                reference_type: "KIT_ITEM_ISSUE",
+                reference_id: kitItemId,
+                reference_number: productionOrder.voucher_number,
+                notes: `Store Dispatch: ${plan.materialCode} dispatched to Production Voucher ${productionOrder.voucher_number}. Stock: ${plan.currentStock} → ${plan.newStock}`,
+              });
+            }
           } catch (invError: any) {
             console.error("❌ CRITICAL FAILURE - Stock movement failed:", invError);
             throw new Error(`CRITICAL: Failed to update stock for ${plan.materialCode}: ${invError.message}`);
@@ -256,47 +266,22 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
           });
 
           // STEP 4: Create kit item record
-          const { data: kitItemData, error: itemError } = await supabase
+          const { error: itemError } = await supabase
             .from("kit_items")
             .insert({
+              id: kitItemId,
               kit_preparation_id: kitPrep.id,
               part_id: plan.materialId,
               required_quantity: plan.requiredQuantity,
               actual_quantity: plan.quantityToSend
-            })
-            .select()
-            .single();
+            });
 
           if (itemError) {
             console.error("❌ Kit item creation failed:", itemError);
             throw new Error(`Failed to create kit item for ${plan.materialCode}: ${itemError.message}`);
           }
 
-          console.log("✅ KIT ITEM CREATED:", kitItemData.id);
-
-          // STEP 5: CRITICAL - Log material movement for audit trail
-          console.log(`📝 LOGGING MATERIAL MOVEMENT for ${plan.materialCode}...`);
-          
-          const { data: movementData, error: movementError } = await supabase
-            .from("material_movements")
-            .insert({
-              part_id: plan.materialId,
-              movement_type: "ISSUED_TO_PRODUCTION",
-              quantity: plan.quantityToSend,
-              reference_id: voucherId,
-              reference_type: "PRODUCTION_ORDER",
-              reference_number: productionOrder.voucher_number,
-              notes: `Store Dispatch: ${plan.materialCode} dispatched to Production Voucher ${productionOrder.voucher_number}. Stock: ${plan.currentStock} → ${plan.newStock}`
-            })
-            .select()
-            .single();
-
-          if (movementError) {
-            console.error("❌ MATERIAL MOVEMENT LOGGING FAILED:", movementError);
-            throw new Error(`Failed to log material movement for ${plan.materialCode}: ${movementError.message}`);
-          }
-
-          console.log("✅ MATERIAL MOVEMENT LOGGED:", movementData.id);
+          console.log("✅ KIT ITEM CREATED:", kitItemId);
 
           dispatchResults.push({
             part_code: plan.materialCode,
@@ -305,8 +290,7 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
             previous_stock: plan.currentStock,
             new_stock: plan.newStock,
             voucher_number: productionOrder.voucher_number,
-            kit_item_id: kitItemData.id,
-            movement_id: movementData.id
+            kit_item_id: kitItemId
           });
 
           console.log(`✅ COMPLETE DISPATCH PROCESSING for ${plan.materialCode}`);

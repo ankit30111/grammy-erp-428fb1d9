@@ -1,4 +1,5 @@
 
+import { MOVEMENT_TYPES } from "@/constants/movementTypes";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -100,24 +101,6 @@ export const useKitManagement = () => {
       
       if (voucherError) throw voucherError;
       
-      // Create material movement records for inventory deduction
-      const movementRecords = kitItems.map(item => ({
-        part_id: item.rawMaterialId,
-        quantity: item.issuedQuantity,
-        reference_id: voucherId,
-        reference_type: "PRODUCTION_ORDER",
-        reference_number: kitItems[0].materialCode, // Use the voucher number
-        movement_type: "OUT",
-        issued_to: "Production",
-        notes: `Sent to production for voucher ${kitItems[0].materialCode}`
-      }));
-      
-      const { error: movementError } = await supabase
-        .from("material_movements")
-        .insert(movementRecords);
-      
-      if (movementError) throw movementError;
-      
       // Issue out of the main store through the stock ledger
       if (!plantId) throw new Error("No active plant selected");
       const mainId = await getStockLocationId(plantId, "MAIN");
@@ -131,7 +114,7 @@ export const useKitManagement = () => {
           part_id: item.rawMaterialId,
           location_id: mainId,
           qty_delta: -item.issuedQuantity,
-          movement_type: "ISSUE",
+          movement_type: MOVEMENT_TYPES.ISSUED_TO_PRODUCTION,
           reason_code: "KIT_ISSUE",
           reference_type: "KIT_ITEM_ISSUE",
           reference_id: item.kitItemId,

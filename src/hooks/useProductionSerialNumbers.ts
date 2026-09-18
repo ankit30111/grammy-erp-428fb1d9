@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { MOVEMENT_TYPES } from "@/constants/movementTypes";
 
 export interface ProductionSerialNumber {
   id: string;
@@ -63,9 +64,9 @@ export const useProductionVouchersWithDispatch = () => {
       // Get material movements to check which orders have dispatches
       // Updated to look for both PRODUCTION_VOUCHER and PRODUCTION_ORDER reference types
       const { data: movements, error: movementsError } = await supabase
-        .from("material_movements")
+        .from("stock_ledger")
         .select("reference_id")
-        .eq("movement_type", "ISSUED_TO_PRODUCTION")
+        .eq("movement_type", MOVEMENT_TYPES.ISSUED_TO_PRODUCTION)
         .in("reference_type", ["PRODUCTION_VOUCHER", "PRODUCTION_ORDER"]);
 
       if (movementsError) throw movementsError;

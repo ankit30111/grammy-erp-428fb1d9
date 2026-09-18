@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { MessageSquare, Package, AlertTriangle, CheckCircle, ArrowLeftRight } from "lucide-react";
 import { usePlantId } from "@/hooks/usePlantId";
 import { getStockLocationId, postStockMovement } from "@/utils/stockLedger";
+import { MOVEMENT_TYPES } from "@/constants/movementTypes";
 
 interface ProductionFeedbackDialogProps {
   productionOrderId: string;
@@ -122,40 +123,22 @@ const ProductionFeedbackDialog = ({ productionOrderId, voucherNumber, isOpen, on
           if (!plantId) throw new Error("No active plant selected");
 
           const mainId = await getStockLocationId(plantId, "MAIN");
+          // Positive delta: the unused material comes back into the store.
           await postStockMovement({
             plant_id: plantId,
             part_id: feedback.materialId,
             location_id: mainId,
             qty_delta: excessQuantity,
-            movement_type: "RETURN",
+            movement_type: MOVEMENT_TYPES.PRODUCTION_FEEDBACK_RETURN,
             reason_code: "PRODUCTION_FEEDBACK",
             reference_type: "PRODUCTION_FEEDBACK_RETURN",
             reference_id: productionOrderId,
             reference_number: voucherNumber,
-            notes: `Production feedback return: sent ${feedback.sentQuantity}, used ${feedback.actualUsed}, returned ${excessQuantity}. Reason: ${feedback.reason}`,
+            notes: `Production Feedback Return: Sent ${feedback.sentQuantity}, Used ${feedback.actualUsed}, Returned ${excessQuantity}. Reason: ${feedback.reason}`,
           });
 
           console.log(`✅ EXCESS RETURNED TO STOCK: +${excessQuantity} units`);
-
-          // Log the inventory return movement
-          const { error: movementError } = await supabase
-            .from("material_movements")
-            .insert({
-              part_id: feedback.materialId,
-              movement_type: "PRODUCTION_RETURN",
-              quantity: excessQuantity,
-              reference_id: productionOrderId,
-              reference_type: "PRODUCTION_ORDER",
-              reference_number: voucherNumber,
-              notes: `Production Feedback Return: Sent ${feedback.sentQuantity}, Used ${feedback.actualUsed}, Returned ${excessQuantity}. Reason: ${feedback.reason}`
-            });
-
-          if (movementError) {
-            console.error("❌ Error logging return movement:", movementError);
-            // Don't fail the transaction for logging errors
-          } else {
-            console.log("✅ RETURN MOVEMENT LOGGED SUCCESSFULLY");
-          }
+          console.log("✅ RETURN MOVEMENT LOGGED SUCCESSFULLY");
         }
 
         // If production used more than sent, log material request

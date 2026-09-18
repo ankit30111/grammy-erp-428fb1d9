@@ -36,7 +36,15 @@ export const useStoreDashboardData = () => {
         .select('quantity, stock_locations!inner(code)')
         .eq('stock_locations.code', 'MAIN');
       let grnQ = supabase.from('grn').select('*').eq('status', 'RECEIVED');
-      let movQ = supabase.from('material_movements').select('*').eq('movement_type', 'OUT').gte('created_at', new Date().toISOString().split('T')[0]);
+      // Daily dispatches = anything that left stock today. Taken from the sign of
+      // qty_delta rather than matching a movement_type string: the old query looked
+      // for type 'OUT', which nothing in the app has ever posted, so this tile read
+      // zero regardless of activity.
+      let movQ = supabase
+        .from('stock_ledger')
+        .select('id')
+        .lt('qty_delta', 0)
+        .gte('created_at', new Date().toISOString().split('T')[0]);
       if (scopePlantId) {
         invQ = invQ.eq('plant_id', scopePlantId);
         grnQ = grnQ.eq('plant_id', scopePlantId);
