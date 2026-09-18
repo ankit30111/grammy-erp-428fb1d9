@@ -89,7 +89,7 @@ const SchedulingProduction = () => {
               <SelectContent>
                 {unscheduledProjections.map((projection) => (
                   <SelectItem key={projection.id} value={projection.id}>
-                    {projection.customers?.name} - {projection.products?.name} 
+                    {projection.customers?.name} - {projection.parts?.name} 
                     ({maxQuantity > 0 ? maxQuantity : 0} units remaining)
                   </SelectItem>
                 ))}

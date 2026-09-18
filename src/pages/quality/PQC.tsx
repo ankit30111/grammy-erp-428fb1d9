@@ -34,7 +34,10 @@ const PQC = () => {
         .from("production_orders")
         .select(`
           *,
-          products!inner(name),
+          parts!inner(name),
+          kit_preparation (
+            status
+          ),
           production_schedules!inner(
             *,
             projections!inner(
@@ -56,7 +59,7 @@ const PQC = () => {
         .from("production_orders")
         .select(`
           *,
-          products!inner(name),
+          parts!inner(name),
           production_schedules!inner(
             *,
             projections!inner(
@@ -113,12 +116,12 @@ const PQC = () => {
                       {activeProduction.map((prod) => (
                         <TableRow key={prod.id}>
                           <TableCell className="font-medium">{prod.voucher_number}</TableCell>
-                          <TableCell>{prod.products?.name}</TableCell>
+                          <TableCell>{prod.parts?.name}</TableCell>
                           <TableCell>{prod.production_schedules?.projections?.customers?.name}</TableCell>
                           <TableCell>{prod.quantity}</TableCell>
                           <TableCell>
                             <Badge variant="outline">
-                              {prod.kit_status?.replace('_', ' ')}
+                              {prod.kit_preparation?.[0]?.status?.replace('_', ' ')}
                             </Badge>
                           </TableCell>
                           <TableCell>
@@ -171,7 +174,7 @@ const PQC = () => {
                       {completedProduction.map((prod) => (
                         <TableRow key={prod.id}>
                           <TableCell className="font-medium">{prod.voucher_number}</TableCell>
-                          <TableCell>{prod.products?.name}</TableCell>
+                          <TableCell>{prod.parts?.name}</TableCell>
                           <TableCell>{prod.production_schedules?.projections?.customers?.name}</TableCell>
                           <TableCell>{prod.quantity.toLocaleString()}</TableCell>
                           <TableCell>{new Date(prod.updated_at).toLocaleDateString()}</TableCell>

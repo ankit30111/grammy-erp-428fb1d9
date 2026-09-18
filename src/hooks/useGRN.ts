@@ -80,7 +80,7 @@ export const useCreateGRN = () => {
         part_id: item.part_id,
         po_quantity: item.po_quantity || item.expected_quantity, // Use expected_quantity for non-PO GRNs
         received_quantity: item.received_quantity,
-        iqc_status: 'PENDING',
+        iqc_outcome: 'PENDING',
         plant_id: plantId,
       }));
 

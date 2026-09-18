@@ -45,7 +45,7 @@ const ProductionScheduleManagement = () => {
 
     // Get BOM for the product
     const productBOM = bomData?.filter(bom => 
-      bom.part_id === schedule.projections?.products?.id
+      bom.part_id === schedule.projections?.parts?.id
     );
 
     if (!productBOM?.length) {
@@ -229,9 +229,9 @@ const ProductionScheduleManagement = () => {
                 <TableRow key={schedule.id}>
                   <TableCell>
                     <div>
-                      <div className="font-medium">{schedule.projections?.products?.name}</div>
+                      <div className="font-medium">{schedule.projections?.parts?.name}</div>
                       <div className="text-sm text-muted-foreground">
-                        {schedule.projections?.products?.part_code}
+                        {schedule.projections?.parts?.part_code}
                       </div>
                     </div>
                   </TableCell>

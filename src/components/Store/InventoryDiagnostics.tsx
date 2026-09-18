@@ -176,7 +176,7 @@ const InventoryDiagnostics = () => {
                     <div key={index} className="bg-gray-50 p-2 rounded text-sm">
                       <div className="flex justify-between">
                         <span>GRN: {entry.grn.grn_number}</span>
-                        <span className="font-mono">{formatNumber(entry.accepted_quantity)} units</span>
+                        <span className="font-mono">{formatNumber(entry.iqc_accepted_quantity)} units</span>
                       </div>
                       <div className="text-xs text-muted-foreground">
                         Received: {new Date(entry.grn.received_date).toLocaleDateString()}

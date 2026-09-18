@@ -85,7 +85,7 @@ export const useProductionDashboardData = () => {
         scheduledVouchers: scheduled,
         completedVouchers: completed,
         inProgressVouchers: inProgress,
-        todayProduction: hourlyData.data?.reduce((sum, h) => sum + h.production_units, 0) || 0
+        todayProduction: hourlyData.data?.reduce((sum, h) => sum + h.produced_quantity, 0) || 0
       };
     }
   });
@@ -96,7 +96,7 @@ export const useQualityDashboardData = () => {
   return useQuery({
     queryKey: ['quality-dashboard', scopePlantId ?? 'all'],
     queryFn: async () => {
-      let itemsQ = supabase.from('grn_items').select('iqc_status');
+      let itemsQ = supabase.from('grn_items').select('iqc_outcome');
       if (scopePlantId) itemsQ = itemsQ.eq('plant_id', scopePlantId);
       const [grnItemsData, lineRejectionsData] = await Promise.all([
         itemsQ,
@@ -104,8 +104,8 @@ export const useQualityDashboardData = () => {
       ]);
 
       const totalIQC = grnItemsData.data?.length || 0;
-      const passedIQC = grnItemsData.data?.filter(g => g.iqc_status === 'APPROVED').length || 0;
-      const rejectedIQC = grnItemsData.data?.filter(g => g.iqc_status === 'REJECTED').length || 0;
+      const passedIQC = grnItemsData.data?.filter(g => g.iqc_outcome === 'APPROVED').length || 0;
+      const rejectedIQC = grnItemsData.data?.filter(g => g.iqc_outcome === 'REJECTED').length || 0;
 
       return {
         iqcPassRatio: totalIQC > 0 ? Math.round((passedIQC / totalIQC) * 100) : 0,

@@ -37,7 +37,7 @@ const MaterialRequestsTab = memo(() => {
           production_order_id,
           part_id,
           requested_quantity,
-          approved_quantity,
+          issued_quantity,
           reason,
           status,
           created_at,
@@ -50,8 +50,10 @@ const MaterialRequestsTab = memo(() => {
           ),
           production_orders!inner(
             voucher_number,
-            production_lines,
-            products!inner(
+            production_lines (
+              name
+            ),
+            parts!inner(
               name
             )
           )
@@ -84,7 +86,7 @@ const MaterialRequestsTab = memo(() => {
 
       const updateData = {
         status: action === 'APPROVE' ? 'APPROVED' : 'REJECTED',
-        approved_quantity: action === 'APPROVE' ? approvedQuantity : 0,
+        issued_quantity: action === 'APPROVE' ? approvedQuantity : 0,
         approved_by: SYSTEM_USER_ID
       };
 
@@ -174,7 +176,7 @@ const MaterialRequestsTab = memo(() => {
         .from("material_requests")
         .update({
           status: 'SENT',
-          approved_quantity: sendQuantity
+          issued_quantity: sendQuantity
         })
         .eq("id", requestId);
 
@@ -366,7 +368,7 @@ const MaterialRequestsTab = memo(() => {
                               {request.production_orders?.voucher_number}
                             </TableCell>
                             <TableCell>
-                              {request.production_orders?.products?.name}
+                              {request.production_orders?.parts?.name}
                             </TableCell>
                             <TableCell>
                               <span className="text-sm">
@@ -445,7 +447,7 @@ const MaterialRequestsTab = memo(() => {
                               )}
                               {(request.status === 'REJECTED' || request.status === 'SENT') && (
                                 <div className="text-sm text-muted-foreground">
-                                  {request.status === 'REJECTED' ? 'Request was rejected' : `${request.approved_quantity} units sent`}
+                                  {request.status === 'REJECTED' ? 'Request was rejected' : `${request.issued_quantity} units sent`}
                                 </div>
                               )}
                             </TableCell>

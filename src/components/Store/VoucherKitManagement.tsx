@@ -79,9 +79,9 @@ const VoucherKitManagement = ({
                 <TableRow key={order.id}>
                   <TableCell className="font-mono">{order.voucher_number}</TableCell>
                   <TableCell className="font-medium">
-                    {order.production_schedules?.projections?.products?.name}
+                    {order.production_schedules?.projections?.parts?.name}
                   </TableCell>
-                  <TableCell>{format(new Date(order.scheduled_date), 'MMM dd, yyyy')}</TableCell>
+                  <TableCell>{format(new Date(order.planned_date), 'MMM dd, yyyy')}</TableCell>
                   <TableCell>{order.quantity}</TableCell>
                   <TableCell>
                     <Badge variant={getKitStatusColor(voucherStatuses[order.voucher_number] || "Unknown") as any}>

@@ -15,7 +15,7 @@ export const useProductionSchedules = () => {
           *,
           projections (
             id,
-            products (
+            parts (
               id,
               name,
               part_code
@@ -29,7 +29,9 @@ export const useProductionSchedules = () => {
             id,
             voucher_number,
             status,
-            kit_status
+            kit_preparation (
+              status
+            )
           )
         `)
         .eq('plant_id', plantId!)
@@ -73,8 +75,8 @@ const generateVoucherNumber = async (scheduledDate: string) => {
   const { data: existingOrders, error } = await supabase
     .from('production_orders')
     .select('voucher_number')
-    .gte('scheduled_date', monthStart)
-    .lt('scheduled_date', monthEnd)
+    .gte('planned_date', monthStart)
+    .lt('planned_date', monthEnd)
     .order('voucher_number', { ascending: false });
   
   if (error) {
@@ -150,7 +152,7 @@ export const useCreateProductionSchedule = () => {
           projection_id: scheduleData.projection_id,
           scheduled_date: scheduleData.scheduled_date,
           quantity: scheduleData.quantity,
-          production_line: scheduleData.production_line || null,
+          production_line_id: scheduleData.production_line_id || null,
           status: 'SCHEDULED',
           plant_id: plantId,
         })
@@ -174,7 +176,6 @@ export const useCreateProductionSchedule = () => {
           scheduled_date: scheduleData.scheduled_date,
           voucher_number: voucherNumber,
           status: 'SCHEDULED',
-          kit_status: 'NOT_PREPARED',
           plant_id: plantId,
         })
         .select()

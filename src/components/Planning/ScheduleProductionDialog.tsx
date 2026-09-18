@@ -99,7 +99,7 @@ export const ScheduleProductionDialog = ({
           production_schedule_id: schedule.id,
           part_id: projection.part_id,
           quantity: quantityNum,
-          scheduled_date: format(scheduledDate, "yyyy-MM-dd"),
+          planned_date: format(scheduledDate, "yyyy-MM-dd"),
           voucher_number: voucherNumber,
           status: "PENDING"
         });
@@ -150,7 +150,7 @@ export const ScheduleProductionDialog = ({
             
             <div className="space-y-2">
               <Label>Product</Label>
-              <div className="text-sm font-medium">{projection.products?.name}</div>
+              <div className="text-sm font-medium">{projection.parts?.name}</div>
             </div>
 
             <div className="space-y-2">

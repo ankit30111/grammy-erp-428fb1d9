@@ -28,7 +28,7 @@ export const useCheckMaterialInventory = () => {
       const { data: grnItems, error: grnError } = await supabase
         .from("grn_items")
         .select(`
-          accepted_quantity,
+          iqc_accepted_quantity,
           store_confirmed,
           store_confirmed_at,
           grn!inner(grn_number, received_date)
@@ -58,19 +58,19 @@ export const useCheckMaterialInventory = () => {
       // Get approved material requests
       const { data: materialRequests, error: requestError } = await supabase
         .from("material_requests")
-        .select("approved_quantity")
+        .select("issued_quantity")
         .eq("part_id", material.id)
         .eq("status", "APPROVED");
 
       if (requestError) throw requestError;
 
       // Calculate totals
-      const totalFromGRN = grnItems?.reduce((sum, item) => sum + item.accepted_quantity, 0) || 0;
+      const totalFromGRN = grnItems?.reduce((sum, item) => sum + item.iqc_accepted_quantity, 0) || 0;
       // qty_delta is signed and negative for issues, so the dispatched total is
       // the sum of absolute values — it is subtracted again below via
       // totalStoreOutput, which expects a positive quantity.
       const totalProductionDispatches = productionDispatches?.reduce((sum, dispatch) => sum + Math.abs(Number(dispatch.qty_delta) || 0), 0) || 0;
-      const totalMaterialRequests = materialRequests?.reduce((sum, request) => sum + (request.approved_quantity || 0), 0) || 0;
+      const totalMaterialRequests = materialRequests?.reduce((sum, request) => sum + (request.issued_quantity || 0), 0) || 0;
       const totalStoreOutput = totalProductionDispatches + totalMaterialRequests;
       const currentInventory = inventory?.quantity || 0;
       const expectedInventory = totalFromGRN - totalStoreOutput;

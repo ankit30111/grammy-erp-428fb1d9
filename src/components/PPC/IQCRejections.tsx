@@ -37,8 +37,8 @@ const IQCRejections = () => {
           ),
           parts!inner(part_code, name)
         `)
-        .eq("iqc_status", "REJECTED")
-        .order("iqc_completed_at", { ascending: false });
+        .eq("iqc_outcome", "REJECTED")
+        .order("iqc_at", { ascending: false });
       
       if (error) {
         console.error("Error fetching rejected GRN items:", error);
@@ -53,8 +53,8 @@ const IQCRejections = () => {
         vendors: item.grn?.vendors,
         parts: item.parts,
         total_quantity: item.received_quantity,
-        accepted_quantity: item.accepted_quantity || 0,
-        rejected_quantity: item.rejected_quantity || 0
+        iqc_accepted_quantity: item.iqc_accepted_quantity || 0,
+        iqc_rejected_quantity: item.iqc_rejected_quantity || 0
       })) || [];
     },
   });
@@ -154,8 +154,8 @@ const IQCRejections = () => {
                       <TableCell>{rejection.vendors?.name}</TableCell>
                       <TableCell className="font-mono">{rejection.parts?.part_code}</TableCell>
                       <TableCell>{rejection.total_quantity}</TableCell>
-                      <TableCell className="text-green-600">{rejection.accepted_quantity}</TableCell>
-                      <TableCell className="text-red-600">{rejection.rejected_quantity}</TableCell>
+                      <TableCell className="text-green-600">{rejection.iqc_accepted_quantity}</TableCell>
+                      <TableCell className="text-red-600">{rejection.iqc_rejected_quantity}</TableCell>
                       <TableCell>
                         <div className="flex gap-2">
                           <Button 
@@ -209,7 +209,7 @@ const IQCRejections = () => {
                       <TableCell>{rejection.grn?.grn_number}</TableCell>
                       <TableCell>{rejection.vendors?.name}</TableCell>
                       <TableCell className="font-mono">{rejection.parts?.part_code}</TableCell>
-                      <TableCell className="text-red-600">{rejection.rejected_quantity}</TableCell>
+                      <TableCell className="text-red-600">{rejection.iqc_rejected_quantity}</TableCell>
                       <TableCell>{new Date(rejection.sent_back_at).toLocaleDateString()}</TableCell>
                       <TableCell>
                         <Badge variant="secondary">Returned to Vendor</Badge>
@@ -247,7 +247,7 @@ const IQCRejections = () => {
               
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div><strong>Material:</strong> {selectedRejection.parts?.part_code}</div>
-                <div><strong>Rejected Qty:</strong> {selectedRejection.rejected_quantity}</div>
+                <div><strong>Rejected Qty:</strong> {selectedRejection.iqc_rejected_quantity}</div>
               </div>
               
               <div>

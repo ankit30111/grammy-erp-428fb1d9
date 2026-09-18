@@ -22,11 +22,11 @@ const ProductionLinesOverview = () => {
         .from("production_orders")
         .select(`
           *,
-          products!inner(name)
+          parts!inner(name)
         `)
         .in("status", ["IN_PROGRESS", "SCHEDULED"])
         .not("production_lines", "is", null)
-        .order("scheduled_date", { ascending: true });
+        .order("planned_date", { ascending: true });
       
       if (error) {
         console.error("❌ Error fetching production line data:", error);
@@ -59,7 +59,7 @@ const ProductionLinesOverview = () => {
       return {
         status: "RUNNING",
         currentVoucher: ongoingProduction.voucher_number,
-        currentProduct: ongoingProduction.products?.name,
+        currentProduct: ongoingProduction.parts?.name,
         queueCount: scheduledCount
       };
     }

@@ -32,10 +32,10 @@ const EnhancedDispatchVerificationRow = ({
   const { rawMaterial, bomItem, dispatches, requiredQuantity } = materialData;
 
   // Calculate totals
-  const totalSent = dispatches.reduce((sum, dispatch) => sum + dispatch.actual_quantity, 0);
+  const totalSent = dispatches.reduce((sum, dispatch) => sum + dispatch.received_quantity, 0);
   const totalReceived = dispatches
     .filter(dispatch => dispatch.verified_by_production)
-    .reduce((sum, dispatch) => sum + dispatch.actual_quantity, 0);
+    .reduce((sum, dispatch) => sum + dispatch.received_quantity, 0);
   const pendingQuantity = Math.max(0, requiredQuantity - totalReceived);
 
   const handleVerificationInputChange = (kitItemId: string, field: 'quantity' | 'notes', value: string) => {
@@ -191,7 +191,7 @@ const EnhancedDispatchVerificationRow = ({
                                 <p className="text-sm text-muted-foreground">
                                   Sent: {format(new Date(dispatch.created_at), "PPP 'at' p")}
                                 </p>
-                                <p className="text-sm">Quantity Sent: <span className="font-medium">{dispatch.actual_quantity}</span></p>
+                                <p className="text-sm">Quantity Sent: <span className="font-medium">{dispatch.received_quantity}</span></p>
                               </div>
                               <Badge variant="secondary">Pending Verification</Badge>
                             </div>
@@ -203,7 +203,7 @@ const EnhancedDispatchVerificationRow = ({
                                   id={`quantity-${dispatch.id}`}
                                   type="number"
                                   min="0"
-                                  max={Math.min(dispatch.actual_quantity, pendingQuantity + (parseInt(verificationInputs[dispatch.id]?.quantity || '0') || 0))}
+                                  max={Math.min(dispatch.received_quantity, pendingQuantity + (parseInt(verificationInputs[dispatch.id]?.quantity || '0') || 0))}
                                   value={verificationInputs[dispatch.id]?.quantity || ''}
                                   onChange={(e) => handleVerificationInputChange(dispatch.id, 'quantity', e.target.value)}
                                   placeholder="Enter received quantity"
@@ -222,7 +222,7 @@ const EnhancedDispatchVerificationRow = ({
                             </div>
                             
                             <Button
-                              onClick={() => handleVerify(dispatch.id, dispatch.actual_quantity)}
+                              onClick={() => handleVerify(dispatch.id, dispatch.received_quantity)}
                               disabled={isProcessing || !verificationInputs[dispatch.id]?.quantity}
                               className="mt-3 gap-2"
                             >
@@ -249,8 +249,8 @@ const EnhancedDispatchVerificationRow = ({
                                   Sent: {format(new Date(dispatch.created_at), "PPP 'at' p")}
                                 </p>
                                 <p className="text-sm">
-                                  Sent: <span className="font-medium">{dispatch.actual_quantity}</span> | 
-                                  Received: <span className="font-medium text-green-600">{dispatch.actual_quantity}</span>
+                                  Sent: <span className="font-medium">{dispatch.received_quantity}</span> | 
+                                  Received: <span className="font-medium text-green-600">{dispatch.received_quantity}</span>
                                 </p>
                               </div>
                               <Badge variant="default" className="bg-green-600">

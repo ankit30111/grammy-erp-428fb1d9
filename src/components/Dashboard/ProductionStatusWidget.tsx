@@ -25,9 +25,9 @@ export const ProductionStatusWidget = () => {
           production_lines,
           status,
           voucher_number,
-          products (name)
+          parts (name)
         `)
-        .eq('scheduled_date', today)
+        .eq('planned_date', today)
         .in('status', ['PENDING', 'IN_PROGRESS']);
       if (scopePlantId) q = q.eq('plant_id', scopePlantId);
       const { data, error } = await q;
@@ -45,7 +45,7 @@ export const ProductionStatusWidget = () => {
         return {
           line,
           status: currentOrder ? 'ACTIVE' : activeOrders?.length ? 'SCHEDULED' : 'IDLE',
-          currentProduct: currentOrder?.products?.name || null,
+          currentProduct: currentOrder?.parts?.name || null,
           voucherNumber: currentOrder?.voucher_number || null
         };
       });
@@ -66,7 +66,7 @@ export const ProductionStatusWidget = () => {
           parts (name, part_code),
           grn (grn_number)
         `)
-        .eq('iqc_status', 'PENDING');
+        .eq('iqc_outcome', 'PENDING');
       if (scopePlantId) q = q.eq('plant_id', scopePlantId);
       const { data, error } = await q;
       if (error) throw error;

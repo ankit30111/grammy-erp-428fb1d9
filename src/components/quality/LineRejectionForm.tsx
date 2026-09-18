@@ -42,9 +42,9 @@ const LineRejectionForm = ({ productionOrderId }: LineRejectionFormProps) => {
         .from("bom")
         .select(`
           *,
-          parts!inner(part_code, name)
+          parts!child_part_id(part_code, name)
         `)
-        .eq("part_id", productionOrder.part_id);
+        .eq("parent_part_id", productionOrder.part_id);
 
       return bom || [];
     },
@@ -83,7 +83,7 @@ const LineRejectionForm = ({ productionOrderId }: LineRejectionFormProps) => {
       // Manually fetch employee data for rejections with rejected_by
       const rejectionsWithEmployees = await Promise.all(
         (rejections || []).map(async (rejection) => {
-          if (rejection.rejected_by && rejection.reason === "User Mishandling") {
+          if (rejection.rejected_by && rejection.defect === "User Mishandling") {
             const { data: employee } = await supabase
               .from("employees")
               .select("id, first_name, last_name, employee_code, position")
@@ -173,8 +173,8 @@ const LineRejectionForm = ({ productionOrderId }: LineRejectionFormProps) => {
     const rejectionData = {
       production_order_id: productionOrderId,
       part_id: selectedPartCode,
-      reason,
-      quantity_rejected: quantity,
+      defect: reason,
+      quantity: quantity,
       remarks,
       rejected_by: reason === "User Mishandling" ? selectedEmployee : null,
     };
@@ -318,13 +318,13 @@ const LineRejectionForm = ({ productionOrderId }: LineRejectionFormProps) => {
                       {rejection.parts.part_code}
                     </TableCell>
                     <TableCell>
-                      <Badge variant={getReasonColor(rejection.reason) as any}>
-                        {rejection.reason}
+                      <Badge variant={getReasonColor(rejection.defect) as any}>
+                        {rejection.defect}
                       </Badge>
                     </TableCell>
-                    <TableCell>{rejection.quantity_rejected}</TableCell>
+                    <TableCell>{rejection.quantity}</TableCell>
                     <TableCell>
-                      {rejection.reason === "User Mishandling" && rejection.employee ? (
+                      {rejection.defect === "User Mishandling" && rejection.employee ? (
                         <span className="text-sm">
                           {rejection.employee.employee_code} - {rejection.employee.first_name} {rejection.employee.last_name}
                         </span>

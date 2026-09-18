@@ -112,7 +112,7 @@ const ScheduleProductionForm = ({
                   <SelectContent>
                     {projections?.map((proj) => (
                       <SelectItem key={proj.id} value={proj.id}>
-                        {proj.customers?.name} - {proj.products?.name} ({proj.quantity} pcs)
+                        {proj.customers?.name} - {proj.parts?.name} ({proj.quantity} pcs)
                       </SelectItem>
                     ))}
                   </SelectContent>

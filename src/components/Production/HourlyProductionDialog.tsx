@@ -38,11 +38,11 @@ const HourlyProductionDialog = ({ open, onOpenChange, productionLine }: HourlyPr
         .from("production_orders")
         .select(`
           *,
-          products!inner(name),
-          production_schedules!inner(production_line)
+          parts!inner(name),
+          production_schedules!inner(production_lines!inner(name))
         `)
         .eq("status", "IN_PROGRESS")
-        .eq("production_schedules.production_line", productionLine)
+        .eq("production_schedules.production_lines.name", productionLine)
         .single();
       
       if (error && error.code !== 'PGRST116') throw error;
@@ -73,7 +73,7 @@ const HourlyProductionDialog = ({ open, onOpenChange, productionLine }: HourlyPr
   });
 
   // Calculate total produced today
-  const totalProduced = hourlyProduction.reduce((sum, entry) => sum + entry.production_units, 0);
+  const totalProduced = hourlyProduction.reduce((sum, entry) => sum + entry.produced_quantity, 0);
 
   // Save hourly production data
   const saveHourlyData = useMutation({
@@ -85,7 +85,7 @@ const HourlyProductionDialog = ({ open, onOpenChange, productionLine }: HourlyPr
         .insert({
           production_order_id: currentOrder.id,
           hour: data.hour,
-          production_units: parseInt(data.production),
+          produced_quantity: parseInt(data.production),
           downtime_minutes: parseInt(data.downtime) || 0,
           efficiency_percentage: parseInt(data.efficiency) || 0,
           remarks: data.remarks || null
@@ -196,7 +196,7 @@ const HourlyProductionDialog = ({ open, onOpenChange, productionLine }: HourlyPr
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                 <div>
                   <span className="font-medium">Product:</span>
-                  <div>{currentOrder.products?.name}</div>
+                  <div>{currentOrder.parts?.name}</div>
                 </div>
                 <div>
                   <span className="font-medium">Voucher:</span>
@@ -307,7 +307,7 @@ const HourlyProductionDialog = ({ open, onOpenChange, productionLine }: HourlyPr
                   {hourlyProduction.map((entry, index) => (
                     <TableRow key={index}>
                       <TableCell className="font-medium">{entry.hour}</TableCell>
-                      <TableCell>{entry.production_units}</TableCell>
+                      <TableCell>{entry.produced_quantity}</TableCell>
                       <TableCell>{entry.downtime_minutes}</TableCell>
                       <TableCell>
                         <span className={`font-medium ${

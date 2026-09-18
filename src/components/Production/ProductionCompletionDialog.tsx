@@ -35,7 +35,7 @@ const ProductionCompletionDialog = ({
         .from("production_orders")
         .select(`
           *,
-          products!inner(name)
+          parts!inner(name)
         `)
         .eq("id", voucherId)
         .single();
@@ -52,11 +52,11 @@ const ProductionCompletionDialog = ({
     queryFn: async () => {
       const { data, error } = await supabase
         .from("hourly_production")
-        .select("production_units")
+        .select("produced_quantity")
         .eq("production_order_id", voucherId);
       
       if (error) throw error;
-      return data?.reduce((sum, entry) => sum + entry.production_units, 0) || 0;
+      return data?.reduce((sum, entry) => sum + entry.produced_quantity, 0) || 0;
     },
     enabled: isOpen,
   });
@@ -74,9 +74,9 @@ const ProductionCompletionDialog = ({
         .from("bom")
         .select(`
           *,
-          parts!inner(part_code, name)
+          parts!child_part_id(part_code, name)
         `)
-        .eq("part_id", productionOrder?.part_id);
+        .eq("parent_part_id", productionOrder?.part_id);
 
       if (bomError) throw bomError;
 
@@ -145,7 +145,7 @@ const ProductionCompletionDialog = ({
             </div>
             <div>
               <span className="text-sm text-muted-foreground">Product:</span>
-              <p className="font-medium">{productionOrder.products?.name}</p>
+              <p className="font-medium">{productionOrder.parts?.name}</p>
             </div>
           </div>
 

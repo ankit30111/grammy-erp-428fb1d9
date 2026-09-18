@@ -24,11 +24,11 @@ const DispatchVerificationRow = ({
   isProcessing 
 }: DispatchVerificationRowProps) => {
   const [isVerifyDialogOpen, setIsVerifyDialogOpen] = useState(false);
-  const [receivedQuantity, setReceivedQuantity] = useState(kitItem.actual_quantity);
+  const [receivedQuantity, setReceivedQuantity] = useState(kitItem.received_quantity);
   const [notes, setNotes] = useState("");
 
   const isVerified = kitItem.verified_by_production;
-  const sentQuantity = kitItem.actual_quantity;
+  const sentQuantity = kitItem.received_quantity;
   const difference = sentQuantity - receivedQuantity;
 
   const handleVerify = () => {

@@ -34,7 +34,7 @@ export const useIQCInspection = (grn: any) => {
     
     const initialResults: Record<string, InspectionResult> = {};
     grn.grn_items.forEach((item: any) => {
-      if (!item.iqc_status || item.iqc_status === 'PENDING') {
+      if (!item.iqc_outcome || item.iqc_outcome === 'PENDING') {
         initialResults[item.id] = {
           status: 'APPROVED',
           remarks: '',
@@ -175,18 +175,18 @@ export const useIQCInspection = (grn: any) => {
           const result = inspectionResults[itemId];
           
           console.log(`Updating GRN item ${itemId} with:`, {
-            iqc_status: result.status,
-            accepted_quantity: result.acceptedQuantity,
-            rejected_quantity: result.rejectedQuantity,
+            iqc_outcome: result.status,
+            iqc_accepted_quantity: result.acceptedQuantity,
+            iqc_rejected_quantity: result.rejectedQuantity,
             iqc_report_url: reportUrl || null
           });
 
           const updateData: any = {
-            iqc_status: result.status,
-            iqc_completed_at: new Date().toISOString(),
+            iqc_outcome: result.status,
+            iqc_at: new Date().toISOString(),
             iqc_completed_by: user.id,
-            accepted_quantity: result.acceptedQuantity,
-            rejected_quantity: result.rejectedQuantity,
+            iqc_accepted_quantity: result.acceptedQuantity,
+            iqc_rejected_quantity: result.rejectedQuantity,
             iqc_report_url: reportUrl || null
           };
 
@@ -283,7 +283,7 @@ export const useIQCInspection = (grn: any) => {
 
         // Update GRN status if all items are completed
         const allItemsInspected = grn.grn_items.every((item: any) => 
-          item.iqc_status !== 'PENDING' || !!inspectionResults[item.id]
+          item.iqc_outcome !== 'PENDING' || !!inspectionResults[item.id]
         );
 
         console.log('All items inspected:', allItemsInspected);

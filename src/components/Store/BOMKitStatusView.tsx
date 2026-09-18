@@ -38,13 +38,13 @@ const BOMKitStatusView = ({
         .from("bom")
         .select(`
           *,
-          parts!inner(
+          parts!child_part_id(
             id,
             name,
             part_code
           )
         `)
-        .eq("part_id", productionOrder.part_id);
+        .eq("parent_part_id", productionOrder.part_id);
       
       if (error) throw error;
       return data || [];
@@ -185,7 +185,7 @@ const BOMKitStatusView = ({
           <div className="grid grid-cols-2 gap-4 p-4 bg-muted rounded-lg">
             <div>
               <p className="text-sm font-medium">Product:</p>
-              <p className="text-lg">{productionOrder.production_schedules?.projections?.products?.name}</p>
+              <p className="text-lg">{productionOrder.production_schedules?.projections?.parts?.name}</p>
             </div>
             <div>
               <p className="text-sm font-medium">Production Quantity:</p>

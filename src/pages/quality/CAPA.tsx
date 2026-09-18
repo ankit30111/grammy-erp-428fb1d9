@@ -97,7 +97,7 @@ const CAPA = () => {
           *,
           customer_complaints!inner(
             id,
-            complaint_reason,
+            complaint_details,
             customers!inner(name)
           ),
           parts!inner(name, part_code)
@@ -118,7 +118,7 @@ const CAPA = () => {
           *,
           production_orders!inner(
             voucher_number,
-            products!inner(name, part_code)
+            parts!inner(name, part_code)
           )
         `)
         .order("initiated_at", { ascending: false });
@@ -499,8 +499,8 @@ const CAPA = () => {
                                 </span>
                               </div>
                             </TableCell>
-                            <TableCell>{rejection.quantity_rejected}</TableCell>
-                            <TableCell>{rejection.reason}</TableCell>
+                            <TableCell>{rejection.quantity}</TableCell>
+                            <TableCell>{rejection.defect}</TableCell>
                             <TableCell>
                               {rcaReport ? getStatusBadge(rcaReport.approval_status, 'rca') : getStatusBadge('PENDING', 'rca')}
                             </TableCell>
@@ -686,9 +686,9 @@ const CAPA = () => {
                           </TableCell>
                           <TableCell>
                             <div className="flex flex-col">
-                              <span className="font-medium">{capa.production_orders?.products?.name}</span>
+                              <span className="font-medium">{capa.production_orders?.parts?.name}</span>
                               <span className="text-sm text-muted-foreground">
-                                {capa.production_orders?.products?.part_code}
+                                {capa.production_orders?.parts?.part_code}
                               </span>
                             </div>
                           </TableCell>

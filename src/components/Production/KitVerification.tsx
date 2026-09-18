@@ -34,7 +34,7 @@ const KitVerification = () => {
               quantity,
               production_schedules!inner(
                 projections!inner(
-                  products!inner(name)
+                  parts!inner(name)
                 )
               )
             )
@@ -75,7 +75,7 @@ const KitVerification = () => {
               quantity,
               production_schedules!inner(
                 projections!inner(
-                  products!inner(name)
+                  parts!inner(name)
                 )
               )
             )
@@ -111,14 +111,14 @@ const KitVerification = () => {
   const verifyKitMutation = useMutation({
     mutationFn: async ({ kitId, items }: { kitId: string; items: any[] }) => {
       const hasDiscrepancies = items.some(item => {
-        const receivedQty = receivedQuantities[item.id] || item.actual_quantity;
-        return receivedQty < item.actual_quantity;
+        const receivedQty = receivedQuantities[item.id] || item.received_quantity;
+        return receivedQty < item.received_quantity;
       });
 
       if (hasDiscrepancies) {
         const itemsWithDiscrepancies = items.filter(item => {
-          const receivedQty = receivedQuantities[item.id] || item.actual_quantity;
-          return receivedQty < item.actual_quantity;
+          const receivedQty = receivedQuantities[item.id] || item.received_quantity;
+          return receivedQty < item.received_quantity;
         });
 
         // Check if all discrepancy items have comments
@@ -133,13 +133,13 @@ const KitVerification = () => {
 
       // Update kit items with verified quantities
       for (const item of items) {
-        const receivedQty = receivedQuantities[item.id] || item.actual_quantity;
+        const receivedQty = receivedQuantities[item.id] || item.received_quantity;
         
         await supabase
           .from("kit_items")
           .update({
             verified_by_production: true,
-            actual_quantity: receivedQty
+            received_quantity: receivedQty
           })
           .eq("id", item.id);
       }
@@ -215,7 +215,7 @@ const KitVerification = () => {
           <div className="mb-4">
             <h3 className="text-lg font-semibold">Production Voucher: {kit.production_orders.voucher_number}</h3>
             <p className="text-sm text-muted-foreground">
-              Product: {kit.production_orders.production_schedules.projections.products.name} | 
+              Product: {kit.production_orders.production_schedules.projections.parts.name} | 
               Kit: {kit.kit_number}
             </p>
             <Badge variant={kit.status === "VERIFIED" ? "default" : kit.status === "VERIFIED_WITH_DISCREPANCY" ? "destructive" : "secondary"}>
@@ -237,23 +237,23 @@ const KitVerification = () => {
             </TableHeader>
             <TableBody>
               {items.map((item: any) => {
-                const receivedQty = receivedQuantities[item.id] ?? item.actual_quantity;
-                const discrepancyQty = Math.max(0, item.actual_quantity - receivedQty);
+                const receivedQty = receivedQuantities[item.id] ?? item.received_quantity;
+                const discrepancyQty = Math.max(0, item.received_quantity - receivedQty);
                 const hasDiscrepancy = discrepancyQty > 0;
 
                 return (
                   <TableRow key={item.id}>
                     <TableCell className="font-medium">{item.parts.name}</TableCell>
                     <TableCell className="font-mono">{item.parts.part_code}</TableCell>
-                    <TableCell>{item.actual_quantity}</TableCell>
+                    <TableCell>{item.received_quantity}</TableCell>
                     <TableCell>
                       {showActions ? (
                         <Input
                           type="number"
                           className="w-24"
-                          value={receivedQuantities[item.id] ?? item.actual_quantity}
+                          value={receivedQuantities[item.id] ?? item.received_quantity}
                           onChange={(e) => handleQuantityChange(item.id, e.target.value)}
-                          max={item.actual_quantity}
+                          max={item.received_quantity}
                         />
                       ) : (
                         <span>{receivedQty}</span>

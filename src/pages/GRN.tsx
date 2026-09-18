@@ -105,7 +105,7 @@ const GRN = () => {
   // Check if GRN can be deleted (all items must have PENDING IQC status)
   const canDeleteGRN = (grn: any) => {
     return grn.grn_items?.every((item: any) => 
-      !item.iqc_status || item.iqc_status === 'PENDING'
+      !item.iqc_outcome || item.iqc_outcome === 'PENDING'
     ) || false;
   };
 
@@ -299,12 +299,12 @@ const GRN = () => {
                                   <Badge 
                                     variant="outline"
                                     className={
-                                      item.iqc_status === 'APPROVED' ? "bg-green-100 text-green-800 hover:bg-green-100" :
-                                      item.iqc_status === 'REJECTED' ? "bg-red-100 text-red-800 hover:bg-red-100" :
+                                      item.iqc_outcome === 'APPROVED' ? "bg-green-100 text-green-800 hover:bg-green-100" :
+                                      item.iqc_outcome === 'REJECTED' ? "bg-red-100 text-red-800 hover:bg-red-100" :
                                       "bg-yellow-100 text-yellow-800 hover:bg-yellow-100"
                                     }
                                   >
-                                    {item.iqc_status || 'PENDING'}
+                                    {item.iqc_outcome || 'PENDING'}
                                   </Badge>
                                 </TableCell>
                               </TableRow>

@@ -152,7 +152,7 @@ const PlanningDashboard = () => {
   const getVoucherDetails = (schedule: any) => {
     if (!schedule || !bomData || !inventory) return [];
     
-    const productBOM = bomData.filter(bom => bom.part_id === schedule.projections?.products?.id);
+    const productBOM = bomData.filter(bom => bom.part_id === schedule.projections?.parts?.id);
     
     const materialRequirements = productBOM.map(bomItem => {
       const inventoryItem = inventory.find(inv => inv.part_id === bomItem.part_id);
@@ -182,7 +182,7 @@ const PlanningDashboard = () => {
     return {
       ...schedule,
       customerName: projection?.customers?.name || 'Unknown Customer',
-      productName: projection?.products?.name || 'Unknown Product',
+      productName: projection?.parts?.name || 'Unknown Product',
       scheduledDateFormatted: format(new Date(schedule.scheduled_date), 'PPP'),
       voucherNumber: getVoucherNumber(schedule.id),
     };
@@ -233,7 +233,7 @@ const PlanningDashboard = () => {
                         return (
                           <TableRow key={projection.id}>
                             <TableCell>{projection.customers?.name}</TableCell>
-                            <TableCell>{projection.products?.name}</TableCell>
+                            <TableCell>{projection.parts?.name}</TableCell>
                             <TableCell>{projection.quantity}</TableCell>
                             <TableCell className="font-medium text-blue-600">
                               {scheduledQty}
@@ -313,7 +313,7 @@ const PlanningDashboard = () => {
                               const remainingQty = projection.quantity - (projection.scheduled_quantity || 0);
                               return (
                                 <SelectItem key={projection.id} value={projection.id}>
-                                  {projection.customers?.name} - {projection.products?.name} ({remainingQty} units remaining)
+                                  {projection.customers?.name} - {projection.parts?.name} ({remainingQty} units remaining)
                                 </SelectItem>
                               );
                             })}
@@ -324,7 +324,7 @@ const PlanningDashboard = () => {
                       {selectedProjectionData && (
                         <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
                           <div className="text-sm">
-                            <div><strong>Product:</strong> {selectedProjectionData.products?.name}</div>
+                            <div><strong>Product:</strong> {selectedProjectionData.parts?.name}</div>
                             <div><strong>Total Projection:</strong> {selectedProjectionData.quantity} units</div>
                             <div><strong>Already Scheduled:</strong> {selectedProjectionData.scheduled_quantity || 0} units</div>
                             <div className="font-medium text-blue-600">

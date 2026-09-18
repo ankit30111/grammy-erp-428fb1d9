@@ -53,9 +53,9 @@ const EnhancedGRNReceiving = ({
             part_id,
             po_quantity,
             received_quantity,
-            accepted_quantity,
-            rejected_quantity,
-            iqc_status,
+            iqc_accepted_quantity,
+            iqc_rejected_quantity,
+            iqc_outcome,
             store_confirmed,
             store_confirmed_at,
             parts (id, name, part_code)
@@ -70,8 +70,8 @@ const EnhancedGRNReceiving = ({
       return (data || []).filter(grn =>
         grn.grn_items.some((item: any) =>
           !item.store_confirmed &&
-          (item.iqc_status === 'APPROVED' ||
-           (item.iqc_status === 'SEGREGATED' && item.accepted_quantity > 0))
+          (item.iqc_outcome === 'APPROVED' ||
+           (item.iqc_outcome === 'SEGREGATED' && item.iqc_accepted_quantity > 0))
         )
       );
     },
@@ -93,9 +93,9 @@ const EnhancedGRNReceiving = ({
             part_id,
             po_quantity,
             received_quantity,
-            accepted_quantity,
-            rejected_quantity,
-            iqc_status,
+            iqc_accepted_quantity,
+            iqc_rejected_quantity,
+            iqc_outcome,
             store_confirmed,
             store_confirmed_at,
             parts (id, name, part_code)
@@ -134,10 +134,10 @@ const EnhancedGRNReceiving = ({
     
     grn.grn_items.forEach((item: any) => {
       if (!item.store_confirmed) {
-        if (item.iqc_status === 'APPROVED') {
+        if (item.iqc_outcome === 'APPROVED') {
           initialQuantities[item.id] = item.received_quantity;
-        } else if (item.iqc_status === 'SEGREGATED') {
-          initialQuantities[item.id] = item.accepted_quantity;
+        } else if (item.iqc_outcome === 'SEGREGATED') {
+          initialQuantities[item.id] = item.iqc_accepted_quantity;
         }
       }
     });
@@ -160,7 +160,7 @@ const EnhancedGRNReceiving = ({
             store_confirmed: true,
             store_confirmed_at: new Date().toISOString(),
             store_confirmed_by: null,
-            accepted_quantity: quantity,
+            iqc_accepted_quantity: quantity,
           })
           .eq("id", itemId);
         
@@ -196,7 +196,7 @@ const EnhancedGRNReceiving = ({
         for (const [itemId, quantity] of Object.entries(verifiedQuantities)) {
           const grnItem = selectedGRN.grn_items.find((item: any) => item.id === itemId);
           if (!grnItem) continue;
-          const delta = Number(quantity) - Number(grnItem.accepted_quantity || 0);
+          const delta = Number(quantity) - Number(grnItem.iqc_accepted_quantity || 0);
           if (delta === 0) continue;
           if (await hasLedgerEntry("GRN_ITEM_STORE_VARIANCE", itemId)) continue;
           movements.push({
@@ -414,12 +414,12 @@ const EnhancedGRNReceiving = ({
                   <TableBody>
                     {selectedGRN.grn_items.filter((item: any) => 
                       !item.store_confirmed && 
-                      (item.iqc_status === 'APPROVED' || 
-                      (item.iqc_status === 'SEGREGATED' && item.accepted_quantity > 0))
+                      (item.iqc_outcome === 'APPROVED' || 
+                      (item.iqc_outcome === 'SEGREGATED' && item.iqc_accepted_quantity > 0))
                     ).map((item: any) => {
-                      const maxQty = item.iqc_status === 'APPROVED' 
+                      const maxQty = item.iqc_outcome === 'APPROVED' 
                         ? item.received_quantity 
-                        : item.accepted_quantity;
+                        : item.iqc_accepted_quantity;
                       
                       return (
                         <TableRow key={item.id}>

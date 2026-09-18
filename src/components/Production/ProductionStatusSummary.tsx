@@ -35,7 +35,7 @@ const ProductionStatusSummary = ({
         .from("production_orders")
         .select(`
           *,
-          products!inner(name)
+          parts!inner(name)
         `)
         .eq("id", productionId)
         .single();
@@ -64,7 +64,7 @@ const ProductionStatusSummary = ({
 
   if (!productionOrder) return null;
 
-  const totalProduced = hourlyData.reduce((sum, entry) => sum + entry.production_units, 0);
+  const totalProduced = hourlyData.reduce((sum, entry) => sum + entry.produced_quantity, 0);
   const targetQuantity = productionOrder.quantity;
   const completionPercentage = Math.round((totalProduced / targetQuantity) * 100);
 
@@ -170,14 +170,14 @@ const ProductionStatusSummary = ({
                   {hourlyData.map((entry, index) => {
                     const cumulativeProduction = hourlyData
                       .slice(0, index + 1)
-                      .reduce((sum, e) => sum + e.production_units, 0);
+                      .reduce((sum, e) => sum + e.produced_quantity, 0);
                     
                     return (
                       <div key={entry.id} className="flex items-center justify-between p-2 border rounded">
                         <div className="flex items-center gap-4">
                           <Badge variant="outline">{entry.hour}</Badge>
                           <span className="text-sm">
-                            <span className="font-medium">{entry.production_units}</span> units produced
+                            <span className="font-medium">{entry.produced_quantity}</span> units produced
                           </span>
                         </div>
                         <div className="text-sm text-muted-foreground">

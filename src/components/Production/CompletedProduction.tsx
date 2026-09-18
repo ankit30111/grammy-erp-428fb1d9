@@ -25,7 +25,7 @@ const CompletedProduction = () => {
             *,
             projections!inner(
               customers!inner(name),
-              products!inner(name, part_code)
+              parts!inner(name, part_code)
             )
           )
         `)
@@ -41,7 +41,7 @@ const CompletedProduction = () => {
     const searchLower = searchTerm.toLowerCase();
     return (
       order.voucher_number.toLowerCase().includes(searchLower) ||
-      order.production_schedules?.projections?.products?.name.toLowerCase().includes(searchLower) ||
+      order.production_schedules?.projections?.parts?.name.toLowerCase().includes(searchLower) ||
       order.production_schedules?.projections?.customers?.name.toLowerCase().includes(searchLower)
     );
   });
@@ -117,10 +117,10 @@ const CompletedProduction = () => {
                   <TableCell>
                     <div>
                       <div className="font-medium">
-                        {order.production_schedules?.projections?.products?.name}
+                        {order.production_schedules?.projections?.parts?.name}
                       </div>
                       <div className="text-sm text-muted-foreground">
-                        {order.production_schedules?.projections?.products?.part_code}
+                        {order.production_schedules?.projections?.parts?.part_code}
                       </div>
                     </div>
                   </TableCell>
@@ -133,7 +133,7 @@ const CompletedProduction = () => {
                   <TableCell>
                     <div className="flex items-center gap-1">
                       <Calendar className="h-4 w-4 text-muted-foreground" />
-                      {format(new Date(order.scheduled_date), "MMM dd, yyyy")}
+                      {format(new Date(order.planned_date), "MMM dd, yyyy")}
                     </div>
                   </TableCell>
                   <TableCell>

@@ -30,14 +30,14 @@ const EnhancedBOMTable = ({ productionOrderId, productId, productionQuantity }: 
         .from("bom")
         .select(`
           *,
-          parts!inner(
+          parts!child_part_id(
             id,
             part_code,
             name,
             category
           )
         `)
-        .eq("part_id", productId);
+        .eq("parent_part_id", productId);
       
       if (error) throw error;
       return data || [];
@@ -53,7 +53,7 @@ const EnhancedBOMTable = ({ productionOrderId, productId, productionQuantity }: 
         .from("kit_items")
         .select(`
           part_id,
-          actual_quantity,
+          received_quantity,
           verified_by_production,
           kit_preparation!inner(
             production_order_id
@@ -70,9 +70,9 @@ const EnhancedBOMTable = ({ productionOrderId, productId, productionQuantity }: 
         const materialId = item.part_id;
         const existing = materialStats.get(materialId) || { totalSent: 0, totalReceived: 0 };
         
-        existing.totalSent += item.actual_quantity;
+        existing.totalSent += item.received_quantity;
         if (item.verified_by_production) {
-          existing.totalReceived += item.actual_quantity;
+          existing.totalReceived += item.received_quantity;
         }
         
         materialStats.set(materialId, existing);

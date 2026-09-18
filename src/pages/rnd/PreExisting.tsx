@@ -31,7 +31,7 @@ interface PreExistingProject {
   brand_requirements: string;
   created_at: string;
   customers: { name: string };
-  products: { name: string };
+  parts: { name: string };
 }
 
 interface NewPreExistingProject {
@@ -70,7 +70,7 @@ const PreExisting = () => {
         .select(`
           *,
           customers (name),
-          products (name)
+          parts (name)
         `)
         .order('created_at', { ascending: false });
       
@@ -370,7 +370,7 @@ const PreExisting = () => {
                     <TableRow key={project.id}>
                       <TableCell className="font-medium">{project.project_name}</TableCell>
                       <TableCell>{project.customers?.name}</TableCell>
-                      <TableCell>{project.products?.name}</TableCell>
+                      <TableCell>{project.parts?.name}</TableCell>
                       <TableCell>{project.customization_type}</TableCell>
                       <TableCell>
                         <Badge className={getStatusColor(project.status)}>

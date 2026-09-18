@@ -20,15 +20,15 @@ const RnD = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('npd_projects')
-        .select('status');
+        .select('stage');
       
       if (error) throw error;
       
       const total = data.length;
-      const concept = data.filter(p => p.status === 'CONCEPT').length;
-      const prototype = data.filter(p => p.status === 'PROTOTYPE').length;
-      const testing = data.filter(p => p.status === 'TESTING').length;
-      const approved = data.filter(p => p.status === 'APPROVED').length;
+      const concept = data.filter(p => p.stage === 'CONCEPT').length;
+      const prototype = data.filter(p => p.stage === 'PROTOTYPE').length;
+      const testing = data.filter(p => p.stage === 'TESTING').length;
+      const approved = data.filter(p => p.stage === 'APPROVED').length;
       const inProgress = concept + prototype + testing;
       
       return { total, concept, prototype, testing, approved, inProgress };

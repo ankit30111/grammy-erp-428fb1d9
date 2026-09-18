@@ -20,11 +20,11 @@ const ProductionQueueDashboard = () => {
         .from("production_orders")
         .select(`
           *,
-          products!part_id (name)
+          parts!part_id (name)
         `)
         .eq("plant_id", plantId!)
         .in("status", ["IN_PROGRESS", "SCHEDULED"])
-        .order("scheduled_date");
+        .order("planned_date");
 
       if (error) throw error;
       return data || [];
@@ -76,13 +76,13 @@ const ProductionQueueDashboard = () => {
               </div>
               <div className="space-y-1">
                 <p className="font-medium">{ongoing.voucher_number}</p>
-                <p className="text-sm text-muted-foreground">{ongoing.products?.name}</p>
+                <p className="text-sm text-muted-foreground">{ongoing.parts?.name}</p>
                 <p className="text-sm">Quantity: {ongoing.quantity}</p>
                 <p className="text-sm">
-                  Started: {new Date(ongoing.scheduled_date).toLocaleDateString()}
+                  Started: {new Date(ongoing.planned_date).toLocaleDateString()}
                 </p>
                 <p className="text-sm">
-                  Est. End: {calculateEstimatedEnd(ongoing.scheduled_date, ongoing.quantity).toLocaleString()}
+                  Est. End: {calculateEstimatedEnd(ongoing.planned_date, ongoing.quantity).toLocaleString()}
                 </p>
               </div>
             </div>
@@ -99,7 +99,7 @@ const ProductionQueueDashboard = () => {
                   <div className="flex justify-between items-start">
                     <div>
                       <p className="font-medium">{order.voucher_number}</p>
-                      <p className="text-sm text-muted-foreground">{order.products?.name}</p>
+                      <p className="text-sm text-muted-foreground">{order.parts?.name}</p>
                       <p className="text-sm">Quantity: {order.quantity}</p>
                     </div>
                     <Badge variant="outline" className="text-xs">
@@ -107,7 +107,7 @@ const ProductionQueueDashboard = () => {
                     </Badge>
                   </div>
                   <p className="text-xs text-muted-foreground mt-2">
-                    Scheduled: {new Date(order.scheduled_date).toLocaleDateString()}
+                    Scheduled: {new Date(order.planned_date).toLocaleDateString()}
                   </p>
                 </div>
               ))}

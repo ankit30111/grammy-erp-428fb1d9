@@ -104,7 +104,7 @@ const PQCReportUpload = ({ productionOrderId }: PQCReportUploadProps) => {
       time_period: timePeriod,
       status,
       remarks,
-      report_file_url: file ? `temp_url_for_${file.name}` : null, // In real implementation, upload to storage first
+      report_url: file ? `temp_url_for_${file.name}` : null, // In real implementation, upload to storage first
     };
 
     uploadReportMutation.mutate(reportData);
@@ -233,7 +233,7 @@ const PQCReportUpload = ({ productionOrderId }: PQCReportUploadProps) => {
                     </TableCell>
                     <TableCell className="max-w-xs truncate">{report.remarks}</TableCell>
                     <TableCell>
-                      {report.report_file_url && (
+                      {report.report_url && (
                         <Button variant="outline" size="sm">
                           <FileText className="h-3 w-3 mr-1" />
                           View

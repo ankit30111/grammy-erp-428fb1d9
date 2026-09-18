@@ -38,7 +38,7 @@ export const SampleTrackingView: React.FC<SampleTrackingViewProps> = ({
           *,
           npd_bom_materials (
             id,
-            material_name,
+            description,
             temporary_part_code,
             vendor_name,
             part_status,
@@ -197,7 +197,7 @@ export const SampleTrackingView: React.FC<SampleTrackingViewProps> = ({
                 <CardTitle className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     {getStatusIcon(material?.part_status)}
-                    <span>{material?.material_name}</span>
+                    <span>{material?.description}</span>
                     {material?.is_critical && (
                       <Badge variant="destructive">Critical</Badge>
                     )}
@@ -301,7 +301,7 @@ export const SampleTrackingView: React.FC<SampleTrackingViewProps> = ({
               </DialogHeader>
               <div className="space-y-4">
                 <div>
-                  <h4 className="font-medium">{selectedSample.npd_bom_materials?.material_name}</h4>
+                  <h4 className="font-medium">{selectedSample.npd_bom_materials?.description}</h4>
                   <p className="text-sm text-muted-foreground">
                     Current Status: {selectedSample.npd_bom_materials?.part_status?.replace('_', ' ')}
                   </p>

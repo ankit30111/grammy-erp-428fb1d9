@@ -51,7 +51,7 @@ const ProductionFeedback = () => {
         .update({ 
           status: 'RESOLVED',
           approved_by: 'store-user',
-          approved_quantity: 0
+          issued_quantity: 0
         })
         .eq("id", discrepancyId);
       

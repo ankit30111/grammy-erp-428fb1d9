@@ -65,12 +65,12 @@ const IQC = () => {
       // Filter to show GRNs that have at least one item with PENDING or null IQC status
       const filteredData = data?.filter(grn => {
         const hasPendingItems = grn.grn_items.some((item: any) => 
-          !item.iqc_status || item.iqc_status === 'PENDING'
+          !item.iqc_outcome || item.iqc_outcome === 'PENDING'
         );
         
         if (hasPendingItems) {
           console.log(`GRN ${grn.grn_number} has pending items:`, 
-            grn.grn_items.filter((item: any) => !item.iqc_status || item.iqc_status === 'PENDING')
+            grn.grn_items.filter((item: any) => !item.iqc_outcome || item.iqc_outcome === 'PENDING')
           );
         }
         
@@ -93,10 +93,10 @@ const IQC = () => {
           grn_id,
           part_id,
           received_quantity,
-          accepted_quantity,
-          rejected_quantity,
-          iqc_status,
-          iqc_completed_at,
+          iqc_accepted_quantity,
+          iqc_rejected_quantity,
+          iqc_outcome,
+          iqc_at,
           iqc_report_url,
           grn:grn_id!inner(
             id,
@@ -116,9 +116,9 @@ const IQC = () => {
             implemented_at
           )
         `)
-        .not("iqc_status", "is", null)
-        .neq("iqc_status", "PENDING")
-        .in("iqc_status", ["APPROVED", "REJECTED", "SEGREGATED", "FAILED"])
+        .not("iqc_outcome", "is", null)
+        .neq("iqc_outcome", "PENDING")
+        .in("iqc_outcome", ["APPROVED", "REJECTED", "SEGREGATED", "FAILED"])
         .not('iqc_report_url', 'is', null)
         .neq('iqc_report_url', '');
 
@@ -127,11 +127,11 @@ const IQC = () => {
         const startDate = startOfMonth(new Date(selectedYear, selectedMonth - 1));
         const endDate = endOfMonth(new Date(selectedYear, selectedMonth - 1));
         query = query
-          .gte("iqc_completed_at", startDate.toISOString())
-          .lte("iqc_completed_at", endDate.toISOString());
+          .gte("iqc_at", startDate.toISOString())
+          .lte("iqc_at", endDate.toISOString());
       }
 
-      const { data } = await query.order("iqc_completed_at", { ascending: false });
+      const { data } = await query.order("iqc_at", { ascending: false });
       
       return data || [];
     },
@@ -143,10 +143,10 @@ const IQC = () => {
   };
 
   const getStatusBadge = (grn: any) => {
-    const allApproved = grn.grn_items.every((item: any) => item.iqc_status === 'APPROVED');
-    const hasRejected = grn.grn_items.some((item: any) => item.iqc_status === 'REJECTED');
-    const hasSegregated = grn.grn_items.some((item: any) => item.iqc_status === 'SEGREGATED');
-    const hasPending = grn.grn_items.some((item: any) => !item.iqc_status || item.iqc_status === 'PENDING');
+    const allApproved = grn.grn_items.every((item: any) => item.iqc_outcome === 'APPROVED');
+    const hasRejected = grn.grn_items.some((item: any) => item.iqc_outcome === 'REJECTED');
+    const hasSegregated = grn.grn_items.some((item: any) => item.iqc_outcome === 'SEGREGATED');
+    const hasPending = grn.grn_items.some((item: any) => !item.iqc_outcome || item.iqc_outcome === 'PENDING');
     
     if (hasPending) return <Badge variant="secondary">Pending IQC</Badge>;
     if (hasRejected) return <Badge variant="destructive">Rejected</Badge>;
@@ -394,7 +394,7 @@ const IQC = () => {
                     <TableBody>
                       {filteredCompletedItems.map((item) => {
                         const capaData = item.iqc_vendor_capa?.[0];
-                        const needsCAPA = item.iqc_status === 'REJECTED' || item.iqc_status === 'SEGREGATED';
+                        const needsCAPA = item.iqc_outcome === 'REJECTED' || item.iqc_outcome === 'SEGREGATED';
                         
                         return (
                           <TableRow key={item.id} className="h-16">
@@ -410,9 +410,9 @@ const IQC = () => {
                               {item.grn?.vendors?.name}
                             </TableCell>
                             <TableCell className="p-2 text-center">{item.received_quantity}</TableCell>
-                            <TableCell className="p-2 text-center">{item.accepted_quantity}</TableCell>
-                            <TableCell className="p-2 text-center">{item.rejected_quantity || 0}</TableCell>
-                            <TableCell className="p-2">{getItemStatusBadge(item.iqc_status)}</TableCell>
+                            <TableCell className="p-2 text-center">{item.iqc_accepted_quantity}</TableCell>
+                            <TableCell className="p-2 text-center">{item.iqc_rejected_quantity || 0}</TableCell>
+                            <TableCell className="p-2">{getItemStatusBadge(item.iqc_outcome)}</TableCell>
                             <TableCell className="p-2">
                               <IQCReportViewer
                                 reportUrl={item.iqc_report_url}
@@ -431,8 +431,8 @@ const IQC = () => {
                               </div>
                             </TableCell>
                             <TableCell className="p-2 text-xs">
-                              {item.iqc_completed_at 
-                                ? format(new Date(item.iqc_completed_at), "dd/MM/yy")
+                              {item.iqc_at 
+                                ? format(new Date(item.iqc_at), "dd/MM/yy")
                                 : '-'
                               }
                             </TableCell>

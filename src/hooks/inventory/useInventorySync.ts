@@ -25,7 +25,7 @@ export const useManualInventorySync = () => {
         .select(`
           part_id,
           store_physical_quantity,
-          accepted_quantity,
+          iqc_accepted_quantity,
           store_confirmed_at,
           grn!inner(grn_number),
           parts(part_code, name)
@@ -44,7 +44,7 @@ export const useManualInventorySync = () => {
 
       const receivedTotals = new Map<string, number>();
       confirmedItems?.forEach((item: any) => {
-        const received = item.store_physical_quantity ?? item.accepted_quantity ?? 0;
+        const received = item.store_physical_quantity ?? item.iqc_accepted_quantity ?? 0;
         receivedTotals.set(
           item.part_id,
           (receivedTotals.get(item.part_id) || 0) + received

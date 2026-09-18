@@ -23,13 +23,15 @@ const ScheduledProductions = () => {
         .from("production_orders")
         .select(`
           *,
-          products!part_id (
+          parts!part_id (
             id,
             name,
             part_code
           ),
           production_schedules!production_schedule_id (
-            production_line,
+            production_lines (
+              name
+            ),
             scheduled_date,
             projections!projection_id (
               customers!customer_id (
@@ -39,7 +41,7 @@ const ScheduledProductions = () => {
           )
         `)
         .not("status", "eq", "COMPLETED")
-        .order("scheduled_date", { ascending: true });
+        .order("planned_date", { ascending: true });
 
       if (error) {
         console.error("❌ Error fetching production orders:", error);
@@ -161,15 +163,15 @@ const ScheduledProductions = () => {
                     <TableCell className="font-medium">
                       {production.voucher_number}
                     </TableCell>
-                    <TableCell>{production.products?.name || 'N/A'}</TableCell>
+                    <TableCell>{production.parts?.name || 'N/A'}</TableCell>
                     <TableCell className="font-mono">
-                      {production.products?.part_code || 'N/A'}
+                      {production.parts?.part_code || 'N/A'}
                     </TableCell>
                     <TableCell>
                       {production.production_schedules?.projections?.customers?.name || 'N/A'}
                     </TableCell>
                     <TableCell>
-                      {production.scheduled_date ? format(new Date(production.scheduled_date), "MMM dd, yyyy") : 'N/A'}
+                      {production.planned_date ? format(new Date(production.planned_date), "MMM dd, yyyy") : 'N/A'}
                     </TableCell>
                     <TableCell className="font-medium">{production.quantity}</TableCell>
                     <TableCell className="max-w-xs">

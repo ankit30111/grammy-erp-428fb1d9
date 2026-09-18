@@ -35,7 +35,7 @@ const ProductionFeedbackTab = () => {
           production_orders!inner(
             id,
             voucher_number,
-            products!inner(
+            parts!inner(
               name
             )
           ),
@@ -91,7 +91,7 @@ const ProductionFeedbackTab = () => {
         const { error: kitError } = await supabase
           .from("kit_items")
           .update({
-            actual_quantity: discrepancy.received_quantity
+            received_quantity: discrepancy.received_quantity
           })
           .eq("id", discrepancy.kit_item_id);
 
@@ -150,7 +150,7 @@ const ProductionFeedbackTab = () => {
         const { error: kitError } = await supabase
           .from("kit_items")
           .update({
-            actual_quantity: discrepancy.sent_quantity
+            received_quantity: discrepancy.sent_quantity
           })
           .eq("id", discrepancy.kit_item_id);
 
@@ -269,7 +269,7 @@ const ProductionFeedbackTab = () => {
                       {discrepancy.production_orders.voucher_number}
                     </TableCell>
                     <TableCell>
-                      {discrepancy.production_orders.products.name}
+                      {discrepancy.production_orders.parts.name}
                     </TableCell>
                     <TableCell>
                       <div>

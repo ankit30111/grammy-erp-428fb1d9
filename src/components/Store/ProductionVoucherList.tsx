@@ -51,11 +51,13 @@ const ProductionVoucherList = memo(({ onSelectVoucher }: ProductionVoucherListPr
           id,
           voucher_number,
           quantity,
-          scheduled_date,
+          planned_date,
           status,
-          kit_status,
+          kit_preparation (
+            status
+          ),
           created_at,
-          products!part_id (
+          parts!part_id (
             name
           ),
           production_schedules!production_schedule_id (
@@ -93,12 +95,12 @@ const ProductionVoucherList = memo(({ onSelectVoucher }: ProductionVoucherListPr
   const rows: ProductionVoucherRow[] = productionOrders.map((order) => ({
     id: order.id,
     voucher: order.voucher_number,
-    product: order.products?.name || "Unknown product",
+    product: order.parts?.name || "Unknown product",
     customer: order.production_schedules?.projections?.customers?.name || "N/A",
     quantity: order.quantity,
-    planDate: order.scheduled_date,
+    planDate: order.planned_date,
     status: order.status || "PENDING",
-    kitStatus: order.kit_status || "NOT_READY",
+    kitStatus: order.kit_preparation?.[0]?.status || "NOT_READY",
   }));
 
   if (rows.length === 0) {

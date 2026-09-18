@@ -20,20 +20,20 @@ export const ProductionOverviewWidget = () => {
         .from('production_orders')
         .select(`
           quantity,
-          scheduled_date,
+          planned_date,
           status,
-          products!inner(category)
+          parts!inner(category)
         `)
         .eq('status', 'COMPLETED')
-        .gte('scheduled_date', startOfMonth(new Date()).toISOString())
-        .lte('scheduled_date', endOfMonth(new Date()).toISOString());
+        .gte('planned_date', startOfMonth(new Date()).toISOString())
+        .lte('planned_date', endOfMonth(new Date()).toISOString());
       if (scopePlantId) q = q.eq('plant_id', scopePlantId);
       const { data, error } = await q;
       if (error) throw error;
       
       // Group by category
       const grouped = data?.reduce((acc: any, order: any) => {
-        const category = order.products?.category || 'Other';
+        const category = order.parts?.category || 'Other';
         acc[category] = (acc[category] || 0) + order.quantity;
         return acc;
       }, {});
@@ -53,14 +53,14 @@ export const ProductionOverviewWidget = () => {
       const { data, error } = await supabase
         .from('hourly_production')
         .select(`
-          production_units,
+          produced_quantity,
           efficiency_percentage,
           production_orders!inner(
             production_lines,
-            scheduled_date
+            planned_date
           )
         `)
-        .gte('production_orders.scheduled_date', format(new Date(), 'yyyy-MM-dd'));
+        .gte('production_orders.planned_date', format(new Date(), 'yyyy-MM-dd'));
       
       if (error) throw error;
       

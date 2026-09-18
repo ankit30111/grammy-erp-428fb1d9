@@ -87,7 +87,7 @@ export const PartSelectionDialog: React.FC<PartSelectionDialogProps> = ({
         .from('npd_bom_materials')
         .insert({
           npd_project_bom_id: bomId,
-          material_name: part.name,
+          description: part.name,
           part_code: part.part_code,
           quantity,
           unit: 'PCS',

@@ -24,10 +24,10 @@ const MonthlyKitLog = () => {
           production_orders!inner(
             voucher_number,
             quantity,
-            scheduled_date,
+            planned_date,
             production_schedules!inner(
               projections!inner(
-                products!inner(name)
+                parts!inner(name)
               )
             )
           )
@@ -64,7 +64,7 @@ const MonthlyKitLog = () => {
 
   // Group kits by month
   const groupedKits = kitLogs.reduce((acc, kit) => {
-    const monthKey = format(new Date(kit.production_orders.scheduled_date), 'yyyy-MM');
+    const monthKey = format(new Date(kit.production_orders.planned_date), 'yyyy-MM');
     if (!acc[monthKey]) {
       acc[monthKey] = [];
     }
@@ -138,9 +138,9 @@ const MonthlyKitLog = () => {
             {finalFilteredKits.map((kit) => (
               <TableRow key={kit.id}>
                 <TableCell className="font-mono">{kit.production_orders.voucher_number}</TableCell>
-                <TableCell>{kit.production_orders.production_schedules.projections.products.name}</TableCell>
+                <TableCell>{kit.production_orders.production_schedules.projections.parts.name}</TableCell>
                 <TableCell>{kit.production_orders.quantity}</TableCell>
-                <TableCell>{format(new Date(kit.production_orders.scheduled_date), 'MMM dd, yyyy')}</TableCell>
+                <TableCell>{format(new Date(kit.production_orders.planned_date), 'MMM dd, yyyy')}</TableCell>
                 <TableCell>
                   <Badge variant={getStatusColor(getKitStatus(kit.status)) as any}>
                     {getKitStatus(kit.status)}

@@ -34,7 +34,7 @@ const ProductionLineManager = ({ productionOrderId }: ProductionLineManagerProps
         .from("production_orders")
         .select(`
           *,
-          products!part_id (
+          parts!part_id (
             name,
             bom!part_id (
               *,
@@ -102,12 +102,12 @@ const ProductionLineManager = ({ productionOrderId }: ProductionLineManagerProps
           id,
           voucher_number,
           status,
-          scheduled_date,
+          planned_date,
           production_lines,
-          products!part_id (name)
+          parts!part_id (name)
         `)
         .in("status", ["IN_PROGRESS", "SCHEDULED"])
-        .order("scheduled_date");
+        .order("planned_date");
 
       if (error) {
         console.error("❌ Error fetching line status:", error);
@@ -121,7 +121,7 @@ const ProductionLineManager = ({ productionOrderId }: ProductionLineManagerProps
 
   // Group sent materials by BOM type for line assignment
   const groupMaterialsByType = () => {
-    const bom = productionData?.products?.bom || [];
+    const bom = productionData?.parts?.bom || [];
     const materialsByType = {
       main_assembly: [] as any[],
       sub_assembly: [] as any[],
@@ -280,7 +280,7 @@ const ProductionLineManager = ({ productionOrderId }: ProductionLineManagerProps
           {materials.length > 0 ? (
             <div className="space-y-2">
               {materials.map((material) => {
-                const pending = calculatePendingQuantity(material.required_quantity, material.actual_quantity);
+                const pending = calculatePendingQuantity(material.required_quantity, material.received_quantity);
                 return (
                   <div key={material.id} className="flex justify-between items-center p-3 border rounded">
                     <div>
@@ -290,7 +290,7 @@ const ProductionLineManager = ({ productionOrderId }: ProductionLineManagerProps
                     </div>
                     <div className="text-right">
                       <p className="text-sm">
-                        Sent: <span className="font-medium text-green-600">{material.actual_quantity}</span>
+                        Sent: <span className="font-medium text-green-600">{material.received_quantity}</span>
                         <span className="text-muted-foreground">/{material.required_quantity}</span>
                       </p>
                       {pending > 0 && (
@@ -317,7 +317,7 @@ const ProductionLineManager = ({ productionOrderId }: ProductionLineManagerProps
                 <div className="mb-2">
                   <Badge variant="default" className="mr-2">Currently Running</Badge>
                   <span className="text-sm font-medium">{lineSchedule.ongoing.voucher_number}</span>
-                  <span className="text-sm text-muted-foreground ml-2">- {lineSchedule.ongoing.products?.name}</span>
+                  <span className="text-sm text-muted-foreground ml-2">- {lineSchedule.ongoing.parts?.name}</span>
                 </div>
               )}
               {lineSchedule.scheduled.length > 0 && (
@@ -363,7 +363,7 @@ const ProductionLineManager = ({ productionOrderId }: ProductionLineManagerProps
           <div className="grid grid-cols-2 gap-4 mb-6">
             <div>
               <p className="text-sm text-muted-foreground">Product</p>
-              <p className="font-medium">{productionData?.products?.name}</p>
+              <p className="font-medium">{productionData?.parts?.name}</p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Quantity</p>

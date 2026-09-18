@@ -25,7 +25,7 @@ interface NPDProject {
   project_name: string;
   customer_id: string;
   requirements: string;
-  status: string;
+  stage: string;
   priority: string;
   estimated_completion_date: string;
   project_description: string;
@@ -316,8 +316,8 @@ const NPD = () => {
                       <TableCell className="font-medium">{project.project_name}</TableCell>
                       <TableCell>{project.customers?.name}</TableCell>
                       <TableCell>
-                        <Badge className={getStatusColor(project.status)}>
-                          {project.status}
+                        <Badge className={getStatusColor(project.stage)}>
+                          {project.stage}
                         </Badge>
                       </TableCell>
                       <TableCell>

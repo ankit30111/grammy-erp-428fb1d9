@@ -99,7 +99,7 @@ const GRNManagement = () => {
       updateGRNItem.mutate({
         itemId,
         updates: {
-          iqc_status: 'ACCEPTED',
+          iqc_outcome: 'ACCEPTED',
           iqc_approved_at: new Date().toISOString(),
         }
       });
@@ -107,9 +107,9 @@ const GRNManagement = () => {
       updateGRNItem.mutate({
         itemId,
         updates: {
-          iqc_status: 'REJECTED',
+          iqc_outcome: 'REJECTED',
           iqc_approved_at: new Date().toISOString(),
-          accepted_quantity: 0,
+          iqc_accepted_quantity: 0,
         }
       });
     }
@@ -119,10 +119,10 @@ const GRNManagement = () => {
     updateGRNItem.mutate({
       itemId,
       updates: {
-        iqc_status: 'SEGREGATED',
+        iqc_outcome: 'SEGREGATED',
         iqc_approved_at: new Date().toISOString(),
-        accepted_quantity: acceptedQty,
-        rejected_quantity: 0, // Calculate if needed
+        iqc_accepted_quantity: acceptedQty,
+        iqc_rejected_quantity: 0, // Calculate if needed
       }
     });
   };
@@ -289,14 +289,14 @@ const GRNManagement = () => {
                       )}
                     </TableCell>
                     <TableCell>
-                      <Badge variant={getIQCStatusColor(item.iqc_status) as any}>
-                        {item.iqc_status}
+                      <Badge variant={getIQCStatusColor(item.iqc_outcome) as any}>
+                        {item.iqc_outcome}
                       </Badge>
                     </TableCell>
                     <TableCell>
                       {item.store_confirmed ? (
                         <Badge variant="default">Received to Store</Badge>
-                      ) : item.iqc_status === 'ACCEPTED' || item.iqc_status === 'SEGREGATED' ? (
+                      ) : item.iqc_outcome === 'ACCEPTED' || item.iqc_outcome === 'SEGREGATED' ? (
                         <Badge variant="secondary">Ready for Store</Badge>
                       ) : (
                         <Badge variant="outline">Pending IQC</Badge>
@@ -304,7 +304,7 @@ const GRNManagement = () => {
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-1 flex-wrap">
-                        {item.iqc_status === 'PENDING' && (
+                        {item.iqc_outcome === 'PENDING' && (
                           <>
                             <Button
                               size="sm"
@@ -337,7 +337,7 @@ const GRNManagement = () => {
                             </Button>
                           </>
                         )}
-                        {(item.iqc_status === 'ACCEPTED' || item.iqc_status === 'SEGREGATED') && !item.store_confirmed && (
+                        {(item.iqc_outcome === 'ACCEPTED' || item.iqc_outcome === 'SEGREGATED') && !item.store_confirmed && (
                           <Badge variant="secondary" className="text-xs">
                             Forwarded to Store
                           </Badge>

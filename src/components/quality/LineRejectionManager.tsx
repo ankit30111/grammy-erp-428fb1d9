@@ -34,7 +34,7 @@ const LineRejectionManager = () => {
         .select(`
           *,
           parts!inner(part_code, name),
-          production_orders!inner(voucher_number, products!inner(name))
+          production_orders!inner(voucher_number, parts!inner(name))
         `)
         .order("rejection_date", { ascending: false });
       
@@ -288,8 +288,8 @@ const LineRejectionManager = () => {
                 {lineRejections.map((rejection) => {
                   const hasRCAReport = hasRCA(rejection.id);
                   const capa = getCAPAForRejection(rejection.id);
-                  const needsCAPAForFaultyPart = rejection.reason === 'Part Faulty' && hasRCAReport && !capa;
-                  const canCloseCAPAForFaultyPart = rejection.reason === 'Part Faulty' && hasRCAReport && capa && capa.status === 'Open';
+                  const needsCAPAForFaultyPart = rejection.defect === 'Part Faulty' && hasRCAReport && !capa;
+                  const canCloseCAPAForFaultyPart = rejection.defect === 'Part Faulty' && hasRCAReport && capa && capa.status === 'Open';
 
                   return (
                     <TableRow key={rejection.id}>
@@ -303,11 +303,11 @@ const LineRejectionManager = () => {
                         {rejection.parts.part_code}
                       </TableCell>
                       <TableCell>
-                        <Badge variant={getReasonColor(rejection.reason) as any}>
-                          {rejection.reason}
+                        <Badge variant={getReasonColor(rejection.defect) as any}>
+                          {rejection.defect}
                         </Badge>
                       </TableCell>
-                      <TableCell>{rejection.quantity_rejected}</TableCell>
+                      <TableCell>{rejection.quantity}</TableCell>
                       <TableCell>
                         <div className="flex flex-col gap-1">
                           {hasRCAReport ? (
@@ -315,7 +315,7 @@ const LineRejectionManager = () => {
                           ) : (
                             <Badge variant="secondary" className="text-xs">RCA Pending</Badge>
                           )}
-                          {rejection.reason === 'Part Faulty' && (
+                          {rejection.defect === 'Part Faulty' && (
                             capa ? (
                               <Badge 
                                 variant={capa.status === 'Closed' ? 'default' : 'destructive'} 
