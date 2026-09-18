@@ -145,14 +145,18 @@ export const useCreateProductionSchedule = () => {
       }
 
       // Generate voucher number based on scheduled date
-      const voucherNumber = await generateVoucherNumber(scheduleData.scheduled_date);
-      console.log('📋 Generated voucher number:', voucherNumber);
+      // voucher_number is NOT generated here. set_voucher_number owns that column
+      // and issues the PV-YYYYMM-NNNNN series from a sequence. Minting one in the
+      // app was a second writer with its own scheme (PROD_MM_NN), so the same
+      // voucher could be numbered two different ways depending on the screen used.
       
       // Create the production schedule without requiring production line
       const { data: schedule, error: scheduleError } = await supabase
         .from('production_schedules')
         .insert({
           projection_id: scheduleData.projection_id,
+          // part_id is NOT NULL and was missing, so every insert here was rejected.
+          part_id: projection.part_id,
           scheduled_date: scheduleData.scheduled_date,
           quantity: scheduleData.quantity,
           production_line_id: scheduleData.production_line_id || null,
@@ -176,8 +180,9 @@ export const useCreateProductionSchedule = () => {
           production_schedule_id: schedule.id,
           part_id: projection.part_id,
           quantity: scheduleData.quantity,
-          scheduled_date: scheduleData.scheduled_date,
-          voucher_number: voucherNumber,
+          // production_orders.scheduled_date is planned_date now.
+          planned_date: scheduleData.scheduled_date,
+          voucher_number: '',
           status: 'PLANNED',
           plant_id: plantId,
         })
@@ -196,7 +201,7 @@ export const useCreateProductionSchedule = () => {
       // scheduled_quantity / vouchered_qty are maintained by database triggers
       // (recomputed as the SUM of linked schedules) — never incremented here.
 
-      return { schedule, productionOrder, voucherNumber };
+      return { schedule, productionOrder, voucherNumber: productionOrder.voucher_number };
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['production_schedules'] });
