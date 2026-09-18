@@ -13,7 +13,7 @@ export interface ProductionVoucherData {
     requiredQuantity: number;
     dispatchedQuantity: number;
     currentStock: number;
-    bomType: string;
+    sourceType: string;
   }>;
   dispatchedBy?: string;
   dispatchedAt: string;
@@ -60,9 +60,12 @@ export const generateProductionVoucherPDF = (data: ProductionVoucherData): PDFGe
   
   // Group materials by BOM type
   const groupedMaterials = data.materials.reduce((acc, material) => {
-    const bomType = material.bomType || 'main_assembly';
-    const displayType = bomType === 'sub_assembly' ? 'Sub Assembly' : 
-                       bomType === 'main_assembly' ? 'Main Assembly' : 'Accessory';
+    // Was bom_type (sub_assembly / main_assembly / accessory), a column the rebuild
+    // removed. The equivalent now lives on parts.source_type.
+    const sourceType = material.sourceType || 'PURCHASED';
+    const displayType = sourceType === 'ASSEMBLED_INLINE' ? 'In-line Assembly'
+                      : sourceType === 'ASSEMBLED_STOCKED' ? 'Sub Assembly'
+                      : 'Purchased';
     
     if (!acc[displayType]) {
       acc[displayType] = [];

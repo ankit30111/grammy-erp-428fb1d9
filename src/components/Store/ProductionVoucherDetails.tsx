@@ -53,13 +53,14 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
           *,
           parts!part_id (
             name,
-            bom!part_id (
+            bom!parent_part_id (
               *,
-              parts!part_id (
+              parts!child_part_id (
                 id,
                 part_code,
                 name,
-                category
+                category,
+                source_type
               )
             )
           )
@@ -103,8 +104,8 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
         .from("kit_items")
         .select(`
           part_id,
+          issued_quantity,
           received_quantity,
-          verified_by_production,
           created_at,
           parts!part_id (
             id,
@@ -129,21 +130,23 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
   // Create inventory lookup map
   const inventoryMap = new Map();
   inventoryData.forEach(item => {
-    inventoryMap.set(item.parts.id, item.quantity);
+    inventoryMap.set(item.parts?.id, item.quantity);
   });
 
   // Enhanced calculation to use production-verified quantities
   const getActualReceivedQuantity = (materialId: string) => {
     return dispatchedItems
-      .filter(item => item.parts.id === materialId && item.verified_by_production)
-      .reduce((sum, item) => sum + item.received_quantity, 0);
+      // "Verified by production" is no longer a separate flag: a received_quantity
+      // that has been filled in IS the confirmation. One fact, one column.
+      .filter(item => item.parts?.id === materialId && item.received_quantity != null)
+      .reduce((sum, item) => sum + Number(item.received_quantity ?? 0), 0);
   };
 
   // Get total dispatched (sent) quantities regardless of production verification
   const getDispatchedQuantity = (materialId: string) => {
     return dispatchedItems
-      .filter(item => item.parts.id === materialId)
-      .reduce((sum, item) => sum + item.received_quantity, 0);
+      .filter(item => item.parts?.id === materialId)
+      .reduce((sum, item) => sum + Number(item.issued_quantity ?? 0), 0);
   };
 
   // Get current stock from real-time inventory
@@ -205,8 +208,12 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
         const { data: kitPrep, error: kitError } = await supabase
           .from("kit_preparation")
           .insert({
+            // kit_number is issued by set_kit_number; plant_id is NOT NULL and was
+            // missing, so creating a kit failed before it ever reached the items.
+            kit_number: "",
+            plant_id: productionOrder?.plant_id,
             production_order_id: voucherId,
-            status: "KIT_SENT"
+            status: "SENT"
           })
           .select()
           .single();
@@ -428,7 +435,7 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
           requiredQuantity: bomItem.quantity * productionOrder.quantity,
           dispatchedQuantity: getDispatchedQuantity(bomItem.parts.id),
           currentStock: getCurrentStock(bomItem.parts.id),
-          bomType: bomItem.bom_type || 'main_assembly'
+          sourceType: bomItem.parts?.source_type || 'PURCHASED'
         }))
       };
 
@@ -484,11 +491,12 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
   const bom = productionOrder.parts?.bom || [];
   const orderQuantity = productionOrder.quantity;
 
-  const groupedBOM = [
-    { label: "Sub Assembly", items: bom.filter((item) => item.bom_type === "sub_assembly") },
-    { label: "Main Assembly", items: bom.filter((item) => item.bom_type === "main_assembly") },
-    { label: "Accessory", items: bom.filter((item) => item.bom_type === "accessory") },
-  ];
+  // bom.bom_type no longer exists, so these three filters all matched nothing and
+  // the voucher showed no materials at all while reporting a BOM count. With a
+  // recursive BOM the meaningful split is purchased vs assembled, which lives on
+  // parts.source_type - not a fixed three-way category. One group until there is a
+  // real reason for more.
+  const groupedBOM = [{ label: "Materials", items: bom }];
 
   const tableRows: VoucherTableRow[] = groupedBOM.flatMap((group) => {
     if (group.items.length === 0) return [];
