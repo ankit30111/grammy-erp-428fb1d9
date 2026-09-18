@@ -2749,6 +2749,9 @@ export type Database = {
           plant_id: string
           production_order_id: string
           quantity: number
+          rejected_by: string | null
+          rejection_date: string
+          remarks: string | null
           reported_by: string | null
           status: string
           updated_at: string
@@ -2763,6 +2766,9 @@ export type Database = {
           plant_id: string
           production_order_id: string
           quantity: number
+          rejected_by?: string | null
+          rejection_date?: string
+          remarks?: string | null
           reported_by?: string | null
           status?: string
           updated_at?: string
@@ -2777,6 +2783,9 @@ export type Database = {
           plant_id?: string
           production_order_id?: string
           quantity?: number
+          rejected_by?: string | null
+          rejection_date?: string
+          remarks?: string | null
           reported_by?: string | null
           status?: string
           updated_at?: string
@@ -2803,6 +2812,13 @@ export type Database = {
             columns: ["production_order_id"]
             isOneToOne: false
             referencedRelation: "production_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "line_rejections_rejected_by_fkey"
+            columns: ["rejected_by"]
+            isOneToOne: false
+            referencedRelation: "employees"
             referencedColumns: ["id"]
           },
           {
@@ -3641,6 +3657,64 @@ export type Database = {
           },
         ]
       }
+      production_order_lines: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          notes: string | null
+          part_id: string | null
+          production_line_id: string
+          production_order_id: string
+          quantity: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          part_id?: string | null
+          production_line_id: string
+          production_order_id: string
+          quantity?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          part_id?: string | null
+          production_line_id?: string
+          production_order_id?: string
+          quantity?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "production_order_lines_part_id_fkey"
+            columns: ["part_id"]
+            isOneToOne: false
+            referencedRelation: "parts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "production_order_lines_production_line_id_fkey"
+            columns: ["production_line_id"]
+            isOneToOne: false
+            referencedRelation: "production_lines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "production_order_lines_production_order_id_fkey"
+            columns: ["production_order_id"]
+            isOneToOne: false
+            referencedRelation: "production_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       production_orders: {
         Row: {
           completed_at: string | null
@@ -3651,7 +3725,6 @@ export type Database = {
           planned_date: string
           plant_id: string
           produced_quantity: number
-          production_line_id: string | null
           production_schedule_id: string | null
           projection_id: string | null
           quantity: number
@@ -3669,7 +3742,6 @@ export type Database = {
           planned_date?: string
           plant_id: string
           produced_quantity?: number
-          production_line_id?: string | null
           production_schedule_id?: string | null
           projection_id?: string | null
           quantity: number
@@ -3687,7 +3759,6 @@ export type Database = {
           planned_date?: string
           plant_id?: string
           produced_quantity?: number
-          production_line_id?: string | null
           production_schedule_id?: string | null
           projection_id?: string | null
           quantity?: number
@@ -3709,13 +3780,6 @@ export type Database = {
             columns: ["plant_id"]
             isOneToOne: false
             referencedRelation: "plants"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "production_orders_production_line_id_fkey"
-            columns: ["production_line_id"]
-            isOneToOne: false
-            referencedRelation: "production_lines"
             referencedColumns: ["id"]
           },
           {
