@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { UserProfileDropdown } from "./UserProfileDropdown";
 import { ThemeToggle } from "./ThemeToggle";
-import { PlantSwitcher } from "./PlantSwitcher";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -30,7 +29,6 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           </div>
 
           <div className="flex items-center gap-1 ml-auto">
-            <PlantSwitcher />
             <ThemeToggle />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
