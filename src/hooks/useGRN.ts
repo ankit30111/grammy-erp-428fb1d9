@@ -80,14 +80,21 @@ export const useCreateGRN = () => {
 
         console.log('GRN created successfully:', grnRecord);
 
-      // Insert GRN items
+      // Insert GRN items.
+      //
+      // purchase_order_item_id is what links this receipt back to the PO line.
+      // Without it recalc_po_item_received returns early, so the PO's received
+      // and pending quantities never move however much material arrives. It is
+      // null for a non-PO GRN, which is legitimate.
+      //
+      // plant_id and po_quantity are NOT columns on grn_items: the plant comes
+      // from the parent grn, and the ordered quantity from the linked PO line.
       const items = grnData.items.map((item: any) => ({
         grn_id: grnRecord.id,
+        purchase_order_item_id: item.purchase_order_item_id ?? null,
         part_id: item.part_id,
-        po_quantity: item.po_quantity || item.expected_quantity, // Use expected_quantity for non-PO GRNs
         received_quantity: item.received_quantity,
         iqc_outcome: 'PENDING',
-        plant_id: plantId,
       }));
 
       const { data: insertedItems, error: itemsError } = await supabase
@@ -97,6 +104,8 @@ export const useCreateGRN = () => {
 
         if (itemsError) {
           console.error('GRN items creation error:', itemsError);
+          // Don't leave a headless GRN behind holding a document number.
+          await supabase.from('grn').delete().eq('id', grnRecord.id);
           throw new Error(`Failed to create GRN items: ${itemsError.message}`);
         }
 
