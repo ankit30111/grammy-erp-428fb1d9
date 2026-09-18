@@ -11,6 +11,8 @@ Finds, without anyone clicking anything:
   6. .rpc('fn') where the function does not exist or the app cannot execute it
   7. tables the app READS but nothing ever writes - a feature with a reader and
      no writer, which looks like "no data yet" forever
+  8. columns read but never written, on tables the app does write - the writer
+     aimed at the wrong column
 """
 import json, re, os, sys
 from collections import defaultdict
@@ -213,6 +215,77 @@ for t in sorted(read_tables - written_tables - set(DB_WRITERS) - VIEWS):
         f"{t} — the app reads this table and never writes to it. Filled by a trigger, "
         f"or is the writing half missing?")
 
+# Columns the app SELECTS but never writes, on tables the app DOES write.
+#
+# The class of bug that produced "Issued by store: 0" on a kit that had physically
+# gone out. The store wrote its quantity into kit_items.received_quantity - a real
+# column on a real table, correctly spelled - instead of issued_quantity. Every
+# check above passed. Nothing was missing; the wrong writer had the pen.
+#
+# The signature is specific and worth looking for: the app inserts into the table,
+# reads a column back, and never writes that column. Either something else fills it
+# (a trigger) or the writing half is aimed somewhere else. issued_quantity had
+# exactly this shape - selected in four screens, written nowhere.
+#
+# One refinement earns the check its place. A write whose argument is a variable
+# rather than an object literal - .insert(insertData), .update(updateData) - tells
+# the parser which TABLE is written but not which columns, so every column of that
+# table would be reported. Those tables are marked opaque and left alone; reporting
+# 41 findings of which 39 are vendors.name and its friends would have made the
+# check worthless, which is how an audit stops being read.
+COL_WRITTEN = defaultdict(set)
+COL_READ = defaultdict(set)
+TABLE_WRITTEN = set()
+OPAQUE_WRITE = set()
+# .insert(x) / .update(x) where x is not an object literal.
+OPAQUE = re.compile(r"\.(insert|update|upsert)\(\s*(?!\{)[A-Za-z_$]")
+
+for path in walk():
+    src = open(path, errors='ignore').read()
+    for table, chain, _ in chains(src):
+        if table not in TABLES or table in VIEWS:
+            continue
+        if OPAQUE.search(chain):
+            OPAQUE_WRITE.add(table)
+        for km in KEYS.finditer(chain):
+            TABLE_WRITTEN.add(table)
+            for k in KEY.findall(km.group(2)):
+                COL_WRITTEN[table].add(k)
+        sm = SELECT.search(chain)
+        if sm:
+            # Columns read through an EMBED count too, and this is not a detail:
+            # kit_items.issued_quantity is only ever selected inside a
+            # kit_preparation embed - `kit_items ( issued_quantity, ... )`. The
+            # first version of this check stripped embeds wholesale, so the one
+            # column whose absent writer caused the bug was invisible to the check
+            # written to find it. Verified by putting the bug back and watching it
+            # go unreported.
+            for em in re.finditer(r"([a-z_0-9]+)\s*(?:![a-z_0-9]+)?\s*\(([^()]*)\)", sm.group(1)):
+                et = em.group(1)
+                if et in COLS:
+                    for fld in re.findall(r"[a-z_0-9]+", em.group(2)):
+                        if fld in COLS[et]:
+                            COL_READ[et].add(fld)
+            body = sm.group(1)
+            prev = None
+            while prev != body:
+                prev = body
+                body = re.sub(r"(?:[a-z_0-9]+\s*:\s*)?[a-z_0-9]+(?:\s*![a-z_0-9]+)?\s*\([^()]*\)", "", body)
+            body = re.sub(r"[a-z_0-9]+\s*!\s*[a-z_0-9]+", "", body)
+            for fld in re.findall(r"[a-z_0-9]+", body):
+                if fld in COLS[table]:
+                    COL_READ[table].add(fld)
+
+# Columns something other than the app is expected to fill.
+TRIGGER_FILLED = {
+    'id', 'created_at', 'updated_at', 'created_by',
+}
+
+for table in sorted(TABLE_WRITTEN - OPAQUE_WRITE):
+    for col in sorted(COL_READ[table] - COL_WRITTEN[table] - TRIGGER_FILLED):
+        findings['col_read_never_written'].append(
+            f"{table}.{col} — read by the app, never written by it")
+
 ORDER = [
     ('dead_table',     'QUERIES A TABLE THAT NO LONGER EXISTS'),
     ('dead_rpc',       'CALLS A FUNCTION THAT DOES NOT EXIST'),
@@ -221,6 +294,7 @@ ORDER = [
     ('bad_write_col',  'WRITES A COLUMN THAT DOES NOT EXIST'),
     ('bad_filter_col', 'FILTERS ON A COLUMN THAT DOES NOT EXIST'),
     ('bad_select_col', 'SELECTS A COLUMN THAT DOES NOT EXIST'),
+    ('col_read_never_written', 'COLUMN READ BUT NEVER WRITTEN  (trigger-filled, or is the writer aimed elsewhere?)'),
 ]
 total = 0
 for key, title in ORDER:
