@@ -68,8 +68,10 @@ const ScheduleProductionForm = ({
       });
     } catch (error) {
       toast({
-        title: "Error",
-        description: "Failed to schedule production. Please try again.",
+        title: "Failed to schedule production",
+        // Say what actually went wrong rather than "please try again", which sends
+        // the user back to the same failure with nothing to act on.
+        description: (error as any)?.message ?? "Unknown error",
         variant: "destructive",
       });
     }

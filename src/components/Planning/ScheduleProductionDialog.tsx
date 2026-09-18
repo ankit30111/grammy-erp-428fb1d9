@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
+import { usePlantId } from "@/hooks/usePlantId";
 import { useProjectionValidation } from "./ProjectionValidation";
 import { ProjectionProgressIndicator } from "./ProjectionProgressIndicator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -34,6 +35,7 @@ export const ScheduleProductionDialog = ({
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const plantId = usePlantId();
   const { validateScheduling } = useProjectionValidation();
 
   // Validate the current quantity input
@@ -72,13 +74,26 @@ export const ScheduleProductionDialog = ({
       return;
     }
 
+    if (!plantId) {
+      toast({
+        title: "No plant selected",
+        description: "Pick a plant before scheduling production.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsLoading(true);
     try {
-      // Insert production schedule
+      // plant_id and part_id are NOT NULL on production_schedules. They were both
+      // missing here, so every schedule insert was rejected by the database and the
+      // screen showed only "Failed to schedule production".
       const { data: schedule, error: scheduleError } = await supabase
         .from("production_schedules")
         .insert({
+          plant_id: plantId,
           projection_id: projection.id,
+          part_id: projection.part_id,
           quantity: quantityNum,
           scheduled_date: format(scheduledDate, "yyyy-MM-dd"),
           status: "PLANNED"
@@ -88,20 +103,22 @@ export const ScheduleProductionDialog = ({
 
       if (scheduleError) throw scheduleError;
 
-      // Generate voucher number
-      const voucherNumber = `PRD-${Date.now().toString().slice(-6)}`;
-
-      // Insert production order
-      const { error: orderError } = await supabase
+      // voucher_number is issued by the set_voucher_number trigger, which owns it
+      // and produces the PV-YYYYMM-NNNNN series. This used to mint its own
+      // `PRD-<timestamp>`, a second writer inventing a different numbering scheme.
+      const { data: order, error: orderError } = await supabase
         .from("production_orders")
         .insert({
+          plant_id: plantId,
+          voucher_number: '',
           production_schedule_id: schedule.id,
           part_id: projection.part_id,
           quantity: quantityNum,
           planned_date: format(scheduledDate, "yyyy-MM-dd"),
-          voucher_number: voucherNumber,
           status: "PLANNED"
-        });
+        })
+        .select("voucher_number")
+        .single();
 
       if (orderError) throw orderError;
 
@@ -109,7 +126,7 @@ export const ScheduleProductionDialog = ({
 
       toast({
         title: "Production Scheduled",
-        description: `${quantityNum} units scheduled for ${format(scheduledDate, "PPP")} with voucher ${voucherNumber}`
+        description: `${quantityNum} units scheduled for ${format(scheduledDate, "PPP")} with voucher ${order?.voucher_number ?? ""}`
       });
 
       // Refresh data
@@ -124,8 +141,10 @@ export const ScheduleProductionDialog = ({
     } catch (error) {
       console.error('Error scheduling production:', error);
       toast({
-        title: "Error",
-        description: "Failed to schedule production",
+        title: "Failed to schedule production",
+        // Show what the database actually said. A bare "Failed to schedule
+        // production" sent Ankit back to me with no information twice today.
+        description: (error as any)?.message ?? "Unknown error",
         variant: "destructive"
       });
     } finally {

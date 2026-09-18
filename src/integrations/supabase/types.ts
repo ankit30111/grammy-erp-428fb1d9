@@ -3248,6 +3248,7 @@ export type Database = {
           unit_price: number | null
           uom: string
           updated_at: string
+          used_in_reference: string | null
           wi_url: string | null
         }
         Insert: {
@@ -3278,6 +3279,7 @@ export type Database = {
           unit_price?: number | null
           uom?: string
           updated_at?: string
+          used_in_reference?: string | null
           wi_url?: string | null
         }
         Update: {
@@ -3308,6 +3310,7 @@ export type Database = {
           unit_price?: number | null
           uom?: string
           updated_at?: string
+          used_in_reference?: string | null
           wi_url?: string | null
         }
         Relationships: [
@@ -4874,6 +4877,10 @@ export type Database = {
       }
       auth_user_in_department: { Args: { dept_name: string }; Returns: boolean }
       auth_user_in_plant: { Args: { p_plant_id: string }; Returns: boolean }
+      delete_production_schedule_cascade: {
+        Args: { p_schedule_id: string }
+        Returns: undefined
+      }
       generate_dash_fo_number: { Args: never; Returns: string }
       generate_dash_so_number: { Args: never; Returns: string }
       generate_dash_ticket_number: { Args: never; Returns: string }
