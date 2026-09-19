@@ -1,0 +1,87 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import type { PartSourceType } from "@/hooks/useParts";
+
+export interface PartCategory {
+  prefix: string;
+  name: string;
+  kind: PartSourceType;
+  next_sequence: number;
+  is_active: boolean;
+}
+
+/**
+ * The part-code prefixes, read from the registry rather than a list in the code.
+ *
+ * The list used to be a const array in PartsManagement.tsx. An array in one
+ * screen cannot keep a promise about every screen: it cannot stop an import, a
+ * second form, or next month from giving a finished good the letter F while
+ * F-001 is a gasket. The table can, and the database refuses a part whose letter
+ * is not in it.
+ */
+export const usePartCategories = () => {
+  const queryClient = useQueryClient();
+
+  const { data: categories = [], isLoading } = useQuery({
+    queryKey: ["part-categories"],
+    queryFn: async (): Promise<PartCategory[]> => {
+      const { data, error } = await supabase
+        .from("part_categories")
+        .select("prefix, name, kind, next_sequence, is_active")
+        .eq("is_active", true)
+        .order("prefix");
+      if (error) throw error;
+      return (data ?? []) as PartCategory[];
+    },
+  });
+
+  const { data: freePrefixes = [] } = useQuery({
+    queryKey: ["free-part-prefixes"],
+    queryFn: async (): Promise<string[]> => {
+      const { data, error } = await supabase.from("free_part_prefixes").select("prefix");
+      if (error) throw error;
+      return (data ?? []).map((r: any) => r.prefix);
+    },
+  });
+
+  const addCategory = useMutation({
+    mutationFn: async (input: { prefix: string; name: string; kind: PartSourceType }) => {
+      const { error } = await supabase.from("part_categories").insert({
+        prefix: input.prefix.toUpperCase(),
+        name: input.name.trim(),
+        kind: input.kind,
+      });
+      if (error) throw error;
+    },
+    onSuccess: (_d, input) => {
+      queryClient.invalidateQueries({ queryKey: ["part-categories"] });
+      queryClient.invalidateQueries({ queryKey: ["free-part-prefixes"] });
+      toast.success(`${input.prefix.toUpperCase()} is now reserved for ${input.name}`);
+    },
+    onError: (error: any) => {
+      // 23505 on the primary key means the letter is taken, which is the one
+      // outcome this whole table exists to produce. Say which thing has it.
+      toast.error(
+        error?.code === "23505"
+          ? "That letter, or that category name, is already in use. Pick another letter."
+          : error?.message || "Could not add the category",
+      );
+    },
+  });
+
+  return { categories, freePrefixes, isLoading, addCategory };
+};
+
+/**
+ * Ask the database for the next code under a prefix.
+ *
+ * Deliberately not computed in the browser from max()+1: two people pressing
+ * Create in the same second would both read the same maximum and both be handed
+ * P-472. The function takes a row lock, so the second one waits and gets P-473.
+ */
+export const issuePartCode = async (prefix: string): Promise<string> => {
+  const { data, error } = await supabase.rpc("next_part_code", { p_prefix: prefix });
+  if (error) throw error;
+  return data as string;
+};

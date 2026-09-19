@@ -146,7 +146,82 @@ export const useBomMutations = () => {
     onError: (error: any) => toast.error(readableBomError(error)),
   });
 
-  return { addLine, updateLine, removeLine };
+  /**
+   * Save a whole bill of materials at once.
+   *
+   * The screen hands over what the bill should be; this works out the difference
+   * against what it is. Adding one line at a time was correct but unusable - a
+   * soundbar has sixty lines, and sixty round trips is sixty chances to be
+   * interrupted halfway and leave a half-built bill that looks finished.
+   *
+   * Lines are keyed by child part, not by row id, so a part ticked, unticked and
+   * ticked again is the same line rather than a new one.
+   */
+  const saveBom = useMutation({
+    mutationFn: async (input: {
+      parent_part_id: string;
+      lines: { child_part_id: string; quantity: number; uom: string; is_critical?: boolean }[];
+    }) => {
+      const { data: existing, error: readError } = await supabase
+        .from("bom")
+        .select("id, child_part_id, quantity, is_critical")
+        .eq("parent_part_id", input.parent_part_id)
+        .eq("is_active", true);
+      if (readError) throw readError;
+
+      const before = new Map((existing ?? []).map((r: any) => [r.child_part_id, r]));
+      const after = new Map(input.lines.map((l) => [l.child_part_id, l]));
+
+      const toInsert = input.lines.filter((l) => !before.has(l.child_part_id));
+      const toDelete = (existing ?? []).filter((r: any) => !after.has(r.child_part_id));
+      const toUpdate = (existing ?? []).filter((r: any) => {
+        const next = after.get(r.child_part_id);
+        return (
+          next &&
+          (Number(r.quantity) !== Number(next.quantity) ||
+            Boolean(r.is_critical) !== Boolean(next.is_critical))
+        );
+      });
+
+      if (toInsert.length) {
+        const { error } = await supabase.from("bom").insert(
+          toInsert.map((l) => ({ ...l, parent_part_id: input.parent_part_id })),
+        );
+        if (error) throw error;
+      }
+      for (const row of toUpdate) {
+        const next = after.get(row.child_part_id)!;
+        const { error } = await supabase
+          .from("bom")
+          .update({ quantity: next.quantity, uom: next.uom, is_critical: next.is_critical ?? false })
+          .eq("id", row.id);
+        if (error) throw error;
+      }
+      if (toDelete.length) {
+        const { error } = await supabase
+          .from("bom")
+          .delete()
+          .in("id", toDelete.map((r: any) => r.id));
+        if (error) throw error;
+      }
+
+      return { added: toInsert.length, changed: toUpdate.length, removed: toDelete.length };
+    },
+    onSuccess: (result) => {
+      invalidate();
+      const parts = [
+        result.added ? `${result.added} added` : null,
+        result.changed ? `${result.changed} changed` : null,
+        result.removed ? `${result.removed} removed` : null,
+      ].filter(Boolean);
+      // Says what changed rather than "Saved". On a sixty-line bill, "Saved" is
+      // not enough to tell whether the one edit you meant to make went in.
+      toast.success(parts.length ? `Bill of materials saved — ${parts.join(", ")}` : "No changes to save");
+    },
+    onError: (error: any) => toast.error(readableBomError(error)),
+  });
+
+  return { addLine, updateLine, removeLine, saveBom };
 };
 
 /** Backwards-compatible shape for screens not yet rewired. */

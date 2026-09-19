@@ -200,11 +200,25 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "bom_child_part_id_fkey"
+            columns: ["child_part_id"]
+            isOneToOne: false
+            referencedRelation: "store_receiving_variances"
+            referencedColumns: ["part_id"]
+          },
+          {
             foreignKeyName: "bom_parent_part_id_fkey"
             columns: ["parent_part_id"]
             isOneToOne: false
             referencedRelation: "parts"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bom_parent_part_id_fkey"
+            columns: ["parent_part_id"]
+            isOneToOne: false
+            referencedRelation: "store_receiving_variances"
+            referencedColumns: ["part_id"]
           },
         ]
       }
@@ -290,6 +304,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "capa_grn_item_id_fkey"
+            columns: ["grn_item_id"]
+            isOneToOne: false
+            referencedRelation: "store_receiving_variances"
+            referencedColumns: ["grn_item_id"]
+          },
+          {
             foreignKeyName: "capa_line_rejection_id_fkey"
             columns: ["line_rejection_id"]
             isOneToOne: false
@@ -304,6 +325,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "capa_part_id_fkey"
+            columns: ["part_id"]
+            isOneToOne: false
+            referencedRelation: "store_receiving_variances"
+            referencedColumns: ["part_id"]
+          },
+          {
             foreignKeyName: "capa_plant_id_fkey"
             columns: ["plant_id"]
             isOneToOne: false
@@ -316,6 +344,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "production_orders"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "capa_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "store_receiving_variances"
+            referencedColumns: ["vendor_id"]
           },
           {
             foreignKeyName: "capa_vendor_id_fkey"
@@ -425,6 +460,13 @@ export type Database = {
             referencedRelation: "parts"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "container_materials_part_id_fkey"
+            columns: ["part_id"]
+            isOneToOne: false
+            referencedRelation: "store_receiving_variances"
+            referencedColumns: ["part_id"]
+          },
         ]
       }
       customer_complaint_parts: {
@@ -478,6 +520,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "parts"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_complaint_parts_part_id_fkey"
+            columns: ["part_id"]
+            isOneToOne: false
+            referencedRelation: "store_receiving_variances"
+            referencedColumns: ["part_id"]
+          },
+          {
+            foreignKeyName: "customer_complaint_parts_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "store_receiving_variances"
+            referencedColumns: ["vendor_id"]
           },
           {
             foreignKeyName: "customer_complaint_parts_vendor_id_fkey"
@@ -564,6 +620,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "parts"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_complaints_part_id_fkey"
+            columns: ["part_id"]
+            isOneToOne: false
+            referencedRelation: "store_receiving_variances"
+            referencedColumns: ["part_id"]
           },
           {
             foreignKeyName: "customer_complaints_plant_id_fkey"
@@ -2225,6 +2288,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "finished_goods_inventory_part_id_fkey"
+            columns: ["part_id"]
+            isOneToOne: false
+            referencedRelation: "store_receiving_variances"
+            referencedColumns: ["part_id"]
+          },
+          {
             foreignKeyName: "finished_goods_inventory_plant_id_fkey"
             columns: ["plant_id"]
             isOneToOne: false
@@ -2315,6 +2385,20 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "grn_purchase_order_id_fkey"
+            columns: ["purchase_order_id"]
+            isOneToOne: false
+            referencedRelation: "store_receiving_variances"
+            referencedColumns: ["purchase_order_id"]
+          },
+          {
+            foreignKeyName: "grn_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "store_receiving_variances"
+            referencedColumns: ["vendor_id"]
+          },
+          {
             foreignKeyName: "grn_vendor_id_fkey"
             columns: ["vendor_id"]
             isOneToOne: false
@@ -2390,6 +2474,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "grn_items_grn_id_fkey"
+            columns: ["grn_id"]
+            isOneToOne: false
+            referencedRelation: "store_receiving_variances"
+            referencedColumns: ["grn_id"]
+          },
+          {
             foreignKeyName: "grn_items_part_id_fkey"
             columns: ["part_id"]
             isOneToOne: false
@@ -2397,10 +2488,97 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "grn_items_part_id_fkey"
+            columns: ["part_id"]
+            isOneToOne: false
+            referencedRelation: "store_receiving_variances"
+            referencedColumns: ["part_id"]
+          },
+          {
             foreignKeyName: "grn_items_purchase_order_item_id_fkey"
             columns: ["purchase_order_item_id"]
             isOneToOne: false
             referencedRelation: "purchase_order_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      grn_variance_resolutions: {
+        Row: {
+          claim_quantity: number | null
+          counted_quantity: number
+          created_at: string
+          expected_quantity: number
+          grn_item_id: string
+          id: string
+          plant_id: string
+          remarks: string
+          resolution: Database["public"]["Enums"]["variance_resolution"]
+          resolved_at: string
+          resolved_by: string | null
+          stock_ledger_id: string | null
+          updated_at: string
+          variance: number | null
+        }
+        Insert: {
+          claim_quantity?: number | null
+          counted_quantity: number
+          created_at?: string
+          expected_quantity: number
+          grn_item_id: string
+          id?: string
+          plant_id: string
+          remarks: string
+          resolution: Database["public"]["Enums"]["variance_resolution"]
+          resolved_at?: string
+          resolved_by?: string | null
+          stock_ledger_id?: string | null
+          updated_at?: string
+          variance?: number | null
+        }
+        Update: {
+          claim_quantity?: number | null
+          counted_quantity?: number
+          created_at?: string
+          expected_quantity?: number
+          grn_item_id?: string
+          id?: string
+          plant_id?: string
+          remarks?: string
+          resolution?: Database["public"]["Enums"]["variance_resolution"]
+          resolved_at?: string
+          resolved_by?: string | null
+          stock_ledger_id?: string | null
+          updated_at?: string
+          variance?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "grn_variance_resolutions_grn_item_id_fkey"
+            columns: ["grn_item_id"]
+            isOneToOne: true
+            referencedRelation: "grn_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "grn_variance_resolutions_grn_item_id_fkey"
+            columns: ["grn_item_id"]
+            isOneToOne: true
+            referencedRelation: "store_receiving_variances"
+            referencedColumns: ["grn_item_id"]
+          },
+          {
+            foreignKeyName: "grn_variance_resolutions_plant_id_fkey"
+            columns: ["plant_id"]
+            isOneToOne: false
+            referencedRelation: "plants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "grn_variance_resolutions_stock_ledger_id_fkey"
+            columns: ["stock_ledger_id"]
+            isOneToOne: false
+            referencedRelation: "stock_ledger"
             referencedColumns: ["id"]
           },
         ]
@@ -2582,6 +2760,13 @@ export type Database = {
             referencedRelation: "purchase_orders"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "import_containers_purchase_order_id_fkey"
+            columns: ["purchase_order_id"]
+            isOneToOne: false
+            referencedRelation: "store_receiving_variances"
+            referencedColumns: ["purchase_order_id"]
+          },
         ]
       }
       kit_feedback: {
@@ -2661,6 +2846,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "kit_feedback_part_id_fkey"
+            columns: ["part_id"]
+            isOneToOne: false
+            referencedRelation: "store_receiving_variances"
+            referencedColumns: ["part_id"]
+          },
+          {
             foreignKeyName: "kit_feedback_plant_id_fkey"
             columns: ["plant_id"]
             isOneToOne: false
@@ -2731,6 +2923,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "parts"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kit_items_part_id_fkey"
+            columns: ["part_id"]
+            isOneToOne: false
+            referencedRelation: "store_receiving_variances"
+            referencedColumns: ["part_id"]
           },
         ]
       }
@@ -2906,6 +3105,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "line_rejections_part_id_fkey"
+            columns: ["part_id"]
+            isOneToOne: false
+            referencedRelation: "store_receiving_variances"
+            referencedColumns: ["part_id"]
+          },
+          {
             foreignKeyName: "line_rejections_plant_id_fkey"
             columns: ["plant_id"]
             isOneToOne: false
@@ -2930,8 +3136,69 @@ export type Database = {
             foreignKeyName: "line_rejections_vendor_id_fkey"
             columns: ["vendor_id"]
             isOneToOne: false
+            referencedRelation: "store_receiving_variances"
+            referencedColumns: ["vendor_id"]
+          },
+          {
+            foreignKeyName: "line_rejections_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
             referencedRelation: "vendors"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      material_movement_log: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          movement_type: string
+          notes: string | null
+          part_id: string
+          quantity: number | null
+          reference_id: string | null
+          reference_number: string | null
+          reference_type: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          movement_type: string
+          notes?: string | null
+          part_id: string
+          quantity?: number | null
+          reference_id?: string | null
+          reference_number?: string | null
+          reference_type?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          movement_type?: string
+          notes?: string | null
+          part_id?: string
+          quantity?: number | null
+          reference_id?: string | null
+          reference_number?: string | null
+          reference_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "material_movement_log_part_id_fkey"
+            columns: ["part_id"]
+            isOneToOne: false
+            referencedRelation: "parts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "material_movement_log_part_id_fkey"
+            columns: ["part_id"]
+            isOneToOne: false
+            referencedRelation: "store_receiving_variances"
+            referencedColumns: ["part_id"]
           },
         ]
       }
@@ -2994,6 +3261,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "parts"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "material_requests_part_id_fkey"
+            columns: ["part_id"]
+            isOneToOne: false
+            referencedRelation: "store_receiving_variances"
+            referencedColumns: ["part_id"]
           },
           {
             foreignKeyName: "material_requests_plant_id_fkey"
@@ -3116,11 +3390,25 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "npd_bom_materials_part_id_fkey"
+            columns: ["part_id"]
+            isOneToOne: false
+            referencedRelation: "store_receiving_variances"
+            referencedColumns: ["part_id"]
+          },
+          {
             foreignKeyName: "npd_bom_materials_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "npd_projects"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "npd_bom_materials_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "store_receiving_variances"
+            referencedColumns: ["vendor_id"]
           },
           {
             foreignKeyName: "npd_bom_materials_vendor_id_fkey"
@@ -3189,6 +3477,13 @@ export type Database = {
             referencedRelation: "parts"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "npd_projects_target_part_id_fkey"
+            columns: ["target_part_id"]
+            isOneToOne: false
+            referencedRelation: "store_receiving_variances"
+            referencedColumns: ["part_id"]
+          },
         ]
       }
       npd_sample_tracking: {
@@ -3238,6 +3533,36 @@ export type Database = {
           },
         ]
       }
+      part_categories: {
+        Row: {
+          created_at: string
+          is_active: boolean
+          kind: Database["public"]["Enums"]["part_source_type"]
+          name: string
+          next_sequence: number
+          prefix: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          is_active?: boolean
+          kind: Database["public"]["Enums"]["part_source_type"]
+          name: string
+          next_sequence?: number
+          prefix: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          is_active?: boolean
+          kind?: Database["public"]["Enums"]["part_source_type"]
+          name?: string
+          next_sequence?: number
+          prefix?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       part_specifications: {
         Row: {
           changes_description: string | null
@@ -3277,6 +3602,13 @@ export type Database = {
             referencedRelation: "parts"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "part_specifications_part_id_fkey"
+            columns: ["part_id"]
+            isOneToOne: false
+            referencedRelation: "store_receiving_variances"
+            referencedColumns: ["part_id"]
+          },
         ]
       }
       part_vendors: {
@@ -3308,6 +3640,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "parts"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "part_vendors_part_id_fkey"
+            columns: ["part_id"]
+            isOneToOne: false
+            referencedRelation: "store_receiving_variances"
+            referencedColumns: ["part_id"]
+          },
+          {
+            foreignKeyName: "part_vendors_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "store_receiving_variances"
+            referencedColumns: ["vendor_id"]
           },
           {
             foreignKeyName: "part_vendors_vendor_id_fkey"
@@ -3808,6 +4154,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "production_order_lines_part_id_fkey"
+            columns: ["part_id"]
+            isOneToOne: false
+            referencedRelation: "store_receiving_variances"
+            referencedColumns: ["part_id"]
+          },
+          {
             foreignKeyName: "production_order_lines_production_line_id_fkey"
             columns: ["production_line_id"]
             isOneToOne: false
@@ -3884,6 +4237,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "production_orders_part_id_fkey"
+            columns: ["part_id"]
+            isOneToOne: false
+            referencedRelation: "store_receiving_variances"
+            referencedColumns: ["part_id"]
+          },
+          {
             foreignKeyName: "production_orders_plant_id_fkey"
             columns: ["plant_id"]
             isOneToOne: false
@@ -3956,6 +4316,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "parts"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "production_schedules_part_id_fkey"
+            columns: ["part_id"]
+            isOneToOne: false
+            referencedRelation: "store_receiving_variances"
+            referencedColumns: ["part_id"]
           },
           {
             foreignKeyName: "production_schedules_plant_id_fkey"
@@ -4073,6 +4440,13 @@ export type Database = {
             referencedRelation: "parts"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "projections_part_id_fkey"
+            columns: ["part_id"]
+            isOneToOne: false
+            referencedRelation: "store_receiving_variances"
+            referencedColumns: ["part_id"]
+          },
         ]
       }
       purchase_order_items: {
@@ -4118,11 +4492,25 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "purchase_order_items_part_id_fkey"
+            columns: ["part_id"]
+            isOneToOne: false
+            referencedRelation: "store_receiving_variances"
+            referencedColumns: ["part_id"]
+          },
+          {
             foreignKeyName: "purchase_order_items_purchase_order_id_fkey"
             columns: ["purchase_order_id"]
             isOneToOne: false
             referencedRelation: "purchase_orders"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_order_items_purchase_order_id_fkey"
+            columns: ["purchase_order_id"]
+            isOneToOne: false
+            referencedRelation: "store_receiving_variances"
+            referencedColumns: ["purchase_order_id"]
           },
         ]
       }
@@ -4209,6 +4597,13 @@ export type Database = {
             foreignKeyName: "purchase_orders_vendor_id_fkey"
             columns: ["vendor_id"]
             isOneToOne: false
+            referencedRelation: "store_receiving_variances"
+            referencedColumns: ["vendor_id"]
+          },
+          {
+            foreignKeyName: "purchase_orders_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
             referencedRelation: "vendors"
             referencedColumns: ["id"]
           },
@@ -4267,6 +4662,66 @@ export type Database = {
           },
         ]
       }
+      serial_number_assignments: {
+        Row: {
+          assigned_at: string
+          assigned_by: string | null
+          created_at: string
+          ending_serial_number: string
+          id: string
+          notes: string | null
+          plant_id: string
+          production_order_id: string
+          quantity: number
+          starting_serial_number: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_at?: string
+          assigned_by?: string | null
+          created_at?: string
+          ending_serial_number: string
+          id?: string
+          notes?: string | null
+          plant_id: string
+          production_order_id: string
+          quantity: number
+          starting_serial_number: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_at?: string
+          assigned_by?: string | null
+          created_at?: string
+          ending_serial_number?: string
+          id?: string
+          notes?: string | null
+          plant_id?: string
+          production_order_id?: string
+          quantity?: number
+          starting_serial_number?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "serial_number_assignments_plant_id_fkey"
+            columns: ["plant_id"]
+            isOneToOne: false
+            referencedRelation: "plants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "serial_number_assignments_production_order_id_fkey"
+            columns: ["production_order_id"]
+            isOneToOne: false
+            referencedRelation: "production_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       shortages: {
         Row: {
           available_quantity: number
@@ -4320,6 +4775,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "parts"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shortages_part_id_fkey"
+            columns: ["part_id"]
+            isOneToOne: false
+            referencedRelation: "store_receiving_variances"
+            referencedColumns: ["part_id"]
           },
           {
             foreignKeyName: "shortages_plant_id_fkey"
@@ -4407,6 +4869,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "parts"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "spare_order_items_part_id_fkey"
+            columns: ["part_id"]
+            isOneToOne: false
+            referencedRelation: "store_receiving_variances"
+            referencedColumns: ["part_id"]
           },
           {
             foreignKeyName: "spare_order_items_spare_order_id_fkey"
@@ -4515,6 +4984,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "stock_balance_part_id_fkey"
+            columns: ["part_id"]
+            isOneToOne: false
+            referencedRelation: "store_receiving_variances"
+            referencedColumns: ["part_id"]
+          },
+          {
             foreignKeyName: "stock_balance_plant_id_fkey"
             columns: ["plant_id"]
             isOneToOne: false
@@ -4589,6 +5065,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "parts"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_holds_part_id_fkey"
+            columns: ["part_id"]
+            isOneToOne: false
+            referencedRelation: "store_receiving_variances"
+            referencedColumns: ["part_id"]
           },
           {
             foreignKeyName: "stock_holds_plant_id_fkey"
@@ -4669,6 +5152,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "parts"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_ledger_part_id_fkey"
+            columns: ["part_id"]
+            isOneToOne: false
+            referencedRelation: "store_receiving_variances"
+            referencedColumns: ["part_id"]
           },
           {
             foreignKeyName: "stock_ledger_plant_id_fkey"
@@ -4947,7 +5437,52 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      free_part_prefixes: {
+        Row: {
+          prefix: string | null
+        }
+        Relationships: []
+      }
+      store_receiving_variances: {
+        Row: {
+          claim_quantity: number | null
+          grn_id: string | null
+          grn_item_id: string | null
+          grn_number: string | null
+          invoice_number: string | null
+          iqc_accepted_quantity: number | null
+          iqc_rejected_quantity: number | null
+          is_open: boolean | null
+          part_code: string | null
+          part_id: string | null
+          part_name: string | null
+          plant_id: string | null
+          po_number: string | null
+          purchase_order_id: string | null
+          received_date: string | null
+          received_quantity: number | null
+          resolution: Database["public"]["Enums"]["variance_resolution"] | null
+          resolution_id: string | null
+          resolution_remarks: string | null
+          resolved_at: string | null
+          store_confirmed_at: string | null
+          store_counted_quantity: number | null
+          uom: string | null
+          variance: number | null
+          vendor_code: string | null
+          vendor_id: string | null
+          vendor_name: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "grn_plant_id_fkey"
+            columns: ["plant_id"]
+            isOneToOne: false
+            referencedRelation: "plants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       accept_kit_feedback: {
@@ -4962,6 +5497,18 @@ export type Database = {
           id: string
           last_name: string
           salary: number
+        }[]
+      }
+      allocate_finished_goods: {
+        Args: {
+          p_dispatch_order_id: string
+          p_part_id: string
+          p_quantity: number
+        }
+        Returns: {
+          lot_id: string
+          lot_number: string
+          taken: number
         }[]
       }
       auth_is_admin: { Args: never; Returns: boolean }
@@ -4987,6 +5534,21 @@ export type Database = {
       generate_dash_fo_number: { Args: never; Returns: string }
       generate_dash_so_number: { Args: never; Returns: string }
       generate_dash_ticket_number: { Args: never; Returns: string }
+      generate_temp_part_code: {
+        Args: { part_category?: string }
+        Returns: string
+      }
+      get_customer_finance: {
+        Args: { p_customer_id: string }
+        Returns: {
+          bank_account_number: string
+          brand_authorization_url: string
+          gst_certificate_url: string
+          id: string
+          ifsc_code: string
+          msme_certificate_url: string
+        }[]
+      }
       get_dash_customer_finance: {
         Args: { p_customer_id: string }
         Returns: {
@@ -5057,6 +5619,16 @@ export type Database = {
           plant_id: string
         }[]
       }
+      get_vendor_finance: {
+        Args: { p_vendor_id: string }
+        Returns: {
+          bank_account_number: string
+          gst_certificate_url: string
+          id: string
+          ifsc_code: string
+          msme_certificate_url: string
+        }[]
+      }
       has_role: { Args: { _module?: string }; Returns: boolean }
       in_plant: { Args: { _plant_id: string }; Returns: boolean }
       is_admin: { Args: never; Returns: boolean }
@@ -5068,6 +5640,15 @@ export type Database = {
           name: string
         }[]
       }
+      list_logins_without_account: {
+        Args: never
+        Returns: {
+          created_at: string
+          email: string
+          id: string
+          last_sign_in_at: string
+        }[]
+      }
       list_user_accounts_for_admin: {
         Args: never
         Returns: {
@@ -5077,18 +5658,48 @@ export type Database = {
           department_name: string
           email: string
           full_name: string
+          has_login: boolean
           id: string
           is_active: boolean
+          last_sign_in_at: string
           role: string
           updated_at: string
           username: string
         }[]
       }
+      log_material_movement: {
+        Args: {
+          p_movement_type: string
+          p_notes?: string
+          p_quantity?: number
+          p_raw_material_id: string
+          p_reference_id?: string
+          p_reference_number?: string
+          p_reference_type?: string
+        }
+        Returns: string
+      }
       next_doc_number: {
         Args: { _prefix: string; _seq: unknown }
         Returns: string
       }
+      next_part_code: { Args: { p_prefix: string }; Returns: string }
       next_po_number: { Args: never; Returns: string }
+      part_stock_statement: {
+        Args: { p_part_id: string; p_plant_id: string }
+        Returns: {
+          balances: boolean
+          department: string
+          event_at: string
+          is_unexplained: boolean
+          label: string
+          note: string
+          quantity: number
+          running_balance: number
+          section: string
+          seq: number
+        }[]
+      }
       post_stock_movement: {
         Args: {
           p_location_id: string
@@ -5105,9 +5716,27 @@ export type Database = {
         Returns: Json
       }
       post_stock_movements: { Args: { p_movements: Json }; Returns: Json }
+      receive_finished_goods: {
+        Args: { p_production_order_id: string }
+        Returns: string
+      }
+      record_kit_receipt: {
+        Args: { p_kit_id: string; p_lines: Json; p_notes?: string }
+        Returns: {
+          disputed_count: number
+        }[]
+      }
       reject_kit_feedback: {
         Args: { p_feedback_id: string; p_remarks: string }
         Returns: undefined
+      }
+      resolve_store_variance: {
+        Args: {
+          p_grn_item_id: string
+          p_remarks: string
+          p_resolution: Database["public"]["Enums"]["variance_resolution"]
+        }
+        Returns: string
       }
       set_department_modules: {
         Args: { p_department_id: string; p_modules: string[] }
@@ -5120,6 +5749,10 @@ export type Database = {
       set_user_plants: {
         Args: { p_plant_ids: string[]; p_user_id: string }
         Returns: undefined
+      }
+      sync_voucher_holds: {
+        Args: { p_production_order_id: string }
+        Returns: number
       }
     }
     Enums: {
@@ -5245,6 +5878,11 @@ export type Database = {
         | "CANCELLED"
       skill_level: "beginner" | "intermediate" | "advanced" | "expert"
       stock_location_type: "STORE" | "QUARANTINE" | "REJECT"
+      variance_resolution:
+        | "SHORT_SUPPLY"
+        | "IQC_MISCOUNT"
+        | "STORE_RECOUNT"
+        | "WRITE_OFF"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -5510,6 +6148,12 @@ export const Constants = {
       ],
       skill_level: ["beginner", "intermediate", "advanced", "expert"],
       stock_location_type: ["STORE", "QUARANTINE", "REJECT"],
+      variance_resolution: [
+        "SHORT_SUPPLY",
+        "IQC_MISCOUNT",
+        "STORE_RECOUNT",
+        "WRITE_OFF",
+      ],
     },
   },
 } as const
