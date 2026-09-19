@@ -13,6 +13,7 @@ import { useCAPATracking, CAPAImplementationCheck } from "@/hooks/useCAPATrackin
 import CAPAImplementationSection from "./CAPAImplementationSection";
 import { SignedStorageLink } from "@/components/ui/signed-storage-link";
 import { useState } from "react";
+import { IQC_OUTCOME, type IqcVerdict } from "@/constants/iqcOutcome";
 
 interface IQCInspectionDialogProps {
   grn: any;
@@ -43,17 +44,17 @@ const IQCInspectionDialog = ({ grn, isOpen, onClose }: IQCInspectionDialogProps)
   };
 
   // Handle status change
-  const handleStatusChange = (itemId: string, status: 'ACCEPTED' | 'REJECTED' | 'PARTIAL') => {
+  const handleStatusChange = (itemId: string, status: IqcVerdict) => {
     const item = grn.grn_items.find((i: any) => i.id === itemId);
     if (!item) return;
 
     let acceptedQty = item.received_quantity;
     let rejectedQty = 0;
 
-    if (status === 'REJECTED') {
+    if (status === IQC_OUTCOME.REJECTED) {
       acceptedQty = 0;
       rejectedQty = item.received_quantity;
-    } else if (status === 'PARTIAL') {
+    } else if (status === IQC_OUTCOME.PARTIAL) {
       // For segregated, we'll let the user input the quantities
       acceptedQty = Math.floor(item.received_quantity / 2); // Default half-half
       rejectedQty = item.received_quantity - acceptedQty;
@@ -184,28 +185,25 @@ const IQCInspectionDialog = ({ grn, isOpen, onClose }: IQCInspectionDialogProps)
                       <Label>Inspection Outcome</Label>
                       <RadioGroup
                         value={inspectionResults[item.id]?.status}
-                        onValueChange={(value) => handleStatusChange(
-                          item.id, 
-                          value as 'ACCEPTED' | 'REJECTED' | 'PARTIAL'
-                        )}
+                        onValueChange={(value) => handleStatusChange(item.id, value as IqcVerdict)}
                         className="flex items-center space-x-6 mt-2"
                       >
                         <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="APPROVED" id={`pass-${item.id}`} />
+                          <RadioGroupItem value={IQC_OUTCOME.ACCEPTED} id={`pass-${item.id}`} />
                           <Label htmlFor={`pass-${item.id}`} className="text-green-600">Pass</Label>
                         </div>
                         <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="PARTIAL" id={`segregate-${item.id}`} />
+                          <RadioGroupItem value={IQC_OUTCOME.PARTIAL} id={`segregate-${item.id}`} />
                           <Label htmlFor={`segregate-${item.id}`} className="text-amber-600">Segregate</Label>
                         </div>
                         <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="REJECTED" id={`fail-${item.id}`} />
+                          <RadioGroupItem value={IQC_OUTCOME.REJECTED} id={`fail-${item.id}`} />
                           <Label htmlFor={`fail-${item.id}`} className="text-red-600">Fail</Label>
                         </div>
                       </RadioGroup>
                     </div>
                     
-                    {inspectionResults[item.id]?.status === 'PARTIAL' && (
+                    {inspectionResults[item.id]?.status === IQC_OUTCOME.PARTIAL && (
                       <div className="space-y-3">
                         <div className="grid grid-cols-2 gap-4">
                           <div>

@@ -14,6 +14,7 @@ Finds, without anyone clicking anything:
   8. columns read but never written, on tables the app does write - the writer
      aimed at the wrong column
   9. components that exist but nothing imports - finished work with no way in
+ 10. a value a screen offers that the enum column it writes will not accept
 """
 import json, re, os, sys
 from collections import defaultdict
@@ -326,15 +327,122 @@ for path in walk():
             imported.add(r)
 
 for path in walk():
-    rel = os.path.relpath(path, ROOT)
-    if rel in ENTRY or not rel.endswith('.tsx'):
+    # Not named `rel`: that is the helper the other checks use to print a path,
+    # and shadowing it made check 10 die with "'str' object is not callable".
+    rel_path = os.path.relpath(path, ROOT)
+    if rel_path in ENTRY or not rel_path.endswith('.tsx'):
         continue
-    if rel.startswith('src/components/ui/'):
+    if rel_path.startswith('src/components/ui/'):
         continue
-    if rel in imported:
+    if rel_path in imported:
         continue
     findings['unreachable_screen'].append(
-        f"{rel} — built, but nothing imports it, so there is no way to open it")
+        f"{rel_path} — built, but nothing imports it, so there is no way to open it")
+
+# ---------------------------------------------------------------------------
+# 10. A choice on screen that the enum behind it does not accept.
+# ---------------------------------------------------------------------------
+# The Pass radio in IQCInspectionDialog carried value="APPROVED"; iqc_outcome
+# accepts PENDING | ACCEPTED | REJECTED | PARTIAL. The handler cast the radio's
+# string to the union it wanted - `value as 'ACCEPTED' | ...` - and `as` is an
+# instruction to stop checking, so nothing between the click and Postgres ever
+# compared the two. Clicking Pass wrote APPROVED and the row was refused.
+#
+# Check 5 could not see it: it only reads literals sitting inside .update({...}).
+# This one works from the other end - the values a screen offers - and asks
+# whether the enum that screen writes would accept them.
+UI_VALUE = re.compile(r"""value=\{?['"]([A-Z][A-Z_0-9]{2,})['"]\}?""")
+
+# Words that are choices on a screen without ever being a stored value.
+UI_ONLY = {
+    'ALL', 'NONE', 'ANY', 'ASC', 'DESC', 'YES', 'NO', 'TRUE', 'FALSE',
+    'LOCAL', 'IMPORTED', 'PCS', 'KG', 'SET', 'BOX', 'PACK', 'ROLL', 'SHEET',
+}
+
+# A screen and the hook that does its writing are one unit: the radio lives in
+# IQCInspectionDialog and the .update() lives in useIQCInspection, so a check
+# that reads one file at a time sees a screen with no enum and an enum with no
+# screen, and finds nothing. The writes are therefore followed through the
+# component's own imports, two hops, which is how far a screen sits from its
+# hook in this codebase.
+writes_enum = {}
+imports_of = {}
+for path in walk():
+    src = open(path, errors='ignore').read()
+    rel_p = os.path.relpath(path, ROOT)
+    here = {}
+    for table, chain, _ in chains(src):
+        if table not in TABLES or table in VIEWS:
+            continue
+        if not re.search(r"\.(insert|update|upsert)\(", chain):
+            continue
+        # Every enum column of a table this file writes, not only the ones named
+        # in an object literal. useIQCInspection builds its row in a variable and
+        # calls .update(updateData), so keying off the literal found nothing -
+        # and the enum this whole check exists to police was the one it missed.
+        for col in COLS[table]:
+            en = COL_ENUM.get(f"{table}.{col}")
+            if en:
+                here[en] = f"{table}.{col}"
+    writes_enum[rel_p] = here
+    imports_of[rel_p] = {
+        r for r in (resolve(m.group(1), path) for m in IMPORT.finditer(src)) if r
+    }
+
+def reachable(start, hops=2):
+    seen, frontier = {start}, {start}
+    for _ in range(hops):
+        frontier = {n for f in frontier for n in imports_of.get(f, ())} - seen
+        seen |= frontier
+    return seen
+
+for path in walk():
+    src = open(path, errors='ignore').read()
+    rel_p = os.path.relpath(path, ROOT)
+
+    enums_here = {}
+    for f in reachable(rel_p):
+        enums_here.update(writes_enum.get(f, {}))
+    if not enums_here:
+        continue
+
+    allowed = set()
+    for en in enums_here:
+        allowed |= ENUMS.get(en, set())
+
+    # The choices are read as groups - the run of value="..." literals that make
+    # up one radio group or one dropdown - and a group is only judged against an
+    # enum that it is plainly already made of. If some of a group's values are
+    # members of iqc_outcome and one is not, that one is the bug. If none of them
+    # are members, the group is about something else entirely (currency, a
+    # priority) and the check says nothing.
+    #
+    # Without that rule the check reports USD / RMB / INR on any screen that also
+    # writes an enum, which is how a check stops being read.
+    hits = list(UI_VALUE.finditer(src))
+    groups, current = [], []
+    for m in hits:
+        if current and m.start() - current[-1].end() > 600:
+            groups.append(current)
+            current = []
+        current.append(m)
+    if current:
+        groups.append(current)
+
+    for group in groups:
+        vals = [m.group(1) for m in group]
+        for en, col in sorted(enums_here.items()):
+            members = ENUMS.get(en, set())
+            inside = [v for v in vals if v in members]
+            outside = [v for v in vals if v not in members and v not in UI_ONLY]
+            if not inside or not outside:
+                continue
+            for m in group:
+                if m.group(1) in outside:
+                    line = src[:m.start()].count('\n') + 1
+                    findings['ui_value_not_in_enum'].append(
+                        f"{rel(path)}:{line}  offers '{m.group(1)}' beside "
+                        f"{'/'.join(inside)} — {col} accepts {'|'.join(sorted(members))}")
 
 ORDER = [
     ('dead_table',     'QUERIES A TABLE THAT NO LONGER EXISTS'),
@@ -346,6 +454,7 @@ ORDER = [
     ('bad_select_col', 'SELECTS A COLUMN THAT DOES NOT EXIST'),
     ('col_read_never_written', 'COLUMN READ BUT NEVER WRITTEN  (trigger-filled, or is the writer aimed elsewhere?)'),
     ('unreachable_screen', 'BUILT BUT UNREACHABLE  (no route, tab or parent imports it)'),
+    ('ui_value_not_in_enum', 'A CHOICE ON SCREEN THE ENUM BEHIND IT WILL REFUSE'),
 ]
 total = 0
 for key, title in ORDER:
