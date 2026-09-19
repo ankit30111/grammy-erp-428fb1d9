@@ -283,8 +283,21 @@ TRIGGER_FILLED = {
     'id', 'created_at', 'updated_at', 'created_by',
 }
 
+# Columns filled by the database rather than the app, each with the reason, so
+# this cannot quietly become a place to hide real findings. Same rule as
+# DB_WRITERS above: if you cannot say why, it is a finding.
+DB_FILLED_COLS = {
+    'part_categories.kind':          'generated column, derived from tier',
+    'part_categories.next_sequence': 'advanced by next_part_code()',
+    'part_categories.is_active':     'defaults true; deactivating a letter is a SQL decision',
+    'parts.source_type':             'set from the category by parts_enforce_category()',
+}
+
 for table in sorted(TABLE_WRITTEN - OPAQUE_WRITE):
-    for col in sorted(COL_READ[table] - COL_WRITTEN[table] - TRIGGER_FILLED):
+    for col in sorted(
+        COL_READ[table] - COL_WRITTEN[table] - TRIGGER_FILLED
+        - {c.split('.', 1)[1] for c in DB_FILLED_COLS if c.startswith(f'{table}.')}
+    ):
         findings['col_read_never_written'].append(
             f"{table}.{col} — read by the app, never written by it")
 

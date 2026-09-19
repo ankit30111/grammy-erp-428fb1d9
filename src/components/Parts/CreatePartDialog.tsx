@@ -18,8 +18,10 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Check, ChevronsUpDown, Loader2, Plus, ShoppingCart, Wrench, Layers, Package } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { useParts, PART_SOURCE_TYPES, type PartSourceType } from "@/hooks/useParts";
-import { usePartCategories, issuePartCode } from "@/hooks/usePartCategories";
+import { useParts } from "@/hooks/useParts";
+import {
+  usePartCategories, issuePartCode, PART_TIERS, type PartTier,
+} from "@/hooks/usePartCategories";
 import { useVendors } from "@/hooks/useVendors";
 
 const UNIT_OPTIONS = ["PCS", "KG", "METER", "LITER", "SET", "PACK", "ROLL", "SHEET", "BOX"];
@@ -32,48 +34,22 @@ const UNIT_OPTIONS = ["PCS", "KG", "METER", "LITER", "SET", "PACK", "ROLL", "SHE
  * something Grammy builds itself. So the kind of part is chosen first and the
  * form is only the fields that kind actually has.
  *
- * What each kind is, in the ledger's terms, because the difference is not
- * cosmetic - it decides whether the part ever holds stock of its own:
+ * All three made-here tiers behave the same way: they are built, they hold stock,
+ * they are issued and returned, and they are inspected as they are made rather
+ * than on arrival - so each carries a CIR sheet and a PQC checklist where a
+ * purchased part carries a specification sheet and an IQC checklist.
  *
- *   Purchase part      bought as it is; has vendors and a price
- *   Semi-finished      built on the line and consumed there; never stocked, so
- *                      its bill of materials explodes straight through to raw
- *                      material when production is planned
- *   Sub-assembled      built here, put into the store, issued again later; holds
- *                      its own stock balance and is planned in its own right
- *   Finished good      dispatched, serialised, invoiced
+ * Semi-finished and sub-assembled are therefore identical to the ledger and
+ * different on the floor. The names are still being settled inside Grammy; the
+ * tier is where that decision lands, and nothing in stock or planning depends on
+ * it.
  */
-const KINDS: {
-  value: PartSourceType;
-  label: string;
-  blurb: string;
-  icon: typeof ShoppingCart;
-}[] = [
-  {
-    value: "PURCHASED",
-    label: "Purchase Part",
-    blurb: "Bought from a vendor as it is",
-    icon: ShoppingCart,
-  },
-  {
-    value: "ASSEMBLED_INLINE",
-    label: "Semi-finished Good",
-    blurb: "Built on the line and used there — never stocked",
-    icon: Wrench,
-  },
-  {
-    value: "ASSEMBLED_STOCKED",
-    label: "Sub-assembled Good",
-    blurb: "Built here, stored, and issued again later",
-    icon: Layers,
-  },
-  {
-    value: "FINISHED_GOOD",
-    label: "Finished Good",
-    blurb: "What gets packed and dispatched",
-    icon: Package,
-  },
-];
+const TIER_ICON: Record<PartTier, typeof ShoppingCart> = {
+  PURCHASE: ShoppingCart,
+  SEMI_FINISHED: Wrench,
+  SUB_ASSEMBLED: Layers,
+  FINISHED: Package,
+};
 
 interface Props {
   open: boolean;
@@ -85,7 +61,7 @@ export const CreatePartDialog = ({ open, onOpenChange }: Props) => {
   const { categories, freePrefixes, addCategory } = usePartCategories();
   const { vendors = [] } = useVendors();
 
-  const [kind, setKind] = useState<PartSourceType | null>(null);
+  const [tier, setTier] = useState<PartTier | null>(null);
   const [categoryPrefix, setCategoryPrefix] = useState("");
   const [partCode, setPartCode] = useState("");
   const [issuing, setIssuing] = useState(false);
@@ -93,6 +69,12 @@ export const CreatePartDialog = ({ open, onOpenChange }: Props) => {
   const [name, setName] = useState("");
   const [uom, setUom] = useState("PCS");
   const [specification, setSpecification] = useState("");
+
+  // Documents. Which two are asked for depends on where the part is inspected.
+  const [specFile, setSpecFile] = useState<File | null>(null);
+  const [iqcFile, setIqcFile] = useState<File | null>(null);
+  const [cirFile, setCirFile] = useState<File | null>(null);
+  const [pqcFile, setPqcFile] = useState<File | null>(null);
 
   // Purchase-only
   const [sourcingType, setSourcingType] = useState<"LOCAL" | "IMPORTED">("LOCAL");
@@ -111,17 +93,18 @@ export const CreatePartDialog = ({ open, onOpenChange }: Props) => {
 
   const [saving, setSaving] = useState(false);
 
-  const kindMeta = KINDS.find((k) => k.value === kind);
-  const isPurchase = kind === "PURCHASED";
+  const tierMeta = PART_TIERS.find((t) => t.value === tier);
+  const isPurchase = tier === "PURCHASE";
 
-  const kindCategories = useMemo(
-    () => categories.filter((c) => c.kind === kind),
-    [categories, kind],
+  const tierCategories = useMemo(
+    () => categories.filter((c) => c.tier === tier),
+    [categories, tier],
   );
 
   const reset = () => {
-    setKind(null); setCategoryPrefix(""); setPartCode("");
+    setTier(null); setCategoryPrefix(""); setPartCode("");
     setName(""); setUom("PCS"); setSpecification("");
+    setSpecFile(null); setIqcFile(null); setCirFile(null); setPqcFile(null);
     setSourcingType("LOCAL"); setCurrency(""); setUnitPrice(""); setCbm("");
     setSupplierCountry(""); setSelectedVendors([]); setPrimaryVendor("");
     setAddingCategory(false); setNewPrefix(""); setNewCategoryName("");
@@ -137,7 +120,7 @@ export const CreatePartDialog = ({ open, onOpenChange }: Props) => {
   useEffect(() => {
     setCategoryPrefix("");
     setPartCode("");
-  }, [kind]);
+  }, [tier]);
 
   const chooseCategory = async (prefix: string) => {
     setCategoryPrefix(prefix);
@@ -167,7 +150,7 @@ export const CreatePartDialog = ({ open, onOpenChange }: Props) => {
     await addCategory.mutateAsync({
       prefix: newPrefix.toUpperCase(),
       name: newCategoryName,
-      kind: kind!,
+      tier: tier!,
     });
     setAddingCategory(false);
     setNewCategoryName("");
@@ -188,13 +171,13 @@ export const CreatePartDialog = ({ open, onOpenChange }: Props) => {
         part_code: partCode,
         category: categoryPrefix,
         uom,
-        // The database reads the kind off the category and overwrites this, so
-        // the two can never disagree. It is sent anyway so the intent is on the
-        // wire and a mismatch would be visible rather than silent.
-        source_type: kind!,
         specification: specification.trim() || undefined,
+        // The database reads the source type off the category, so it is not sent
+        // from here at all. One writer per column.
         ...(isPurchase
           ? {
+              specificationFile: specFile || undefined,
+              iqcChecklistFile: iqcFile || undefined,
               sourcing_type: sourcingType,
               currency: sourcingType === "IMPORTED" ? currency || undefined : undefined,
               unit_price: unitPrice ? parseFloat(unitPrice) : undefined,
@@ -204,7 +187,10 @@ export const CreatePartDialog = ({ open, onOpenChange }: Props) => {
               vendorIds: selectedVendors,
               primaryVendorId: primaryVendor,
             }
-          : {}),
+          : {
+              cirSheetFile: cirFile || undefined,
+              pqcChecklistFile: pqcFile || undefined,
+            }),
       });
       onOpenChange(false);
     } catch {
@@ -228,14 +214,14 @@ export const CreatePartDialog = ({ open, onOpenChange }: Props) => {
         <div className="space-y-2">
           <Label>What kind of part is this?</Label>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {KINDS.map((k) => {
-              const Icon = k.icon;
-              const active = kind === k.value;
+            {PART_TIERS.map((k) => {
+              const Icon = TIER_ICON[k.value];
+              const active = tier === k.value;
               return (
                 <button
                   key={k.value}
                   type="button"
-                  onClick={() => setKind(k.value)}
+                  onClick={() => setTier(k.value)}
                   className={cn(
                     "text-left rounded-lg border p-3 transition-colors",
                     active
@@ -254,7 +240,7 @@ export const CreatePartDialog = ({ open, onOpenChange }: Props) => {
           </div>
         </div>
 
-        {kind && (
+        {tier && (
           <div className="space-y-4 border-t pt-4">
             {/* ---- 2. category and the code it issues ----------------------- */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -264,14 +250,14 @@ export const CreatePartDialog = ({ open, onOpenChange }: Props) => {
                   <SelectTrigger>
                     <SelectValue
                       placeholder={
-                        kindCategories.length === 0
+                        tierCategories.length === 0
                           ? "No category yet for this kind"
                           : "Select category"
                       }
                     />
                   </SelectTrigger>
                   <SelectContent>
-                    {kindCategories.map((c) => (
+                    {tierCategories.map((c) => (
                       <SelectItem key={c.prefix} value={c.prefix}>
                         {c.name} ({c.prefix}-xxx)
                       </SelectItem>
@@ -286,7 +272,7 @@ export const CreatePartDialog = ({ open, onOpenChange }: Props) => {
                   onClick={() => setAddingCategory((v) => !v)}
                 >
                   <Plus className="h-3 w-3 mr-1" />
-                  New category for {kindMeta?.label.toLowerCase()}
+                  New category for {tierMeta?.label.toLowerCase()}
                 </Button>
               </div>
 
@@ -416,6 +402,17 @@ export const CreatePartDialog = ({ open, onOpenChange }: Props) => {
                     </>
                   )}
 
+                  <div className="space-y-2">
+                    <Label>Specification Sheet (PDF)</Label>
+                    <Input type="file" accept=".pdf"
+                           onChange={(e) => setSpecFile(e.target.files?.[0] || null)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>IQC Checklist (PDF)</Label>
+                    <Input type="file" accept=".pdf"
+                           onChange={(e) => setIqcFile(e.target.files?.[0] || null)} />
+                  </div>
+
                   <div className="space-y-2 sm:col-span-2">
                     <Label>Vendors</Label>
                     <Popover open={vendorOpen} onOpenChange={setVendorOpen}>
@@ -475,14 +472,27 @@ export const CreatePartDialog = ({ open, onOpenChange }: Props) => {
               )}
 
               {!isPurchase && (
-                <div className="sm:col-span-2 rounded-lg border bg-muted/30 p-3 text-sm text-muted-foreground">
-                  {kind === "ASSEMBLED_INLINE"
-                    ? "Built on the line and consumed there, so it holds no stock of its own. Its bill of materials explodes straight through to raw material when production is planned."
-                    : kind === "ASSEMBLED_STOCKED"
-                      ? "Built here and put into the store, so it holds its own stock and is issued to production like any other part."
-                      : "Dispatched, serialised and invoiced."}{" "}
-                  Add its bill of materials on the Bill of Materials tab once it is saved.
-                </div>
+                <>
+                  {/* A part Grammy builds is inspected as it is made, not on
+                      arrival, so the two documents it carries are the CIR sheet
+                      and the PQC checklist rather than a spec sheet and an IQC
+                      checklist. Same pair for all three made-here tiers. */}
+                  <div className="space-y-2">
+                    <Label>CIR Sheet (PDF)</Label>
+                    <Input type="file" accept=".pdf"
+                           onChange={(e) => setCirFile(e.target.files?.[0] || null)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>PQC Checklist (PDF)</Label>
+                    <Input type="file" accept=".pdf"
+                           onChange={(e) => setPqcFile(e.target.files?.[0] || null)} />
+                  </div>
+                  <div className="sm:col-span-2 rounded-lg border bg-muted/30 p-3 text-sm text-muted-foreground">
+                    Built here and stocked: it can be made ahead of a plan, issued a few at a time,
+                    and returned to the store. Add its bill of materials on the Bill of Materials tab
+                    once it is saved.
+                  </div>
+                </>
               )}
             </div>
           </div>
@@ -490,7 +500,7 @@ export const CreatePartDialog = ({ open, onOpenChange }: Props) => {
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={handleSave} disabled={!kind || !partCode || saving || issuing}>
+          <Button onClick={handleSave} disabled={!tier || !partCode || saving || issuing}>
             {saving ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Saving…</> : "Create Part"}
           </Button>
         </DialogFooter>
