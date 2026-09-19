@@ -34,6 +34,9 @@ import { Badge } from "@/components/ui/badge";
 import { Search, Plus, Layers, FileText, Package, Upload, Edit, Trash2, Download, Eye, ExternalLink, Loader2, Check, ChevronsUpDown, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BOMManager } from "@/components/BOM/BOMManager";
+import { BOMBuilder } from "@/components/BOM/BOMBuilder";
+import { CreatePartDialog } from "@/components/Parts/CreatePartDialog";
+import { usePartCategories } from "@/hooks/usePartCategories";
 import { useRawMaterials } from "@/hooks/useRawMaterials";
 import { PART_SOURCE_TYPES, type PartSourceType } from "@/hooks/useParts";
 import { useVendors } from "@/hooks/useVendors";
@@ -45,33 +48,11 @@ const UNIT_OPTIONS = [
   "PCS", "KG", "METER", "LITER", "SET", "PACK", "ROLL", "SHEET", "BOX"
 ];
 
-// Raw Material categories with their prefixes
-// One directory, one code shape: a letter, a dash, a number. The seventeen
-// letters below are the ones the Part Code 2025 master already uses; G H I J N Q
-// U V X are free.
-//
-// Sub-assemblies and finished goods belong in this same list and are deliberately
-// NOT in it yet: their letters are not assigned, and a category added here with a
-// provisional prefix would be used within the hour and have to be renumbered
-// afterwards. A part code that has to be renumbered is worse than a part code
-// that cannot be created yet, because it is already on a drawing by then.
-const MATERIAL_CATEGORIES = [
-  { name: "Packaging", prefix: "B" },
-  { name: "Wire", prefix: "C" },
-  { name: "Consumables", prefix: "D" },
-  { name: "PCB", prefix: "E" },
-  { name: "Gasket", prefix: "F" },
-  { name: "Loudspeaker", prefix: "L" },
-  { name: "Metal", prefix: "M" },
-  { name: "Others", prefix: "O" },
-  { name: "Plastic", prefix: "P" },
-  { name: "Remote", prefix: "R" },
-  { name: "Sticker", prefix: "S" },
-  { name: "Transformer", prefix: "T" },
-  { name: "Wooden", prefix: "W" },
-  { name: "Connector", prefix: "Y" },
-  { name: "Screw", prefix: "Z" }
-];
+// The categories are no longer a list in this file. They live in
+// public.part_categories, where the database can actually enforce that a letter
+// means one thing - a list here could only ever describe the intention while a
+// second screen or an import quietly broke it.
+
 
 const RawMaterialsManagement = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -109,6 +90,13 @@ const RawMaterialsManagement = () => {
   // Use the existing hooks
   const { rawMaterials, isLoading, addRawMaterial, updateRawMaterial, deleteRawMaterial } = useRawMaterials();
   const { vendors = [] } = useVendors();
+  const { categories } = usePartCategories();
+  // parts.category holds the PREFIX ('P'), not the name ('Plastic'). All 2,290
+  // imported rows are keyed that way; the old Add form wrote the name, so the
+  // first part created here would have been the only row the filter could not
+  // find. The lookup goes one way now, from prefix to label.
+  const categoryName = (prefix?: string | null) =>
+    categories.find((c) => c.prefix === prefix)?.name ?? prefix ?? "";
 
   // Filter materials based on search and category
   const filteredMaterials = rawMaterials.filter(material => {
@@ -356,341 +344,38 @@ const RawMaterialsManagement = () => {
           <TabsTrigger value="bom">Bill of Materials</TabsTrigger>
         </TabsList>
         <TabsContent value="bom" className="pt-4">
-          <BOMManager />
+          {/* Two views of the same bill: the builder is where you make and change
+              it, the structure is where you read it exploded through its
+              sub-assemblies. Keeping them apart stops the editing page from
+              having to also be a tree. */}
+          <Tabs defaultValue="build">
+            <TabsList>
+              <TabsTrigger value="build">Create / Edit</TabsTrigger>
+              <TabsTrigger value="structure">Structure</TabsTrigger>
+            </TabsList>
+            <TabsContent value="build" className="pt-4">
+              <BOMBuilder />
+            </TabsContent>
+            <TabsContent value="structure" className="pt-4">
+              <BOMManager />
+            </TabsContent>
+          </Tabs>
         </TabsContent>
         <TabsContent value="parts">
       <div className="pt-4">
         <div className="flex items-center justify-end mb-6">
 
           <div className="flex gap-2">
-            <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-              <DialogTrigger asChild>
-                <Button>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Raw Material
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>Add New Raw Material</DialogTitle>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Part Name *</Label>
-                    <Input 
-                      id="name" 
-                      value={newMaterial.name} 
-                      onChange={(e) => setNewMaterial({...newMaterial, name: e.target.value})}
-                      placeholder="Enter part name"
-                      required
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="part_code">Material Code *</Label>
-                    <Input 
-                      id="part_code" 
-                      value={newMaterial.part_code} 
-                      onChange={(e) => setNewMaterial({...newMaterial, part_code: e.target.value.toUpperCase()})}
-                      placeholder="Enter part code (e.g., B-001, P-472, Z-063)"
-                      required
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="source_type">Part Type *</Label>
-                    <Select
-                      value={newMaterial.source_type}
-                      onValueChange={(value) => setNewMaterial({...newMaterial, source_type: value as PartSourceType})}
-                    >
-                      <SelectTrigger id="source_type">
-                        <SelectValue placeholder="Select type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {PART_SOURCE_TYPES.map((t) => (
-                          <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-muted-foreground">
-                      Purchased parts are bought as they are. Everything else is made here and
-                      needs a bill of materials, which is the tab beside this one.
-                    </p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="category">Part Category *</Label>
-                    <Select 
-                      value={newMaterial.category} 
-                      onValueChange={(value) => setNewMaterial({...newMaterial, category: value})}
-                    >
-                      <SelectTrigger id="category">
-                        <SelectValue placeholder="Select category" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {MATERIAL_CATEGORIES.map((category) => (
-                          <SelectItem key={category.name} value={category.name}>
-                            {category.name} ({category.prefix}-xxx)
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="unit_of_measure">Unit of Measure</Label>
-                    <Select 
-                      value={newMaterial.unit_of_measure} 
-                      onValueChange={(value) => setNewMaterial({...newMaterial, unit_of_measure: value})}
-                    >
-                      <SelectTrigger id="unit_of_measure">
-                        <SelectValue placeholder="Select unit" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {UNIT_OPTIONS.map((unit) => (
-                          <SelectItem key={unit} value={unit}>
-                            {unit}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Sourcing Type */}
-                  <div className="space-y-2">
-                    <Label htmlFor="sourcing_type">Sourcing Type *</Label>
-                    <Select 
-                      value={newMaterial.sourcing_type} 
-                      onValueChange={(value: 'IMPORTED' | 'LOCAL') => setNewMaterial({
-                        ...newMaterial, 
-                        sourcing_type: value,
-                        // Reset currency fields when switching to LOCAL
-                        currency: value === 'LOCAL' ? '' : newMaterial.currency,
-                        cbm_per_unit: value === 'LOCAL' ? '' : newMaterial.cbm_per_unit,
-                        supplier_country: value === 'LOCAL' ? '' : newMaterial.supplier_country
-                      })}
-                    >
-                      <SelectTrigger id="sourcing_type">
-                        <SelectValue placeholder="Select sourcing type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="LOCAL">Local</SelectItem>
-                        <SelectItem value="IMPORTED">Imported</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Currency - Only for imported materials */}
-                  {newMaterial.sourcing_type === 'IMPORTED' && (
-                    <div className="space-y-2">
-                      <Label htmlFor="currency">Currency *</Label>
-                      <Select 
-                        value={newMaterial.currency} 
-                        onValueChange={(value) => setNewMaterial({...newMaterial, currency: value})}
-                      >
-                        <SelectTrigger id="currency">
-                          <SelectValue placeholder="Select currency" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="USD">USD ($)</SelectItem>
-                          <SelectItem value="RMB">RMB (¥)</SelectItem>
-                          <SelectItem value="INR">INR (₹)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
-
-                  {/* Unit Price */}
-                  <div className="space-y-2">
-                    <Label htmlFor="unit_price">
-                      Unit Price {newMaterial.sourcing_type === 'IMPORTED' && newMaterial.currency && `(${newMaterial.currency})`}
-                    </Label>
-                    <Input 
-                      id="unit_price" 
-                      type="number"
-                      step="0.01"
-                      value={newMaterial.unit_price} 
-                      onChange={(e) => setNewMaterial({...newMaterial, unit_price: e.target.value})}
-                      placeholder="Enter unit price"
-                    />
-                  </div>
-
-                  {/* CBM per unit - Only for imported materials */}
-                  {newMaterial.sourcing_type === 'IMPORTED' && (
-                    <div className="space-y-2">
-                      <Label htmlFor="cbm_per_unit">CBM per Unit</Label>
-                      <Input 
-                        id="cbm_per_unit" 
-                        type="number"
-                        step="0.0001"
-                        value={newMaterial.cbm_per_unit} 
-                        onChange={(e) => setNewMaterial({...newMaterial, cbm_per_unit: e.target.value})}
-                        placeholder="Cubic meters per unit"
-                      />
-                      <p className="text-sm text-muted-foreground">
-                        Used for container space calculation and cost allocation
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Supplier Country - Only for imported materials */}
-                  {newMaterial.sourcing_type === 'IMPORTED' && (
-                    <div className="space-y-2">
-                      <Label htmlFor="supplier_country">Supplier Country</Label>
-                      <Input 
-                        id="supplier_country" 
-                        value={newMaterial.supplier_country} 
-                        onChange={(e) => setNewMaterial({...newMaterial, supplier_country: e.target.value})}
-                        placeholder="Enter supplier country"
-                      />
-                    </div>
-                  )}
-
-                  <div className="space-y-2">
-                    <Label>Vendors (Optional)</Label>
-                    <Popover open={vendorSearchOpen} onOpenChange={setVendorSearchOpen}>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          role="combobox"
-                          aria-expanded={vendorSearchOpen}
-                          className="w-full justify-between"
-                        >
-                          {selectedVendors.length > 0
-                            ? `${selectedVendors.length} vendor(s) selected`
-                            : "Search and select vendors..."}
-                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-full p-0">
-                        <Command>
-                          <CommandInput 
-                            placeholder="Search vendors..." 
-                            value={vendorSearchValue}
-                            onValueChange={setVendorSearchValue}
-                          />
-                          <CommandList>
-                            <CommandEmpty>No vendors found.</CommandEmpty>
-                            <CommandGroup>
-                              {vendors
-                                .filter(vendor => 
-                                  vendor.name.toLowerCase().includes(vendorSearchValue.toLowerCase()) ||
-                                  vendor.vendor_code.toLowerCase().includes(vendorSearchValue.toLowerCase())
-                                )
-                                .map((vendor) => (
-                                <CommandItem
-                                  key={vendor.id}
-                                  onSelect={() => {
-                                    const isSelected = selectedVendors.includes(vendor.id);
-                                    handleVendorChange(vendor.id, !isSelected);
-                                  }}
-                                >
-                                  <Check
-                                    className={cn(
-                                      "mr-2 h-4 w-4",
-                                      selectedVendors.includes(vendor.id) ? "opacity-100" : "opacity-0"
-                                    )}
-                                  />
-                                  <div className="flex flex-col">
-                                    <span>{vendor.vendor_code} - {vendor.name}</span>
-                                  </div>
-                                </CommandItem>
-                              ))}
-                            </CommandGroup>
-                          </CommandList>
-                        </Command>
-                      </PopoverContent>
-                    </Popover>
-                    
-                    {selectedVendors.length > 0 && (
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        {selectedVendors.map(vendorId => {
-                          const vendor = vendors.find(v => v.id === vendorId);
-                          if (!vendor) return null;
-                          return (
-                            <Badge 
-                              key={vendorId} 
-                              variant={vendorId === primaryVendor ? "default" : "secondary"}
-                              className="text-xs"
-                            >
-                              {vendor.vendor_code}
-                              {vendorId === primaryVendor && " (Primary)"}
-                            </Badge>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-
-                  {selectedVendors.length > 1 && (
-                    <div className="space-y-2">
-                      <Label htmlFor="primary-vendor">Primary Vendor</Label>
-                      <Select value={primaryVendor} onValueChange={setPrimaryVendor}>
-                        <SelectTrigger id="primary-vendor">
-                          <SelectValue placeholder="Select primary vendor" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {vendors.filter(v => selectedVendors.includes(v.id)).map((vendor) => (
-                            <SelectItem key={vendor.id} value={vendor.id}>
-                              {vendor.vendor_code} - {vendor.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
-
-                  <div className="space-y-2">
-                    <Label htmlFor="specification">Specification</Label>
-                    <Textarea 
-                      id="specification" 
-                      value={newMaterial.specification} 
-                      onChange={(e) => setNewMaterial({...newMaterial, specification: e.target.value})}
-                      placeholder="Enter specification details"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="spec-file">Specification Sheet (PDF)</Label>
-                      <Input
-                        id="spec-file"
-                        type="file"
-                        accept=".pdf"
-                        onChange={(e) => setSpecificationFile(e.target.files?.[0] || null)}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="iqc-file">IQC Checklist (PDF)</Label>
-                      <Input
-                        id="iqc-file"
-                        type="file"
-                        accept=".pdf"
-                        onChange={(e) => setIqcChecklistFile(e.target.files?.[0] || null)}
-                      />
-                    </div>
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button 
-                    type="submit" 
-                    onClick={handleAddMaterial} 
-                    disabled={isUploading || addRawMaterial.isPending || !newMaterial.name.trim() || !newMaterial.part_code.trim() || !newMaterial.category.trim()}
-                  >
-                    {isUploading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Uploading...
-                      </>
-                    ) : addRawMaterial.isPending ? (
-                      "Adding..."
-                    ) : (
-                      "Add Material"
-                    )}
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+            {/* The old form asked every part for a vendor, a currency and a
+                landed price - questions a sub-assembly Grammy builds itself has
+                no answer to. CreatePartDialog asks what kind of part it is first
+                and then shows only that kind's fields, and the code comes from
+                the registry rather than being typed. */}
+            <Button onClick={() => setIsAddDialogOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Create New Part Code
+            </Button>
+            <CreatePartDialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen} />
           </div>
         </div>
 
@@ -713,8 +398,10 @@ const RawMaterialsManagement = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Categories</SelectItem>
-                  {MATERIAL_CATEGORIES.map((category) => (
-                    <SelectItem key={category.name} value={category.name}>{category.name}</SelectItem>
+                  {categories.map((category) => (
+                    <SelectItem key={category.prefix} value={category.prefix}>
+                      {category.name} ({category.prefix})
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -799,7 +486,7 @@ const RawMaterialsManagement = () => {
                       <TableCell className="text-muted-foreground text-sm">{index + 1}</TableCell>
                       <TableCell className="font-medium">{material.part_code}</TableCell>
                       <TableCell>{material.name}</TableCell>
-                      <TableCell>{material.category}</TableCell>
+                      <TableCell>{categoryName(material.category)}</TableCell>
                       <TableCell>
                         <Badge
                           variant={(material as any).source_type === "PURCHASED" ? "outline" : "default"}
@@ -919,7 +606,7 @@ const RawMaterialsManagement = () => {
                   </div>
                   <div className="space-y-2">
                     <Label className="text-sm font-medium text-muted-foreground">Category</Label>
-                    <p>{viewMaterial.category}</p>
+                    <p>{categoryName(viewMaterial.category)}</p>
                   </div>
                   <div className="space-y-2">
                     <Label className="text-sm font-medium text-muted-foreground">Unit</Label>
@@ -1121,8 +808,8 @@ const RawMaterialsManagement = () => {
                     <SelectValue placeholder="Select category" />
                   </SelectTrigger>
                   <SelectContent>
-                    {MATERIAL_CATEGORIES.map((category) => (
-                      <SelectItem key={category.name} value={category.name}>
+                    {categories.map((category) => (
+                      <SelectItem key={category.prefix} value={category.prefix}>
                         {category.name} ({category.prefix}-xxx)
                       </SelectItem>
                     ))}

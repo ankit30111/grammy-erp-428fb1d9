@@ -8,11 +8,14 @@ export type PartSourceType =
   | "ASSEMBLED_INLINE"
   | "FINISHED_GOOD";
 
+// The names Grammy uses, not the enum's. ASSEMBLED_INLINE and ASSEMBLED_STOCKED
+// are the ledger's words for "never stocked" and "stocked and reissued"; on the
+// floor those are a semi-finished good and a sub-assembly.
 export const PART_SOURCE_TYPES: { value: PartSourceType; label: string }[] = [
-  { value: "PURCHASED", label: "Purchased" },
-  { value: "ASSEMBLED_STOCKED", label: "Assembled (stocked)" },
-  { value: "ASSEMBLED_INLINE", label: "Assembled (in line)" },
-  { value: "FINISHED_GOOD", label: "Finished good" },
+  { value: "PURCHASED", label: "Purchase Part" },
+  { value: "ASSEMBLED_INLINE", label: "Semi-finished Good" },
+  { value: "ASSEMBLED_STOCKED", label: "Sub-assembled Good" },
+  { value: "FINISHED_GOOD", label: "Finished Good" },
 ];
 
 export interface PartInput {
