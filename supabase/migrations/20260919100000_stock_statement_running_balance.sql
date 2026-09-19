@@ -41,6 +41,7 @@ CREATE OR REPLACE FUNCTION public.part_stock_statement(
   quantity        numeric,
   running_balance numeric,
   is_unexplained  boolean,
+  balances        boolean,
   note            text
 )
 LANGUAGE plpgsql
@@ -130,7 +131,7 @@ BEGIN
 
     RETURN QUERY SELECT
       v_seq, 'FLOW'::text, r.created_at, r.label, r.dept,
-      r.effect, v_running, r.unexplained,
+      r.effect, v_running, r.unexplained, NULL::boolean,
       CASE
         WHEN r.movement_type = 'IQC_ACCEPT_IN'
           THEN format('%s moved from quarantine into the main store - the same pieces, so the running total does not change',
@@ -165,41 +166,48 @@ BEGIN
 
   v_seq := v_seq + 1;
   RETURN QUERY SELECT v_seq, 'ELSEWHERE'::text, NULL::timestamptz,
-    'In the main store'::text, 'Store'::text, v_main, NULL::numeric, false,
+    'In the main store'::text, 'Store'::text, v_main, NULL::numeric, false, NULL::boolean,
     'The closing figure of the running column above'::text;
 
   IF v_quar <> 0 THEN
     v_seq := v_seq + 1;
     RETURN QUERY SELECT v_seq, 'ELSEWHERE'::text, NULL::timestamptz,
-      'Still in quarantine'::text, 'Quality - IQC'::text, v_quar, NULL::numeric, false,
+      'Still in quarantine'::text, 'Quality - IQC'::text, v_quar, NULL::numeric, false, NULL::boolean,
       'Received but not yet inspected'::text;
   END IF;
 
   IF v_reject <> 0 THEN
     v_seq := v_seq + 1;
     RETURN QUERY SELECT v_seq, 'ELSEWHERE'::text, NULL::timestamptz,
-      'In the reject store'::text, 'Quality - IQC'::text, v_reject, NULL::numeric, false,
+      'In the reject store'::text, 'Quality - IQC'::text, v_reject, NULL::numeric, false, NULL::boolean,
       'Ours, but not available to production'::text;
   END IF;
 
   IF v_with_prod <> 0 THEN
     v_seq := v_seq + 1;
     RETURN QUERY SELECT v_seq, 'ELSEWHERE'::text, NULL::timestamptz,
-      'On the production floor'::text, 'Production'::text, v_with_prod, NULL::numeric, false,
+      'On the production floor'::text, 'Production'::text, v_with_prod, NULL::numeric, false, NULL::boolean,
       'Issued and not yet returned'::text;
   END IF;
 
   IF v_short <> 0 THEN
     v_seq := v_seq + 1;
     RETURN QUERY SELECT v_seq, 'ELSEWHERE'::text, NULL::timestamptz,
-      'Short - not accounted for'::text, 'Store - receiving'::text, v_short, NULL::numeric, true,
+      'Short - not accounted for'::text, 'Store - receiving'::text, v_short, NULL::numeric, true, NULL::boolean,
       'Counted short at receiving, and nobody has ruled on it yet'::text;
   END IF;
 
   v_seq := v_seq + 1;
+  -- balances is returned as a boolean rather than left for the caller to infer
+  -- from the wording of the note. The screen was deciding it by testing whether
+  -- the sentence began with "Balances", which is two sources of truth for one
+  -- fact - and it duly printed "This does not balance" directly above the words
+  -- "Balances against the 100,000 received".
   RETURN QUERY SELECT v_seq, 'CHECK'::text, NULL::timestamptz,
     'Accounted for'::text, NULL::text,
-    v_main + v_quar + v_reject + v_with_prod + v_short, NULL::numeric, false,
+    v_main + v_quar + v_reject + v_with_prod + v_short, v_received,
+    (v_main + v_quar + v_reject + v_with_prod + v_short <> v_received),
+    (v_main + v_quar + v_reject + v_with_prod + v_short = v_received),
     CASE WHEN v_main + v_quar + v_reject + v_with_prod + v_short = v_received
          THEN format('Balances against the %s received', to_char(v_received, 'FM999,999,999'))
          ELSE format('Does NOT balance against the %s received - there is movement this statement does not classify',

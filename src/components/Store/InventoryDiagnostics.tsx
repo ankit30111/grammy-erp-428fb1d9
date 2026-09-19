@@ -39,6 +39,7 @@ interface StatementRow {
   quantity: number;
   running_balance: number | null;
   is_unexplained: boolean;
+  balances: boolean | null;
   note: string | null;
 }
 
@@ -88,8 +89,21 @@ const InventoryDiagnostics = () => {
   const flow = rows.filter((r) => r.section === "FLOW");
   const elsewhere = rows.filter((r) => r.section === "ELSEWHERE");
   const check = rows.find((r) => r.section === "CHECK");
-  const received = flow.length > 0 ? Number(flow[0].running_balance ?? 0) : 0;
-  const balances = check ? check.note?.startsWith("Balances") ?? false : false;
+  // Received is the CHECK row's running_balance, not the first flow row's. Reading
+  // it off flow[0] assumed the statement always opens with a receipt, which is only
+  // true until somebody looks at a part whose first movement was an adjustment.
+  const received = Number(check?.running_balance ?? 0);
+  // Straight from the function. This used to be decided by testing whether the
+  // note began with the word "Balances" - so the banner could say "This does not
+  // balance" directly above the sentence "Balances against the 100,000 received".
+  const balances = check?.balances === true;
+
+  // The function's shape and this screen's expectations are two halves of one
+  // change, and they can be deployed separately. When they disagree the filters
+  // above match nothing and the page renders empty tables under a scary red
+  // banner, which reads as "your stock is wrong" rather than "this page is out of
+  // date". It happened, on this screen, to this data. So it says so instead.
+  const shapeMismatch = rows.length > 0 && (flow.length === 0 || !check);
 
   const when = (iso: string | null) =>
     iso ? new Date(iso).toLocaleString(undefined, {
@@ -142,6 +156,18 @@ const InventoryDiagnostics = () => {
             {rows.length === 0 ? (
               <div className="py-10 text-center text-muted-foreground">
                 This part has never moved in this plant.
+              </div>
+            ) : shapeMismatch ? (
+              <div className="rounded-md border border-amber-500/40 bg-amber-50 dark:bg-amber-950/20 p-4 text-sm space-y-1">
+                <div className="font-medium">This page is out of date with the database</div>
+                <p>
+                  The stock statement came back in a shape this screen does not
+                  recognise, so it has not been rendered. Nothing is wrong with your
+                  stock — this page needs redeploying to match the database.
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Sections received: {[...new Set(rows.map((r) => r.section))].join(", ") || "none"}
+                </p>
               </div>
             ) : (
               <>
