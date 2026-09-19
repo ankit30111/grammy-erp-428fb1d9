@@ -1,203 +1,261 @@
-
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { usePlantId } from "@/hooks/usePlantId";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { AlertTriangle, Search, CheckCircle, XCircle, Package, ArrowDown, TrendingDown } from "lucide-react";
-import { useCheckMaterialInventory } from "@/hooks/useInventory";
+import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { AlertTriangle, Search, CheckCircle2, XCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-const InventoryDiagnostics = () => {
-  const [materialCode, setMaterialCode] = useState("");
-  const checkMaterial = useCheckMaterialInventory();
-  const { toast } = useToast();
+/**
+ * Where every piece of a part went, read from the stock ledger.
+ *
+ * This screen used to report "Discrepancy: -8,900 units" on Z-015, from arithmetic
+ * it made up: Total GRN Receipts 99,000 minus Production Dispatches 8,500 gives an
+ * Expected 90,500, against a Current 81,600. Every part of that was wrong.
+ * "Receipts 99,000" was not what was received - 100,000 arrived, 99,000 is what
+ * IQC passed. And it subtracted two of the eight kinds of movement in the ledger
+ * and called the remainder a discrepancy, so the 9,000 the store counted short and
+ * the +100 kit feedback correction were simply missing from the sum.
+ *
+ * The number it printed was not a finding about the stock. It was the size of what
+ * the screen had forgotten to look at. That is worse than showing nothing, because
+ * it will be believed on the day it matters.
+ *
+ * Nothing is computed here now. part_stock_statement() classifies every ledger row
+ * into a stage and a department, and the arithmetic closes by construction - the
+ * last line says so, and says so loudly when it does not.
+ */
 
-  const handleCheckMaterial = () => {
-    if (!materialCode.trim()) {
+interface StatementRow {
+  seq: number;
+  section: "RECEIVED" | "MOVEMENT" | "WHERE" | "CHECK";
+  label: string;
+  department: string | null;
+  quantity: number;
+  is_unexplained: boolean;
+  note: string | null;
+}
+
+const fmt = (n: number) => Number(n).toLocaleString();
+
+const InventoryDiagnostics = () => {
+  const plantId = usePlantId();
+  const { toast } = useToast();
+  const [input, setInput] = useState("");
+  const [partCode, setPartCode] = useState<string | null>(null);
+
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["part-stock-statement", partCode, plantId],
+    enabled: !!partCode && !!plantId,
+    queryFn: async () => {
+      const { data: part, error: partError } = await supabase
+        .from("parts")
+        .select("id, part_code, name, uom")
+        .eq("part_code", partCode!)
+        .maybeSingle();
+      if (partError) throw partError;
+      if (!part) throw new Error(`No part with code ${partCode}`);
+
+      const { data: rows, error: stmtError } = await supabase.rpc("part_stock_statement", {
+        p_part_id: part.id,
+        p_plant_id: plantId!,
+      });
+      if (stmtError) throw stmtError;
+      return { part, rows: (rows ?? []) as StatementRow[] };
+    },
+  });
+
+  const run = () => {
+    const code = input.trim().toUpperCase();
+    if (!code) {
       toast({
-        title: "Material Code Required",
-        description: "Please enter a material code to check",
-        variant: "destructive"
+        title: "Enter a part code",
+        description: "For example Z-015.",
+        variant: "destructive",
       });
       return;
     }
-
-    checkMaterial.mutate(materialCode.trim().toUpperCase());
+    setPartCode(code);
   };
 
-  const formatNumber = (num: number) => num.toLocaleString();
+  const rows = data?.rows ?? [];
+  const received = rows.find((r) => r.section === "RECEIVED");
+  const movements = rows.filter((r) => r.section === "MOVEMENT");
+  const where = rows.filter((r) => r.section === "WHERE");
+  const check = rows.find((r) => r.section === "CHECK");
+  const balances = check && received && Number(check.quantity) === Number(received.quantity);
+
+  const section = (title: string, sub: string, items: StatementRow[]) => (
+    <div className="space-y-2">
+      <div>
+        <h4 className="font-semibold">{title}</h4>
+        <p className="text-xs text-muted-foreground">{sub}</p>
+      </div>
+      <div className="rounded-lg border overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>What</TableHead>
+              <TableHead>Department</TableHead>
+              <TableHead className="text-right">Quantity</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {items.map((r) => (
+              <TableRow key={r.seq} className={r.is_unexplained ? "bg-destructive/5" : undefined}>
+                <TableCell>
+                  <span className={r.is_unexplained ? "font-medium text-destructive" : ""}>
+                    {r.label}
+                  </span>
+                  {r.note && (
+                    <span className="block text-xs text-muted-foreground">{r.note}</span>
+                  )}
+                </TableCell>
+                <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
+                  {r.department ?? "—"}
+                </TableCell>
+                <TableCell
+                  className={`text-right font-mono ${
+                    r.is_unexplained
+                      ? "text-destructive font-semibold"
+                      : Number(r.quantity) < 0
+                      ? "text-amber-600"
+                      : ""
+                  }`}
+                >
+                  {fmt(r.quantity)}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  );
 
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <AlertTriangle className="h-5 w-5 text-orange-600" />
-          Inventory Diagnostics
+          <AlertTriangle className="h-5 w-5" />
+          Where the stock went
         </CardTitle>
+        <p className="text-sm text-muted-foreground">
+          Every movement of one part, from the ledger — what arrived, what each
+          department did with it, and where it is now.
+        </p>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-6">
         <div className="flex gap-2">
           <Input
-            placeholder="Enter material code (e.g., E-001)"
-            value={materialCode}
-            onChange={(e) => setMaterialCode(e.target.value)}
+            placeholder="Part code, e.g. Z-015"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
             className="flex-1"
-            onKeyPress={(e) => e.key === 'Enter' && handleCheckMaterial()}
+            onKeyDown={(e) => e.key === "Enter" && run()}
           />
-          <Button 
-            onClick={handleCheckMaterial}
-            disabled={checkMaterial.isPending}
-          >
+          <Button onClick={run} disabled={isLoading}>
             <Search className="h-4 w-4 mr-2" />
-            {checkMaterial.isPending ? "Checking..." : "Check"}
+            {isLoading ? "Checking…" : "Check"}
           </Button>
         </div>
 
-        {checkMaterial.data && (
-          <div className="space-y-6">
-            {/* Material Info */}
-            <div className="bg-gray-50 p-3 rounded">
-              <div className="font-medium text-lg">{checkMaterial.data.materialCode}</div>
-              <div className="text-sm text-muted-foreground">{checkMaterial.data.materialName}</div>
-            </div>
-
-            {/* Inventory Flow Calculation */}
-            <div className="space-y-4">
-              <div className="text-lg font-semibold text-center">Inventory Flow Analysis</div>
-              
-              {/* Starting Point - GRN Receipts */}
-              <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                <div className="flex items-center gap-2 mb-2">
-                  <Package className="h-5 w-5 text-blue-600" />
-                  <span className="font-medium text-blue-800">Total GRN Receipts</span>
-                </div>
-                <div className="text-2xl font-bold text-blue-800">
-                  {formatNumber(checkMaterial.data.totalFromGRN)} units
-                </div>
-              </div>
-
-              <div className="flex justify-center">
-                <ArrowDown className="h-6 w-6 text-gray-400" />
-              </div>
-
-              {/* Store Output Breakdown */}
-              <div className="bg-orange-50 p-4 rounded-lg border border-orange-200">
-                <div className="flex items-center gap-2 mb-3">
-                  <TrendingDown className="h-5 w-5 text-orange-600" />
-                  <span className="font-medium text-orange-800">Total Store Output</span>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
-                  <div className="bg-white p-3 rounded border">
-                    <div className="text-sm text-orange-600">Production Dispatches</div>
-                    <div className="text-lg font-bold text-orange-800">
-                      {formatNumber(checkMaterial.data.totalProductionDispatches)}
-                    </div>
-                  </div>
-                  <div className="bg-white p-3 rounded border">
-                    <div className="text-sm text-orange-600">Material Requests (Approved)</div>
-                    <div className="text-lg font-bold text-orange-800">
-                      {formatNumber(checkMaterial.data.totalMaterialRequests)}
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="border-t pt-3">
-                  <div className="text-sm text-orange-600">Total Output</div>
-                  <div className="text-xl font-bold text-orange-800">
-                    {formatNumber(checkMaterial.data.totalStoreOutput)} units
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex justify-center">
-                <div className="text-lg font-medium text-gray-600">=</div>
-              </div>
-
-              {/* Expected vs Actual */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-                  <div className="text-sm text-green-600 mb-1">Expected Inventory</div>
-                  <div className="text-xl font-bold text-green-800">
-                    {formatNumber(checkMaterial.data.expectedInventory)}
-                  </div>
-                  <div className="text-xs text-green-600 mt-1">
-                    ({formatNumber(checkMaterial.data.totalFromGRN)} - {formatNumber(checkMaterial.data.totalStoreOutput)})
-                  </div>
-                </div>
-                
-                <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
-                  <div className="text-sm text-purple-600 mb-1">Current Inventory</div>
-                  <div className="text-xl font-bold text-purple-800">
-                    {formatNumber(checkMaterial.data.currentInventory)}
-                  </div>
-                  <div className="text-xs text-purple-600 mt-1">
-                    From inventory table
-                  </div>
-                </div>
-              </div>
-
-              {/* Final Discrepancy Result */}
-              <div className={`p-4 rounded-lg border-2 flex items-center gap-3 ${
-                checkMaterial.data.discrepancy === 0 
-                  ? "bg-green-50 border-green-300" 
-                  : "bg-red-50 border-red-300"
-              }`}>
-                {checkMaterial.data.discrepancy === 0 ? (
-                  <CheckCircle className="h-6 w-6 text-green-600" />
-                ) : (
-                  <XCircle className="h-6 w-6 text-red-600" />
-                )}
-                <div className="flex-1">
-                  <div className="font-bold text-lg">
-                    {checkMaterial.data.discrepancy === 0 
-                      ? "✅ Inventory is correct" 
-                      : `❌ Discrepancy: ${checkMaterial.data.discrepancy > 0 ? '+' : ''}${formatNumber(checkMaterial.data.discrepancy)} units`
-                    }
-                  </div>
-                  {checkMaterial.data.discrepancy !== 0 && (
-                    <div className="text-sm text-muted-foreground mt-1">
-                      {checkMaterial.data.discrepancy > 0 
-                        ? "Inventory shows more than expected based on GRN receipts and store output"
-                        : "Inventory shows less than expected based on GRN receipts and store output"
-                      }
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Historical Data Sections */}
-            {checkMaterial.data.grnEntries && checkMaterial.data.grnEntries.length > 0 && (
-              <div>
-                <div className="font-medium mb-2">GRN Receipt History ({checkMaterial.data.grnEntries.length} entries):</div>
-                <div className="space-y-2 max-h-40 overflow-y-auto">
-                  {checkMaterial.data.grnEntries.map((entry, index) => (
-                    <div key={index} className="bg-gray-50 p-2 rounded text-sm">
-                      <div className="flex justify-between">
-                        <span>GRN: {entry.grn.grn_number}</span>
-                        <span className="font-mono">{formatNumber(entry.iqc_accepted_quantity)} units</span>
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        Received: {new Date(entry.grn.received_date).toLocaleDateString()}
-                        {entry.store_confirmed_at && (
-                          <> • Confirmed: {new Date(entry.store_confirmed_at).toLocaleDateString()}</>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+        {error && (
+          <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm">
+            {(error as Error).message}
           </div>
         )}
 
-        {checkMaterial.error && (
-          <div className="bg-red-50 border border-red-200 p-3 rounded">
-            <div className="text-red-800 font-medium">Error checking material</div>
-            <div className="text-red-600 text-sm">
-              {checkMaterial.error instanceof Error ? checkMaterial.error.message : "Unknown error"}
+        {data && (
+          <div className="space-y-6">
+            <div className="rounded-lg border p-3">
+              <div className="text-lg font-medium font-mono">{data.part.part_code}</div>
+              <div className="text-sm text-muted-foreground">{data.part.name}</div>
             </div>
+
+            {rows.length === 0 ? (
+              <div className="py-10 text-center text-muted-foreground">
+                This part has never moved in this plant.
+              </div>
+            ) : (
+              <>
+                {received && (
+                  <div className="rounded-lg border p-4">
+                    <div className="text-sm text-muted-foreground">
+                      Received into this plant
+                    </div>
+                    <div className="text-3xl font-semibold font-mono">
+                      {fmt(received.quantity)}{" "}
+                      <span className="text-base font-normal text-muted-foreground">
+                        {data.part.uom}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {section(
+                  "What happened to it",
+                  "In order. A line that moved between locations did not change the total held.",
+                  movements
+                )}
+
+                {section(
+                  "Where it is now",
+                  "These add up to everything received — that is the check below.",
+                  where
+                )}
+
+                {check && (
+                  <div
+                    className={`rounded-lg border p-4 flex items-start gap-3 ${
+                      balances
+                        ? "border-green-600/40 bg-green-50 dark:bg-green-950/20"
+                        : "border-destructive/40 bg-destructive/10"
+                    }`}
+                  >
+                    {balances ? (
+                      <CheckCircle2 className="h-5 w-5 text-green-600 shrink-0 mt-0.5" />
+                    ) : (
+                      <XCircle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+                    )}
+                    <div>
+                      <div className="font-medium">
+                        {balances
+                          ? `Every one of the ${fmt(received!.quantity)} is accounted for`
+                          : "This does not balance"}
+                      </div>
+                      <p className="text-sm text-muted-foreground">{check.note}</p>
+                      {!balances && (
+                        <p className="text-sm mt-1">
+                          Accounted for {fmt(check.quantity)} against{" "}
+                          {fmt(received?.quantity ?? 0)} received. The difference is
+                          movement this statement does not yet classify — not missing
+                          stock.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {where.some((r) => r.is_unexplained) && (
+                  <div className="rounded-md border border-amber-500/40 bg-amber-50 dark:bg-amber-950/20 p-3 text-sm flex gap-2">
+                    <Badge variant="destructive" className="shrink-0 h-fit">
+                      Open
+                    </Badge>
+                    <span>
+                      The short quantity is a real gap, not an arithmetic error. It is
+                      waiting for somebody to rule on it in{" "}
+                      <strong>Purchase Discrepancies → Store Discrepancies</strong> —
+                      short supply from the vendor, a miscount, or a write-off.
+                    </span>
+                  </div>
+                )}
+              </>
+            )}
           </div>
         )}
       </CardContent>

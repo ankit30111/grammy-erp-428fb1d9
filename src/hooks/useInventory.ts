@@ -4,6 +4,5 @@ export {
   useInventory, 
   useRealTimeInventory,
   useInventoryMutations,
-  useManualInventorySync,
-  useCheckMaterialInventory
+  useManualInventorySync
 } from './inventory';
