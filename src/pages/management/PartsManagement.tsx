@@ -32,7 +32,10 @@ import {
 } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
 import { Search, Plus, Layers, FileText, Package, Upload, Edit, Trash2, Download, Eye, ExternalLink, Loader2, Check, ChevronsUpDown, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { BOMManager } from "@/components/BOM/BOMManager";
 import { useRawMaterials } from "@/hooks/useRawMaterials";
+import { PART_SOURCE_TYPES, type PartSourceType } from "@/hooks/useParts";
 import { useVendors } from "@/hooks/useVendors";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -43,7 +46,15 @@ const UNIT_OPTIONS = [
 ];
 
 // Raw Material categories with their prefixes
+// One directory, three kinds of part. The two new prefixes are two letters on
+// purpose. Seventeen single letters are already spoken for in the Part Code 2025
+// master - A B C D E F K L M O P R S T W Y Z - and the nine that are left are the
+// only room there is, so the kinds of part that will never run out of rows should
+// not eat one. AP is not invented here either: the master already carries an
+// "AP - ASSEMBLED PARTS" sheet, so the codes match the sheet Purvashi keeps.
 const MATERIAL_CATEGORIES = [
+  { name: "Finished Good", prefix: "FG" },
+  { name: "Assembled Part", prefix: "AP" },
   { name: "Packaging", prefix: "B" },
   { name: "Wire", prefix: "C" },
   { name: "Consumables", prefix: "D" },
@@ -64,6 +75,7 @@ const MATERIAL_CATEGORIES = [
 const RawMaterialsManagement = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterCategory, setFilterCategory] = useState("all");
+  const [filterSourceType, setFilterSourceType] = useState("all");
   const [sortConfig, setSortConfig] = useState<{ key: 'part_code' | 'category' | 'vendors' | null; direction: 'asc' | 'desc' }>({ key: null, direction: 'asc' });
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -83,6 +95,7 @@ const RawMaterialsManagement = () => {
     name: "",
     part_code: "",
     category: "",
+    source_type: "PURCHASED" as PartSourceType,
     unit_of_measure: "",
     specification: "",
     sourcing_type: "LOCAL" as 'IMPORTED' | 'LOCAL',
@@ -101,7 +114,13 @@ const RawMaterialsManagement = () => {
     const matchesSearch = material.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
                          material.part_code.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = filterCategory === "all" || material.category === filterCategory;
-    return matchesSearch && matchesCategory;
+    // Rows written before the type was on this screen have no source_type of their
+    // own and are purchased by default, so they must answer to that filter too -
+    // otherwise "Purchased" would hide the 2,000-odd parts it is naming.
+    const matchesType =
+      filterSourceType === "all" ||
+      ((material as any).source_type ?? "PURCHASED") === filterSourceType;
+    return matchesSearch && matchesCategory && matchesType;
   });
 
   const getVendorSortValue = (material: any) => {
@@ -168,6 +187,7 @@ const RawMaterialsManagement = () => {
         name: newMaterial.name,
         part_code: newMaterial.part_code,
         category: newMaterial.category,
+        source_type: newMaterial.source_type,
         specification: newMaterial.specification,
         sourcing_type: newMaterial.sourcing_type,
         currency: newMaterial.sourcing_type === 'IMPORTED' ? newMaterial.currency : undefined,
@@ -181,11 +201,12 @@ const RawMaterialsManagement = () => {
       });
 
       // Reset form
-      setNewMaterial({ 
-        name: "", 
-        part_code: "", 
-        category: "", 
-        unit_of_measure: "", 
+      setNewMaterial({
+        name: "",
+        part_code: "",
+        category: "",
+        source_type: "PURCHASED",
+        unit_of_measure: "",
         specification: "",
         sourcing_type: "LOCAL",
         currency: "",
@@ -212,6 +233,7 @@ const RawMaterialsManagement = () => {
       name: material.name,
       part_code: material.part_code || "",
       category: material.category,
+      source_type: (material.source_type || "PURCHASED") as PartSourceType,
       unit_of_measure: material.unit_of_measure || "",
       specification: material.specification || "",
       sourcing_type: material.sourcing_type || "LOCAL",
@@ -237,6 +259,7 @@ const RawMaterialsManagement = () => {
         name: newMaterial.name,
         part_code: newMaterial.part_code,
         category: newMaterial.category,
+        source_type: newMaterial.source_type,
         specification: newMaterial.specification,
         sourcing_type: newMaterial.sourcing_type,
         currency: newMaterial.sourcing_type === 'IMPORTED' ? newMaterial.currency : undefined,
@@ -322,7 +345,19 @@ const RawMaterialsManagement = () => {
 
   return (
     <DashboardLayout>
-      <PageHeader title="Raw Materials" />
+      <PageHeader title="Parts" />
+      {/* One directory for everything that has a part code - purchased material,
+          sub-assemblies and finished goods - with the bill of materials beside it,
+          because a finished good is only finished once it has one. */}
+      <Tabs defaultValue="parts" className="pt-4">
+        <TabsList>
+          <TabsTrigger value="parts">Parts</TabsTrigger>
+          <TabsTrigger value="bom">Bill of Materials</TabsTrigger>
+        </TabsList>
+        <TabsContent value="bom" className="pt-4">
+          <BOMManager />
+        </TabsContent>
+        <TabsContent value="parts">
       <div className="pt-4">
         <div className="flex items-center justify-end mb-6">
 
@@ -356,11 +391,32 @@ const RawMaterialsManagement = () => {
                       id="part_code" 
                       value={newMaterial.part_code} 
                       onChange={(e) => setNewMaterial({...newMaterial, part_code: e.target.value.toUpperCase()})}
-                      placeholder="Enter material code (e.g., B-001, C-002)"
+                      placeholder="Enter part code (e.g., B-001, AP-001, FG-001)"
                       required
                     />
                   </div>
-                  
+
+                  <div className="space-y-2">
+                    <Label htmlFor="source_type">Part Type *</Label>
+                    <Select
+                      value={newMaterial.source_type}
+                      onValueChange={(value) => setNewMaterial({...newMaterial, source_type: value as PartSourceType})}
+                    >
+                      <SelectTrigger id="source_type">
+                        <SelectValue placeholder="Select type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {PART_SOURCE_TYPES.map((t) => (
+                          <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      Purchased parts are bought as they are. Everything else is made here and
+                      needs a bill of materials, which is the tab beside this one.
+                    </p>
+                  </div>
+
                   <div className="space-y-2">
                     <Label htmlFor="category">Part Category *</Label>
                     <Select 
@@ -661,6 +717,17 @@ const RawMaterialsManagement = () => {
                   ))}
                 </SelectContent>
               </Select>
+              <Select value={filterSourceType} onValueChange={setFilterSourceType}>
+                <SelectTrigger className="w-full md:w-[200px]">
+                  <SelectValue placeholder="All Types" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Types</SelectItem>
+                  {PART_SOURCE_TYPES.map((t) => (
+                    <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </CardContent>
         </Card>
@@ -668,7 +735,7 @@ const RawMaterialsManagement = () => {
         {/* Materials Table */}
         <Card>
           <CardHeader>
-            <CardTitle>Raw Materials List</CardTitle>
+            <CardTitle>Parts List</CardTitle>
           </CardHeader>
           <CardContent>
             <Table>
@@ -696,6 +763,7 @@ const RawMaterialsManagement = () => {
                       <SortIcon column="category" />
                     </button>
                   </TableHead>
+                  <TableHead>Type</TableHead>
                   <TableHead>Sourcing</TableHead>
                   <TableHead>Price</TableHead>
                   <TableHead>
@@ -714,14 +782,14 @@ const RawMaterialsManagement = () => {
               <TableBody>
                 {isLoading ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-6">
-                      Loading materials...
+                    <TableCell colSpan={9} className="text-center py-6">
+                      Loading parts...
                     </TableCell>
                   </TableRow>
                 ) : filteredMaterials.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-6 text-muted-foreground">
-                      No materials found. Try adjusting your search or filter.
+                    <TableCell colSpan={9} className="text-center py-6 text-muted-foreground">
+                      No parts found. Try adjusting your search or filter.
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -732,8 +800,17 @@ const RawMaterialsManagement = () => {
                       <TableCell>{material.name}</TableCell>
                       <TableCell>{material.category}</TableCell>
                       <TableCell>
+                        <Badge
+                          variant={(material as any).source_type === "PURCHASED" ? "outline" : "default"}
+                          className="w-fit text-xs whitespace-nowrap"
+                        >
+                          {PART_SOURCE_TYPES.find((t) => t.value === (material as any).source_type)?.label
+                            ?? "Purchased"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
                         <div className="flex flex-col gap-1">
-                          <Badge 
+                          <Badge
                             variant={(material as any).sourcing_type === 'IMPORTED' ? "default" : "secondary"}
                             className="w-fit text-xs"
                           >
@@ -1016,6 +1093,23 @@ const RawMaterialsManagement = () => {
                 />
               </div>
               
+              <div className="space-y-2">
+                <Label htmlFor="edit-source_type">Part Type</Label>
+                <Select
+                  value={newMaterial.source_type}
+                  onValueChange={(value) => setNewMaterial({...newMaterial, source_type: value as PartSourceType})}
+                >
+                  <SelectTrigger id="edit-source_type">
+                    <SelectValue placeholder="Select type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PART_SOURCE_TYPES.map((t) => (
+                      <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="edit-category">Part Category</Label>
                 <Select 
@@ -1303,6 +1397,8 @@ const RawMaterialsManagement = () => {
           </DialogContent>
         </Dialog>
       </div>
+        </TabsContent>
+      </Tabs>
     </DashboardLayout>
   );
 };

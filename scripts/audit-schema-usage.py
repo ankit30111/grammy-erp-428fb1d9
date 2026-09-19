@@ -13,6 +13,7 @@ Finds, without anyone clicking anything:
      no writer, which looks like "no data yet" forever
   8. columns read but never written, on tables the app does write - the writer
      aimed at the wrong column
+  9. components that exist but nothing imports - finished work with no way in
 """
 import json, re, os, sys
 from collections import defaultdict
@@ -286,6 +287,55 @@ for table in sorted(TABLE_WRITTEN - OPAQUE_WRITE):
         findings['col_read_never_written'].append(
             f"{table}.{col} — read by the app, never written by it")
 
+# ---------------------------------------------------------------------------
+# 9. Screens that exist but nothing links to.
+# ---------------------------------------------------------------------------
+# BOMManager.tsx was written, finished and committed, and no route or tab ever
+# imported it. From the inside it looked done; from the app there was no way to
+# reach it, and the report was "I can't see a place where I can create a BOM".
+#
+# This is the same failure the earlier checks catch in the database - one half of
+# a job shipped without the other - only here the missing half is a link rather
+# than a writer. So it is checked the same way: resolve every import in the tree
+# to a real path, and name the component files nothing resolves to. Resolution is
+# by path, not by basename, because two files may share a name and a check that
+# guesses is a check nobody believes.
+ENTRY = {'src/App.tsx', 'src/main.tsx', 'src/vite-env.d.ts'}
+IMPORT = re.compile(r"""(?:from|import)\s*\(?\s*['"]([^'"]+)['"]""")
+EXTS = ('', '.tsx', '.ts', '/index.tsx', '/index.ts')
+ROOT = os.path.dirname(SRC)
+
+def resolve(spec, frm):
+    if spec.startswith('@/'):
+        base = os.path.join(SRC, spec[2:])
+    elif spec.startswith('.'):
+        base = os.path.normpath(os.path.join(os.path.dirname(frm), spec))
+    else:
+        return None
+    for e in EXTS:
+        if os.path.isfile(base + e):
+            return os.path.relpath(base + e, ROOT)
+    return None
+
+imported = set()
+for path in walk():
+    src = open(path, errors='ignore').read()
+    for m in IMPORT.finditer(src):
+        r = resolve(m.group(1), path)
+        if r:
+            imported.add(r)
+
+for path in walk():
+    rel = os.path.relpath(path, ROOT)
+    if rel in ENTRY or not rel.endswith('.tsx'):
+        continue
+    if rel.startswith('src/components/ui/'):
+        continue
+    if rel in imported:
+        continue
+    findings['unreachable_screen'].append(
+        f"{rel} — built, but nothing imports it, so there is no way to open it")
+
 ORDER = [
     ('dead_table',     'QUERIES A TABLE THAT NO LONGER EXISTS'),
     ('dead_rpc',       'CALLS A FUNCTION THAT DOES NOT EXIST'),
@@ -295,6 +345,7 @@ ORDER = [
     ('bad_filter_col', 'FILTERS ON A COLUMN THAT DOES NOT EXIST'),
     ('bad_select_col', 'SELECTS A COLUMN THAT DOES NOT EXIST'),
     ('col_read_never_written', 'COLUMN READ BUT NEVER WRITTEN  (trigger-filled, or is the writer aimed elsewhere?)'),
+    ('unreachable_screen', 'BUILT BUT UNREACHABLE  (no route, tab or parent imports it)'),
 ]
 total = 0
 for key, title in ORDER:
