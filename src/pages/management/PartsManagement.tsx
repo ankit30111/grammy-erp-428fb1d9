@@ -46,15 +46,16 @@ const UNIT_OPTIONS = [
 ];
 
 // Raw Material categories with their prefixes
-// One directory, three kinds of part. The two new prefixes are two letters on
-// purpose. Seventeen single letters are already spoken for in the Part Code 2025
-// master - A B C D E F K L M O P R S T W Y Z - and the nine that are left are the
-// only room there is, so the kinds of part that will never run out of rows should
-// not eat one. AP is not invented here either: the master already carries an
-// "AP - ASSEMBLED PARTS" sheet, so the codes match the sheet Purvashi keeps.
+// One directory, one code shape: a letter, a dash, a number. The seventeen
+// letters below are the ones the Part Code 2025 master already uses; G H I J N Q
+// U V X are free.
+//
+// Sub-assemblies and finished goods belong in this same list and are deliberately
+// NOT in it yet: their letters are not assigned, and a category added here with a
+// provisional prefix would be used within the hour and have to be renumbered
+// afterwards. A part code that has to be renumbered is worse than a part code
+// that cannot be created yet, because it is already on a drawing by then.
 const MATERIAL_CATEGORIES = [
-  { name: "Finished Good", prefix: "FG" },
-  { name: "Assembled Part", prefix: "AP" },
   { name: "Packaging", prefix: "B" },
   { name: "Wire", prefix: "C" },
   { name: "Consumables", prefix: "D" },
@@ -391,7 +392,7 @@ const RawMaterialsManagement = () => {
                       id="part_code" 
                       value={newMaterial.part_code} 
                       onChange={(e) => setNewMaterial({...newMaterial, part_code: e.target.value.toUpperCase()})}
-                      placeholder="Enter part code (e.g., B-001, AP-001, FG-001)"
+                      placeholder="Enter part code (e.g., B-001, P-472, Z-063)"
                       required
                     />
                   </div>
