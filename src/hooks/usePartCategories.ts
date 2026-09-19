@@ -3,9 +3,29 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { PartSourceType } from "@/hooks/useParts";
 
+/**
+ * What the floor calls a kind of part. Semi-finished and sub-assembled are two
+ * different things on the floor and the same thing in the ledger - both are
+ * built here, both hold stock - so the distinction lives here, where a naming
+ * decision can change it without touching stock or planning.
+ */
+export type PartTier = "PURCHASE" | "SEMI_FINISHED" | "SUB_ASSEMBLED" | "FINISHED";
+
+export const PART_TIERS: { value: PartTier; label: string; blurb: string }[] = [
+  { value: "PURCHASE", label: "Purchase Part", blurb: "Bought from a vendor as it is" },
+  { value: "SEMI_FINISHED", label: "Semi-finished Good", blurb: "Built here, stocked, issued and returned" },
+  { value: "SUB_ASSEMBLED", label: "Sub-assembled Good", blurb: "Built here, stocked, used inside other parts" },
+  { value: "FINISHED", label: "Finished Good", blurb: "What gets packed and dispatched" },
+];
+
+export const tierLabel = (tier?: string | null) =>
+  PART_TIERS.find((t) => t.value === tier)?.label ?? tier ?? "";
+
 export interface PartCategory {
   prefix: string;
   name: string;
+  tier: PartTier;
+  /** Derived from tier by the database; never set directly. */
   kind: PartSourceType;
   next_sequence: number;
   is_active: boolean;
@@ -28,7 +48,7 @@ export const usePartCategories = () => {
     queryFn: async (): Promise<PartCategory[]> => {
       const { data, error } = await supabase
         .from("part_categories")
-        .select("prefix, name, kind, next_sequence, is_active")
+        .select("prefix, name, tier, kind, next_sequence, is_active")
         .eq("is_active", true)
         .order("prefix");
       if (error) throw error;
@@ -46,11 +66,14 @@ export const usePartCategories = () => {
   });
 
   const addCategory = useMutation({
-    mutationFn: async (input: { prefix: string; name: string; kind: PartSourceType }) => {
+    mutationFn: async (input: { prefix: string; name: string; tier: PartTier }) => {
+      // tier only. `kind` is a generated column - sending it is an error, and
+      // that is the point: the ledger type cannot be set to disagree with the
+      // tier because there is no way to set it at all.
       const { error } = await supabase.from("part_categories").insert({
         prefix: input.prefix.toUpperCase(),
         name: input.name.trim(),
-        kind: input.kind,
+        tier: input.tier,
       });
       if (error) throw error;
     },

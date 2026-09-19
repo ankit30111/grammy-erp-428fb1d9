@@ -17,8 +17,8 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ChevronsUpDown, Loader2, Save, Search, X } from "lucide-react";
 import { toast } from "sonner";
-import { useParts, PART_SOURCE_TYPES } from "@/hooks/useParts";
-import { usePartCategories } from "@/hooks/usePartCategories";
+import { useParts } from "@/hooks/useParts";
+import { usePartCategories, PART_TIERS } from "@/hooks/usePartCategories";
 import { useBomLines, useBomMutations } from "@/hooks/useBOM";
 
 const MADE_HERE = ["ASSEMBLED_INLINE", "ASSEMBLED_STOCKED", "FINISHED_GOOD"];
@@ -83,6 +83,10 @@ export const BOMBuilder = () => {
 
   const categoryName = (prefix?: string | null) =>
     categories.find((c) => c.prefix === prefix)?.name ?? prefix ?? "";
+  // Filtered by tier, not source_type: semi-finished and sub-assembled are both
+  // ASSEMBLED_STOCKED, so source_type cannot separate them here either.
+  const tierOf = (prefix?: string | null) =>
+    categories.find((c) => c.prefix === prefix)?.tier ?? "PURCHASE";
 
   const candidates = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -93,7 +97,7 @@ export const BOMBuilder = () => {
         if (p.id === parentId) return false;
         if (onlySelected && picked[p.id] === undefined) return false;
         if (filterCategory !== "all" && p.category !== filterCategory) return false;
-        if (filterType !== "all" && (p.source_type ?? "PURCHASED") !== filterType) return false;
+        if (filterType !== "all" && tierOf(p.category) !== filterType) return false;
         if (!q) return true;
         return (
           (p.part_code || "").toLowerCase().includes(q) ||
@@ -101,7 +105,7 @@ export const BOMBuilder = () => {
         );
       })
       .sort((a: any, b: any) => (a.part_code || "").localeCompare(b.part_code || ""));
-  }, [parts, parentId, search, filterCategory, filterType, onlySelected, picked]);
+  }, [parts, parentId, search, filterCategory, filterType, onlySelected, picked, categories]);
 
   const toggle = (partId: string, on: boolean) => {
     setPicked((prev) => {
@@ -252,7 +256,7 @@ export const BOMBuilder = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Types</SelectItem>
-                  {PART_SOURCE_TYPES.map((t) => (
+                  {PART_TIERS.map((t) => (
                     <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
                   ))}
                 </SelectContent>

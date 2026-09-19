@@ -35,6 +35,11 @@ export interface PartInput {
   primaryVendorId?: string;
   specificationFile?: File;
   iqcChecklistFile?: File;
+  // A purchased part is inspected on arrival, so it carries a specification
+  // sheet and an IQC checklist. A part Grammy builds is inspected as it is made,
+  // so it carries a CIR sheet and a PQC checklist instead.
+  cirSheetFile?: File;
+  pqcChecklistFile?: File;
   changesDescription?: string;
 }
 
@@ -97,6 +102,12 @@ export const useParts = () => {
       const iqcChecklistUrl = input.iqcChecklistFile
         ? await uploadDoc("iqc_checklists", input.iqcChecklistFile)
         : null;
+      const cirSheetUrl = input.cirSheetFile
+        ? await uploadDoc("cir_sheets", input.cirSheetFile)
+        : null;
+      const pqcChecklistUrl = input.pqcChecklistFile
+        ? await uploadDoc("pqc_checklists", input.pqcChecklistFile)
+        : null;
 
       const { data: part, error } = await supabase
         .from("parts")
@@ -115,6 +126,8 @@ export const useParts = () => {
           last_price_update: input.unit_price != null ? new Date().toISOString() : null,
           specification_sheet_url: specificationUrl,
           iqc_checklist_url: iqcChecklistUrl,
+          cir_sheet_url: cirSheetUrl,
+          pqc_checklist_url: pqcChecklistUrl,
         })
         .select()
         .single();
@@ -156,6 +169,12 @@ export const useParts = () => {
       const iqcChecklistUrl = input.iqcChecklistFile
         ? await uploadDoc("iqc_checklists", input.iqcChecklistFile, input.id)
         : null;
+      const cirSheetUrl = input.cirSheetFile
+        ? await uploadDoc("cir_sheets", input.cirSheetFile, input.id)
+        : null;
+      const pqcChecklistUrl = input.pqcChecklistFile
+        ? await uploadDoc("pqc_checklists", input.pqcChecklistFile, input.id)
+        : null;
 
       const updateData: Record<string, any> = {
         name: input.name,
@@ -174,6 +193,8 @@ export const useParts = () => {
       if (input.unit_price != null) updateData.last_price_update = new Date().toISOString();
       if (specificationUrl) updateData.specification_sheet_url = specificationUrl;
       if (iqcChecklistUrl) updateData.iqc_checklist_url = iqcChecklistUrl;
+      if (cirSheetUrl) updateData.cir_sheet_url = cirSheetUrl;
+      if (pqcChecklistUrl) updateData.pqc_checklist_url = pqcChecklistUrl;
 
       const { error } = await supabase.from("parts").update(updateData).eq("id", input.id);
       if (error) throw error;

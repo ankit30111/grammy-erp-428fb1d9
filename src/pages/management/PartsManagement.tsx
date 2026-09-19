@@ -36,9 +36,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BOMManager } from "@/components/BOM/BOMManager";
 import { BOMBuilder } from "@/components/BOM/BOMBuilder";
 import { CreatePartDialog } from "@/components/Parts/CreatePartDialog";
-import { usePartCategories } from "@/hooks/usePartCategories";
+import { usePartCategories, PART_TIERS } from "@/hooks/usePartCategories";
 import { useRawMaterials } from "@/hooks/useRawMaterials";
-import { PART_SOURCE_TYPES, type PartSourceType } from "@/hooks/useParts";
+import { type PartSourceType } from "@/hooks/useParts";
 import { useVendors } from "@/hooks/useVendors";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -97,6 +97,14 @@ const RawMaterialsManagement = () => {
   // find. The lookup goes one way now, from prefix to label.
   const categoryName = (prefix?: string | null) =>
     categories.find((c) => c.prefix === prefix)?.name ?? prefix ?? "";
+  // The type shown is the category's tier, not the part's source_type. Semi-
+  // finished and sub-assembled are the same thing to the ledger - both stocked,
+  // both built here - so source_type cannot tell them apart and would label every
+  // semi-finished part "Sub-assembled Good".
+  const partTier = (prefix?: string | null) =>
+    categories.find((c) => c.prefix === prefix)?.tier ?? null;
+  const tierLabelFor = (prefix?: string | null) =>
+    PART_TIERS.find((t) => t.value === partTier(prefix))?.label ?? "Purchase Part";
 
   // Filter materials based on search and category
   const filteredMaterials = rawMaterials.filter(material => {
@@ -108,7 +116,8 @@ const RawMaterialsManagement = () => {
     // otherwise "Purchased" would hide the 2,000-odd parts it is naming.
     const matchesType =
       filterSourceType === "all" ||
-      ((material as any).source_type ?? "PURCHASED") === filterSourceType;
+      (categories.find((c) => c.prefix === material.category)?.tier ?? "PURCHASE") ===
+        filterSourceType;
     return matchesSearch && matchesCategory && matchesType;
   });
 
@@ -176,7 +185,6 @@ const RawMaterialsManagement = () => {
         name: newMaterial.name,
         part_code: newMaterial.part_code,
         category: newMaterial.category,
-        source_type: newMaterial.source_type,
         specification: newMaterial.specification,
         sourcing_type: newMaterial.sourcing_type,
         currency: newMaterial.sourcing_type === 'IMPORTED' ? newMaterial.currency : undefined,
@@ -248,7 +256,6 @@ const RawMaterialsManagement = () => {
         name: newMaterial.name,
         part_code: newMaterial.part_code,
         category: newMaterial.category,
-        source_type: newMaterial.source_type,
         specification: newMaterial.specification,
         sourcing_type: newMaterial.sourcing_type,
         currency: newMaterial.sourcing_type === 'IMPORTED' ? newMaterial.currency : undefined,
@@ -411,7 +418,7 @@ const RawMaterialsManagement = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Types</SelectItem>
-                  {PART_SOURCE_TYPES.map((t) => (
+                  {PART_TIERS.map((t) => (
                     <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
                   ))}
                 </SelectContent>
@@ -489,11 +496,10 @@ const RawMaterialsManagement = () => {
                       <TableCell>{categoryName(material.category)}</TableCell>
                       <TableCell>
                         <Badge
-                          variant={(material as any).source_type === "PURCHASED" ? "outline" : "default"}
+                          variant={partTier(material.category) === "PURCHASE" ? "outline" : "default"}
                           className="w-fit text-xs whitespace-nowrap"
                         >
-                          {PART_SOURCE_TYPES.find((t) => t.value === (material as any).source_type)?.label
-                            ?? "Purchased"}
+                          {tierLabelFor(material.category)}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -781,21 +787,15 @@ const RawMaterialsManagement = () => {
                 />
               </div>
               
+              {/* The part type is not editable here any more. It is derived from
+                  the category by the database, so a select beside the category
+                  would be a second writer for one fact - and the two could be set
+                  to disagree. Change the category and the type follows. */}
               <div className="space-y-2">
-                <Label htmlFor="edit-source_type">Part Type</Label>
-                <Select
-                  value={newMaterial.source_type}
-                  onValueChange={(value) => setNewMaterial({...newMaterial, source_type: value as PartSourceType})}
-                >
-                  <SelectTrigger id="edit-source_type">
-                    <SelectValue placeholder="Select type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {PART_SOURCE_TYPES.map((t) => (
-                      <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label>Part Type</Label>
+                <div className="flex h-10 items-center rounded-md border bg-muted/40 px-3 text-sm">
+                  {tierLabelFor(newMaterial.category)}
+                </div>
               </div>
 
               <div className="space-y-2">

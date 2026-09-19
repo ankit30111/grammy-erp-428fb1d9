@@ -3537,28 +3537,31 @@ export type Database = {
         Row: {
           created_at: string
           is_active: boolean
-          kind: Database["public"]["Enums"]["part_source_type"]
+          kind: Database["public"]["Enums"]["part_source_type"] | null
           name: string
           next_sequence: number
           prefix: string
+          tier: string
           updated_at: string
         }
         Insert: {
           created_at?: string
           is_active?: boolean
-          kind: Database["public"]["Enums"]["part_source_type"]
+          kind?: Database["public"]["Enums"]["part_source_type"] | null
           name: string
           next_sequence?: number
           prefix: string
+          tier: string
           updated_at?: string
         }
         Update: {
           created_at?: string
           is_active?: boolean
-          kind?: Database["public"]["Enums"]["part_source_type"]
+          kind?: Database["public"]["Enums"]["part_source_type"] | null
           name?: string
           next_sequence?: number
           prefix?: string
+          tier?: string
           updated_at?: string
         }
         Relationships: []
@@ -3670,6 +3673,7 @@ export type Database = {
           category: string
           cbm_per_unit: number | null
           ccl_url: string | null
+          cir_sheet_url: string | null
           created_at: string
           created_by: string | null
           crs_url: string | null
@@ -3701,6 +3705,7 @@ export type Database = {
           category: string
           cbm_per_unit?: number | null
           ccl_url?: string | null
+          cir_sheet_url?: string | null
           created_at?: string
           created_by?: string | null
           crs_url?: string | null
@@ -3732,6 +3737,7 @@ export type Database = {
           category?: string
           cbm_per_unit?: number | null
           ccl_url?: string | null
+          cir_sheet_url?: string | null
           created_at?: string
           created_by?: string | null
           crs_url?: string | null
