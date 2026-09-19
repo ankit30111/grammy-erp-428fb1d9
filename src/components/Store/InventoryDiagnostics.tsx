@@ -32,10 +32,12 @@ import { useToast } from "@/hooks/use-toast";
 
 interface StatementRow {
   seq: number;
-  section: "RECEIVED" | "MOVEMENT" | "WHERE" | "CHECK";
+  section: "FLOW" | "ELSEWHERE" | "CHECK";
+  event_at: string | null;
   label: string;
   department: string | null;
   quantity: number;
+  running_balance: number | null;
   is_unexplained: boolean;
   note: string | null;
 }
@@ -83,59 +85,19 @@ const InventoryDiagnostics = () => {
   };
 
   const rows = data?.rows ?? [];
-  const received = rows.find((r) => r.section === "RECEIVED");
-  const movements = rows.filter((r) => r.section === "MOVEMENT");
-  const where = rows.filter((r) => r.section === "WHERE");
+  const flow = rows.filter((r) => r.section === "FLOW");
+  const elsewhere = rows.filter((r) => r.section === "ELSEWHERE");
   const check = rows.find((r) => r.section === "CHECK");
-  const balances = check && received && Number(check.quantity) === Number(received.quantity);
+  const received = flow.length > 0 ? Number(flow[0].running_balance ?? 0) : 0;
+  const balances = check ? check.note?.startsWith("Balances") ?? false : false;
 
-  const section = (title: string, sub: string, items: StatementRow[]) => (
-    <div className="space-y-2">
-      <div>
-        <h4 className="font-semibold">{title}</h4>
-        <p className="text-xs text-muted-foreground">{sub}</p>
-      </div>
-      <div className="rounded-lg border overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>What</TableHead>
-              <TableHead>Department</TableHead>
-              <TableHead className="text-right">Quantity</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {items.map((r) => (
-              <TableRow key={r.seq} className={r.is_unexplained ? "bg-destructive/5" : undefined}>
-                <TableCell>
-                  <span className={r.is_unexplained ? "font-medium text-destructive" : ""}>
-                    {r.label}
-                  </span>
-                  {r.note && (
-                    <span className="block text-xs text-muted-foreground">{r.note}</span>
-                  )}
-                </TableCell>
-                <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
-                  {r.department ?? "—"}
-                </TableCell>
-                <TableCell
-                  className={`text-right font-mono ${
-                    r.is_unexplained
-                      ? "text-destructive font-semibold"
-                      : Number(r.quantity) < 0
-                      ? "text-amber-600"
-                      : ""
-                  }`}
-                >
-                  {fmt(r.quantity)}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
-    </div>
-  );
+  const when = (iso: string | null) =>
+    iso ? new Date(iso).toLocaleString(undefined, {
+      day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit",
+    }) : "";
+
+  const signed = (n: number) =>
+    `${Number(n) > 0 ? "+" : ""}${Number(n).toLocaleString()}`;
 
   return (
     <Card>
@@ -183,32 +145,137 @@ const InventoryDiagnostics = () => {
               </div>
             ) : (
               <>
-                {received && (
-                  <div className="rounded-lg border p-4">
-                    <div className="text-sm text-muted-foreground">
-                      Received into this plant
-                    </div>
-                    <div className="text-3xl font-semibold font-mono">
-                      {fmt(received.quantity)}{" "}
-                      <span className="text-base font-normal text-muted-foreground">
-                        {data.part.uom}
-                      </span>
-                    </div>
+                {/*
+                  The running column is the point of this screen. Reading down it
+                  answers "what was the number after each step, and whose hands was
+                  it in" - which is the question an audit asks. A list of movements
+                  with a separate closing balance does not answer it.
+                */}
+                <div className="rounded-lg border p-4">
+                  <div className="text-sm text-muted-foreground">
+                    Received into this plant
                   </div>
-                )}
+                  <div className="text-3xl font-semibold font-mono">
+                    {fmt(received)}{" "}
+                    <span className="text-base font-normal text-muted-foreground">
+                      {data.part.uom}
+                    </span>
+                  </div>
+                </div>
 
-                {section(
-                  "What happened to it",
-                  "In order. A line that moved between locations did not change the total held.",
-                  movements
-                )}
+                <div className="space-y-2">
+                  <div>
+                    <h4 className="font-semibold">How it got to where it is</h4>
+                    <p className="text-xs text-muted-foreground">
+                      Every movement in order, with the running total after each one.
+                      The column ends at what is in the main store now.
+                    </p>
+                  </div>
+                  <div className="rounded-lg border overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="whitespace-nowrap">When</TableHead>
+                          <TableHead>What happened</TableHead>
+                          <TableHead>Department</TableHead>
+                          <TableHead className="text-right">Change</TableHead>
+                          <TableHead className="text-right">Running total</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {flow.map((r) => (
+                          <TableRow
+                            key={r.seq}
+                            className={r.is_unexplained ? "bg-destructive/5" : undefined}
+                          >
+                            <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
+                              {when(r.event_at)}
+                            </TableCell>
+                            <TableCell>
+                              <span className={r.is_unexplained ? "font-medium text-destructive" : ""}>
+                                {r.label}
+                              </span>
+                              {r.note && (
+                                <span className="block text-xs text-muted-foreground">
+                                  {r.note}
+                                </span>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
+                              {r.department ?? "—"}
+                            </TableCell>
+                            <TableCell
+                              className={`text-right font-mono ${
+                                r.is_unexplained
+                                  ? "text-destructive font-semibold"
+                                  : Number(r.quantity) < 0
+                                  ? "text-amber-600"
+                                  : Number(r.quantity) > 0
+                                  ? "text-green-700"
+                                  : "text-muted-foreground"
+                              }`}
+                            >
+                              {Number(r.quantity) === 0 ? "—" : signed(r.quantity)}
+                            </TableCell>
+                            <TableCell className="text-right font-mono font-semibold">
+                              {fmt(r.running_balance ?? 0)}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
 
-                {section(
-                  "Where it is now",
-                  "These add up to everything received — that is the check below.",
-                  where
-                )}
-
+                <div className="space-y-2">
+                  <div>
+                    <h4 className="font-semibold">Where all of it is</h4>
+                    <p className="text-xs text-muted-foreground">
+                      Not deductions from the column above — the other places the same
+                      material went. These add up to everything received.
+                    </p>
+                  </div>
+                  <div className="rounded-lg border overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Where</TableHead>
+                          <TableHead>Department</TableHead>
+                          <TableHead className="text-right">Quantity</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {elsewhere.map((r) => (
+                          <TableRow
+                            key={r.seq}
+                            className={r.is_unexplained ? "bg-destructive/5" : undefined}
+                          >
+                            <TableCell>
+                              <span className={r.is_unexplained ? "font-medium text-destructive" : ""}>
+                                {r.label}
+                              </span>
+                              {r.note && (
+                                <span className="block text-xs text-muted-foreground">
+                                  {r.note}
+                                </span>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
+                              {r.department ?? "—"}
+                            </TableCell>
+                            <TableCell
+                              className={`text-right font-mono ${
+                                r.is_unexplained ? "text-destructive font-semibold" : ""
+                              }`}
+                            >
+                              {fmt(r.quantity)}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
                 {check && (
                   <div
                     className={`rounded-lg border p-4 flex items-start gap-3 ${
@@ -225,14 +292,14 @@ const InventoryDiagnostics = () => {
                     <div>
                       <div className="font-medium">
                         {balances
-                          ? `Every one of the ${fmt(received!.quantity)} is accounted for`
+                          ? `Every one of the ${fmt(received)} is accounted for`
                           : "This does not balance"}
                       </div>
                       <p className="text-sm text-muted-foreground">{check.note}</p>
                       {!balances && (
                         <p className="text-sm mt-1">
                           Accounted for {fmt(check.quantity)} against{" "}
-                          {fmt(received?.quantity ?? 0)} received. The difference is
+                          {fmt(received)} received. The difference is
                           movement this statement does not yet classify — not missing
                           stock.
                         </p>
