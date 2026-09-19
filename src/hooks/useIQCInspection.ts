@@ -4,6 +4,8 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { MOVEMENT_TYPES } from '@/constants/movementTypes';
 import { useToast } from '@/hooks/use-toast';
+import { IQC_OUTCOME, type IqcVerdict } from '@/constants/iqcOutcome';
+import type { Database } from '@/integrations/supabase/types';
 import {
   getStockLocationId,
   hasLedgerEntry,
@@ -12,15 +14,14 @@ import {
 } from '@/utils/stockLedger';
 
 /**
- * The verdict vocabulary must match the iqc_outcome enum exactly:
- * PENDING | ACCEPTED | REJECTED | PARTIAL.
- *
- * It previously used APPROVED / REJECTED / SEGREGATED. APPROVED and SEGREGATED
- * are not members of that enum, so submitting an inspection was rejected by the
- * database. SEGREGATED - part accepted, part rejected - is PARTIAL.
+ * The verdict vocabulary comes from `iqc_outcome` in the generated database
+ * types, so the compiler checks it against the live enum instead of a copy of it
+ * that can drift. It previously used APPROVED / REJECTED / SEGREGATED, and the
+ * Pass radio went on saying APPROVED for months after this line was corrected,
+ * because a hand-written union in two files is two places for one fact.
  */
 export interface InspectionResult {
-  status: 'ACCEPTED' | 'REJECTED' | 'PARTIAL';
+  status: IqcVerdict;
   remarks: string;
   acceptedQuantity: number;
   rejectedQuantity: number;
@@ -43,9 +44,9 @@ export const useIQCInspection = (grn: any) => {
     
     const initialResults: Record<string, InspectionResult> = {};
     grn.grn_items.forEach((item: any) => {
-      if (!item.iqc_outcome || item.iqc_outcome === 'PENDING') {
+      if (!item.iqc_outcome || item.iqc_outcome === IQC_OUTCOME.PENDING) {
         initialResults[item.id] = {
-          status: 'ACCEPTED',
+          status: IQC_OUTCOME.ACCEPTED,
           remarks: '',
           acceptedQuantity: item.received_quantity || 0,
           rejectedQuantity: 0,
@@ -190,7 +191,11 @@ export const useIQCInspection = (grn: any) => {
             iqc_report_url: reportUrl || null
           });
 
-          const updateData: any = {
+          // Not `any`. Typing this as the table's own Update row is what makes
+          // the compiler check iqc_outcome against the live enum - with `any`,
+          // any string at all was acceptable here, which is how "APPROVED"
+          // travelled all the way to Postgres.
+          const updateData: Database['public']['Tables']['grn_items']['Update'] = {
             iqc_outcome: result.status,
             iqc_at: new Date().toISOString(),
             iqc_by: user.id,
@@ -324,21 +329,30 @@ export const useIQCInspection = (grn: any) => {
     },
     onError: (error: any) => {
       console.error("Error submitting IQC inspection:", error);
-      
-      let errorMessage = "Failed to save inspection results";
-      if (error.message.includes("upload")) {
-        errorMessage = "File upload failed. Please check your internet connection and try again.";
-      } else if (error.message.includes("validation")) {
-        errorMessage = "Please fix the validation errors before submitting.";
-      } else if (error.message.includes("Failed to update")) {
-        errorMessage = "Database update failed. Please try again.";
-      } else if (error.message.includes("User not authenticated")) {
-        errorMessage = "Authentication required. Please log in and try again.";
-      }
-      
+
+      // The reason is shown, not replaced.
+      //
+      // This used to match the thrown message against a list of phrases and
+      // print a sentence of its own. Every failure of the grn_items write -
+      // whatever Postgres actually said - came out as "Database update failed.
+      // Please try again.", so the one useful fact was discarded at the last
+      // step. Postgres had said `invalid input value for enum iqc_outcome:
+      // "APPROVED"`, which names the bug outright; the screen said try again,
+      // and trying again could never work.
+      //
+      // Only the two cases where the person can genuinely act differently keep a
+      // sentence of their own. Everything else shows what the database said.
+      const raw = String(error?.message ?? "Unknown error");
+      const description =
+        raw.includes("File upload failed")
+          ? "The IQC report could not be uploaded. Check the connection and try again."
+          : raw.includes("User not authenticated")
+            ? "Your session has expired. Sign in again and retry."
+            : raw.replace(/^Failed to update item [0-9a-f-]+: /, "");
+
       toast({
         title: "Inspection Failed",
-        description: errorMessage,
+        description,
         variant: "destructive",
       });
     },

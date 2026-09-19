@@ -9,6 +9,24 @@ import { Button } from "@/components/ui/button";
 import { Container, useContainerMaterials } from "@/hooks/useContainers";
 import { LDBService } from "@/utils/LDBService";
 
+import { Constants } from "@/integrations/supabase/types";
+import type { Database } from "@/integrations/supabase/types";
+
+type ContainerStatus = Database["public"]["Enums"]["container_status"];
+
+const CONTAINER_STATUSES = Constants.public.Enums.container_status;
+
+const CONTAINER_STATUS_LABEL: Record<ContainerStatus, string> = {
+  ORDERED: "Ordered",
+  LOADED: "Loaded",
+  SHIPPED: "Shipped",
+  IN_TRANSIT: "In Transit",
+  INDIA_CUSTOM: "At Indian Customs",
+  ARRIVED: "Arrived",
+  AT_FACTORY: "At Factory",
+};
+
+
 interface ContainerModelsViewProps {
   containers: Container[];
 }
@@ -256,12 +274,17 @@ export default function ContainerModelsView({ containers }: ContainerModelsViewP
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
+              {/* Built from the container_status enum itself. The list used to be
+                  typed out by hand and three of its five entries - INDIAN_DOCK,
+                  IN_TRAIN, DISPATCHED - are not statuses any container can hold,
+                  so choosing one filtered the list down to nothing and looked
+                  like "no containers at that stage". */}
               <SelectItem value="all">All Statuses</SelectItem>
-              <SelectItem value="IN_TRANSIT">In Transit</SelectItem>
-              <SelectItem value="INDIAN_DOCK">At Indian Dock</SelectItem>
-              <SelectItem value="IN_TRAIN">In Train</SelectItem>
-              <SelectItem value="DISPATCHED">Dispatched</SelectItem>
-              <SelectItem value="ARRIVED">Arrived</SelectItem>
+              {CONTAINER_STATUSES.map((status) => (
+                <SelectItem key={status} value={status}>
+                  {CONTAINER_STATUS_LABEL[status]}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
