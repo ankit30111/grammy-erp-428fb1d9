@@ -168,7 +168,6 @@ export default function EnhancedScheduledProduction({
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
-              <Package className="h-5 w-5" />
               <span>Voucher Details: {voucherDetails.voucherNumber} - {voucherDetails.modelName}</span>
             </CardTitle>
           </CardHeader>

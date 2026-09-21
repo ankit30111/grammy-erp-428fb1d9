@@ -112,7 +112,6 @@ const RnD = () => {
           <Card className="border-dashed">
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-muted-foreground">
-                <Package className="h-5 w-5" />
                 <span>Pre-Existing Product</span>
               </CardTitle>
             </CardHeader>

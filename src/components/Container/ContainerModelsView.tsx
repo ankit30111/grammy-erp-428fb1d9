@@ -310,7 +310,6 @@ export default function ContainerModelsView({ containers }: ContainerModelsViewP
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
-            <Package className="h-5 w-5" />
             <span>Model Delivery Tracking</span>
           </CardTitle>
           <CardDescription>

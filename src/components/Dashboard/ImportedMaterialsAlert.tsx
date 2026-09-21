@@ -94,7 +94,6 @@ const ImportedMaterialsAlert = () => {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Package className="h-5 w-5" />
             Imported Materials Alerts
           </CardTitle>
         </CardHeader>
@@ -110,7 +109,6 @@ const ImportedMaterialsAlert = () => {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Package className="h-5 w-5 text-green-500" />
             Imported Materials Status
           </CardTitle>
         </CardHeader>
@@ -127,7 +125,6 @@ const ImportedMaterialsAlert = () => {
     <Card className="border-orange-200">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <AlertTriangle className="h-5 w-5 text-orange-500" />
           Imported Materials Requiring Purchase Orders
         </CardTitle>
       </CardHeader>

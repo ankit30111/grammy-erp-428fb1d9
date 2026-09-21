@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { TableEmpty } from "@/components/ui/table-state";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Truck, FileText, Package } from "lucide-react";
@@ -122,7 +123,6 @@ const SpareDispatch = () => {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Truck className="h-5 w-5" />
             Packed Spare Orders Ready for Dispatch
           </CardTitle>
         </CardHeader>
@@ -139,7 +139,13 @@ const SpareDispatch = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {packedOrders.map((order) => (
+              {packedOrders.length === 0 ? (
+                <TableEmpty
+                  columns={6}
+                  message="Nothing packed and waiting"
+                  hint="Spare orders appear here once the store has packed them."
+                />
+              ) : packedOrders.map((order) => (
                 <TableRow key={order.id}>
                   <TableCell className="font-mono">{order.spare_order_number}</TableCell>
                   <TableCell>{order.customers.name}</TableCell>

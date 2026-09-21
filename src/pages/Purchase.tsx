@@ -288,8 +288,7 @@ const Purchase = () => {
             {Object.entries(materialsByVendor).map(([vendor, vendorMaterials]) => (
               <Card key={vendor}>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Package className="h-5 w-5" />
+                  <CardTitle>
                     {vendor}
                     <Badge variant="destructive">{vendorMaterials.length} shortages</Badge>
                   </CardTitle>
@@ -357,8 +356,7 @@ const Purchase = () => {
         {!projections?.length && (
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <ShoppingCart className="h-5 w-5 text-primary" />
+              <CardTitle>
                 Getting Started
               </CardTitle>
             </CardHeader>

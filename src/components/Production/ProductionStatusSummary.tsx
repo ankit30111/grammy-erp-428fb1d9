@@ -89,8 +89,7 @@ const ProductionStatusSummary = ({
           {/* Overall Progress */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Package className="h-5 w-5" />
+              <CardTitle>
                 Overall Production Progress
               </CardTitle>
             </CardHeader>
@@ -158,8 +157,7 @@ const ProductionStatusSummary = ({
           {hourlyData.length > 0 && (
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Clock className="h-5 w-5" />
+                <CardTitle>
                   Hourly Production Timeline
                 </CardTitle>
               </CardHeader>

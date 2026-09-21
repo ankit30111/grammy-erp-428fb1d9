@@ -15,7 +15,6 @@ const MaterialShortages = ({ shortages, onCreatePO }: MaterialShortagesProps) =>
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <AlertTriangle className="h-5 w-5 text-orange-600" />
           Material Shortages
           <Badge variant={shortages.some((s) => s.shortage > 0) ? "destructive" : "secondary"}>
             {shortages.filter((s) => s.shortage > 0).length} short

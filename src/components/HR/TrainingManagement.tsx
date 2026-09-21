@@ -227,7 +227,7 @@ export function TrainingManagement() {
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle>
               <BookOpen className="h-5 w-5" />
               Training Programs
             </CardTitle>
@@ -261,8 +261,7 @@ export function TrainingManagement() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5" />
+            <CardTitle>
               Training Enrollments
             </CardTitle>
             <CardDescription>Employee training progress</CardDescription>

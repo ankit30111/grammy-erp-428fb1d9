@@ -238,8 +238,7 @@ const PlanningEnhanced: React.FC = () => {
             {/* Unscheduled Projections */}
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Package className="h-5 w-5" />
+                <CardTitle>
                   Unscheduled Projections
                 </CardTitle>
               </CardHeader>
@@ -278,7 +277,7 @@ const PlanningEnhanced: React.FC = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
+                  <CardTitle>
                     <CalendarIcon className="h-5 w-5" />
                     Select Production Date
                   </CardTitle>
@@ -296,8 +295,7 @@ const PlanningEnhanced: React.FC = () => {
 
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Factory className="h-5 w-5" />
+                  <CardTitle>
                     Schedule Production
                   </CardTitle>
                 </CardHeader>

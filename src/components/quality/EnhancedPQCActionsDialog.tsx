@@ -257,7 +257,7 @@ const EnhancedPQCActionsDialog = ({ productionOrderId, isOpen, onClose }: Enhanc
           <TabsContent value="pqc-report">
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
+                <CardTitle>
                   <FileUp className="h-5 w-5" />
                   Upload PQC Report
                 </CardTitle>
@@ -317,8 +317,7 @@ const EnhancedPQCActionsDialog = ({ productionOrderId, isOpen, onClose }: Enhanc
           <TabsContent value="line-rejection">
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <AlertTriangle className="h-5 w-5" />
+                <CardTitle>
                   Line Rejection Entry
                 </CardTitle>
               </CardHeader>

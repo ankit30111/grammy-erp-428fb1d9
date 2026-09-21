@@ -66,163 +66,6 @@
    "distinct_hardcoded": 0
   },
   {
-   "route": "/dash",
-   "component": "DashDashboard",
-   "file": "src/pages/dash/DashDashboard.tsx",
-   "nav": "DASH Brand",
-   "lines": 169,
-   "patterns": [
-    "list:cards",
-    "shell:none",
-    "table:raw",
-    "title:CardTitle",
-    "title:PageHeader"
-   ],
-   "hardcoded_colours": 11,
-   "distinct_hardcoded": 9
-  },
-  {
-   "route": "/dash/customers",
-   "component": "DashCustomers",
-   "file": "src/pages/dash/DashCustomers.tsx",
-   "nav": null,
-   "lines": 170,
-   "patterns": [
-    "shell:none",
-    "title:PageHeader"
-   ],
-   "hardcoded_colours": 0,
-   "distinct_hardcoded": 0
-  },
-  {
-   "route": "/dash/factory-orders",
-   "component": "DashFactoryOrders",
-   "file": "src/pages/dash/DashFactoryOrders.tsx",
-   "nav": null,
-   "lines": 150,
-   "patterns": [
-    "badge",
-    "dialog:Dialog",
-    "filter:Input-search",
-    "filter:Select",
-    "list:cards",
-    "loading:text",
-    "shell:none",
-    "table:shadcn",
-    "title:PageHeader"
-   ],
-   "hardcoded_colours": 0,
-   "distinct_hardcoded": 0
-  },
-  {
-   "route": "/dash/inventory",
-   "component": "DashInventory",
-   "file": "src/pages/dash/DashInventory.tsx",
-   "nav": null,
-   "lines": 139,
-   "patterns": [
-    "badge",
-    "filter:Input-search",
-    "list:cards",
-    "loading:text",
-    "shell:none",
-    "table:shadcn",
-    "title:PageHeader"
-   ],
-   "hardcoded_colours": 0,
-   "distinct_hardcoded": 0
-  },
-  {
-   "route": "/dash/products",
-   "component": "DashProducts",
-   "file": "src/pages/dash/DashProducts.tsx",
-   "nav": null,
-   "lines": 179,
-   "patterns": [
-    "list:cards",
-    "loading:spinner",
-    "shell:none",
-    "title:PageHeader"
-   ],
-   "hardcoded_colours": 0,
-   "distinct_hardcoded": 0
-  },
-  {
-   "route": "/dash/sales",
-   "component": "DashSales",
-   "file": "src/pages/dash/DashSales.tsx",
-   "nav": null,
-   "lines": 203,
-   "patterns": [
-    "badge",
-    "dialog:Dialog",
-    "filter:Input-search",
-    "filter:Select",
-    "list:cards",
-    "loading:text",
-    "shell:none",
-    "table:shadcn",
-    "title:PageHeader"
-   ],
-   "hardcoded_colours": 0,
-   "distinct_hardcoded": 0
-  },
-  {
-   "route": "/dash/service",
-   "component": "DashService",
-   "file": "src/pages/dash/DashService.tsx",
-   "nav": null,
-   "lines": 121,
-   "patterns": [
-    "badge",
-    "dialog:Dialog",
-    "filter:Input-search",
-    "filter:Select",
-    "list:cards",
-    "loading:text",
-    "shell:none",
-    "table:shadcn",
-    "title:PageHeader"
-   ],
-   "hardcoded_colours": 0,
-   "distinct_hardcoded": 0
-  },
-  {
-   "route": "/dash/spares",
-   "component": "DashSpares",
-   "file": "src/pages/dash/DashSpares.tsx",
-   "nav": null,
-   "lines": 128,
-   "patterns": [
-    "badge",
-    "dialog:Dialog",
-    "filter:Input-search",
-    "list:cards",
-    "loading:text",
-    "shell:none",
-    "table:shadcn",
-    "title:PageHeader"
-   ],
-   "hardcoded_colours": 0,
-   "distinct_hardcoded": 0
-  },
-  {
-   "route": "/dash/tracking",
-   "component": "DashOrderTracking",
-   "file": "src/pages/dash/DashOrderTracking.tsx",
-   "nav": null,
-   "lines": 92,
-   "patterns": [
-    "badge",
-    "list:cards",
-    "shell:none",
-    "title:CardTitle",
-    "title:PageHeader"
-   ],
-   "hardcoded_colours": 6,
-   "distinct_hardcoded": 6
-  },
-  {
    "route": "/dashboard",
    "component": "Index",
    "file": "src/pages/Index.tsx",
@@ -242,7 +85,7 @@
    "component": "PPCDashboard",
    "file": "src/pages/dashboards/PPCDashboard.tsx",
    "nav": "PPC",
-   "lines": 214,
+   "lines": 213,
    "patterns": [
     "list:cards",
     "shell:DashboardLayout",
@@ -250,8 +93,8 @@
     "title:PageHeader",
     "toast:use-toast"
    ],
-   "hardcoded_colours": 4,
-   "distinct_hardcoded": 4
+   "hardcoded_colours": 3,
+   "distinct_hardcoded": 3
   },
   {
    "route": "/dashboard/ppc/serial-numbers",
@@ -469,7 +312,7 @@
    "component": "PlanningEnhanced",
    "file": "src/pages/PlanningEnhanced.tsx",
    "nav": null,
-   "lines": 495,
+   "lines": 493,
    "patterns": [
     "badge",
     "dialog:Dialog",
@@ -521,7 +364,7 @@
    "component": "Purchase",
    "file": "src/pages/Purchase.tsx",
    "nav": "Purchase",
-   "lines": 383,
+   "lines": 381,
    "patterns": [
     "badge",
     "dialog:Dialog",
@@ -569,7 +412,7 @@
    "component": "CAPA",
    "file": "src/pages/quality/CAPA.tsx",
    "nav": null,
-   "lines": 744,
+   "lines": 742,
    "patterns": [
     "badge",
     "filter:Input-search",
@@ -580,7 +423,7 @@
     "title:PageHeader",
     "toast:use-toast"
    ],
-   "hardcoded_colours": 21,
+   "hardcoded_colours": 19,
    "distinct_hardcoded": 8
   },
   {
@@ -643,7 +486,7 @@
    "component": "RnD",
    "file": "src/pages/RnD.tsx",
    "nav": "R&D",
-   "lines": 175,
+   "lines": 174,
    "patterns": [
     "badge",
     "list:cards",
@@ -659,7 +502,7 @@
    "component": "NPD",
    "file": "src/pages/rnd/NPD.tsx",
    "nav": null,
-   "lines": 390,
+   "lines": 389,
    "patterns": [
     "badge",
     "dialog:Dialog",
@@ -727,7 +570,7 @@
    "component": "SpareOrders",
    "file": "src/pages/SpareOrders.tsx",
    "nav": "Spare Orders",
-   "lines": 417,
+   "lines": 416,
    "patterns": [
     "badge",
     "dialog:Dialog",
@@ -822,26 +665,6 @@
    ]
   },
   {
-   "shape": "NO SHELL + PageHeader + table",
-   "count": 5,
-   "routes": [
-    "/dash/factory-orders",
-    "/dash/inventory",
-    "/dash/sales",
-    "/dash/service",
-    "/dash/spares"
-   ]
-  },
-  {
-   "shape": "NO SHELL + PageHeader + cards",
-   "count": 3,
-   "routes": [
-    "/dash/customers",
-    "/dash/products",
-    "/dash/tracking"
-   ]
-  },
-  {
    "shape": "NO SHELL + raw heading + cards",
    "count": 1,
    "routes": [
@@ -853,13 +676,6 @@
    "count": 1,
    "routes": [
     "/"
-   ]
-  },
-  {
-   "shape": "NO SHELL + PageHeader + raw <table>",
-   "count": 1,
-   "routes": [
-    "/dash"
    ]
   },
   {
@@ -878,11 +694,11 @@
   }
  ],
  "totals": {
-  "routed_pages": 46,
-  "no_shell": 11,
+  "routed_pages": 37,
+  "no_shell": 2,
   "no_page_header": 3,
-  "raw_tables": 2,
-  "hardcoded_colour_uses": 176,
+  "raw_tables": 1,
+  "hardcoded_colour_uses": 156,
   "both_toasts": 0
  }
 }

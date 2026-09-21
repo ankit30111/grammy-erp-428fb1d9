@@ -236,7 +236,6 @@ const MaterialRequests = () => {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="flex items-center gap-2">
-            <AlertTriangle className="h-5 w-5" />
             Material Requests ({materialRequests.length})
             <Badge variant="outline">Real-time Updates</Badge>
           </CardTitle>

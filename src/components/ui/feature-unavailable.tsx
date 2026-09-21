@@ -19,7 +19,6 @@ export const FeatureUnavailable = ({ title, droppedTables, detail }: FeatureUnav
   <Card className="border-amber-200 bg-amber-50/50">
     <CardHeader>
       <CardTitle className="flex items-center gap-2 text-amber-900">
-        <AlertTriangle className="h-5 w-5" />
         {title} — not available after the rebuild
       </CardTitle>
       <CardDescription className="text-amber-800">

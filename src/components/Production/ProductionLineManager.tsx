@@ -291,7 +291,6 @@ const ProductionLineManager = ({ productionOrderId }: ProductionLineManagerProps
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Factory className="h-5 w-5" />
               {sectionName}
               <Badge variant="secondary">{materials.length} materials sent</Badge>
             </div>

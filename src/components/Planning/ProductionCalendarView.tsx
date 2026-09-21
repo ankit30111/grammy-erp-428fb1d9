@@ -59,7 +59,6 @@ export const ProductionCalendarView = ({ selectedDate, onDateSelect }: Productio
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Package className="h-5 w-5" />
             Scheduled Productions for {format(selectedDate, "PPP")}
           </CardTitle>
         </CardHeader>

@@ -280,7 +280,6 @@ const LineRejectionManager = () => {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <AlertTriangle className="h-5 w-5" />
             Line Rejections from Production
           </CardTitle>
         </CardHeader>

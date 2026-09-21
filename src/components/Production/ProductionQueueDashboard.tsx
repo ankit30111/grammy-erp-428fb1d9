@@ -66,7 +66,6 @@ const ProductionQueueDashboard = () => {
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Factory className="h-5 w-5" />
               {line.name}
             </div>
             <Badge variant={isIdle ? "secondary" : ongoing ? "default" : "outline"}>
@@ -138,7 +137,6 @@ const ProductionQueueDashboard = () => {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Factory className="h-5 w-5" />
             Production Line Status & Queue
           </CardTitle>
         </CardHeader>

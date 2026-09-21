@@ -153,7 +153,6 @@ const PPC = () => {
               <Card className="hover:shadow-lg transition-shadow cursor-pointer">
                 <CardHeader className="pb-3">
                   <CardTitle className="flex items-center gap-2 text-lg">
-                    <ShoppingCart className="h-5 w-5 text-green-600" />
                     Purchase Department
                   </CardTitle>
                 </CardHeader>
@@ -193,7 +192,6 @@ const PPC = () => {
               <Card className="hover:shadow-lg transition-shadow cursor-pointer">
                 <CardHeader className="pb-3">
                   <CardTitle className="flex items-center gap-2 text-lg">
-                    <Package className="h-5 w-5 text-orange-600" />
                     GRN Management
                   </CardTitle>
                 </CardHeader>
@@ -218,7 +216,6 @@ const PPC = () => {
               <Card className="hover:shadow-lg transition-shadow cursor-pointer">
                 <CardHeader className="pb-3">
                   <CardTitle className="flex items-center gap-2 text-lg">
-                    <Truck className="h-5 w-5 text-purple-600" />
                     Container Tracking
                   </CardTitle>
                 </CardHeader>
@@ -257,7 +254,7 @@ const PPC = () => {
             {/* Quick Access Section */}
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
+                <CardTitle>
                   <ExternalLink className="h-5 w-5 text-blue-600" />
                   Quick Access
                 </CardTitle>
@@ -356,8 +353,7 @@ const PPC = () => {
             {/* Material Shortages Detail */}
             {shortages.length > 0 && <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <AlertTriangle className="h-5 w-5 text-orange-600" />
+                  <CardTitle>
                     Critical Material Shortages
                   </CardTitle>
                 </CardHeader>

@@ -133,7 +133,6 @@ const ProductionLineDetailView = ({ lineId, lineName, onBack }: ProductionLineDe
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Clock className="h-5 w-5" />
             Ongoing Production ({ongoingProduction.length})
           </CardTitle>
         </CardHeader>
@@ -207,7 +206,6 @@ const ProductionLineDetailView = ({ lineId, lineName, onBack }: ProductionLineDe
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Package className="h-5 w-5" />
             Production Queue ({scheduledProduction.length})
           </CardTitle>
         </CardHeader>
