@@ -20,7 +20,7 @@ export default {
 		},
 		extend: {
 			fontFamily: {
-				sans: ['"Inter Tight"', 'ui-sans-serif', 'system-ui', '-apple-system', 'sans-serif'],
+				sans: ['Century Gothic', 'Questrial', 'URW Gothic', 'Avant Garde', 'ui-sans-serif', 'system-ui', '-apple-system', 'sans-serif'],
 				mono: ['"JetBrains Mono"', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
 			},
 			colors: {
