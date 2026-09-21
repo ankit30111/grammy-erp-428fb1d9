@@ -307,7 +307,7 @@ const LineRejectionManager = () => {
                   const hasRCAReport = hasRCA(rejection.id);
                   const capa = getCAPAForRejection(rejection.id);
                   const needsCAPAForFaultyPart = rejection.defect === 'Part Faulty' && hasRCAReport && !capa;
-                  const canCloseCAPAForFaultyPart = rejection.defect === 'Part Faulty' && hasRCAReport && capa && capa.status === 'Open';
+                  const canCloseCAPAForFaultyPart = rejection.defect === 'Part Faulty' && hasRCAReport && capa && (capa as any).status === 'Open';
 
                   return (
                     <TableRow key={rejection.id}>
@@ -336,7 +336,7 @@ const LineRejectionManager = () => {
                           {rejection.defect === 'Part Faulty' && (
                             capa ? (
                               <Badge 
-                                variant={capa.status === 'Closed' ? 'default' : 'destructive'} 
+                                variant={(capa as any).status === 'Closed' ? 'default' : 'destructive'} 
                                 className="text-xs"
                               >
                                 CAPA {capa.status}

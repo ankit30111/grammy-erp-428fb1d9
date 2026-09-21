@@ -185,7 +185,7 @@ const IndividualComplaintsManagement = () => {
                     )}
                   </TableCell>
                   <TableCell>{complaint.customers?.brand_name}</TableCell>
-                  <TableCell>{format(new Date(complaint.complaint_date), 'MMM dd, yyyy')}</TableCell>
+                  <TableCell>{format(new Date((complaint as any).complaint_date), 'MMM dd, yyyy')}</TableCell>
                   <TableCell>{getStatusBadge(complaint.status)}</TableCell>
                   <TableCell>
                     <div className="flex gap-2">

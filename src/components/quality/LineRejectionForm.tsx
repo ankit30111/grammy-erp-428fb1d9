@@ -212,7 +212,7 @@ const LineRejectionForm = ({ productionOrderId }: LineRejectionFormProps) => {
                   </SelectTrigger>
                   <SelectContent>
                     {bomItems.map((item) => (
-                      <SelectItem key={item.part_id} value={item.part_id}>
+                      <SelectItem key={item.child_part_id} value={item.child_part_id}>
                         {item.parts.part_code} - {item.parts.name}
                       </SelectItem>
                     ))}
