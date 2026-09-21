@@ -26,12 +26,6 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
   }
 });
 
-// Add error handling for auth state changes
-supabase.auth.onAuthStateChange((event, session) => {
-  if (event === 'TOKEN_REFRESHED' && !session) {
-    console.warn('Token refresh failed, session cleared');
-  }
-  if (event === 'SIGNED_OUT') {
-    console.log('User signed out, clearing local data');
-  }
-});
+// NOTE: do not register onAuthStateChange listeners here. AuthContext is the
+// single auth subscriber — extra listeners caused duplicate token refreshes
+// and auth rate-limit (429) failures that signed users straight back out.
