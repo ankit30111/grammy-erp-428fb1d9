@@ -115,7 +115,6 @@ const PurchaseOrdersList = ({ onViewDetails }: PurchaseOrdersListProps) => {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <ShoppingCart className="h-5 w-5" />
             Purchase Orders
           </CardTitle>
         </CardHeader>
@@ -131,7 +130,6 @@ const PurchaseOrdersList = ({ onViewDetails }: PurchaseOrdersListProps) => {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <ShoppingCart className="h-5 w-5" />
             Purchase Orders
           </CardTitle>
         </CardHeader>
@@ -152,7 +150,6 @@ const PurchaseOrdersList = ({ onViewDetails }: PurchaseOrdersListProps) => {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <ShoppingCart className="h-5 w-5" />
           Purchase Orders ({purchaseOrders.length})
         </CardTitle>
       </CardHeader>

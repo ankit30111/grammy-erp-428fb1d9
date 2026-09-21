@@ -137,7 +137,6 @@ const PurchaseOrderApprovals = () => {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Package className="h-5 w-5" />
             Purchase Order Approvals
             {pendingPOs.length > 0 && (
               <Badge variant="secondary">{pendingPOs.length} pending</Badge>

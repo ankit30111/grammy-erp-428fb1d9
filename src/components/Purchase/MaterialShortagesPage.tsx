@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { TableSkeleton, TableEmpty } from "@/components/ui/table-state";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -63,7 +64,6 @@ export const MaterialShortagesPage = () => {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <AlertTriangle className="h-5 w-5 text-orange-600" />
             Material Shortages
           </CardTitle>
         </CardHeader>
@@ -85,17 +85,13 @@ export const MaterialShortagesPage = () => {
             </TableHeader>
             <TableBody>
               {isLoading ? (
-                <TableRow>
-                  <TableCell colSpan={10} className="text-center py-6">
-                    Working out shortages...
-                  </TableCell>
-                </TableRow>
+                <TableSkeleton columns={10} />
               ) : rows.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={10} className="text-center py-6 text-muted-foreground">
-                    No material requirements yet. Add projections and a bill of materials first.
-                  </TableCell>
-                </TableRow>
+                <TableEmpty
+                  columns={10}
+                  message="Nothing is short"
+                  hint="Shortages are worked out from projections and the bill of materials. Add a projection first."
+                />
               ) : (
                 rows.map((row, index) => (
                   <TableRow

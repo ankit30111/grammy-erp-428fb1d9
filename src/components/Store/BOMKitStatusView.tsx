@@ -79,7 +79,6 @@ const BOMKitStatusView = ({
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg flex items-center gap-2">
-              <Package className="h-5 w-5" />
               {title}
             </CardTitle>
             <div className="flex items-center gap-2">

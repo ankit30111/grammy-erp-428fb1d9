@@ -152,7 +152,6 @@ const StoreDiscrepancies = () => {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <AlertTriangle className="h-5 w-5" />
           Store receiving variances
           {open.length > 0 && (
             <Badge variant="destructive">{open.length} open</Badge>

@@ -26,8 +26,7 @@ const ProductionDashboard = () => {
         <TabsContent value="queue" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Clock className="h-5 w-5" />
+              <CardTitle>
                 Detailed Production Queue
               </CardTitle>
             </CardHeader>
@@ -40,7 +39,7 @@ const ProductionDashboard = () => {
         <TabsContent value="analytics" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle>
                 <BarChart className="h-5 w-5" />
                 Production Analytics
               </CardTitle>

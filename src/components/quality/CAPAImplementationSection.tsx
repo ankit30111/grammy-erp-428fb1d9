@@ -81,7 +81,6 @@ const CAPAImplementationSection = ({
     <Card className="mt-4">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-sm">
-          <FileText className="h-4 w-4" />
           CAPA Implementation Verification
         </CardTitle>
         <p className="text-xs text-muted-foreground">

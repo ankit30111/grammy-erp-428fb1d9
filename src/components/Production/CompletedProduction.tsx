@@ -76,7 +76,6 @@ const CompletedProduction = () => {
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">
-            <CheckCircle className="h-5 w-5" />
             Completed Production ({completedProduction.length})
           </CardTitle>
           <div className="relative w-64">

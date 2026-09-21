@@ -180,7 +180,6 @@ export const BOMManager = () => {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Layers className="h-5 w-5" />
             Bill of Materials
           </CardTitle>
         </CardHeader>

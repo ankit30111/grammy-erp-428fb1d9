@@ -258,7 +258,6 @@ const CAPA = () => {
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4 text-orange-600" />
                 Vendor CAPAs
               </CardTitle>
             </CardHeader>
@@ -312,7 +311,6 @@ const CAPA = () => {
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <CheckCircle className="h-4 w-4 text-green-600" />
                 Production CAPAs
               </CardTitle>
             </CardHeader>

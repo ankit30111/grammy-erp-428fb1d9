@@ -377,7 +377,7 @@ export function PerformanceReviews() {
       <div className="grid gap-6 md:grid-cols-3">
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle>
               <Star className="h-5 w-5 text-yellow-500" />
               Average Rating
             </CardTitle>
@@ -392,8 +392,7 @@ export function PerformanceReviews() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-green-500" />
+            <CardTitle>
               Reviews Completed
             </CardTitle>
           </CardHeader>
@@ -405,7 +404,7 @@ export function PerformanceReviews() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle>
               <Award className="h-5 w-5 text-blue-500" />
               Top Performers
             </CardTitle>
@@ -502,8 +501,7 @@ export function PerformanceReviews() {
         <TabsContent value="mishandling">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <AlertTriangle className="h-5 w-5 text-orange-500" />
+              <CardTitle>
                 User Mishandling Cases
               </CardTitle>
               <CardDescription>Quality control issues attributed to employee mishandling</CardDescription>

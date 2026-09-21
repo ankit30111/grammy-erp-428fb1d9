@@ -103,8 +103,7 @@ const ProductionFeedback = () => {
         <TabsContent value="discrepancies">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <AlertTriangle className="h-5 w-5" />
+              <CardTitle>
                 Production Feedback & Discrepancies ({materialRequests.length})
               </CardTitle>
             </CardHeader>
@@ -187,8 +186,7 @@ const ProductionFeedback = () => {
         <TabsContent value="returns">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Package className="h-5 w-5" />
+              <CardTitle>
                 Material Returns from Production ({materialReturns.length})
               </CardTitle>
             </CardHeader>

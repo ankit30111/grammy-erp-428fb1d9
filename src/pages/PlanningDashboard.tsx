@@ -277,7 +277,7 @@ const PlanningDashboard = () => {
                   {/* Calendar */}
                   <Card>
                     <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
+                      <CardTitle>
                         <CalendarIcon className="h-5 w-5" />
                         Select Production Date
                       </CardTitle>
@@ -296,8 +296,7 @@ const PlanningDashboard = () => {
                   {/* Enhanced Scheduling Form */}
                   <Card>
                     <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <Factory className="h-5 w-5" />
+                      <CardTitle>
                         Schedule Production
                       </CardTitle>
                     </CardHeader>

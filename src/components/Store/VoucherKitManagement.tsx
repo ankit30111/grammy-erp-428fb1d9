@@ -57,7 +57,6 @@ const VoucherKitManagement = ({
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Package className="h-5 w-5" />
           Voucher & Kit Management ({productionOrders?.length || 0})
         </CardTitle>
       </CardHeader>
