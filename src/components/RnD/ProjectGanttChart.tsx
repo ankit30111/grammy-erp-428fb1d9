@@ -133,10 +133,10 @@ const ProjectGanttChart = () => {
 
         try {
           const startDate = parseDate(project.created_at);
-          let endDate = parseDate(project.estimated_completion_date);
+          let endDate = parseDate(project.target_launch_date);
           
           // If no completion date or invalid, set to 90 days from start
-          if (!project.estimated_completion_date || isNaN(endDate.getTime())) {
+          if (!project.target_launch_date || isNaN(endDate.getTime())) {
             endDate = new Date(startDate.getTime() + 90 * 24 * 60 * 60 * 1000);
           }
           
@@ -156,14 +156,14 @@ const ProjectGanttChart = () => {
           }
 
           let color = '#3b82f6'; // blue
-          if (project.status === 'CONCEPT') color = '#f59e0b'; // amber
-          else if (project.status === 'PROTOTYPE') color = '#8b5cf6'; // purple
-          else if (project.status === 'TESTING') color = '#06b6d4'; // cyan
+          if ((project as any).stage === 'CONCEPT') color = '#f59e0b'; // amber
+          else if ((project as any).stage === 'PROTOTYPE') color = '#8b5cf6'; // purple
+          else if ((project as any).stage === 'TESTING') color = '#06b6d4'; // cyan
 
           processedData.push({
             projectName: project.project_name,
             type: 'NPD',
-            status: project.status,
+            status: (project as any).stage,
             startDate: startDate.toISOString().split('T')[0],
             endDate: endDate.toISOString().split('T')[0],
             progress: progress,

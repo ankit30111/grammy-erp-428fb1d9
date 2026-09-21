@@ -112,7 +112,7 @@ const IQCDiscrepancies = () => {
                     <TableCell className="font-mono">{item.parts?.part_code}</TableCell>
                     <TableCell>{item.parts?.name}</TableCell>
                     <TableCell>{item.grn?.vendors?.name}</TableCell>
-                    <TableCell>{item.po_quantity}</TableCell>
+                    <TableCell>{(item as any).po_quantity ?? "-"}</TableCell>
                     <TableCell>{item.received_quantity}</TableCell>
                     <TableCell className="font-medium text-red-600">
                       {getDiscrepancyQuantity(item)}

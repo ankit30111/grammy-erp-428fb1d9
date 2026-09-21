@@ -88,7 +88,7 @@ const StoreDiscrepancies = () => {
     mutationFn: async () => {
       const { error } = await supabase.rpc("resolve_store_variance", {
         p_grn_item_id: acting.grn_item_id,
-        p_resolution: resolution,
+        p_resolution: resolution as any,
         p_remarks: remarks.trim(),
       });
       if (error) throw error;

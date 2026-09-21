@@ -72,18 +72,18 @@ const ProjectStatusGrid = () => {
 
       // Process NPD projects
       npdData.data?.forEach(project => {
-        const daysRemaining = calculateDaysRemaining(project.estimated_completion_date);
-        const progressPercentage = calculateProgress(project.created_at, project.estimated_completion_date);
+        const daysRemaining = calculateDaysRemaining(project.target_launch_date);
+        const progressPercentage = calculateProgress(project.created_at, project.target_launch_date);
         
         processedData.push({
           id: project.id,
           project_name: project.project_name,
           type: 'NPD',
-          status: project.status,
-          priority: project.priority,
+          status: (project as any).stage,
+          priority: (project as any).priority ?? null,
           customer: project.customers?.name || 'N/A',
           created_at: project.created_at,
-          estimated_completion_date: project.estimated_completion_date,
+          estimated_completion_date: project.target_launch_date,
           daysRemaining,
           progressPercentage
         });
@@ -288,9 +288,9 @@ const ProjectStatusGrid = () => {
                         {project.daysRemaining} days left
                       </span>
                     </div>
-                    {project.estimated_completion_date && (
+                    {project.target_launch_date && (
                       <span className="text-muted-foreground text-xs">
-                        Due: {new Date(project.estimated_completion_date).toLocaleDateString()}
+                        Due: {new Date(project.target_launch_date).toLocaleDateString()}
                       </span>
                     )}
                   </div>

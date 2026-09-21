@@ -53,9 +53,9 @@ const BOMKitStatusView = ({
   });
 
   const groupedBOM = {
-    sub_assembly: bomItems.filter(item => item.bom_type === 'sub_assembly'),
-    accessory: bomItems.filter(item => item.bom_type === 'accessory'),
-    main_assembly: bomItems.filter(item => item.bom_type === 'main_assembly'),
+    sub_assembly: bomItems.filter(item => (item as any).bom_type === 'sub_assembly'),
+    accessory: bomItems.filter(item => (item as any).bom_type === 'accessory'),
+    main_assembly: bomItems.filter(item => (item as any).bom_type === 'main_assembly'),
   };
 
   const handleQuantityChange = (materialCode: string, value: string) => {
