@@ -119,15 +119,15 @@ const Planning: React.FC = () => {
                   <div className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div className="text-center p-4 border rounded-lg">
-                        <div className="text-2xl font-bold text-blue-600">{projections.length}</div>
+                        <div className="text-2xl font-bold text-primary">{projections.length}</div>
                         <div className="text-sm text-muted-foreground">Active Projections</div>
                       </div>
                       <div className="text-center p-4 border rounded-lg">
-                        <div className="text-2xl font-bold text-green-600">{schedules?.length || 0}</div>
+                        <div className="text-2xl font-bold text-success">{schedules?.length || 0}</div>
                         <div className="text-sm text-muted-foreground">Scheduled Productions</div>
                       </div>
                       <div className="text-center p-4 border rounded-lg">
-                        <div className="text-2xl font-bold text-orange-600">{shortages.length}</div>
+                        <div className="text-2xl font-bold text-warning">{shortages.length}</div>
                         <div className="text-sm text-muted-foreground">Material Shortages</div>
                       </div>
                     </div>

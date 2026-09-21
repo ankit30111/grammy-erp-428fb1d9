@@ -140,7 +140,7 @@ export const VendorPerformanceWidget = () => {
                     <div className="text-sm text-muted-foreground">
                       {vendor.totalOrders} orders
                     </div>
-                    <div className="text-sm font-bold text-green-600">
+                    <div className="text-sm font-bold text-success">
                       {vendor.onTimeRate}%
                     </div>
                   </div>
@@ -172,7 +172,7 @@ export const VendorPerformanceWidget = () => {
                     <div className="text-sm text-muted-foreground">
                       {vendor.totalLots} lots
                     </div>
-                    <div className="text-sm font-bold text-blue-600">
+                    <div className="text-sm font-bold text-primary">
                       {vendor.qualityScore}%
                     </div>
                   </div>
@@ -193,7 +193,7 @@ export const VendorPerformanceWidget = () => {
           <AlertCircle className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold text-red-600">{openCAPAs || 0}</div>
+          <div className="text-2xl font-bold text-destructive">{openCAPAs || 0}</div>
           <p className="text-xs text-muted-foreground">
             Pending vendor actions
           </p>

@@ -184,9 +184,9 @@ const GRNForm = () => {
 
         {selectedPO && grnItems.length === 0 && (
           <div className="text-center py-8 text-muted-foreground">
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-              <p className="text-yellow-800 font-medium">No pending items found for selected PO</p>
-              <p className="text-yellow-600 text-sm mt-1">All items in this purchase order may have been fully received.</p>
+            <div className="bg-warning-wash border border-warning/30 rounded-lg p-4">
+              <p className="text-warning font-medium">No pending items found for selected PO</p>
+              <p className="text-warning text-sm mt-1">All items in this purchase order may have been fully received.</p>
             </div>
           </div>
         )}
@@ -194,24 +194,24 @@ const GRNForm = () => {
         {!selectedPO && (
           <div className="text-center py-8 text-muted-foreground">
             {isLoading ? (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <p className="text-blue-800">Loading purchase orders...</p>
+              <div className="bg-accent border border-primary/30 rounded-lg p-4">
+                <p className="text-primary">Loading purchase orders...</p>
               </div>
             ) : availablePOs.length === 0 ? (
-              <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-                <p className="text-orange-800 font-medium">No approved purchase orders available for GRN creation</p>
-                <p className="text-orange-600 text-sm mt-1">
+              <div className="bg-warning-wash border border-warning/30 rounded-lg p-4">
+                <p className="text-warning font-medium">No approved purchase orders available for GRN creation</p>
+                <p className="text-warning text-sm mt-1">
                   Purchase orders must be approved and have pending items to receive.
                 </p>
-                <p className="text-orange-600 text-sm">
+                <p className="text-warning text-sm">
                   Total POs in system: {purchaseOrders?.length || 0} | 
                   Go to <strong>Approvals</strong> page to approve pending purchase orders.
                 </p>
               </div>
             ) : (
-              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                <p className="text-gray-800 font-medium">Select a Purchase Order to begin creating GRN</p>
-                <p className="text-gray-600 text-sm mt-1">{availablePOs.length} approved purchase orders available</p>
+              <div className="bg-muted border border-border rounded-lg p-4">
+                <p className="text-foreground font-medium">Select a Purchase Order to begin creating GRN</p>
+                <p className="text-muted-foreground text-sm mt-1">{availablePOs.length} approved purchase orders available</p>
               </div>
             )}
           </div>

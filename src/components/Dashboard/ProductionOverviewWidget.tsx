@@ -128,9 +128,9 @@ export const ProductionOverviewWidget = () => {
                 <div key={line.line} className="flex items-center justify-between">
                   <span className="font-medium">{line.line}</span>
                   <div className="flex items-center gap-2">
-                    <div className="w-20 bg-gray-200 rounded-full h-2">
+                    <div className="w-20 bg-muted rounded-full h-2">
                       <div 
-                        className="bg-blue-600 h-2 rounded-full" 
+                        className="bg-primary h-2 rounded-full" 
                         style={{ width: `${line.efficiency}%` }}
                       />
                     </div>

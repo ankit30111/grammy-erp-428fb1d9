@@ -111,7 +111,7 @@ const ScheduledProductions = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-center py-8 text-red-600">
+          <div className="text-center py-8 text-destructive">
             <p>Error loading production orders: {error.message}</p>
             <p className="text-sm mt-1">Please check the console for more details</p>
           </div>

@@ -113,7 +113,7 @@ const ImportedMaterialsAlert = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-sm text-green-600">
+          <div className="text-sm text-success">
             ✅ All imported materials in projections have corresponding purchase orders
           </div>
         </CardContent>
@@ -122,7 +122,7 @@ const ImportedMaterialsAlert = () => {
   }
 
   return (
-    <Card className="border-orange-200">
+    <Card className="border-warning/30">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           Imported Materials Requiring Purchase Orders
@@ -139,7 +139,7 @@ const ImportedMaterialsAlert = () => {
         
         <div className="space-y-3">
           {Array.isArray(alertMaterials) && alertMaterials.slice(0, 5).map((material) => (
-            <div key={material.id} className="flex items-center justify-between p-3 bg-orange-50 rounded-lg">
+            <div key={material.id} className="flex items-center justify-between p-3 bg-warning-wash rounded-lg">
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
                   <span className="font-medium">{material.part_code}</span>
@@ -151,7 +151,7 @@ const ImportedMaterialsAlert = () => {
                   )}
                 </div>
                 <div className="text-sm text-muted-foreground">{material.name}</div>
-                <div className="text-xs text-orange-600">
+                <div className="text-xs text-warning">
                   Required: {material.required_quantity} units • Used in {material.projections_count} projection(s)
                   {material.unit_price && (
                     <span> • Unit Price: {material.currency} {material.unit_price}</span>

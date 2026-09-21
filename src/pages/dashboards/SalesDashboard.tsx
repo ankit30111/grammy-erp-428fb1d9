@@ -79,7 +79,7 @@ const SalesDashboard = () => {
             icon={Package}
             isLoading={isLoading}
             subtitle="Awaiting dispatch"
-            className="border-yellow-200"
+            className="border-warning/30"
           />
           <KPICard
             title="Customer Complaints"
@@ -87,7 +87,7 @@ const SalesDashboard = () => {
             icon={AlertCircle}
             isLoading={isLoading}
             subtitle="Open complaints"
-            className="border-red-200"
+            className="border-destructive/30"
           />
           <KPICard
             title="Fulfillment Rate"

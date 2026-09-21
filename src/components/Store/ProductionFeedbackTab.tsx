@@ -138,7 +138,7 @@ export const ProductionFeedbackTab = () => {
                   <TableCell className="text-right font-mono">{r.issued_quantity}</TableCell>
                   <TableCell className="text-right font-mono">{r.received_quantity}</TableCell>
                   <TableCell className="text-right font-mono font-semibold">
-                    <span className={Number(r.variance) < 0 ? "text-destructive" : "text-green-600"}>
+                    <span className={Number(r.variance) < 0 ? "text-destructive" : "text-success"}>
                       {Number(r.variance) > 0 ? "+" : ""}
                       {r.variance}
                     </span>

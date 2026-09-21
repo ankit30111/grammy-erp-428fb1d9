@@ -325,12 +325,12 @@ const ProductionLineManager = ({ productionOrderId }: ProductionLineManagerProps
                     </div>
                     <div className="text-right">
                       <p className="text-sm">
-                        Sent: <span className="font-medium text-green-600">{material.received_quantity}</span>
+                        Sent: <span className="font-medium text-success">{material.received_quantity}</span>
                         <span className="text-muted-foreground">/{material.required_quantity}</span>
                       </p>
                       {pending > 0 && (
                         <p className="text-sm">
-                          Pending: <span className="font-medium text-orange-600">{pending}</span>
+                          Pending: <span className="font-medium text-warning">{pending}</span>
                         </p>
                       )}
                     </div>
@@ -343,8 +343,8 @@ const ProductionLineManager = ({ productionOrderId }: ProductionLineManagerProps
           )}
 
           {assignedLine && lineSchedule && (
-            <div className="mt-4 p-3 bg-blue-50 rounded-lg border">
-              <h4 className="font-medium text-blue-900 mb-2 flex items-center gap-2">
+            <div className="mt-4 p-3 bg-accent rounded-lg border">
+              <h4 className="font-medium text-primary mb-2 flex items-center gap-2">
                 <Clock className="h-4 w-4" />
                 Line Schedule: {lineNameById(assignedLine)}
               </h4>
@@ -364,7 +364,7 @@ const ProductionLineManager = ({ productionOrderId }: ProductionLineManagerProps
               {!lineSchedule.ongoing && lineSchedule.scheduled.length === 0 && (
                 <div>
                   <Badge variant="outline" className="mr-2">Available</Badge>
-                  <span className="text-sm text-green-600">Line is available for immediate start</span>
+                  <span className="text-sm text-success">Line is available for immediate start</span>
                 </div>
               )}
             </div>
@@ -407,8 +407,8 @@ const ProductionLineManager = ({ productionOrderId }: ProductionLineManagerProps
           </div>
           
           {sentMaterials.length === 0 && (
-            <div className="text-center py-6 bg-yellow-50 rounded-lg border border-yellow-200">
-              <p className="text-yellow-800">No materials have been sent by Store yet. Materials must be dispatched before line assignment.</p>
+            <div className="text-center py-6 bg-warning-wash rounded-lg border border-warning/30">
+              <p className="text-warning">No materials have been sent by Store yet. Materials must be dispatched before line assignment.</p>
             </div>
           )}
         </CardContent>

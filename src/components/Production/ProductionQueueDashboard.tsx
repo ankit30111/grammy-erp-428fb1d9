@@ -75,10 +75,10 @@ const ProductionQueueDashboard = () => {
         </CardHeader>
         <CardContent className="space-y-4">
           {ongoing && (
-            <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+            <div className="p-3 bg-success-wash border border-success/30 rounded-lg">
               <div className="flex items-center gap-2 mb-2">
-                <Clock className="h-4 w-4 text-green-600" />
-                <span className="font-medium text-green-900">Ongoing Production</span>
+                <Clock className="h-4 w-4 text-success" />
+                <span className="font-medium text-success">Ongoing Production</span>
               </div>
               <div className="space-y-1">
                 <p className="font-medium">{ongoing.voucher_number}</p>
@@ -97,11 +97,11 @@ const ProductionQueueDashboard = () => {
           {scheduled.length > 0 && (
             <div className="space-y-2">
               <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-blue-600" />
-                <span className="font-medium text-blue-900">Production Queue ({scheduled.length})</span>
+                <Calendar className="h-4 w-4 text-primary" />
+                <span className="font-medium text-primary">Production Queue ({scheduled.length})</span>
               </div>
               {scheduled.map((order, index) => (
-                <div key={order.id} className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <div key={order.id} className="p-3 bg-accent border border-primary/30 rounded-lg">
                   <div className="flex justify-between items-start">
                     <div>
                       <p className="font-medium">{order.voucher_number}</p>
@@ -152,7 +152,7 @@ const ProductionQueueDashboard = () => {
         <Card>
           <CardContent className="p-4">
             <div className="text-center">
-              <p className="text-2xl font-bold text-green-600">
+              <p className="text-2xl font-bold text-success">
                 {productionOrders.filter(o => o.status === "IN_PRODUCTION").length}
               </p>
               <p className="text-sm text-muted-foreground">Ongoing Productions</p>
@@ -162,7 +162,7 @@ const ProductionQueueDashboard = () => {
         <Card>
           <CardContent className="p-4">
             <div className="text-center">
-              <p className="text-2xl font-bold text-blue-600">
+              <p className="text-2xl font-bold text-primary">
                 {productionOrders.filter(o => o.status === "PLANNED").length}
               </p>
               <p className="text-sm text-muted-foreground">Scheduled Productions</p>
@@ -172,7 +172,7 @@ const ProductionQueueDashboard = () => {
         <Card>
           <CardContent className="p-4">
             <div className="text-center">
-              <p className="text-2xl font-bold text-gray-600">
+              <p className="text-2xl font-bold text-muted-foreground">
                 {PRODUCTION_LINES.filter(line => getLineOrders(line.id).length === 0).length}
               </p>
               <p className="text-sm text-muted-foreground">Idle Lines</p>
@@ -182,7 +182,7 @@ const ProductionQueueDashboard = () => {
         <Card>
           <CardContent className="p-4">
             <div className="text-center">
-              <p className="text-2xl font-bold text-orange-600">
+              <p className="text-2xl font-bold text-warning">
                 {productionOrders.reduce((sum, order) => sum + order.quantity, 0)}
               </p>
               <p className="text-sm text-muted-foreground">Total Units in Queue</p>

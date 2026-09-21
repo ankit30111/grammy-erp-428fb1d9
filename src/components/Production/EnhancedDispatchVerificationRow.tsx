@@ -90,13 +90,13 @@ const EnhancedDispatchVerificationRow = ({
         <TableCell className="font-mono">{rawMaterial.part_code}</TableCell>
         <TableCell>{rawMaterial.name}</TableCell>
         <TableCell className="font-semibold">{requiredQuantity}</TableCell>
-        <TableCell className="text-blue-600 font-medium">
+        <TableCell className="text-primary font-medium">
           {totalSent}
           <div className="text-xs text-muted-foreground">
             {dispatches.length} dispatch(es)
           </div>
         </TableCell>
-        <TableCell className="text-green-600 font-medium">
+        <TableCell className="text-success font-medium">
           {totalReceived}
           <div className="text-xs text-muted-foreground">
             {verifiedDispatches.length} verified
@@ -104,9 +104,9 @@ const EnhancedDispatchVerificationRow = ({
         </TableCell>
         <TableCell className="font-medium">
           {pendingQuantity > 0 ? (
-            <span className="text-orange-600">{pendingQuantity}</span>
+            <span className="text-warning">{pendingQuantity}</span>
           ) : (
-            <span className="text-green-600">Complete</span>
+            <span className="text-success">Complete</span>
           )}
         </TableCell>
         <TableCell>
@@ -127,28 +127,28 @@ const EnhancedDispatchVerificationRow = ({
                 
                 <div className="space-y-6">
                   {/* Summary */}
-                  <div className="grid grid-cols-4 gap-4 p-4 bg-gray-50 rounded-lg">
+                  <div className="grid grid-cols-4 gap-4 p-4 bg-muted rounded-lg">
                     <div className="text-center">
                       <p className="text-sm text-muted-foreground">Required</p>
                       <p className="text-lg font-semibold">{requiredQuantity}</p>
                     </div>
                     <div className="text-center">
                       <p className="text-sm text-muted-foreground">Total Sent</p>
-                      <p className="text-lg font-semibold text-blue-600">{totalSent}</p>
+                      <p className="text-lg font-semibold text-primary">{totalSent}</p>
                     </div>
                     <div className="text-center">
                       <p className="text-sm text-muted-foreground">Total Received</p>
-                      <p className="text-lg font-semibold text-green-600">{totalReceived}</p>
+                      <p className="text-lg font-semibold text-success">{totalReceived}</p>
                     </div>
                     <div className="text-center">
                       <p className="text-sm text-muted-foreground">Pending</p>
-                      <p className="text-lg font-semibold text-orange-600">{pendingQuantity}</p>
+                      <p className="text-lg font-semibold text-warning">{pendingQuantity}</p>
                     </div>
                   </div>
 
                   {/* Material Information */}
-                  <div className="p-4 bg-blue-50 rounded-lg">
-                    <h4 className="font-semibold text-blue-800 mb-2">Material Information</h4>
+                  <div className="p-4 bg-accent rounded-lg">
+                    <h4 className="font-semibold text-primary mb-2">Material Information</h4>
                     <div className="grid grid-cols-2 gap-4 text-sm">
                       <div>
                         <span className="font-medium">Material Code:</span> {rawMaterial.part_code}
@@ -171,9 +171,9 @@ const EnhancedDispatchVerificationRow = ({
                       <Package className="h-12 w-12 mx-auto mb-2 text-muted-foreground/50" />
                       <p className="font-medium">No dispatches yet</p>
                       <p className="text-sm mt-1">This material hasn't been sent by the store yet</p>
-                      <div className="mt-4 p-3 bg-orange-50 rounded-lg">
-                        <p className="text-orange-700 font-medium">Required Quantity: {requiredQuantity}</p>
-                        <p className="text-orange-600 text-sm">Waiting for store to dispatch materials</p>
+                      <div className="mt-4 p-3 bg-warning-wash rounded-lg">
+                        <p className="text-warning font-medium">Required Quantity: {requiredQuantity}</p>
+                        <p className="text-warning text-sm">Waiting for store to dispatch materials</p>
                       </div>
                     </div>
                   )}
@@ -181,10 +181,10 @@ const EnhancedDispatchVerificationRow = ({
                   {/* Unverified Dispatches */}
                   {unverifiedDispatches.length > 0 && (
                     <div>
-                      <h4 className="font-semibold text-orange-600 mb-3">Pending Verification ({unverifiedDispatches.length})</h4>
+                      <h4 className="font-semibold text-warning mb-3">Pending Verification ({unverifiedDispatches.length})</h4>
                       <div className="space-y-3">
                         {unverifiedDispatches.map((dispatch) => (
-                          <div key={dispatch.id} className="border rounded-lg p-4 bg-orange-50">
+                          <div key={dispatch.id} className="border rounded-lg p-4 bg-warning-wash">
                             <div className="flex justify-between items-start mb-3">
                               <div>
                                 <p className="font-medium">Dispatch ID: {dispatch.id.slice(0, 8)}</p>
@@ -238,10 +238,10 @@ const EnhancedDispatchVerificationRow = ({
                   {/* Verified Dispatches */}
                   {verifiedDispatches.length > 0 && (
                     <div>
-                      <h4 className="font-semibold text-green-600 mb-3">Verified Dispatches ({verifiedDispatches.length})</h4>
+                      <h4 className="font-semibold text-success mb-3">Verified Dispatches ({verifiedDispatches.length})</h4>
                       <div className="space-y-3">
                         {verifiedDispatches.map((dispatch) => (
-                          <div key={dispatch.id} className="border rounded-lg p-4 bg-green-50">
+                          <div key={dispatch.id} className="border rounded-lg p-4 bg-success-wash">
                             <div className="flex justify-between items-start">
                               <div>
                                 <p className="font-medium">Dispatch ID: {dispatch.id.slice(0, 8)}</p>
@@ -250,10 +250,10 @@ const EnhancedDispatchVerificationRow = ({
                                 </p>
                                 <p className="text-sm">
                                   Sent: <span className="font-medium">{dispatch.received_quantity}</span> | 
-                                  Received: <span className="font-medium text-green-600">{dispatch.received_quantity}</span>
+                                  Received: <span className="font-medium text-success">{dispatch.received_quantity}</span>
                                 </p>
                               </div>
-                              <Badge variant="default" className="bg-green-600">
+                              <Badge variant="default" className="bg-success">
                                 <CheckCircle className="h-3 w-3 mr-1" />
                                 Verified
                               </Badge>

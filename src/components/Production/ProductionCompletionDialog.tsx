@@ -175,12 +175,12 @@ const ProductionCompletionDialog = ({
           </div>
 
           {shortfall > 0 && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded">
-              <div className="flex items-center gap-2 text-red-700">
+            <div className="p-3 bg-destructive-wash border border-destructive/30 rounded">
+              <div className="flex items-center gap-2 text-destructive">
                 <Package className="h-4 w-4" />
                 <span className="font-medium">Shortfall Detected</span>
               </div>
-              <p className="text-sm text-red-600 mt-1">
+              <p className="text-sm text-destructive mt-1">
                 {shortfall} units unproduced. Material return list will be generated.
               </p>
             </div>

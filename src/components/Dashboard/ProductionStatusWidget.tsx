@@ -82,11 +82,11 @@ export const ProductionStatusWidget = () => {
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'ACTIVE':
-        return <Play className="h-4 w-4 text-green-600" />;
+        return <Play className="h-4 w-4 text-success" />;
       case 'SCHEDULED':
-        return <Clock className="h-4 w-4 text-blue-600" />;
+        return <Clock className="h-4 w-4 text-primary" />;
       default:
-        return <Pause className="h-4 w-4 text-gray-400" />;
+        return <Pause className="h-4 w-4 text-muted-foreground" />;
     }
   };
 
@@ -140,7 +140,7 @@ export const ProductionStatusWidget = () => {
           <Clock className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold text-orange-600">{pendingIQC || 0}</div>
+          <div className="text-2xl font-bold text-warning">{pendingIQC || 0}</div>
           <p className="text-xs text-muted-foreground">
             Lots awaiting IQC clearance
           </p>

@@ -100,7 +100,7 @@ const GRNFormInputs = ({
             </Button>
           </div>
           {availablePOs.length === 0 && !isLoading && (
-            <div className="flex items-center gap-1 text-xs text-orange-600">
+            <div className="flex items-center gap-1 text-xs text-warning">
               <AlertCircle className="h-3 w-3" />
               <span>No receivable POs found</span>
             </div>

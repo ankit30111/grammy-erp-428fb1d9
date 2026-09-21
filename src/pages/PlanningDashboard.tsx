@@ -235,18 +235,18 @@ const PlanningDashboard = () => {
                             <TableCell>{projection.customers?.name}</TableCell>
                             <TableCell>{projection.parts?.name}</TableCell>
                             <TableCell>{projection.quantity}</TableCell>
-                            <TableCell className="font-medium text-blue-600">
+                            <TableCell className="font-medium text-primary">
                               {scheduledQty}
                             </TableCell>
-                            <TableCell className={remainingQty === 0 ? "text-green-600 font-medium" : "text-orange-600 font-medium"}>
+                            <TableCell className={remainingQty === 0 ? "text-success font-medium" : "text-warning font-medium"}>
                               {remainingQty}
                             </TableCell>
                             <TableCell>{projection.delivery_month}</TableCell>
                             <TableCell>
                               <span className={`px-2 py-1 rounded text-xs font-medium ${
                                 remainingQty === 0 
-                                  ? 'bg-green-100 text-green-800' 
-                                  : 'bg-orange-100 text-orange-800'
+                                  ? 'bg-success-wash text-success' 
+                                  : 'bg-warning-wash text-warning'
                               }`}>
                                 {remainingQty === 0 ? 'Fully Scheduled' : 'Pending'}
                               </span>
@@ -321,16 +321,16 @@ const PlanningDashboard = () => {
                       </div>
 
                       {selectedProjectionData && (
-                        <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                        <div className="p-3 bg-accent border border-primary/30 rounded-lg">
                           <div className="text-sm">
                             <div><strong>Product:</strong> {selectedProjectionData.parts?.name}</div>
                             <div><strong>Total Projection:</strong> {selectedProjectionData.quantity} units</div>
                             <div><strong>Already Scheduled:</strong> {selectedProjectionData.scheduled_quantity || 0} units</div>
-                            <div className="font-medium text-blue-600">
+                            <div className="font-medium text-primary">
                               <strong>Available to Schedule:</strong> {maxQuantity} units
                             </div>
                             {maxQuantity === 0 && (
-                              <div className="text-red-600 font-medium mt-2">
+                              <div className="text-destructive font-medium mt-2">
                                 ⚠️ This projection is fully scheduled
                               </div>
                             )}
@@ -339,8 +339,8 @@ const PlanningDashboard = () => {
                       )}
 
                       {selectedDate && (
-                        <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
-                          <p className="text-sm text-green-800">
+                        <div className="p-3 bg-success-wash border border-success/30 rounded-lg">
+                          <p className="text-sm text-success">
                             <strong>Selected Date:</strong> {format(selectedDate, 'PPP')}
                           </p>
                         </div>
@@ -372,7 +372,7 @@ const PlanningDashboard = () => {
                           </p>
                         )}
                         {maxQuantity === 0 && (
-                          <p className="text-sm text-red-600 mt-1">
+                          <p className="text-sm text-destructive mt-1">
                             Cannot schedule more production. Projected quantity for this product is already fully planned.
                           </p>
                         )}
@@ -478,7 +478,7 @@ const PlanningDashboard = () => {
             </DialogHeader>
             {selectedVoucher && (
               <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
+                <div className="grid grid-cols-2 gap-4 p-4 bg-muted rounded-lg">
                   <div>
                     <Label>Voucher Number</Label>
                     <p className="font-mono font-medium">{selectedVoucher.voucherNumber}</p>
@@ -527,11 +527,11 @@ const PlanningDashboard = () => {
                             <TableCell>{material.available_quantity}</TableCell>
                             <TableCell>
                               {material.shortage > 0 ? (
-                                <span className="text-red-600 font-medium">
+                                <span className="text-destructive font-medium">
                                   Short by {material.shortage}
                                 </span>
                               ) : (
-                                <span className="text-green-600 font-medium">Available</span>
+                                <span className="text-success font-medium">Available</span>
                               )}
                             </TableCell>
                           </TableRow>

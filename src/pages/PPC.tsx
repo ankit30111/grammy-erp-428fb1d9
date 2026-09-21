@@ -113,7 +113,7 @@ const PPC = () => {
               <Card className="hover:shadow-lg transition-shadow cursor-pointer">
                 <CardHeader className="pb-3">
                   <CardTitle className="flex items-center gap-2 text-lg">
-                    <Calendar className="h-5 w-5 text-blue-600" />
+                    <Calendar className="h-5 w-5 text-primary" />
                     Planning Department
                   </CardTitle>
                 </CardHeader>
@@ -136,7 +136,7 @@ const PPC = () => {
                   </div>
                   <div className="flex items-center justify-between pt-2 border-t">
                     <div className="flex items-center gap-2">
-                      <TrendingUp className="h-4 w-4 text-green-600" />
+                      <TrendingUp className="h-4 w-4 text-success" />
                       <span className="text-sm">
                         {unscheduledProjections === 0 ? "All scheduled" : "Needs planning"}
                       </span>
@@ -177,7 +177,7 @@ const PPC = () => {
                   </div>
                   <div className="flex items-center justify-between pt-2 border-t">
                     <div className="flex items-center gap-2">
-                      <DollarSign className="h-4 w-4 text-green-600" />
+                      <DollarSign className="h-4 w-4 text-success" />
                       <span className="text-sm">₹{totalOrderValue.toFixed(0)} in POs</span>
                     </div>
                     <Link to="/purchase">
@@ -201,7 +201,7 @@ const PPC = () => {
                   </div>
                   <div className="flex items-center justify-between pt-2 border-t">
                     <div className="flex items-center gap-2">
-                      <CheckCircle className="h-4 w-4 text-green-600" />
+                      <CheckCircle className="h-4 w-4 text-success" />
                       <span className="text-sm">Active receiving</span>
                     </div>
                     <Link to="/grn">
@@ -240,7 +240,7 @@ const PPC = () => {
                   </div>
                   <div className="flex items-center justify-between pt-2 border-t">
                     <div className="flex items-center gap-2">
-                      <CheckCircle className="h-4 w-4 text-green-600" />
+                      <CheckCircle className="h-4 w-4 text-success" />
                       <span className="text-sm">Import tracking</span>
                     </div>
                     <Button variant="outline" size="sm" className="gap-2" onClick={() => setSelectedTab("containers")}>
@@ -255,7 +255,7 @@ const PPC = () => {
             <Card>
               <CardHeader>
                 <CardTitle>
-                  <ExternalLink className="h-5 w-5 text-blue-600" />
+                  <ExternalLink className="h-5 w-5 text-primary" />
                   Quick Access
                 </CardTitle>
               </CardHeader>
@@ -304,7 +304,7 @@ const PPC = () => {
               <Card>
                 <CardContent className="p-6">
                   <div className="flex items-center gap-2">
-                    <BarChart3 className="h-8 w-8 text-blue-600" />
+                    <BarChart3 className="h-8 w-8 text-primary" />
                     <div>
                       <div className="text-2xl font-bold">{projections?.length || 0}</div>
                       <div className="text-sm text-muted-foreground">Active Projections</div>
@@ -316,7 +316,7 @@ const PPC = () => {
               <Card>
                 <CardContent className="p-6">
                   <div className="flex items-center gap-2">
-                    <DollarSign className="h-8 w-8 text-green-600" />
+                    <DollarSign className="h-8 w-8 text-success" />
                     <div>
                       <div className="text-2xl font-bold">₹{totalOrderValue.toFixed(0)}</div>
                       <div className="text-sm text-muted-foreground">Total PO Value</div>
@@ -328,7 +328,7 @@ const PPC = () => {
               <Card>
                 <CardContent className="p-6">
                   <div className="flex items-center gap-2">
-                    <AlertTriangle className="h-8 w-8 text-orange-600" />
+                    <AlertTriangle className="h-8 w-8 text-warning" />
                     <div>
                       <div className="text-2xl font-bold">{shortages.length}</div>
                       <div className="text-sm text-muted-foreground">Material Shortages</div>
@@ -340,7 +340,7 @@ const PPC = () => {
               <Card>
                 <CardContent className="p-6">
                   <div className="flex items-center gap-2">
-                    <CheckCircle className="h-8 w-8 text-green-600" />
+                    <CheckCircle className="h-8 w-8 text-success" />
                     <div>
                       <div className="text-2xl font-bold">{schedules?.length || 0}</div>
                       <div className="text-sm text-muted-foreground">Scheduled Productions</div>
@@ -365,7 +365,7 @@ const PPC = () => {
                           <div className="text-sm text-muted-foreground">
                             Shortage: {shortage.shortage_quantity} | Available: {shortage.available_quantity}
                           </div>
-                          {shortage.vendor_info && <div className="text-sm text-blue-600">
+                          {shortage.vendor_info && <div className="text-sm text-primary">
                               Primary Vendor: {shortage.vendor_info.vendor_name} ({shortage.vendor_info.vendor_code})
                             </div>}
                         </div>

@@ -50,7 +50,7 @@ const StoreDashboard = () => {
             icon={FileCheck}
             isLoading={isLoading}
             subtitle="Awaiting IQC approval"
-            className="border-yellow-200"
+            className="border-warning/30"
           />
           <KPICard
             title="Daily Dispatches to Production"

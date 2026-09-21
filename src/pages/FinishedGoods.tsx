@@ -150,7 +150,7 @@ const FinishedGoods = () => {
             icon={AlertTriangle}
             isLoading={isLoading}
             subtitle="Items >30 days old"
-            className="border-orange-200"
+            className="border-warning/30"
           />
         </div>
 
@@ -220,7 +220,7 @@ const FinishedGoods = () => {
                         </TableCell>
                         <TableCell>{item.location || 'FG Store'}</TableCell>
                         <TableCell>
-                          <span className={age > 30 ? 'text-red-600 font-medium' : ''}>
+                          <span className={age > 30 ? 'text-destructive font-medium' : ''}>
                             {age} days
                           </span>
                         </TableCell>

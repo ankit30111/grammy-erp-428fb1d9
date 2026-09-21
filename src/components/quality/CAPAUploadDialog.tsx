@@ -172,7 +172,7 @@ const CAPAUploadDialog = ({
         
         <div className="space-y-4">
           {/* Item details */}
-          <div className="bg-gray-50 p-3 rounded-lg space-y-1">
+          <div className="bg-muted p-3 rounded-lg space-y-1">
             {itemDetails.materialName && (
               <div className="text-sm">
                 <span className="font-medium">Material:</span> {itemDetails.materialName}
@@ -205,11 +205,11 @@ const CAPAUploadDialog = ({
             <Label htmlFor="capa-file">
               {capaType === 'line_rejection' ? 'RCA Document' : 'CAPA Document'} *
             </Label>
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
+            <div className="border-2 border-dashed border-border rounded-lg p-4">
               {selectedFile ? (
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <FileText className="h-5 w-5 text-blue-600" />
+                    <FileText className="h-5 w-5 text-primary" />
                     <span className="text-sm font-medium">{selectedFile.name}</span>
                   </div>
                   <Button
@@ -222,11 +222,11 @@ const CAPAUploadDialog = ({
                 </div>
               ) : (
                 <div className="text-center">
-                  <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                  <div className="text-sm text-gray-600 mb-2">
+                  <Upload className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                  <div className="text-sm text-muted-foreground mb-2">
                     Click to upload or drag and drop
                   </div>
-                  <div className="text-xs text-gray-500">
+                  <div className="text-xs text-muted-foreground">
                     PDF, DOC, DOCX, XLS, XLSX (max 10MB)
                   </div>
                   <Input
@@ -238,7 +238,7 @@ const CAPAUploadDialog = ({
                   />
                   <label
                     htmlFor="capa-file"
-                    className="inline-block mt-2 px-4 py-2 bg-blue-600 text-white rounded cursor-pointer hover:bg-blue-700"
+                    className="inline-block mt-2 px-4 py-2 bg-primary text-white rounded cursor-pointer hover:bg-primary"
                   >
                     Choose File
                   </label>
@@ -250,7 +250,7 @@ const CAPAUploadDialog = ({
           {/* Remarks */}
           <div className="space-y-2">
             <Label htmlFor="remarks">Remarks (Optional)</Label>
-            <p className="text-xs text-amber-700">
+            <p className="text-xs text-warning">
               Not stored after the rebuild — the unified CAPA table has no remarks column.
             </p>
             <Textarea

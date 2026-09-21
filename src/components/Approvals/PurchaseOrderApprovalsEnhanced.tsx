@@ -291,10 +291,10 @@ const PurchaseOrderApprovalsEnhanced = () => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'PENDING': return 'bg-yellow-100 text-yellow-800';
-      case 'APPROVED': return 'bg-green-100 text-green-800';
-      case 'REJECTED': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'PENDING': return 'bg-warning-wash text-warning';
+      case 'APPROVED': return 'bg-success-wash text-success';
+      case 'REJECTED': return 'bg-destructive-wash text-destructive';
+      default: return 'bg-muted text-foreground';
     }
   };
 
@@ -370,7 +370,7 @@ const PurchaseOrderApprovalsEnhanced = () => {
                             <DialogTitle>Review Purchase Order - {po.po_number}</DialogTitle>
                           </DialogHeader>
                           <div className="space-y-6">
-                            <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
+                            <div className="grid grid-cols-2 gap-4 p-4 bg-muted rounded-lg">
                               <div>
                                 <p><strong>Vendor:</strong> {po.vendor_name}</p>
                                 <p><strong>PO Date:</strong> {new Date(po.po_date).toLocaleDateString()}</p>
@@ -407,8 +407,8 @@ const PurchaseOrderApprovalsEnhanced = () => {
 
                             <div className="flex flex-col gap-4">
                               {/* PDF Actions */}
-                              <div className="flex justify-start gap-2 p-4 bg-blue-50 rounded-lg">
-                                <h4 className="font-medium text-sm text-blue-800 mr-4">Document Actions:</h4>
+                              <div className="flex justify-start gap-2 p-4 bg-accent rounded-lg">
+                                <h4 className="font-medium text-sm text-primary mr-4">Document Actions:</h4>
                                 <Button
                                   size="sm"
                                   variant="outline"
@@ -430,8 +430,8 @@ const PurchaseOrderApprovalsEnhanced = () => {
                               </div>
 
                               {/* Review Actions */}
-                              <div className="flex justify-end gap-2 p-4 bg-gray-50 rounded-lg">
-                                <h4 className="font-medium text-sm text-gray-700 mr-auto">Review Actions:</h4>
+                              <div className="flex justify-end gap-2 p-4 bg-muted rounded-lg">
+                                <h4 className="font-medium text-sm text-foreground mr-auto">Review Actions:</h4>
                                 
                                 <Button
                                   size="sm"
@@ -620,11 +620,11 @@ const PurchaseOrderApprovalsEnhanced = () => {
 
                               {/* Edit PO Items Section */}
                               {editingItems && (
-                                <div className="mt-4 p-4 bg-yellow-50 rounded-lg border">
-                                  <h5 className="font-medium text-yellow-800 mb-3">Edit Purchase Order Items</h5>
+                                <div className="mt-4 p-4 bg-warning-wash rounded-lg border">
+                                  <h5 className="font-medium text-warning mb-3">Edit Purchase Order Items</h5>
                                   <div className="space-y-3">
                                     {poItems.map((item, index) => (
-                                      <div key={item.id} className="grid grid-cols-4 gap-3 items-center p-3 bg-white rounded border">
+                                      <div key={item.id} className="grid grid-cols-4 gap-3 items-center p-3 bg-card rounded border">
                                         <div className="text-sm font-medium">{item.raw_material_name}</div>
                                         <div>
                                           <Label className="text-xs">Quantity</Label>
@@ -657,7 +657,7 @@ const PurchaseOrderApprovalsEnhanced = () => {
                                         </div>
                                         <div>
                                           <Label className="text-xs">Total</Label>
-                                          <div className="text-sm font-medium mt-1 p-2 bg-gray-100 rounded">
+                                          <div className="text-sm font-medium mt-1 p-2 bg-muted rounded">
                                             ₹{item.line_total.toLocaleString()}
                                           </div>
                                         </div>

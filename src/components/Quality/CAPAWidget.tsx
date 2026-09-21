@@ -115,14 +115,14 @@ export const CAPAWidget = () => {
           <div className="grid grid-cols-2 gap-2 text-xs">
             <div className="flex items-center justify-between">
               <span className="text-muted-foreground flex items-center gap-1">
-                <AlertTriangle className="h-3 w-3 text-orange-600" />
+                <AlertTriangle className="h-3 w-3 text-warning" />
                 Vendor:
               </span>
               <span className="font-medium">{stats.vendor.total}</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-muted-foreground flex items-center gap-1">
-                <XCircle className="h-3 w-3 text-red-600" />
+                <XCircle className="h-3 w-3 text-destructive" />
                 Line Rejection:
               </span>
               <span className="font-medium">{stats.lineRejection.total}</span>
@@ -136,7 +136,7 @@ export const CAPAWidget = () => {
             </div>
             <div className="flex items-center justify-between">
               <span className="text-muted-foreground flex items-center gap-1">
-                <Clock className="h-3 w-3 text-green-600" />
+                <Clock className="h-3 w-3 text-success" />
                 Production:
               </span>
               <span className="font-medium">{stats.production.total}</span>
@@ -145,7 +145,7 @@ export const CAPAWidget = () => {
           
           <div className="flex items-center justify-between border-t pt-2">
             <span className="text-muted-foreground">Overdue:</span>
-            <span className="font-medium text-red-600">{stats.totalOverdue}</span>
+            <span className="font-medium text-destructive">{stats.totalOverdue}</span>
           </div>
           
           <Button 

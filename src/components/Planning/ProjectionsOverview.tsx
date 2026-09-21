@@ -37,7 +37,7 @@ export const ProjectionsOverview = () => {
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-2">
-              <Package2 className="h-8 w-8 text-blue-600" />
+              <Package2 className="h-8 w-8 text-primary" />
               <div>
                 <div className="text-2xl font-bold">{projections.length}</div>
                 <div className="text-sm text-muted-foreground">Total Projections</div>
@@ -49,7 +49,7 @@ export const ProjectionsOverview = () => {
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-2">
-              <Calendar className="h-8 w-8 text-green-600" />
+              <Calendar className="h-8 w-8 text-success" />
               <div>
                 <div className="text-2xl font-bold">{schedules.length}</div>
                 <div className="text-sm text-muted-foreground">Scheduled Productions</div>
@@ -61,7 +61,7 @@ export const ProjectionsOverview = () => {
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-2">
-              <AlertTriangle className="h-8 w-8 text-orange-600" />
+              <AlertTriangle className="h-8 w-8 text-warning" />
               <div>
                 <div className="text-2xl font-bold">
                   {projections.filter((p: any) => getRemainingQuantity(p) > 0).length}
@@ -116,7 +116,7 @@ export const ProjectionsOverview = () => {
                       <ProjectionProgressIndicator projectionId={projection.id} />
                     </TableCell>
                     <TableCell>{Number(projection.quantity).toLocaleString()}</TableCell>
-                    <TableCell className="font-medium text-blue-600">
+                    <TableCell className="font-medium text-primary">
                       {scheduled.toLocaleString()}
                     </TableCell>
                     <TableCell className="font-medium">

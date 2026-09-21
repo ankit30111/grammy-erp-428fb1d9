@@ -69,7 +69,7 @@ export const ComplaintStatusTimeline = ({ currentStatus, progressPercentage }: C
   const getStageColor = (status: string) => {
     switch (status) {
       case "completed": return "bg-primary text-primary-foreground";
-      case "current": return "bg-blue-500 text-white animate-pulse";
+      case "current": return "bg-primary text-white animate-pulse";
       case "pending": return "bg-muted text-muted-foreground";
       default: return "bg-muted text-muted-foreground";
     }

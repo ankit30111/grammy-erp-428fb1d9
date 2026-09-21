@@ -245,7 +245,7 @@ const StockReconciliation = () => {
         </div>
 
         {/* Search and Filter Controls */}
-        <div className="flex flex-col sm:flex-row gap-4 p-4 bg-gray-50 rounded-lg">
+        <div className="flex flex-col sm:flex-row gap-4 p-4 bg-muted rounded-lg">
           <div className="flex-1">
             <div className="relative">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -314,7 +314,7 @@ const StockReconciliation = () => {
               const hasVariance = variance !== 0 && physicalCounts[item.part_id] !== undefined;
 
               return (
-                <TableRow key={item.id} className={hasVariance ? "bg-yellow-50" : ""}>
+                <TableRow key={item.id} className={hasVariance ? "bg-warning-wash" : ""}>
                   <TableCell className="font-mono">{item.parts?.part_code}</TableCell>
                   <TableCell>{item.parts?.name}</TableCell>
                   <TableCell>
@@ -333,7 +333,7 @@ const StockReconciliation = () => {
                   </TableCell>
                   <TableCell>
                     {physicalCounts[item.part_id] !== undefined && (
-                      <span className={`font-medium ${variance > 0 ? 'text-green-600' : variance < 0 ? 'text-red-600' : 'text-gray-600'}`}>
+                      <span className={`font-medium ${variance > 0 ? 'text-success' : variance < 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
                         {variance > 0 ? `+${variance}` : variance}
                       </span>
                     )}

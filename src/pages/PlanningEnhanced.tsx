@@ -168,7 +168,7 @@ const PlanningEnhanced: React.FC = () => {
               {daySchedules.map((schedule, scheduleIndex) => (
                 <div 
                   key={scheduleIndex} 
-                  className="text-xs bg-blue-100 rounded p-1 mb-1 cursor-pointer hover:bg-blue-200"
+                  className="text-xs bg-accent rounded p-1 mb-1 cursor-pointer hover:bg-accent"
                   onClick={() => {
                     setSelectedScheduleId(schedule.id);
                     setShortageDialogOpen(true);

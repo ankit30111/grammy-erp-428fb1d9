@@ -48,7 +48,7 @@ const ProductionMainDashboard = () => {
             icon={Factory}
             isLoading={isLoading}
             subtitle="Currently producing"
-            className="border-blue-200"
+            className="border-primary/30"
           />
           <KPICard
             title="Completed Vouchers"
@@ -94,9 +94,9 @@ const ProductionMainDashboard = () => {
                       </p>
                     </div>
                     <div className={`px-2 py-1 rounded text-xs font-medium ${
-                      line.output >= line.target ? 'bg-green-100 text-green-800' : 
-                      line.output >= line.target * 0.8 ? 'bg-yellow-100 text-yellow-800' : 
-                      'bg-red-100 text-red-800'
+                      line.output >= line.target ? 'bg-success-wash text-success' : 
+                      line.output >= line.target * 0.8 ? 'bg-warning-wash text-warning' : 
+                      'bg-destructive-wash text-destructive'
                     }`}>
                       {Math.round((line.output / line.target) * 100)}%
                     </div>

@@ -192,11 +192,11 @@ export function PerformanceReviews() {
 
   const getRatingColor = (rating: string) => {
     switch (rating) {
-      case 'excellent': return 'bg-green-500';
-      case 'good': return 'bg-blue-500';
-      case 'satisfactory': return 'bg-yellow-500';
-      case 'needs_improvement': return 'bg-orange-500';
-      case 'unsatisfactory': return 'bg-red-500';
+      case 'excellent': return 'bg-success';
+      case 'good': return 'bg-primary';
+      case 'satisfactory': return 'bg-warning';
+      case 'needs_improvement': return 'bg-warning';
+      case 'unsatisfactory': return 'bg-destructive';
       default: return 'bg-gray-500';
     }
   };
@@ -378,7 +378,7 @@ export function PerformanceReviews() {
         <Card>
           <CardHeader>
             <CardTitle>
-              <Star className="h-5 w-5 text-yellow-500" />
+              <Star className="h-5 w-5 text-warning" />
               Average Rating
             </CardTitle>
           </CardHeader>
@@ -386,7 +386,7 @@ export function PerformanceReviews() {
             <div className="text-2xl font-bold">
               {avgRating.toFixed(1)}/5.0
             </div>
-            <p className="text-sm text-gray-500">Overall performance</p>
+            <p className="text-sm text-muted-foreground">Overall performance</p>
           </CardContent>
         </Card>
 
@@ -398,14 +398,14 @@ export function PerformanceReviews() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{reviews?.length || 0}</div>
-            <p className="text-sm text-gray-500">This year</p>
+            <p className="text-sm text-muted-foreground">This year</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
             <CardTitle>
-              <Award className="h-5 w-5 text-blue-500" />
+              <Award className="h-5 w-5 text-primary" />
               Top Performers
             </CardTitle>
           </CardHeader>
@@ -413,7 +413,7 @@ export function PerformanceReviews() {
             <div className="text-2xl font-bold">
               {reviews?.filter(r => r.overall_rating === 'excellent').length || 0}
             </div>
-            <p className="text-sm text-gray-500">Excellent ratings</p>
+            <p className="text-sm text-muted-foreground">Excellent ratings</p>
           </CardContent>
         </Card>
       </div>

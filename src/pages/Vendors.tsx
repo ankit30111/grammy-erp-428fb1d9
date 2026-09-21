@@ -62,7 +62,7 @@ const VendorFinanceSection = ({ vendorId }: { vendorId: string }) => {
               path={finance.gst_certificate_url}
               variant="ghost"
               size="sm"
-              className="flex items-center justify-start space-x-2 text-blue-600 hover:text-blue-800 px-0 h-auto"
+              className="flex items-center justify-start space-x-2 text-primary hover:text-primary px-0 h-auto"
             >
               <FileText className="h-4 w-4" />
               <span>GST Certificate</span>
@@ -74,7 +74,7 @@ const VendorFinanceSection = ({ vendorId }: { vendorId: string }) => {
               path={finance.msme_certificate_url}
               variant="ghost"
               size="sm"
-              className="flex items-center justify-start space-x-2 text-blue-600 hover:text-blue-800 px-0 h-auto"
+              className="flex items-center justify-start space-x-2 text-primary hover:text-primary px-0 h-auto"
             >
               <FileText className="h-4 w-4" />
               <span>MSME/UDYAM Certificate</span>

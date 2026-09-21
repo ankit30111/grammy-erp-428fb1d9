@@ -49,7 +49,7 @@ export const GRNItemsTable = ({
           return (
             <TableRow key={item.id}>
               <TableCell className="font-mono">{item.grn?.grn_number}</TableCell>
-              <TableCell className="font-mono text-blue-600">
+              <TableCell className="font-mono text-primary">
                 {item.parts?.part_code}
               </TableCell>
               <TableCell>{item.parts?.name}</TableCell>
@@ -60,7 +60,7 @@ export const GRNItemsTable = ({
               <TableCell>
                 <Badge 
                   variant={item.iqc_outcome === 'ACCEPTED' ? 'default' : 'secondary'}
-                  className={item.iqc_outcome === 'ACCEPTED' ? 'bg-green-100 text-green-800' : ''}
+                  className={item.iqc_outcome === 'ACCEPTED' ? 'bg-success-wash text-success' : ''}
                 >
                   {item.iqc_outcome}
                 </Badge>
@@ -81,12 +81,12 @@ export const GRNItemsTable = ({
                 {physicalQty !== undefined && physicalQty !== acceptedQty && (
                   <div className="text-xs mt-1">
                     {physicalQty < acceptedQty ? (
-                      <span className="text-red-600">
+                      <span className="text-destructive">
                         <AlertTriangle className="h-3 w-3 inline mr-1" />
                         Shortage: {acceptedQty - physicalQty}
                       </span>
                     ) : (
-                      <span className="text-orange-600">
+                      <span className="text-warning">
                         Excess: {physicalQty - acceptedQty}
                       </span>
                     )}

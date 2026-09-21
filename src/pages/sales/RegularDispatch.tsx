@@ -288,11 +288,11 @@ const RegularDispatch = () => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'PENDING': return 'bg-yellow-100 text-yellow-800';
-      case 'DISPATCHED': return 'bg-blue-100 text-blue-800';
-      case 'DELIVERED': return 'bg-green-100 text-green-800';
-      case 'CANCELLED': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'PENDING': return 'bg-warning-wash text-warning';
+      case 'DISPATCHED': return 'bg-accent text-primary';
+      case 'DELIVERED': return 'bg-success-wash text-success';
+      case 'CANCELLED': return 'bg-destructive-wash text-destructive';
+      default: return 'bg-muted text-foreground';
     }
   };
 

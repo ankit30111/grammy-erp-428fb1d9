@@ -101,11 +101,11 @@ const ProductionStatusSummary = ({
                 </div>
                 <div>
                   <span className="text-sm text-muted-foreground">Produced:</span>
-                  <p className="text-2xl font-bold text-green-600">{totalProduced}</p>
+                  <p className="text-2xl font-bold text-success">{totalProduced}</p>
                 </div>
                 <div>
                   <span className="text-sm text-muted-foreground">Remaining:</span>
-                  <p className="text-2xl font-bold text-orange-600">{targetQuantity - totalProduced}</p>
+                  <p className="text-2xl font-bold text-warning">{targetQuantity - totalProduced}</p>
                 </div>
               </div>
               

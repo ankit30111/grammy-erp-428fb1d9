@@ -40,7 +40,7 @@ export function DashSidebar() {
         )}
         <button
           onClick={() => setCollapsed(!collapsed)}
-          className="ml-auto p-1 rounded hover:bg-white/10 text-slate-400"
+          className="ml-auto p-1 rounded hover:bg-card/10 text-muted-foreground"
         >
           {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
         </button>
@@ -55,10 +55,10 @@ export function DashSidebar() {
 
       {/* Footer */}
       <div className="px-2 pb-3 space-y-2 shrink-0">
-        <Separator className="bg-white/10" />
+        <Separator className="bg-card/10" />
         <Button
           variant="ghost"
-          className="w-full justify-start gap-3 text-slate-400 hover:text-white hover:bg-white/10 px-3"
+          className="w-full justify-start gap-3 text-muted-foreground hover:text-white hover:bg-card/10 px-3"
           onClick={() => navigate("/")}
         >
           <ArrowLeft size={20} className="shrink-0" />

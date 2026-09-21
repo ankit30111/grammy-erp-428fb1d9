@@ -208,7 +208,7 @@ const HourlyProductionDialog = ({ open, onOpenChange, productionLine }: HourlyPr
                 </div>
                 <div>
                   <span className="font-medium">Produced:</span>
-                  <div className={totalProduced >= currentOrder.quantity ? "text-green-600 font-bold" : ""}>
+                  <div className={totalProduced >= currentOrder.quantity ? "text-success font-bold" : ""}>
                     {totalProduced} units
                   </div>
                 </div>
@@ -311,8 +311,8 @@ const HourlyProductionDialog = ({ open, onOpenChange, productionLine }: HourlyPr
                       <TableCell>{entry.downtime_minutes}</TableCell>
                       <TableCell>
                         <span className={`font-medium ${
-                          entry.efficiency_percentage >= 90 ? 'text-green-600' : 
-                          entry.efficiency_percentage >= 70 ? 'text-yellow-600' : 'text-red-600'
+                          entry.efficiency_percentage >= 90 ? 'text-success' : 
+                          entry.efficiency_percentage >= 70 ? 'text-warning' : 'text-destructive'
                         }`}>
                           {entry.efficiency_percentage}%
                         </span>

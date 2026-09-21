@@ -189,7 +189,7 @@ const ProjectGanttChart = () => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
       return (
-        <div className="bg-white p-3 border rounded-lg shadow-lg">
+        <div className="bg-card p-3 border rounded-lg shadow-lg">
           <p className="font-semibold">{data.projectName}</p>
           <p className="text-sm text-muted-foreground">{data.type} Project</p>
           <p className="text-sm">Status: {data.status}</p>
@@ -227,7 +227,7 @@ const ProjectGanttChart = () => {
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-center h-64">
-            <div className="text-red-500">Error loading project data. Please try again.</div>
+            <div className="text-destructive">Error loading project data. Please try again.</div>
           </div>
         </CardContent>
       </Card>
@@ -251,22 +251,22 @@ const ProjectGanttChart = () => {
         ) : (
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-              <div className="text-center p-4 bg-blue-50 rounded-lg">
-                <div className="text-2xl font-bold text-blue-600">
+              <div className="text-center p-4 bg-accent rounded-lg">
+                <div className="text-2xl font-bold text-primary">
                   {ganttData?.filter(p => p.type === 'NPD').length || 0}
                 </div>
-                <div className="text-sm text-blue-700">NPD Projects</div>
+                <div className="text-sm text-primary">NPD Projects</div>
               </div>
               {/*
                 The "Customization Projects" tile counted pre_existing_projects,
                 a table dropped in the rebuild. It would have read 0 forever, which
                 looks like "none in progress" rather than "this feature is gone".
               */}
-              <div className="text-center p-4 bg-orange-50 rounded-lg">
-                <div className="text-2xl font-bold text-orange-600">
+              <div className="text-center p-4 bg-warning-wash rounded-lg">
+                <div className="text-2xl font-bold text-warning">
                   {ganttData?.filter(p => p.daysRemaining < 30).length || 0}
                 </div>
-                <div className="text-sm text-orange-700">Due in 30 Days</div>
+                <div className="text-sm text-warning">Due in 30 Days</div>
               </div>
             </div>
             

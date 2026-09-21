@@ -158,12 +158,12 @@ export default function InventoryManagement() {
       )}
 
       {/* Error Prevention Notice */}
-      <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+      <div className="bg-warning-wash border border-warning/30 rounded-lg p-4">
         <div className="flex items-center space-x-2">
-          <AlertTriangle className="h-5 w-5 text-orange-600" />
+          <AlertTriangle className="h-5 w-5 text-warning" />
           <div>
-            <p className="text-sm font-medium text-orange-900">Inventory Protection Enabled</p>
-            <p className="text-xs text-orange-700">
+            <p className="text-sm font-medium text-warning">Inventory Protection Enabled</p>
+            <p className="text-xs text-warning">
               Enhanced safety checks prevent duplicate processing. Use "Sync & Fix Inventory" to correct any discrepancies.
             </p>
           </div>
@@ -174,9 +174,9 @@ export default function InventoryManagement() {
       <div className="grid grid-cols-4 gap-4">
         <Card>
           <CardContent className="flex items-center p-6">
-            <Package className="h-8 w-8 text-blue-600" />
+            <Package className="h-8 w-8 text-primary" />
             <div className="ml-4">
-              <p className="text-sm text-gray-600">Total Items</p>
+              <p className="text-sm text-muted-foreground">Total Items</p>
               <p className="text-2xl font-bold">{totalItems}</p>
             </div>
           </CardContent>
@@ -184,29 +184,29 @@ export default function InventoryManagement() {
         
         <Card>
           <CardContent className="flex items-center p-6">
-            <AlertTriangle className="h-8 w-8 text-yellow-600" />
+            <AlertTriangle className="h-8 w-8 text-warning" />
             <div className="ml-4">
-              <p className="text-sm text-gray-600">Low Stock</p>
-              <p className="text-2xl font-bold text-yellow-600">{lowStockItems}</p>
+              <p className="text-sm text-muted-foreground">Low Stock</p>
+              <p className="text-2xl font-bold text-warning">{lowStockItems}</p>
             </div>
           </CardContent>
         </Card>
         
         <Card>
           <CardContent className="flex items-center p-6">
-            <TrendingDown className="h-8 w-8 text-red-600" />
+            <TrendingDown className="h-8 w-8 text-destructive" />
             <div className="ml-4">
-              <p className="text-sm text-gray-600">Out of Stock</p>
-              <p className="text-2xl font-bold text-red-600">{outOfStockItems}</p>
+              <p className="text-sm text-muted-foreground">Out of Stock</p>
+              <p className="text-2xl font-bold text-destructive">{outOfStockItems}</p>
             </div>
           </CardContent>
         </Card>
         
         <Card>
           <CardContent className="flex items-center p-6">
-            <TrendingUp className="h-8 w-8 text-green-600" />
+            <TrendingUp className="h-8 w-8 text-success" />
             <div className="ml-4">
-              <p className="text-sm text-gray-600">Total Quantity</p>
+              <p className="text-sm text-muted-foreground">Total Quantity</p>
               <p className="text-2xl font-bold">{totalValue.toLocaleString()}</p>
             </div>
           </CardContent>
@@ -238,14 +238,14 @@ export default function InventoryManagement() {
                   </TableCell>
                   <TableCell>{item.parts?.name || "N/A"}</TableCell>
                   <TableCell className={`font-medium ${
-                    item.quantity <= (item.minimum_stock || 0) ? "text-red-600" : "text-green-600"
+                    item.quantity <= (item.minimum_stock || 0) ? "text-destructive" : "text-success"
                   }`}>
                     {item.quantity.toLocaleString()}
                   </TableCell>
-                  <TableCell className="text-gray-600">{item.minimum_stock || 0}</TableCell>
+                  <TableCell className="text-muted-foreground">{item.minimum_stock || 0}</TableCell>
                   <TableCell>
                     <div className="flex items-center space-x-1">
-                      <MapPin className="h-4 w-4 text-gray-500" />
+                      <MapPin className="h-4 w-4 text-muted-foreground" />
                       <span>{item.location || "Not specified"}</span>
                     </div>
                   </TableCell>

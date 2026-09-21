@@ -110,7 +110,7 @@ const MaterialDispatchHistoryDialog = ({
               <span className="text-sm text-muted-foreground">Still outstanding</span>
               <p
                 className={`text-lg font-semibold font-mono ${
-                  outstanding === 0 ? "text-green-600" : "text-amber-600"
+                  outstanding === 0 ? "text-success" : "text-warning"
                 }`}
               >
                 {outstanding.toLocaleString()}
@@ -172,7 +172,7 @@ const MaterialDispatchHistoryDialog = ({
                           {diff === null ? (
                             <span className="text-muted-foreground">—</span>
                           ) : diff === 0 ? (
-                            <span className="text-green-600">0</span>
+                            <span className="text-success">0</span>
                           ) : (
                             <span className="text-destructive">
                               {diff > 0 ? "+" : ""}

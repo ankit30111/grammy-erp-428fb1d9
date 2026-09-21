@@ -58,26 +58,26 @@ const DispatchVerificationRow = ({
     if (!isVerified && difference === 0) return "-";
     if (difference > 0) {
       return (
-        <span className="text-green-600 font-medium">
+        <span className="text-success font-medium">
           +{difference} (Return)
         </span>
       );
     } else if (difference < 0) {
       return (
-        <span className="text-red-600 font-medium">
+        <span className="text-destructive font-medium">
           {difference} (Shortage)
         </span>
       );
     }
-    return <span className="text-gray-600">0</span>;
+    return <span className="text-muted-foreground">0</span>;
   };
 
   return (
-    <TableRow className={isVerified ? "bg-green-50" : ""}>
+    <TableRow className={isVerified ? "bg-success-wash" : ""}>
       <TableCell className="font-mono">{rawMaterial.part_code}</TableCell>
       <TableCell>{rawMaterial.name}</TableCell>
       <TableCell className="font-semibold">{requiredQuantity}</TableCell>
-      <TableCell className="font-medium text-blue-600">{sentQuantity}</TableCell>
+      <TableCell className="font-medium text-primary">{sentQuantity}</TableCell>
       <TableCell className="font-medium">
         {isVerified ? receivedQuantity : "-"}
       </TableCell>
@@ -104,7 +104,7 @@ const DispatchVerificationRow = ({
                     </div>
                     <div>
                       <span className="text-muted-foreground">Sent Quantity:</span>
-                      <p className="font-medium text-blue-600">{sentQuantity}</p>
+                      <p className="font-medium text-primary">{sentQuantity}</p>
                     </div>
                   </div>
                   

@@ -128,7 +128,7 @@ export const EditablePurchaseOrders = () => {
                       {po.status}
                     </Badge>
                     {po.status === 'PENDING_APPROVAL' && (
-                      <Badge variant="outline" className="text-blue-600 border-blue-300">
+                      <Badge variant="outline" className="text-primary border-primary/30">
                         Awaiting Approval
                       </Badge>
                     )}
@@ -137,7 +137,7 @@ export const EditablePurchaseOrders = () => {
                     {editingPO === po.id ? (
                       <>
                         {['APPROVED', 'PARTIALLY_RECEIVED', 'RECEIVED'].includes(po.status) && (
-                          <span className="text-xs text-amber-600 self-center mr-1">
+                          <span className="text-xs text-warning self-center mr-1">
                             Saving sends this back for approval
                           </span>
                         )}
@@ -184,9 +184,9 @@ export const EditablePurchaseOrders = () => {
               <CardContent>
                 {/* Status workflow information */}
                 {po.status === 'PENDING_APPROVAL' && (
-                  <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                    <p className="text-sm font-medium text-yellow-800 mb-1">Approval Required</p>
-                    <p className="text-xs text-yellow-600">
+                  <div className="mb-4 p-3 bg-warning-wash border border-warning/30 rounded-lg">
+                    <p className="text-sm font-medium text-warning mb-1">Approval Required</p>
+                    <p className="text-xs text-warning">
                       This purchase order needs approval before materials can be received. 
                       Go to <strong>Approvals</strong> page to review and approve.
                     </p>
@@ -282,8 +282,8 @@ export const EditablePurchaseOrders = () => {
                               </TableCell>
                               <TableCell>{item.parts?.name}</TableCell>
                               <TableCell className="font-medium">{item.quantity}</TableCell>
-                              <TableCell className="text-blue-600 font-medium">{receivedQty}</TableCell>
-                              <TableCell className={pendingQty > 0 ? "text-orange-600 font-medium" : "text-green-600 font-medium"}>
+                              <TableCell className="text-primary font-medium">{receivedQty}</TableCell>
+                              <TableCell className={pendingQty > 0 ? "text-warning font-medium" : "text-success font-medium"}>
                                 {pendingQty}
                               </TableCell>
                               <TableCell>
@@ -297,11 +297,11 @@ export const EditablePurchaseOrders = () => {
                               </TableCell>
                               <TableCell>
                                 <div className="flex items-center gap-2">
-                                  <div className="w-16 bg-gray-200 rounded-full h-2">
+                                  <div className="w-16 bg-muted rounded-full h-2">
                                     <div 
                                       className={`h-2 rounded-full ${
-                                        completionPercentage === 100 ? 'bg-green-600' : 
-                                        completionPercentage > 0 ? 'bg-blue-600' : 'bg-gray-300'
+                                        completionPercentage === 100 ? 'bg-success' : 
+                                        completionPercentage > 0 ? 'bg-primary' : 'bg-muted'
                                       }`}
                                       style={{ width: `${Math.min(completionPercentage, 100)}%` }}
                                     ></div>
@@ -318,9 +318,9 @@ export const EditablePurchaseOrders = () => {
                 )}
 
                 {/* Updated Workflow Status Indicator */}
-                <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-                  <p className="text-sm font-medium text-blue-800 mb-1">Purchase Order Workflow:</p>
-                  <p className="text-xs text-blue-600">
+                <div className="mt-4 p-3 bg-accent rounded-lg">
+                  <p className="text-sm font-medium text-primary mb-1">Purchase Order Workflow:</p>
+                  <p className="text-xs text-primary">
                     PO Created → {
                       po.status === 'PENDING_APPROVAL' ? 'Pending approval'
                       : po.status === 'CANCELLED' ? 'Cancelled'
@@ -333,7 +333,7 @@ export const EditablePurchaseOrders = () => {
                 </div>
 
                 {po.notes && !editingPO && (
-                  <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+                  <div className="mt-4 p-3 bg-muted rounded-lg">
                     <p className="text-sm text-muted-foreground mb-1">Notes:</p>
                     <p className="text-sm">{po.notes}</p>
                   </div>

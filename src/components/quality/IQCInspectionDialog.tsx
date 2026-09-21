@@ -90,6 +90,14 @@ const IQCInspectionDialog = ({ grn, isOpen, onClose }: IQCInspectionDialogProps)
     updateInspectionResult(itemId, { remarks });
   };
 
+  // A GRN of eight parts meant eight identical Pass clicks, each in its own
+  // full-height block - which is what made the dialog feel like a form that
+  // never ends. Almost every inspection passes every line, so the common case
+  // gets one control and the exceptions are changed underneath it.
+  const setAll = (status: IqcVerdict) => {
+    pendingItems.forEach((item: any) => handleStatusChange(item.id, status));
+  };
+
   const handleSubmit = async () => {
     console.log('Submitting IQC inspection with results:', inspectionResults);
     console.log('Validation errors:', validationErrors);
@@ -139,13 +147,26 @@ const IQCInspectionDialog = ({ grn, isOpen, onClose }: IQCInspectionDialogProps)
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5" />
-            IQC Inspection: GRN #{grn.grn_number} - {grn.vendors?.name}
+          <DialogTitle>
+            IQC Inspection — {grn.grn_number} · {grn.vendors?.name}
           </DialogTitle>
         </DialogHeader>
-        
+
         <div className="space-y-6">
+          {pendingItems.length > 1 && (
+            <div className="flex flex-wrap items-center gap-2 rounded-md border bg-muted/30 px-3 py-2">
+              <span className="text-sm text-muted-foreground">
+                {pendingItems.length} lines to inspect — set them all to
+              </span>
+              <Button type="button" size="sm" variant="outline" className="h-7"
+                      onClick={() => setAll(IQC_OUTCOME.ACCEPTED)}>Pass</Button>
+              <Button type="button" size="sm" variant="outline" className="h-7"
+                      onClick={() => setAll(IQC_OUTCOME.PARTIAL)}>Segregate</Button>
+              <Button type="button" size="sm" variant="outline" className="h-7"
+                      onClick={() => setAll(IQC_OUTCOME.REJECTED)}>Fail</Button>
+              <span className="text-sm text-muted-foreground">then change the exceptions below.</span>
+            </div>
+          )}
           <div className="bg-muted/20 p-4 rounded-md">
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div><strong>PO Number:</strong> {grn.purchase_orders?.po_number}</div>
@@ -190,15 +211,15 @@ const IQCInspectionDialog = ({ grn, isOpen, onClose }: IQCInspectionDialogProps)
                       >
                         <div className="flex items-center space-x-2">
                           <RadioGroupItem value={IQC_OUTCOME.ACCEPTED} id={`pass-${item.id}`} />
-                          <Label htmlFor={`pass-${item.id}`} className="text-green-600">Pass</Label>
+                          <Label htmlFor={`pass-${item.id}`} className="text-success">Pass</Label>
                         </div>
                         <div className="flex items-center space-x-2">
                           <RadioGroupItem value={IQC_OUTCOME.PARTIAL} id={`segregate-${item.id}`} />
-                          <Label htmlFor={`segregate-${item.id}`} className="text-amber-600">Segregate</Label>
+                          <Label htmlFor={`segregate-${item.id}`} className="text-warning">Segregate</Label>
                         </div>
                         <div className="flex items-center space-x-2">
                           <RadioGroupItem value={IQC_OUTCOME.REJECTED} id={`fail-${item.id}`} />
-                          <Label htmlFor={`fail-${item.id}`} className="text-red-600">Fail</Label>
+                          <Label htmlFor={`fail-${item.id}`} className="text-destructive">Fail</Label>
                         </div>
                       </RadioGroup>
                     </div>
@@ -218,7 +239,7 @@ const IQCInspectionDialog = ({ grn, isOpen, onClose }: IQCInspectionDialogProps)
                                 'acceptedQuantity',
                                 parseInt(e.target.value) || 0
                               )}
-                              className={`mt-1 ${validationErrors[item.id] ? 'border-red-500' : ''}`}
+                              className={`mt-1 ${validationErrors[item.id] ? 'border-destructive/30' : ''}`}
                             />
                           </div>
                           <div>
@@ -233,7 +254,7 @@ const IQCInspectionDialog = ({ grn, isOpen, onClose }: IQCInspectionDialogProps)
                                 'rejectedQuantity',
                                 parseInt(e.target.value) || 0
                               )}
-                              className={`mt-1 ${validationErrors[item.id] ? 'border-red-500' : ''}`}
+                              className={`mt-1 ${validationErrors[item.id] ? 'border-destructive/30' : ''}`}
                             />
                           </div>
                         </div>
@@ -250,7 +271,7 @@ const IQCInspectionDialog = ({ grn, isOpen, onClose }: IQCInspectionDialogProps)
                     )}
                     
                      <div>
-                       <Label>Upload IQC Report <span className="text-red-500">*</span></Label>
+                       <Label>Upload IQC Report <span className="text-destructive">*</span></Label>
                        <div className="flex items-center gap-2 mt-1">
                         <div className="relative w-full">
                           <Input
@@ -266,7 +287,7 @@ const IQCInspectionDialog = ({ grn, isOpen, onClose }: IQCInspectionDialogProps)
                              placeholder="Select a file... (Required)"
                              onClick={() => document.getElementById(`iqc-report-${item.id}`)?.click()}
                              className={`cursor-pointer pr-10 ${
-                               !inspectionResults[item.id]?.selectedFile ? 'border-red-300' : ''
+                               !inspectionResults[item.id]?.selectedFile ? 'border-destructive/30' : ''
                              }`}
                            />
                           <Upload className="absolute right-3 top-2.5 h-4 w-4 text-muted-foreground" />

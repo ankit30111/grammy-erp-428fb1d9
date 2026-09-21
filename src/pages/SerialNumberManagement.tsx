@@ -48,7 +48,7 @@ const SerialNumberManagement = () => {
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center gap-2">
-                <Package className="h-8 w-8 text-blue-600" />
+                <Package className="h-8 w-8 text-primary" />
                 <div>
                   <div className="text-2xl font-bold">{vouchers.length}</div>
                   <div className="text-sm text-muted-foreground">Total Vouchers with Dispatches</div>
@@ -60,7 +60,7 @@ const SerialNumberManagement = () => {
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center gap-2">
-                <Hash className="h-8 w-8 text-green-600" />
+                <Hash className="h-8 w-8 text-success" />
                 <div>
                   <div className="text-2xl font-bold">{assignedCount}</div>
                   <div className="text-sm text-muted-foreground">Serial Numbers Assigned</div>
@@ -72,7 +72,7 @@ const SerialNumberManagement = () => {
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center gap-2">
-                <Hash className="h-8 w-8 text-orange-600" />
+                <Hash className="h-8 w-8 text-warning" />
                 <div>
                   <div className="text-2xl font-bold">{pendingCount}</div>
                   <div className="text-sm text-muted-foreground">Pending Assignment</div>

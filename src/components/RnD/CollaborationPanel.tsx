@@ -17,11 +17,11 @@ interface CollaborationPanelProps {
 }
 
 const COMMENT_TYPES = [
-  { value: 'GENERAL', label: 'General Comment', color: 'bg-gray-100 text-gray-800' },
-  { value: 'RND_NOTE', label: 'R&D Note', color: 'bg-blue-100 text-blue-800' },
-  { value: 'IQC_FEEDBACK', label: 'IQC Feedback', color: 'bg-green-100 text-green-800' },
+  { value: 'GENERAL', label: 'General Comment', color: 'bg-muted text-foreground' },
+  { value: 'RND_NOTE', label: 'R&D Note', color: 'bg-accent text-primary' },
+  { value: 'IQC_FEEDBACK', label: 'IQC Feedback', color: 'bg-success-wash text-success' },
   { value: 'PURCHASE_NOTE', label: 'Purchase Note', color: 'bg-purple-100 text-purple-800' },
-  { value: 'VENDOR_COMMUNICATION', label: 'Vendor Communication', color: 'bg-orange-100 text-orange-800' }
+  { value: 'VENDOR_COMMUNICATION', label: 'Vendor Communication', color: 'bg-warning-wash text-warning' }
 ];
 
 export const CollaborationPanel: React.FC<CollaborationPanelProps> = ({ bomId }) => {

@@ -15,17 +15,17 @@ interface ContainerDetailsDialogProps {
 }
 
 const statusColors = {
-  ORDERED: "bg-yellow-500",
-  LOADING: "bg-orange-500", 
-  LOADED: "bg-blue-500",
+  ORDERED: "bg-warning",
+  LOADING: "bg-warning", 
+  LOADED: "bg-primary",
   CHINA_CUSTOM: "bg-purple-500",
   SHIPPED: "bg-cyan-500",
-  IN_TRANSIT: "bg-indigo-500",
-  INDIAN_DOCK: "bg-green-500",
+  IN_TRANSIT: "bg-primary",
+  INDIAN_DOCK: "bg-success",
   IN_TRAIN: "bg-teal-500",
-  INDIA_CUSTOM: "bg-amber-500",
+  INDIA_CUSTOM: "bg-warning",
   DISPATCHED: "bg-lime-500",
-  ARRIVED: "bg-emerald-500"
+  ARRIVED: "bg-success"
 };
 
 export default function ContainerDetailsDialog({ container, open, onOpenChange }: ContainerDetailsDialogProps) {
@@ -97,7 +97,7 @@ export default function ContainerDetailsDialog({ container, open, onOpenChange }
                 {statusDates.map((item) => (
                   <div 
                     key={item.status}
-                    className={`p-3 rounded-lg border ${item.date ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}
+                    className={`p-3 rounded-lg border ${item.date ? 'bg-success-wash border-success/30' : 'bg-muted border-border'}`}
                   >
                     <div className="text-sm font-medium">{item.label}</div>
                     <div className="text-sm text-muted-foreground">

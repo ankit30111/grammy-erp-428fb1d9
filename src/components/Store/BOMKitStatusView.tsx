@@ -136,9 +136,9 @@ const BOMKitStatusView = ({
                       </TableCell>
                       <TableCell>
                         {shortage > 0 ? (
-                          <span className="text-red-600 font-medium">{shortage}</span>
+                          <span className="text-destructive font-medium">{shortage}</span>
                         ) : (
-                          <span className="text-green-600">0</span>
+                          <span className="text-success">0</span>
                         )}
                       </TableCell>
                       <TableCell>

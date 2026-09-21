@@ -127,21 +127,21 @@ const CAPATrackingTab = () => {
   const getCategoryColor = (category: string) => {
     switch (category) {
       case 'VENDOR':
-      case 'IQC': return 'bg-blue-100 text-blue-800';
-      case 'PRODUCTION': return 'bg-green-100 text-green-800';
-      case 'LINE_REJECTION': return 'bg-red-100 text-red-800';
+      case 'IQC': return 'bg-accent text-primary';
+      case 'PRODUCTION': return 'bg-success-wash text-success';
+      case 'LINE_REJECTION': return 'bg-destructive-wash text-destructive';
       case 'CUSTOMER':
       case 'PART_ANALYSIS': return 'bg-purple-100 text-purple-800';
-      default: return 'bg-gray-100 text-gray-800';
+      default: return 'bg-muted text-foreground';
     }
   };
 
   const getImplementationStatusColor = (status: string) => {
     switch (status) {
-      case 'CLOSED': return 'bg-green-100 text-green-800';
-      case 'ACCEPTED': return 'bg-blue-100 text-blue-800';
-      case 'OPEN': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'CLOSED': return 'bg-success-wash text-success';
+      case 'ACCEPTED': return 'bg-accent text-primary';
+      case 'OPEN': return 'bg-destructive-wash text-destructive';
+      default: return 'bg-muted text-foreground';
     }
   };
 

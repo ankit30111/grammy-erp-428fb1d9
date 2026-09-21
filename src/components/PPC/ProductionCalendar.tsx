@@ -37,23 +37,23 @@ const ProductionCalendar = ({
                 .map(([date]) => new Date(date))
             }}
             modifiersClassNames={{
-              booked: "bg-green-100 text-green-800 font-bold",
-              overbooked: "bg-red-100 text-red-800 font-bold",
-              shortage: "bg-amber-100 text-amber-800 font-bold"
+              booked: "bg-success-wash text-success font-bold",
+              overbooked: "bg-destructive-wash text-destructive font-bold",
+              shortage: "bg-warning-wash text-warning font-bold"
             }}
           />
         </div>
         <div className="mt-4 space-y-2">
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded bg-green-100"></div>
+            <div className="w-4 h-4 rounded bg-success-wash"></div>
             <span className="text-sm">Production Scheduled</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded bg-amber-100"></div>
+            <div className="w-4 h-4 rounded bg-warning-wash"></div>
             <span className="text-sm">Material Shortage</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded bg-red-100"></div>
+            <div className="w-4 h-4 rounded bg-destructive-wash"></div>
             <span className="text-sm">Capacity Overbooked</span>
           </div>
         </div>

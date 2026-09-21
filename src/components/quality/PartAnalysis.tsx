@@ -245,7 +245,7 @@ const PartAnalysis = () => {
                     onChange={(e) => setRcaFile(e.target.files?.[0] || null)}
                   />
                   {selectedPart.rca_document_url && (
-                    <div className="flex items-center gap-2 text-sm text-green-600">
+                    <div className="flex items-center gap-2 text-sm text-success">
                       <FileText className="h-4 w-4" />
                       RCA document uploaded
                     </div>
@@ -271,7 +271,7 @@ const PartAnalysis = () => {
                     onChange={(e) => setCapaFile(e.target.files?.[0] || null)}
                   />
                   {selectedPart.capa_document_url && (
-                    <div className="flex items-center gap-2 text-sm text-green-600">
+                    <div className="flex items-center gap-2 text-sm text-success">
                       <FileText className="h-4 w-4" />
                       CAPA document uploaded
                     </div>

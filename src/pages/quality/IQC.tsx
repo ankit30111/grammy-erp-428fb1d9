@@ -190,7 +190,7 @@ const IQC = () => {
       case 'REJECTED':
         return <Badge variant="destructive">CAPA rejected</Badge>;
       case 'CLOSED':
-        return <Badge variant="default" className="bg-green-600">CAPA closed</Badge>;
+        return <Badge variant="default" className="bg-success">CAPA closed</Badge>;
       default:
         return <Badge variant="secondary">{capaData.status ?? "No CAPA"}</Badge>;
     }
@@ -273,7 +273,7 @@ const IQC = () => {
                       {pendingGRNs.map((grn) => (
                         <TableRow key={grn.id}>
                           <TableCell className="font-medium">{grn.grn_number}</TableCell>
-                          <TableCell className="font-medium text-blue-600">
+                          <TableCell className="font-medium text-primary">
                             {grn.purchase_orders?.po_number || "Non-PO GRN"}
                           </TableCell>
                           <TableCell>{grn.vendors?.name}</TableCell>
@@ -408,7 +408,7 @@ const IQC = () => {
                         return (
                           <TableRow key={item.id} className="h-16">
                             <TableCell className="p-2 whitespace-normal break-words font-medium">{item.grn?.grn_number}</TableCell>
-                            <TableCell className="p-2 whitespace-normal break-words font-medium text-blue-600">
+                            <TableCell className="p-2 whitespace-normal break-words font-medium text-primary">
                               {item.grn?.purchase_orders?.po_number || "Non-PO"}
                             </TableCell>
                             <TableCell className="p-2 whitespace-normal break-words font-mono text-xs">{item.parts?.part_code}</TableCell>
@@ -433,7 +433,7 @@ const IQC = () => {
                               <div className="space-y-1">
                                 {needsCAPA ? getCAPAStatusBadge(capaData) : <Badge variant="secondary" className="text-xs">Not Req.</Badge>}
                                 {capaData && capaData.status === 'OPEN' && (
-                                  <div className="text-xs text-red-600">
+                                  <div className="text-xs text-destructive">
                                     {getDaysOpen(capaData.created_at)}d
                                   </div>
                                 )}
