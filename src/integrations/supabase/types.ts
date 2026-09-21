@@ -4668,6 +4668,36 @@ export type Database = {
           },
         ]
       }
+      restore_points: {
+        Row: {
+          id: string
+          label: string
+          row_count: number
+          schema_name: string
+          table_count: number
+          taken_at: string
+          taken_by: string | null
+        }
+        Insert: {
+          id?: string
+          label: string
+          row_count?: number
+          schema_name: string
+          table_count?: number
+          taken_at?: string
+          taken_by?: string | null
+        }
+        Update: {
+          id?: string
+          label?: string
+          row_count?: number
+          schema_name?: string
+          table_count?: number
+          taken_at?: string
+          taken_by?: string | null
+        }
+        Relationships: []
+      }
       serial_number_assignments: {
         Row: {
           assigned_at: string
@@ -5384,6 +5414,92 @@ export type Database = {
           },
         ]
       }
+      vendor_notifications: {
+        Row: {
+          attempts: number
+          body: string
+          capa_id: string | null
+          cc_email: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          last_error: string | null
+          plant_id: string | null
+          provider_id: string | null
+          sent_at: string | null
+          status: Database["public"]["Enums"]["vendor_notification_status"]
+          subject: string
+          to_email: string
+          updated_at: string
+          vendor_id: string | null
+        }
+        Insert: {
+          attempts?: number
+          body: string
+          capa_id?: string | null
+          cc_email?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          last_error?: string | null
+          plant_id?: string | null
+          provider_id?: string | null
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["vendor_notification_status"]
+          subject: string
+          to_email: string
+          updated_at?: string
+          vendor_id?: string | null
+        }
+        Update: {
+          attempts?: number
+          body?: string
+          capa_id?: string | null
+          cc_email?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          last_error?: string | null
+          plant_id?: string | null
+          provider_id?: string | null
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["vendor_notification_status"]
+          subject?: string
+          to_email?: string
+          updated_at?: string
+          vendor_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_notifications_capa_id_fkey"
+            columns: ["capa_id"]
+            isOneToOne: false
+            referencedRelation: "capa"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_notifications_plant_id_fkey"
+            columns: ["plant_id"]
+            isOneToOne: false
+            referencedRelation: "plants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_notifications_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "store_receiving_variances"
+            referencedColumns: ["vendor_id"]
+          },
+          {
+            foreignKeyName: "vendor_notifications_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vendors: {
         Row: {
           address: string | null
@@ -5533,10 +5649,12 @@ export type Database = {
       }
       auth_user_in_department: { Args: { dept_name: string }; Returns: boolean }
       auth_user_in_plant: { Args: { p_plant_id: string }; Returns: boolean }
+      create_restore_point: { Args: { p_label: string }; Returns: string }
       delete_production_schedule_cascade: {
         Args: { p_schedule_id: string }
         Returns: undefined
       }
+      drop_restore_point: { Args: { p_schema: string }; Returns: string }
       generate_dash_fo_number: { Args: never; Returns: string }
       generate_dash_so_number: { Args: never; Returns: string }
       generate_dash_ticket_number: { Args: never; Returns: string }
@@ -5722,6 +5840,10 @@ export type Database = {
         Returns: Json
       }
       post_stock_movements: { Args: { p_movements: Json }; Returns: Json }
+      raise_vendor_capa: {
+        Args: { p_due_days?: number; p_grn_item_id: string; p_problem?: string }
+        Returns: Json
+      }
       receive_finished_goods: {
         Args: { p_production_order_id: string }
         Returns: string
@@ -5736,6 +5858,7 @@ export type Database = {
         Args: { p_feedback_id: string; p_remarks: string }
         Returns: undefined
       }
+      reset_business_data: { Args: { p_confirm: string }; Returns: Json }
       resolve_store_variance: {
         Args: {
           p_grn_item_id: string
@@ -5744,6 +5867,7 @@ export type Database = {
         }
         Returns: string
       }
+      restore_from_point: { Args: { p_schema: string }; Returns: string }
       set_department_modules: {
         Args: { p_department_id: string; p_modules: string[] }
         Returns: undefined
@@ -5889,6 +6013,7 @@ export type Database = {
         | "IQC_MISCOUNT"
         | "STORE_RECOUNT"
         | "WRITE_OFF"
+      vendor_notification_status: "QUEUED" | "SENT" | "FAILED" | "CANCELLED"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -6160,6 +6285,7 @@ export const Constants = {
         "STORE_RECOUNT",
         "WRITE_OFF",
       ],
+      vendor_notification_status: ["QUEUED", "SENT", "FAILED", "CANCELLED"],
     },
   },
 } as const
