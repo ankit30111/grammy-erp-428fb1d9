@@ -143,7 +143,7 @@ const MaterialRequests = () => {
           requested_quantity: requestData.requestedQuantity,
           reason: requestData.reason,
           requested_by: null
-        })
+        } as any)
         .select()
         .single();
       

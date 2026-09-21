@@ -18,7 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Plus, Pencil, Loader2, Trash2, Factory, MapPin } from "lucide-react";
 
-type LineType = "line" | "sub_assembly" | "cell";
+type LineType = "LINE" | "SUB_ASSEMBLY";
 
 interface Row {
   id: string;
@@ -49,7 +49,7 @@ interface FormState {
 const emptyForm: FormState = {
   code: "",
   name: "",
-  line_type: "line",
+  line_type: "LINE",
   is_active: true,
   sort_order: 0,
   notes: "",
@@ -59,9 +59,8 @@ const emptyForm: FormState = {
 };
 
 const TYPE_LABEL: Record<LineType, string> = {
-  line: "Line",
-  sub_assembly: "Sub-Assembly",
-  cell: "Cell",
+  LINE: "Line",
+  SUB_ASSEMBLY: "Sub-Assembly",
 };
 
 export function PlantLinesDialog({
@@ -320,9 +319,8 @@ function LineFormDialog({
               >
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="line">Line</SelectItem>
-                  <SelectItem value="sub_assembly">Sub-Assembly</SelectItem>
-                  <SelectItem value="cell">Cell</SelectItem>
+                  <SelectItem value="LINE">Line</SelectItem>
+                  <SelectItem value="SUB_ASSEMBLY">Sub-Assembly</SelectItem>
                 </SelectContent>
               </Select>
             </div>

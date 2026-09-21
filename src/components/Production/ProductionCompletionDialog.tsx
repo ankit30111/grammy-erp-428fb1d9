@@ -83,7 +83,7 @@ const ProductionCompletionDialog = ({
       // Calculate return quantities for each material
       const returnItems = bomData?.map(bomItem => ({
         production_order_id: voucherId,
-        part_id: bomItem.part_id,
+        part_id: bomItem.child_part_id,
         part_code: bomItem.parts.part_code,
         material_name: bomItem.parts.name,
         return_quantity: Math.ceil(bomItem.quantity * shortfall),
