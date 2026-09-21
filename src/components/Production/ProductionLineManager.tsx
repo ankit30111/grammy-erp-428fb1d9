@@ -135,7 +135,7 @@ const ProductionLineManager = ({ productionOrderId }: ProductionLineManagerProps
 
   // Group sent materials by BOM type for line assignment
   const groupMaterialsByType = () => {
-    const bom = productionData?.parts?.bom || [];
+    const bom = ((productionData as any)?.parts?.bom ?? []) as any[];
     const materialsByType = {
       main_assembly: [] as any[],
       sub_assembly: [] as any[],

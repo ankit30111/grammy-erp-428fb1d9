@@ -167,7 +167,7 @@ const PartAnalysis = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {partsForAnalysis.map((part) => (
+              {partsForAnalysis.map((part: any) => (
                 <TableRow key={part.id}>
                   <TableCell className="font-mono">{part.customer_complaints.bill_number}</TableCell>
                   <TableCell>{part.customer_complaints.customers?.name}</TableCell>

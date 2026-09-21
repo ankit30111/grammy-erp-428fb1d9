@@ -334,7 +334,7 @@ const InventoryDiagnostics = () => {
                   </div>
                 )}
 
-                {where.some((r) => r.is_unexplained) && (
+                {rows.some((r) => r.is_unexplained) && (
                   <div className="rounded-md border border-amber-500/40 bg-amber-50 dark:bg-amber-950/20 p-3 text-sm flex gap-2">
                     <Badge variant="destructive" className="shrink-0 h-fit">
                       Open

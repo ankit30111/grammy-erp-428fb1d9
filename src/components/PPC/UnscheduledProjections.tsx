@@ -70,7 +70,7 @@ const UnscheduledProjections = ({
                   <TableCell>{proj.parts?.name}</TableCell>
                   <TableCell>{proj.quantity}</TableCell>
                   <TableCell className="font-medium">{getRemaining(proj)}</TableCell>
-                  <TableCell>{proj.delivery_month}</TableCell>
+                  <TableCell>{proj.month}</TableCell>
                   <TableCell>
                     <Button 
                       size="sm" 

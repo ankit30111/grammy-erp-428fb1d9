@@ -1,94 +1,25 @@
-
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
-import { User, Session } from "@supabase/supabase-js";
 import { Loader2 } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface AuthGuardProps {
   children: React.ReactNode;
 }
 
+/**
+ * Single source of auth truth: AuthContext. This component must never call
+ * supabase.auth.getSession() or register its own onAuthStateChange listener —
+ * doing so triggered parallel token refreshes, hit the auth rate limit (429),
+ * and bounced signed-in users back to the login page.
+ */
 export function AuthGuard({ children }: AuthGuardProps) {
-  const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { user, loading } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    let mounted = true;
-
-    const handleAuthStateChange = async (event: string, session: Session | null) => {
-      if (!mounted) return;
-
-      console.log(`Auth state change: ${event}`, session?.user?.id || 'no user');
-      
-      // Handle token refresh errors gracefully
-      if (event === 'TOKEN_REFRESHED' && !session) {
-        console.log('Token refresh failed, clearing session');
-        setSession(null);
-        setUser(null);
-        setLoading(false);
-        return;
-      }
-
-      // Handle signed out or invalid session
-      if (event === 'SIGNED_OUT' || !session) {
-        setSession(null);
-        setUser(null);
-        setLoading(false);
-        return;
-      }
-
-      // Valid session
-      setSession(session);
-      setUser(session.user);
-      setLoading(false);
-    };
-
-    // Set up auth state listener with error handling
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthStateChange);
-
-    // Check for existing session with error handling
-    const checkSession = async () => {
-      try {
-        const { data: { session }, error } = await supabase.auth.getSession();
-        
-        if (error) {
-          console.error('Session check error:', error);
-          // Clear any invalid session data
-          if (error.message.includes('refresh_token_not_found') || 
-              error.message.includes('Invalid Refresh Token')) {
-            await supabase.auth.signOut();
-          }
-          setSession(null);
-          setUser(null);
-        } else {
-          setSession(session);
-          setUser(session?.user ?? null);
-        }
-      } catch (error) {
-        console.error('Unexpected session error:', error);
-        setSession(null);
-        setUser(null);
-      } finally {
-        if (mounted) {
-          setLoading(false);
-        }
-      }
-    };
-
-    checkSession();
-
-    return () => {
-      mounted = false;
-      subscription.unsubscribe();
-    };
-  }, []);
-
-  useEffect(() => {
     if (!loading && !user) {
-      navigate("/");
+      navigate("/", { replace: true });
     }
   }, [user, loading, navigate]);
 
@@ -102,7 +33,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
   }
 
   if (!user) {
-    return null; // Will redirect to login page
+    return null; // Redirecting to login
   }
 
   return <>{children}</>;

@@ -19,11 +19,8 @@ export function SignInForm() {
     setLoading(true);
 
     try {
-      // Clear any existing session first to prevent conflicts
-      await supabase.auth.signOut();
-      
       const { error } = await supabase.auth.signInWithPassword({
-        email,
+        email: email.trim().toLowerCase(),
         password,
       });
 

@@ -1,69 +1,19 @@
-
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { SignInForm } from "./SignInForm";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 export function AuthPage() {
-  const [loading, setLoading] = useState(true);
+  const { user, loading } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    let mounted = true;
-
-    const checkAuth = async () => {
-      try {
-        const { data: { session }, error } = await supabase.auth.getSession();
-        
-        console.log('Auth page - checking session:', session?.user?.id || 'no session');
-        
-        if (error) {
-          console.error('Auth check error:', error);
-          // Clear any invalid session data
-          if (error.message.includes('refresh_token_not_found') || 
-              error.message.includes('Invalid Refresh Token')) {
-            await supabase.auth.signOut();
-          }
-        } else if (session && mounted) {
-          navigate("/dashboard");
-          return;
-        }
-      } catch (error) {
-        console.error('Unexpected auth error:', error);
-      } finally {
-        if (mounted) {
-          setLoading(false);
-        }
-      }
-    };
-
-    checkAuth();
-
-    // Listen for auth changes with error handling
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (!mounted) return;
-
-        console.log(`Auth page - Auth state change: ${event}`, session?.user?.id || 'no session');
-        
-        if (event === 'SIGNED_IN' && session) {
-          navigate("/dashboard");
-        } else if (event === 'TOKEN_REFRESHED' && !session) {
-          console.log('Token refresh failed on auth page');
-          setLoading(false);
-        } else if (event === 'SIGNED_OUT') {
-          setLoading(false);
-        }
-      }
-    );
-
-    return () => {
-      mounted = false;
-      subscription.unsubscribe();
-    };
-  }, [navigate]);
+    if (!loading && user) {
+      navigate("/dashboard", { replace: true });
+    }
+  }, [user, loading, navigate]);
 
   if (loading) {
     return (

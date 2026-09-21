@@ -50,7 +50,7 @@ const BenchmarkDialog = ({ isOpen, onClose, projectId, projectName, onBenchmarkC
 
       const { data, error } = await supabase
         .from('npd_benchmarks')
-        .insert(benchmarksToInsert)
+        .insert(benchmarksToInsert as any)
         .select();
       
       if (error) throw error;

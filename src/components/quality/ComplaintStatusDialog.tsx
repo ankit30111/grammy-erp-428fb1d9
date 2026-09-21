@@ -57,11 +57,11 @@ export const ComplaintStatusDialog = ({ complaint, isOpen, onClose }: ComplaintS
     if (hasAnalysis) return "IQC Analysis";
     
     const hasCapaRequired = complaintParts.some(part => 
-      part.status === "ANALYZED" && (part.rca_document_url || part.capa_document_url)
+      part.status === "ANALYZED" && ((part as any).rca_document_url || (part as any).capa_document_url)
     );
     if (hasCapaRequired) return "CAPA Required";
     
-    const hasCapa = complaintParts.some(part => part.capa_document_url);
+    const hasCapa = complaintParts.some(part => (part as any).capa_document_url);
     if (hasCapa) return "CAPA Implemented";
     
     return "Open";

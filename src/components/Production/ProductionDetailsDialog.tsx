@@ -75,7 +75,7 @@ const ProductionDetailsDialog = ({ open, onOpenChange, productionOrder }: Produc
     
     if (categoryItems.length === 0) return "pending";
     
-    const allVerified = categoryItems.every(item => item.verified_by_production);
+    const allVerified = categoryItems.every(item => (item as any).verified_by_production);
     return allVerified ? "received" : "in_progress";
   };
 
