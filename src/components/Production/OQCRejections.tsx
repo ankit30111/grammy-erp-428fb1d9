@@ -35,7 +35,7 @@ const OQCRejections = () => {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            OQC Rejections ({oqcRejections.length})
+            OQC Rejections
           </CardTitle>
         </CardHeader>
         <CardContent>

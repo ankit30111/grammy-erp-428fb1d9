@@ -152,7 +152,7 @@ const IndividualComplaintsManagement = () => {
       {/* Complaints List */}
       <Card>
         <CardHeader>
-          <CardTitle>Individual Complaints ({filteredComplaints.length})</CardTitle>
+          <CardTitle>Individual Complaints</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
@@ -209,7 +209,6 @@ const IndividualComplaintsManagement = () => {
           
           {filteredComplaints.length === 0 && (
             <div className="text-center py-8 text-muted-foreground">
-              <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
               <p>No complaints found matching your filters</p>
             </div>
           )}

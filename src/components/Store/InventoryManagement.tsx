@@ -88,7 +88,6 @@ export default function InventoryManagement() {
     return (
       <div className="flex items-center justify-center py-8">
         <div className="text-center">
-          <Package className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
           <p className="text-muted-foreground">Loading inventory...</p>
         </div>
       </div>
@@ -174,7 +173,6 @@ export default function InventoryManagement() {
       <div className="grid grid-cols-4 gap-4">
         <Card>
           <CardContent className="flex items-center p-6">
-            <Package className="h-8 w-8 text-primary" />
             <div className="ml-4">
               <p className="text-sm text-muted-foreground">Total Items</p>
               <p className="text-2xl font-bold">{totalItems}</p>
@@ -184,7 +182,6 @@ export default function InventoryManagement() {
         
         <Card>
           <CardContent className="flex items-center p-6">
-            <AlertTriangle className="h-8 w-8 text-warning" />
             <div className="ml-4">
               <p className="text-sm text-muted-foreground">Low Stock</p>
               <p className="text-2xl font-bold text-warning">{lowStockItems}</p>
@@ -265,7 +262,6 @@ export default function InventoryManagement() {
 
       {filteredInventory.length === 0 && (
         <div className="text-center py-8 text-muted-foreground">
-          <Package className="mx-auto h-12 w-12 opacity-50 mb-4" />
           {inventory.length === 0 ? (
             <>
               <p>No inventory items found</p>

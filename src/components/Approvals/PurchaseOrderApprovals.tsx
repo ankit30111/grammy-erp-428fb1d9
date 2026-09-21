@@ -239,7 +239,6 @@ const PurchaseOrderApprovals = () => {
             </div>
           ) : (
             <div className="text-center py-8">
-              <CheckCircle className="h-12 w-12 text-success mx-auto mb-4" />
               <h3 className="text-lg font-medium mb-2">All Purchase Orders Approved</h3>
               <p className="text-muted-foreground">
                 No purchase orders are currently pending approval.

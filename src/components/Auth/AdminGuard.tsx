@@ -36,7 +36,6 @@ export function AdminGuard({ children, requireModule, moduleArea }: AdminGuardPr
         <Card className="max-w-md mx-auto">
           <CardHeader className="text-center">
             <div className="flex justify-center mb-2">
-              <AlertTriangle className="h-12 w-12 text-destructive" />
             </div>
             <CardTitle className="text-destructive">User Profile Not Found</CardTitle>
           </CardHeader>
@@ -59,7 +58,6 @@ export function AdminGuard({ children, requireModule, moduleArea }: AdminGuardPr
         <Card className="max-w-md mx-auto">
           <CardHeader className="text-center">
             <div className="flex justify-center mb-2">
-              <AlertTriangle className="h-12 w-12 text-destructive" />
             </div>
             <CardTitle className="text-destructive">Access Denied</CardTitle>
           </CardHeader>

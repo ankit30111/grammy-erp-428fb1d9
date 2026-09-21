@@ -63,7 +63,6 @@ const CompletedProduction = () => {
       <Card>
         <CardContent className="flex items-center justify-center py-8">
           <div className="text-center">
-            <Package className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
             <p className="text-muted-foreground">Loading completed production...</p>
           </div>
         </CardContent>
@@ -76,7 +75,7 @@ const CompletedProduction = () => {
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">
-            Completed Production ({completedProduction.length})
+            Completed Production
           </CardTitle>
           <div className="relative w-64">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -92,7 +91,6 @@ const CompletedProduction = () => {
       <CardContent>
         {filteredProduction.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
-            <CheckCircle className="h-12 w-12 mx-auto opacity-50 mb-4" />
             <p>No completed production orders found</p>
             <p className="text-sm">Production orders will appear here once completed</p>
           </div>

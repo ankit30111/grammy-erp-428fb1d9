@@ -340,7 +340,6 @@ const Purchase = () => {
             {availableMaterialsForPO.length === 0 && (
               <Card>
                 <CardContent className="text-center py-8">
-                  <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                   <h3 className="text-lg font-medium mb-2">No parts need a purchase order</h3>
                   <p className="text-muted-foreground">
                     Every short part is already covered by a purchase order.

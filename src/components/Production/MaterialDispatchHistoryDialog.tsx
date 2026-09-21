@@ -124,7 +124,6 @@ const MaterialDispatchHistoryDialog = ({
             </div>
           ) : history.length === 0 ? (
             <div className="py-10 text-center">
-              <Inbox className="h-10 w-10 mx-auto text-muted-foreground mb-2" />
               <p className="text-muted-foreground">
                 This material has not been issued against this voucher yet
               </p>

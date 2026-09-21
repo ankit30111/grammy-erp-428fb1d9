@@ -48,7 +48,6 @@ const SerialNumberManagement = () => {
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center gap-2">
-                <Package className="h-8 w-8 text-primary" />
                 <div>
                   <div className="text-2xl font-bold">{vouchers.length}</div>
                   <div className="text-sm text-muted-foreground">Total Vouchers with Dispatches</div>
@@ -93,7 +92,6 @@ const SerialNumberManagement = () => {
         ) : vouchers.length === 0 ? (
           <Card>
             <CardContent className="py-12 text-center">
-              <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
               <h3 className="text-lg font-semibold mb-2">No Production Vouchers Found</h3>
               <p className="text-muted-foreground mb-4">
                 No production vouchers with material dispatches are available for serial number assignment.

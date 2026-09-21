@@ -168,7 +168,6 @@ const EnhancedDispatchVerificationRow = ({
                   {/* No Dispatches State */}
                   {dispatches.length === 0 && (
                     <div className="text-center py-8 text-muted-foreground">
-                      <Package className="h-12 w-12 mx-auto mb-2 text-muted-foreground/50" />
                       <p className="font-medium">No dispatches yet</p>
                       <p className="text-sm mt-1">This material hasn't been sent by the store yet</p>
                       <div className="mt-4 p-3 bg-warning-wash rounded-lg">
