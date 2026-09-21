@@ -194,7 +194,6 @@ export default function ContainerModelsView({ containers }: ContainerModelsViewP
   if (!containers.length) {
     return (
       <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
-        <Package className="h-12 w-12 mb-4" />
         <p className="text-lg">No containers found</p>
         <p className="text-sm">Add containers to track model deliveries</p>
       </div>
@@ -204,7 +203,6 @@ export default function ContainerModelsView({ containers }: ContainerModelsViewP
   if (!allMaterials.length) {
     return (
       <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
-        <Package className="h-12 w-12 mb-4" />
         <p className="text-lg">No models found</p>
         <p className="text-sm">Add materials to containers to track model deliveries</p>
       </div>

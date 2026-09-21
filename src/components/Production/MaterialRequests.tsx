@@ -236,7 +236,7 @@ const MaterialRequests = () => {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="flex items-center gap-2">
-            Material Requests ({materialRequests.length})
+            Material Requests
             <Badge variant="outline">Real-time Updates</Badge>
           </CardTitle>
           <div className="flex gap-2">
@@ -362,7 +362,6 @@ const MaterialRequests = () => {
           
           {materialRequests.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              <AlertTriangle className="h-12 w-12 mx-auto mb-2 text-muted-foreground/50" />
               <p>No material requests found</p>
               <p className="text-sm mt-1">Create a request when you need additional materials for production</p>
             </div>

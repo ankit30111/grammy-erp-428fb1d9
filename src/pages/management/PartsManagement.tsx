@@ -725,7 +725,6 @@ const RawMaterialsManagement = () => {
                           </div>
                         </div>
                         <div className="bg-muted rounded h-40 flex items-center justify-center">
-                          <Package className="h-12 w-12 text-muted-foreground" />
                         </div>
                       </div>
                     )}

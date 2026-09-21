@@ -83,7 +83,6 @@ const ProductionVoucherList = memo(({ onSelectVoucher }: ProductionVoucherListPr
   if (orders.length === 0) {
     return (
       <div className="py-12 text-center">
-        <Package className="mx-auto mb-2 h-10 w-10 text-muted-foreground" />
         <p className="text-muted-foreground">No production vouchers yet</p>
         <p className="mt-1 text-sm text-muted-foreground">
           They appear here once production is scheduled from Planning.

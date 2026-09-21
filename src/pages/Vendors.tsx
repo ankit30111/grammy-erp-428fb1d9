@@ -196,7 +196,7 @@ const Vendors = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle>Vendors List ({filteredVendors.length})</CardTitle>
+            <CardTitle>Vendors List</CardTitle>
           </CardHeader>
           <CardContent>
             <Table>

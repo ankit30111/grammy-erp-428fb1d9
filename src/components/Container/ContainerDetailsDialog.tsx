@@ -122,7 +122,6 @@ export default function ContainerDetailsDialog({ container, open, onOpenChange }
                 <div className="text-center py-4">Loading materials...</div>
               ) : materials.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
-                  <Package className="h-8 w-8 mx-auto mb-2" />
                   <p>No materials added yet</p>
                   <p className="text-sm">Click "Add Material" to start</p>
                 </div>

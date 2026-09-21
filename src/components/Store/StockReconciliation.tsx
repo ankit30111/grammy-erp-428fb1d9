@@ -388,7 +388,6 @@ const StockReconciliation = () => {
 
         {filteredInventory.length === 0 && inventory.length > 0 && (
           <div className="text-center py-8 text-muted-foreground">
-            <AlertTriangle className="mx-auto h-12 w-12 opacity-50 mb-4" />
             <p>No materials found matching your search criteria</p>
             <p className="text-sm">Try adjusting your search term or category filter</p>
           </div>

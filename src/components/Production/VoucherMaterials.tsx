@@ -164,7 +164,6 @@ export function VoucherMaterials({
   if (!rows.length) {
     return (
       <div className="py-10 text-center">
-        <Package className="h-10 w-10 mx-auto text-muted-foreground mb-2" />
         <p className="text-muted-foreground">No BOM lines for this product</p>
         <p className="text-sm text-muted-foreground mt-1">
           Add a BOM before scheduling production against it.

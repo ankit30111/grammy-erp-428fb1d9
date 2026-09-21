@@ -102,7 +102,6 @@ export const ProductionFeedbackTab = () => {
 
       {rows.length === 0 ? (
         <div className="py-12 text-center">
-          <Inbox className="h-10 w-10 mx-auto text-muted-foreground mb-2" />
           <p className="text-muted-foreground">No feedback raised yet</p>
           <p className="text-sm text-muted-foreground mt-1">
             When production counts a kit and finds more or less than was issued, it

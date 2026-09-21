@@ -167,7 +167,6 @@ const IQCDiscrepancies = () => {
             </Table>
           ) : (
             <div className="text-center py-8">
-              <AlertTriangle className="h-12 w-12 text-success mx-auto mb-4" />
               <h3 className="text-lg font-medium mb-2">No IQC Discrepancies Found</h3>
               <p className="text-muted-foreground">
                 All received materials have passed IQC without quality issues.

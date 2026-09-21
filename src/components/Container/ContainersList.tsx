@@ -89,7 +89,6 @@ export default function ContainersList({ containers }: ContainersListProps) {
   if (!containers.length) {
     return (
       <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
-        <Package className="h-12 w-12 mb-4" />
         <p className="text-lg">No containers found</p>
         <p className="text-sm">Add your first container to start tracking</p>
       </div>

@@ -41,7 +41,10 @@ const CardTitle = React.forwardRef<
       // Dispatch" on the page at the size of a page title, competing with the
       // actual page title above them. A card heading labels a panel; it is not a
       // second title for the screen, so it sits one step below the page name.
-      "text-[15px] font-semibold leading-snug tracking-tight",
+      // Uppercase and spaced, the same treatment PROD​UCTION gets at the top of the
+      // page, one step smaller. A panel label and a page title then read as the
+      // same system saying two sizes of the same thing, instead of two designs.
+      "text-[12.5px] font-semibold uppercase tracking-[0.08em] leading-snug text-muted-foreground",
       className
     )}
     {...props}

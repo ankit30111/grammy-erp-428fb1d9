@@ -49,7 +49,6 @@ export const ProjectionsOverview = () => {
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-2">
-              <Calendar className="h-8 w-8 text-success" />
               <div>
                 <div className="text-2xl font-bold">{schedules.length}</div>
                 <div className="text-sm text-muted-foreground">Scheduled Productions</div>
@@ -61,7 +60,6 @@ export const ProjectionsOverview = () => {
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-2">
-              <AlertTriangle className="h-8 w-8 text-warning" />
               <div>
                 <div className="text-2xl font-bold">
                   {projections.filter((p: any) => getRemainingQuantity(p) > 0).length}

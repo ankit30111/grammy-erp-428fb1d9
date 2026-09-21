@@ -40,7 +40,7 @@ const LogBook = memo(() => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <BookOpen className="h-5 w-5" />
-            Material Movement LogBook ({filteredMovements.length})
+            Material Movement LogBook
             <Badge variant="outline" className="gap-1">
               <CheckCircle className="h-3 w-3" />
               Fully Cleaned

@@ -243,7 +243,7 @@ export const NonPOGRNForm = () => {
         {items.length > 0 && (
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Materials ({items.length})</CardTitle>
+              <CardTitle className="text-lg">Materials</CardTitle>
             </CardHeader>
             <CardContent>
               <Table>

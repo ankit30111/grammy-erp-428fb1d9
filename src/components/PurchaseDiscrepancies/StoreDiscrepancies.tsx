@@ -166,7 +166,6 @@ const StoreDiscrepancies = () => {
       <CardContent>
         {rows.length === 0 ? (
           <div className="py-12 text-center">
-            <CheckCircle2 className="h-10 w-10 mx-auto text-muted-foreground mb-2" />
             <p className="text-muted-foreground">No receiving variances</p>
             <p className="text-sm text-muted-foreground mt-1">
               Every GRN line the store has counted matches what IQC passed.

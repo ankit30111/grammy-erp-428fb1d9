@@ -94,7 +94,6 @@ const ScheduledProductions = () => {
     return (
       <div className="flex items-center justify-center py-8">
         <div className="text-center">
-          <Package className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
           <p className="text-muted-foreground">Loading scheduled productions...</p>
         </div>
       </div>
@@ -126,13 +125,12 @@ const ScheduledProductions = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Calendar className="h-5 w-5" />
-            Scheduled Productions ({productionOrders.length})
+            Scheduled Productions
           </CardTitle>
         </CardHeader>
         <CardContent>
           {productionOrders.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              <Calendar className="h-12 w-12 mx-auto mb-2 text-muted-foreground/50" />
               <p>No scheduled productions found</p>
               <p className="text-sm mt-1">Production orders will appear here when scheduled</p>
             </div>

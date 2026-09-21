@@ -294,7 +294,6 @@ const KitVerification = () => {
             <TabsContent value="to-count" className="mt-6">
               {toCount.length === 0 ? (
                 <div className="py-10 text-center">
-                  <Package className="h-10 w-10 mx-auto text-muted-foreground mb-2" />
                   <p className="text-muted-foreground">No kits waiting to be counted</p>
                   <p className="text-sm text-muted-foreground mt-1">
                     Kits appear here once the store issues them to production.

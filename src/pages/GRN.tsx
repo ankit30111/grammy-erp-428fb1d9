@@ -316,7 +316,6 @@ const GRN = () => {
                   </>
                 ) : (
                   <div className="text-center py-8">
-                    <Package className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
                     <p className="text-muted-foreground">
                       {searchQuery ? "No GRNs found matching your search" : "No GRNs found"}
                     </p>

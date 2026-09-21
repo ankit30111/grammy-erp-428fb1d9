@@ -137,7 +137,6 @@ const Planning: React.FC = () => {
                   </div>
                 ) : (
                   <div className="text-center py-8">
-                    <Package className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
                     <p className="text-muted-foreground">No projections available</p>
                     <p className="text-sm text-muted-foreground mt-1">
                       Add customer projections to see material requirements

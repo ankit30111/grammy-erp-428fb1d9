@@ -150,7 +150,7 @@ const PurchaseOrdersList = ({ onViewDetails }: PurchaseOrdersListProps) => {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          Purchase Orders ({purchaseOrders.length})
+          Purchase Orders
         </CardTitle>
       </CardHeader>
       <CardContent>
