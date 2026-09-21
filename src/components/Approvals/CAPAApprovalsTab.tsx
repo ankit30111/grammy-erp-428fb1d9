@@ -127,20 +127,20 @@ const CAPAApprovalsTab = () => {
   const getCategoryColor = (category: string) => {
     switch (category) {
       case 'VENDOR':
-      case 'IQC': return 'bg-blue-100 text-blue-800';
-      case 'PRODUCTION': return 'bg-green-100 text-green-800';
-      case 'LINE_REJECTION': return 'bg-red-100 text-red-800';
+      case 'IQC': return 'bg-accent text-primary';
+      case 'PRODUCTION': return 'bg-success-wash text-success';
+      case 'LINE_REJECTION': return 'bg-destructive-wash text-destructive';
       case 'CUSTOMER':
       case 'PART_ANALYSIS': return 'bg-purple-100 text-purple-800';
-      default: return 'bg-gray-100 text-gray-800';
+      default: return 'bg-muted text-foreground';
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'SUBMITTED': return 'bg-blue-100 text-blue-800';
-      case 'OPEN': return 'bg-orange-100 text-orange-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'SUBMITTED': return 'bg-accent text-primary';
+      case 'OPEN': return 'bg-warning-wash text-warning';
+      default: return 'bg-muted text-foreground';
     }
   };
 
@@ -269,8 +269,8 @@ const CAPAApprovalsTab = () => {
                           </DialogHeader>
                           <div className="space-y-4">
                             <p>Are you sure you want to reject this CAPA for <strong>{capa.part_or_process}</strong>?</p>
-                            <div className="bg-yellow-50 p-3 rounded-lg">
-                              <p className="text-sm text-yellow-800">
+                            <div className="bg-warning-wash p-3 rounded-lg">
+                              <p className="text-sm text-warning">
                                 <strong>Note:</strong> Rejecting this CAPA will allow the document to be re-uploaded for review.
                               </p>
                             </div>

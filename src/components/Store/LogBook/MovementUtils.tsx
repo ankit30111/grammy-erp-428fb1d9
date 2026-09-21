@@ -5,20 +5,20 @@ import { Badge } from "@/components/ui/badge";
 export const getMovementIcon = (type: string) => {
   switch (type) {
     case "ISSUED_TO_PRODUCTION":
-      return <ArrowRight className="h-4 w-4 text-blue-600" />;
+      return <ArrowRight className="h-4 w-4 text-primary" />;
     case "PRODUCTION_RETURN":
     case "PRODUCTION_FEEDBACK_RETURN":
-      return <ArrowLeft className="h-4 w-4 text-green-600" />;
+      return <ArrowLeft className="h-4 w-4 text-success" />;
     case "GRN_RECEIPT":
-      return <Plus className="h-4 w-4 text-green-600" />;
+      return <Plus className="h-4 w-4 text-success" />;
     case "MATERIAL_REQUEST_CREATED":
-      return <AlertCircle className="h-4 w-4 text-orange-600" />;
+      return <AlertCircle className="h-4 w-4 text-warning" />;
     case "PRODUCTION_DISCREPANCY_REJECTED":
-      return <X className="h-4 w-4 text-red-600" />;
+      return <X className="h-4 w-4 text-destructive" />;
     case "STOCK_ADJUSTMENT":
       return <RotateCcw className="h-4 w-4 text-purple-600" />;
     default:
-      return <Package className="h-4 w-4 text-gray-600" />;
+      return <Package className="h-4 w-4 text-muted-foreground" />;
   }
 };
 
@@ -29,11 +29,11 @@ export const getMovementBadge = (type: string) => {
     case "PRODUCTION_RETURN":
       return <Badge variant="secondary">Production Return</Badge>;
     case "PRODUCTION_FEEDBACK_RETURN":
-      return <Badge className="bg-green-100 text-green-800">Feedback Return</Badge>;
+      return <Badge className="bg-success-wash text-success">Feedback Return</Badge>;
     case "GRN_RECEIPT":
-      return <Badge className="bg-green-100 text-green-800">GRN Receipt</Badge>;
+      return <Badge className="bg-success-wash text-success">GRN Receipt</Badge>;
     case "MATERIAL_REQUEST_CREATED":
-      return <Badge className="bg-orange-100 text-orange-800">Material Request</Badge>;
+      return <Badge className="bg-warning-wash text-warning">Material Request</Badge>;
     case "PRODUCTION_DISCREPANCY_REJECTED":
       return <Badge variant="destructive">Discrepancy Rejected</Badge>;
     case "STOCK_ADJUSTMENT":
@@ -50,6 +50,6 @@ export const getMovementBadge = (type: string) => {
  * movement type string. Positive = into stock, negative = out of stock.
  */
 export const getQuantityStyle = (qtyDelta: number) =>
-  qtyDelta > 0 ? 'text-green-600' : 'text-blue-600';
+  qtyDelta > 0 ? 'text-success' : 'text-primary';
 
 export const getQuantityPrefix = (qtyDelta: number) => (qtyDelta > 0 ? '+' : '-');

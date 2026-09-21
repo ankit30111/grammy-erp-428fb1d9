@@ -81,17 +81,17 @@ const ProductionDetailsDialog = ({ open, onOpenChange, productionOrder }: Produc
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'received': return <CheckCircle className="h-4 w-4 text-green-600" />;
-      case 'in_progress': return <Clock className="h-4 w-4 text-yellow-600" />;
-      case 'pending': return <AlertCircle className="h-4 w-4 text-red-600" />;
-      default: return <Clock className="h-4 w-4 text-gray-600" />;
+      case 'received': return <CheckCircle className="h-4 w-4 text-success" />;
+      case 'in_progress': return <Clock className="h-4 w-4 text-warning" />;
+      case 'pending': return <AlertCircle className="h-4 w-4 text-destructive" />;
+      default: return <Clock className="h-4 w-4 text-muted-foreground" />;
     }
   };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'received': return <Badge variant="default" className="bg-green-100 text-green-800">Received</Badge>;
-      case 'in_progress': return <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">In Progress</Badge>;
+      case 'received': return <Badge variant="default" className="bg-success-wash text-success">Received</Badge>;
+      case 'in_progress': return <Badge variant="secondary" className="bg-warning-wash text-warning">In Progress</Badge>;
       case 'pending': return <Badge variant="destructive">Pending</Badge>;
       default: return <Badge variant="secondary">Unknown</Badge>;
     }

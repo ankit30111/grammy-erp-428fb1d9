@@ -214,7 +214,7 @@ const KitVerification = () => {
                       </TableCell>
                       <TableCell className="text-right font-mono font-semibold">
                         {diff === 0 ? (
-                          <span className="text-green-600">0</span>
+                          <span className="text-success">0</span>
                         ) : (
                           <span className="text-destructive">
                             {diff > 0 ? "+" : ""}

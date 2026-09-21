@@ -40,7 +40,7 @@ export function AccessDenied({
     <Card className="max-w-md mx-auto">
       <CardHeader className="text-center">
         <div className="flex justify-center mb-2">
-          <ShieldAlert className="h-12 w-12 text-amber-500" />
+          <ShieldAlert className="h-12 w-12 text-warning" />
         </div>
         <CardTitle>Access Denied</CardTitle>
       </CardHeader>

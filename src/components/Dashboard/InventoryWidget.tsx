@@ -90,7 +90,7 @@ export const InventoryWidget = () => {
           <AlertTriangle className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold text-red-600">{shortages || 0}</div>
+          <div className="text-2xl font-bold text-destructive">{shortages || 0}</div>
           <p className="text-xs text-muted-foreground">
             Active shortages
           </p>
@@ -103,7 +103,7 @@ export const InventoryWidget = () => {
           <ShoppingCart className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold text-blue-600">{openPOs || 0}</div>
+          <div className="text-2xl font-bold text-primary">{openPOs || 0}</div>
           <p className="text-xs text-muted-foreground">
             Pending purchase orders
           </p>
@@ -116,7 +116,7 @@ export const InventoryWidget = () => {
           <Truck className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold text-orange-600">{pendingGRNs || 0}</div>
+          <div className="text-2xl font-bold text-warning">{pendingGRNs || 0}</div>
           <p className="text-xs text-muted-foreground">
             Awaiting receipt
           </p>

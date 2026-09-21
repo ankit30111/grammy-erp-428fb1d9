@@ -55,7 +55,7 @@ const ProductionSchedule = ({
                     <TableCell>{schedule.quantity}</TableCell>
                     <TableCell>{schedule.production_lines?.name}</TableCell>
                     <TableCell>
-                      <Badge variant="outline" className="bg-green-100 text-green-800 hover:bg-green-100">
+                      <Badge variant="outline" className="bg-success-wash text-success hover:bg-success-wash">
                         <Check className="h-3 w-3 mr-1" />
                         {schedule.status}
                       </Badge>

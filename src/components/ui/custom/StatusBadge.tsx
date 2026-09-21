@@ -13,23 +13,23 @@ interface StatusBadgeProps {
 export function StatusBadge({ status, className, withDot = true, children }: StatusBadgeProps) {
   const statusConfig = {
     approved: {
-      bgColor: "bg-green-100",
-      textColor: "text-green-800",
+      bgColor: "bg-success-wash",
+      textColor: "text-success",
       dotColor: "bg-status-approved"
     },
     pending: {
-      bgColor: "bg-yellow-100",
-      textColor: "text-yellow-800", 
+      bgColor: "bg-warning-wash",
+      textColor: "text-warning", 
       dotColor: "bg-status-pending"
     },
     rejected: {
-      bgColor: "bg-red-100",
-      textColor: "text-red-800",
+      bgColor: "bg-destructive-wash",
+      textColor: "text-destructive",
       dotColor: "bg-status-rejected"
     },
     inProgress: {
-      bgColor: "bg-blue-100",
-      textColor: "text-blue-800",
+      bgColor: "bg-accent",
+      textColor: "text-primary",
       dotColor: "bg-status-inProgress"
     }
   };

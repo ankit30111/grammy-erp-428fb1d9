@@ -32,17 +32,17 @@ interface ContainerModelsViewProps {
 }
 
 const statusColors = {
-  ORDERED: "bg-yellow-500",
-  LOADING: "bg-orange-500", 
-  LOADED: "bg-blue-500",
+  ORDERED: "bg-warning",
+  LOADING: "bg-warning", 
+  LOADED: "bg-primary",
   CHINA_CUSTOM: "bg-purple-500",
   SHIPPED: "bg-cyan-500",
-  IN_TRANSIT: "bg-indigo-500",
-  INDIAN_DOCK: "bg-green-500",
+  IN_TRANSIT: "bg-primary",
+  INDIAN_DOCK: "bg-success",
   IN_TRAIN: "bg-teal-500",
-  INDIA_CUSTOM: "bg-amber-500",
+  INDIA_CUSTOM: "bg-warning",
   DISPATCHED: "bg-lime-500",
-  ARRIVED: "bg-emerald-500"
+  ARRIVED: "bg-success"
 };
 
 const getStatusIcon = (status: string) => {
@@ -218,7 +218,7 @@ export default function ContainerModelsView({ containers }: ContainerModelsViewP
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center space-x-2">
-              <Ship className="h-5 w-5 text-blue-500" />
+              <Ship className="h-5 w-5 text-primary" />
               <div>
                 <p className="text-sm font-medium">In Transit</p>
                 <p className="text-2xl font-bold">{inTransitCount}</p>
@@ -230,7 +230,7 @@ export default function ContainerModelsView({ containers }: ContainerModelsViewP
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center space-x-2">
-              <Package className="h-5 w-5 text-green-500" />
+              <Package className="h-5 w-5 text-success" />
               <div>
                 <p className="text-sm font-medium">Arrived</p>
                 <p className="text-2xl font-bold">{statusCounts.ARRIVED || 0}</p>
@@ -242,7 +242,7 @@ export default function ContainerModelsView({ containers }: ContainerModelsViewP
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center space-x-2">
-              <Calendar className="h-5 w-5 text-orange-500" />
+              <Calendar className="h-5 w-5 text-warning" />
               <div>
                 <p className="text-sm font-medium">Pending</p>
                 <p className="text-2xl font-bold">{(statusCounts.ORDERED || 0) + (statusCounts.LOADING || 0)}</p>

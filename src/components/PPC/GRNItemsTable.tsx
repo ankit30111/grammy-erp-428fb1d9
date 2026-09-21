@@ -51,7 +51,7 @@ const GRNItemsTable = ({
                 <TableCell className="font-medium">{item.material_name}</TableCell>
                 <TableCell>{item.po_quantity.toLocaleString()}</TableCell>
                 <TableCell>
-                  <Badge variant="outline" className="text-orange-600 border-orange-300">
+                  <Badge variant="outline" className="text-warning border-warning/30">
                     {item.pending_quantity.toLocaleString()}
                   </Badge>
                 </TableCell>
@@ -71,7 +71,7 @@ const GRNItemsTable = ({
                 </TableCell>
                 <TableCell>
                   {item.received_quantity > 0 ? (
-                    <Badge variant="default" className="bg-green-100 text-green-800 hover:bg-green-100">
+                    <Badge variant="default" className="bg-success-wash text-success hover:bg-success-wash">
                       To Receive
                     </Badge>
                   ) : (

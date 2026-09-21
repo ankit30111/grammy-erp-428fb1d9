@@ -290,15 +290,15 @@ const Projection = () => {
                         <TableCell>{Number(projection.quantity).toLocaleString()}</TableCell>
                         <TableCell>{scheduledQty.toLocaleString()}</TableCell>
                         <TableCell>{voucheredQty.toLocaleString()}</TableCell>
-                        <TableCell className={remainingQty > 0 ? "text-orange-600 font-medium" : "text-green-600"}>
+                        <TableCell className={remainingQty > 0 ? "text-warning font-medium" : "text-success"}>
                           {remainingQty.toLocaleString()}
                         </TableCell>
                         <TableCell>{formatMonth(projection.month)}</TableCell>
                         <TableCell>
                           <span className={`px-2 py-1 rounded-full text-xs ${
-                            projection.status === "New" ? "bg-blue-100 text-blue-800" : 
-                            projection.status === "Confirmed" ? "bg-green-100 text-green-800" : 
-                            "bg-gray-100 text-gray-800"
+                            projection.status === "New" ? "bg-accent text-primary" : 
+                            projection.status === "Confirmed" ? "bg-success-wash text-success" : 
+                            "bg-muted text-foreground"
                           }`}>
                             {projection.status}
                           </span>

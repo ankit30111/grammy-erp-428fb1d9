@@ -580,7 +580,7 @@ const RawMaterialsManagement = () => {
                                 <AlertDialogCancel>Cancel</AlertDialogCancel>
                                 <AlertDialogAction
                                   onClick={() => deleteRawMaterial.mutate(material.id)}
-                                  className="bg-red-600 hover:bg-red-700"
+                                  className="bg-destructive hover:bg-destructive"
                                 >
                                   Delete
                                 </AlertDialogAction>

@@ -124,7 +124,7 @@ export const QualityMetricsWidget = () => {
           <Shield className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold text-green-600">{iqcStatus?.passed || 0}%</div>
+          <div className="text-2xl font-bold text-success">{iqcStatus?.passed || 0}%</div>
           <p className="text-xs text-muted-foreground">
             Materials passed IQC
           </p>
@@ -137,7 +137,7 @@ export const QualityMetricsWidget = () => {
           <FileText className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold text-blue-600">{pqcRate || 0}%</div>
+          <div className="text-2xl font-bold text-primary">{pqcRate || 0}%</div>
           <p className="text-xs text-muted-foreground">
             Reports uploaded (7 days)
           </p>
@@ -150,7 +150,7 @@ export const QualityMetricsWidget = () => {
           <XCircle className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold text-red-600">{rejectionRate}%</div>
+          <div className="text-2xl font-bold text-destructive">{rejectionRate}%</div>
           <p className="text-xs text-muted-foreground">
             Production line rejections
           </p>
@@ -163,7 +163,7 @@ export const QualityMetricsWidget = () => {
           <CheckCircle className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold text-green-600">{complaints?.resolutionRate || 0}%</div>
+          <div className="text-2xl font-bold text-success">{complaints?.resolutionRate || 0}%</div>
           <p className="text-xs text-muted-foreground">
             Total complaints: {complaints?.total || 0}
           </p>

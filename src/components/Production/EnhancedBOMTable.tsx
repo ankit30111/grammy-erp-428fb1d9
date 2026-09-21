@@ -136,7 +136,7 @@ const EnhancedBOMTable = ({ productionOrderId, productId, productionQuantity }: 
                 const status = getCompletionStatus(requiredQty, totalReceived);
 
                 return (
-                  <TableRow key={bomItem.id} className={status === 'complete' ? 'bg-green-50' : ''}>
+                  <TableRow key={bomItem.id} className={status === 'complete' ? 'bg-success-wash' : ''}>
                     <TableCell className="font-mono font-medium">
                       {bomItem.parts.part_code}
                     </TableCell>
@@ -145,7 +145,7 @@ const EnhancedBOMTable = ({ productionOrderId, productId, productionQuantity }: 
                       <Badge variant="outline">{bomItem.parts.category}</Badge>
                     </TableCell>
                     <TableCell className="font-semibold">{requiredQty}</TableCell>
-                    <TableCell className="font-medium text-blue-600">
+                    <TableCell className="font-medium text-primary">
                       {totalSent}
                       {totalSent > 0 && (
                         <div className="text-xs text-muted-foreground">
@@ -153,7 +153,7 @@ const EnhancedBOMTable = ({ productionOrderId, productId, productionQuantity }: 
                         </div>
                       )}
                     </TableCell>
-                    <TableCell className="font-medium text-green-600">
+                    <TableCell className="font-medium text-success">
                       {totalReceived}
                       {totalReceived > 0 && (
                         <div className="text-xs text-muted-foreground">
@@ -161,7 +161,7 @@ const EnhancedBOMTable = ({ productionOrderId, productId, productionQuantity }: 
                         </div>
                       )}
                     </TableCell>
-                    <TableCell className={`font-medium ${remainingQty === 0 ? 'text-green-600' : 'text-orange-600'}`}>
+                    <TableCell className={`font-medium ${remainingQty === 0 ? 'text-success' : 'text-warning'}`}>
                       {remainingQty}
                     </TableCell>
                     <TableCell>

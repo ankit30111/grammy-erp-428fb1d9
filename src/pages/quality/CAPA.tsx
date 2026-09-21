@@ -264,9 +264,9 @@ const CAPA = () => {
             <CardContent>
               <div className="text-2xl font-bold">{kpiStats.vendor.total}</div>
               <div className="grid grid-cols-2 gap-1 text-xs mt-2">
-                <div>Awaiting Upload: <span className="font-medium text-yellow-600">{kpiStats.vendor.awaited}</span></div>
-                <div>Under Review: <span className="font-medium text-blue-600">{kpiStats.vendor.received}</span></div>
-                <div>Overdue: <span className="font-medium text-red-600">{kpiStats.vendor.overdue}</span></div>
+                <div>Awaiting Upload: <span className="font-medium text-warning">{kpiStats.vendor.awaited}</span></div>
+                <div>Under Review: <span className="font-medium text-primary">{kpiStats.vendor.received}</span></div>
+                <div>Overdue: <span className="font-medium text-destructive">{kpiStats.vendor.overdue}</span></div>
                 <div></div>
               </div>
             </CardContent>
@@ -275,16 +275,16 @@ const CAPA = () => {
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <XCircle className="h-4 w-4 text-red-600" />
+                <XCircle className="h-4 w-4 text-destructive" />
                 Line Rejection CAPAs
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{kpiStats.lineRejection.total}</div>
               <div className="grid grid-cols-2 gap-1 text-xs mt-2">
-                <div>Pending: <span className="font-medium text-yellow-600">{kpiStats.lineRejection.pending}</span></div>
-                <div>RCA Submitted: <span className="font-medium text-blue-600">{kpiStats.lineRejection.rcaSubmitted}</span></div>
-                <div>Approved: <span className="font-medium text-green-600">{kpiStats.lineRejection.approved}</span></div>
+                <div>Pending: <span className="font-medium text-warning">{kpiStats.lineRejection.pending}</span></div>
+                <div>RCA Submitted: <span className="font-medium text-primary">{kpiStats.lineRejection.rcaSubmitted}</span></div>
+                <div>Approved: <span className="font-medium text-success">{kpiStats.lineRejection.approved}</span></div>
                 <div></div>
               </div>
             </CardContent>
@@ -300,10 +300,10 @@ const CAPA = () => {
             <CardContent>
               <div className="text-2xl font-bold">{kpiStats.partAnalysis.total}</div>
               <div className="grid grid-cols-2 gap-1 text-xs mt-2">
-                <div>Pending: <span className="font-medium text-yellow-600">{kpiStats.partAnalysis.pending}</span></div>
-                <div>In Progress: <span className="font-medium text-blue-600">{kpiStats.partAnalysis.inProgress}</span></div>
-                <div>CAPA Received: <span className="font-medium text-orange-600">{kpiStats.partAnalysis.capaReceived}</span></div>
-                <div>Closed: <span className="font-medium text-green-600">{kpiStats.partAnalysis.closed}</span></div>
+                <div>Pending: <span className="font-medium text-warning">{kpiStats.partAnalysis.pending}</span></div>
+                <div>In Progress: <span className="font-medium text-primary">{kpiStats.partAnalysis.inProgress}</span></div>
+                <div>CAPA Received: <span className="font-medium text-warning">{kpiStats.partAnalysis.capaReceived}</span></div>
+                <div>Closed: <span className="font-medium text-success">{kpiStats.partAnalysis.closed}</span></div>
               </div>
             </CardContent>
           </Card>
@@ -317,10 +317,10 @@ const CAPA = () => {
             <CardContent>
               <div className="text-2xl font-bold">{kpiStats.production.total}</div>
               <div className="grid grid-cols-2 gap-1 text-xs mt-2">
-                <div>Awaited: <span className="font-medium text-yellow-600">{kpiStats.production.awaited}</span></div>
-                <div>Received: <span className="font-medium text-blue-600">{kpiStats.production.received}</span></div>
-                <div>Approved: <span className="font-medium text-green-600">{kpiStats.production.approved}</span></div>
-                <div>Implemented: <span className="font-medium text-green-800">{kpiStats.production.implemented}</span></div>
+                <div>Awaited: <span className="font-medium text-warning">{kpiStats.production.awaited}</span></div>
+                <div>Received: <span className="font-medium text-primary">{kpiStats.production.received}</span></div>
+                <div>Approved: <span className="font-medium text-success">{kpiStats.production.approved}</span></div>
+                <div>Implemented: <span className="font-medium text-success">{kpiStats.production.implemented}</span></div>
               </div>
             </CardContent>
           </Card>
@@ -400,7 +400,7 @@ const CAPA = () => {
                             {format(new Date(capa.created_at), "dd/MM/yyyy")}
                           </TableCell>
                           <TableCell>
-                            <span className={getDaysOpen(capa.created_at) > 7 ? "text-red-600 font-medium" : ""}>
+                            <span className={getDaysOpen(capa.created_at) > 7 ? "text-destructive font-medium" : ""}>
                               {getDaysOpen(capa.created_at)} days
                             </span>
                           </TableCell>
@@ -633,7 +633,7 @@ const CAPA = () => {
               <CardContent>
                 {productionCapas.length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground">
-                    <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
+                    <CheckCircle className="h-12 w-12 text-success mx-auto mb-4" />
                     <h3 className="text-lg font-medium mb-2">No Production CAPAs Found</h3>
                     <p className="text-muted-foreground">
                       All production orders have passed OQC without quality issues.
@@ -671,7 +671,7 @@ const CAPA = () => {
                             {format(new Date(capa.created_at), "dd/MM/yyyy")}
                           </TableCell>
                           <TableCell>
-                            <span className={getDaysOpen(capa.created_at) > 7 ? "text-red-600 font-medium" : ""}>
+                            <span className={getDaysOpen(capa.created_at) > 7 ? "text-destructive font-medium" : ""}>
                               {getDaysOpen(capa.created_at)} days
                             </span>
                           </TableCell>

@@ -24,7 +24,7 @@ const STAGES = [
     name: 'Concept',
     description: 'Idea and feasibility, before any BOM exists',
     icon: Clock,
-    color: 'bg-slate-100 text-slate-800',
+    color: 'bg-muted text-foreground',
     requirements: []
   },
   {
@@ -32,7 +32,7 @@ const STAGES = [
     name: 'Design',
     description: 'Layout planning and design work',
     icon: Cog,
-    color: 'bg-blue-100 text-blue-800',
+    color: 'bg-accent text-primary',
     requirements: []
   },
   {
@@ -40,7 +40,7 @@ const STAGES = [
     name: 'Test BOM',
     description: 'Preliminary BOM for feasibility and layout planning',
     icon: Clock,
-    color: 'bg-blue-100 text-blue-800',
+    color: 'bg-accent text-primary',
     requirements: []
   },
   {
@@ -48,7 +48,7 @@ const STAGES = [
     name: 'Sampling Stage',
     description: 'Vendor samples requested for uncoded parts',
     icon: CheckCircle,
-    color: 'bg-yellow-100 text-yellow-800',
+    color: 'bg-warning-wash text-warning',
     requirements: ['All uncoded parts must have samples requested']
   },
   {
@@ -56,7 +56,7 @@ const STAGES = [
     name: 'Testing & Pilot',
     description: 'Functional testing and low-volume pilot run with the final BOM',
     icon: Factory,
-    color: 'bg-orange-100 text-orange-800',
+    color: 'bg-warning-wash text-warning',
     requirements: ['All samples must be received', 'BOM finalized']
   },
   {
@@ -64,7 +64,7 @@ const STAGES = [
     name: 'MP (Mass Production)',
     description: 'Approved and locked BOM for mass production',
     icon: CheckCircle,
-    color: 'bg-green-100 text-green-800',
+    color: 'bg-success-wash text-success',
     requirements: ['Pilot production successful', 'All parts coded', 'AVL and IQC ready']
   }
 ];
@@ -183,10 +183,10 @@ export const BOMStageManager: React.FC<BOMStageManagerProps> = ({
               return (
                 <div key={stage.id} className="flex items-center gap-4">
                   <div className={`flex items-center justify-center w-10 h-10 rounded-full ${
-                    isCompleted ? 'bg-green-100' : isCurrent ? 'bg-blue-100' : 'bg-gray-100'
+                    isCompleted ? 'bg-success-wash' : isCurrent ? 'bg-accent' : 'bg-muted'
                   }`}>
                     <Icon className={`h-5 w-5 ${
-                      isCompleted ? 'text-green-600' : isCurrent ? 'text-blue-600' : 'text-gray-400'
+                      isCompleted ? 'text-success' : isCurrent ? 'text-primary' : 'text-muted-foreground'
                     }`} />
                   </div>
                   
@@ -197,7 +197,7 @@ export const BOMStageManager: React.FC<BOMStageManagerProps> = ({
                         <Badge className={stage.color}>Current</Badge>
                       )}
                       {isCompleted && (
-                        <Badge className="bg-green-100 text-green-800">Completed</Badge>
+                        <Badge className="bg-success-wash text-success">Completed</Badge>
                       )}
                     </div>
                     <p className="text-sm text-muted-foreground">{stage.description}</p>
@@ -214,12 +214,12 @@ export const BOMStageManager: React.FC<BOMStageManagerProps> = ({
                     )}
                     
                     {readinessIssues.length > 0 && isNext && (
-                      <div className="mt-2 p-2 bg-yellow-50 rounded-md">
+                      <div className="mt-2 p-2 bg-warning-wash rounded-md">
                         <div className="flex items-center gap-1">
-                          <AlertTriangle className="h-4 w-4 text-yellow-600" />
-                          <span className="text-xs font-medium text-yellow-800">Readiness Issues:</span>
+                          <AlertTriangle className="h-4 w-4 text-warning" />
+                          <span className="text-xs font-medium text-warning">Readiness Issues:</span>
                         </div>
-                        <ul className="text-xs text-yellow-700 list-disc list-inside">
+                        <ul className="text-xs text-warning list-disc list-inside">
                           {readinessIssues.map((issue, idx) => (
                             <li key={idx}>{issue}</li>
                           ))}

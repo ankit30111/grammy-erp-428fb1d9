@@ -132,7 +132,7 @@ const ProductionVoucherDetails = ({ scheduleId, voucherNumber, isOpen, onClose }
                     <TableCell>{req.material_name}</TableCell>
                     <TableCell>{req.total_required}</TableCell>
                     <TableCell>{req.available_quantity}</TableCell>
-                    <TableCell className={req.shortage_quantity > 0 ? "text-red-600 font-medium" : ""}>
+                    <TableCell className={req.shortage_quantity > 0 ? "text-destructive font-medium" : ""}>
                       {req.shortage_quantity}
                     </TableCell>
                     <TableCell>

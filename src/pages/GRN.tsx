@@ -119,9 +119,9 @@ const GRN = () => {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'IQC_PENDING':
-        return <Badge variant="outline" className="bg-blue-100 text-blue-800 hover:bg-blue-100">Received</Badge>;
+        return <Badge variant="outline" className="bg-accent text-primary hover:bg-accent">Received</Badge>;
       case 'IQC_DONE':
-        return <Badge variant="outline" className="bg-green-100 text-green-800 hover:bg-green-100">IQC Completed</Badge>;
+        return <Badge variant="outline" className="bg-success-wash text-success hover:bg-success-wash">IQC Completed</Badge>;
       case 'STORE_CONFIRMED':
         return <Badge variant="default">Store Received</Badge>;
       default:
@@ -203,7 +203,7 @@ const GRN = () => {
                             <TableCell className="font-medium">{grn.grn_number}</TableCell>
                             <TableCell>{new Date(grn.received_date).toLocaleDateString()}</TableCell>
                             <TableCell>{grn.vendors?.name || 'N/A'}</TableCell>
-                            <TableCell className="text-blue-600 font-medium">
+                            <TableCell className="text-primary font-medium">
                               {grn.purchase_orders?.po_number || (
                                 <span className="text-muted-foreground italic">Non-PO</span>
                               )}
@@ -299,9 +299,9 @@ const GRN = () => {
                                   <Badge 
                                     variant="outline"
                                     className={
-                                      item.iqc_outcome === 'ACCEPTED' ? "bg-green-100 text-green-800 hover:bg-green-100" :
-                                      item.iqc_outcome === 'REJECTED' ? "bg-red-100 text-red-800 hover:bg-red-100" :
-                                      "bg-yellow-100 text-yellow-800 hover:bg-yellow-100"
+                                      item.iqc_outcome === 'ACCEPTED' ? "bg-success-wash text-success hover:bg-success-wash" :
+                                      item.iqc_outcome === 'REJECTED' ? "bg-destructive-wash text-destructive hover:bg-destructive-wash" :
+                                      "bg-warning-wash text-warning hover:bg-warning-wash"
                                     }
                                   >
                                     {item.iqc_outcome || 'PENDING'}

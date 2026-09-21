@@ -107,42 +107,42 @@ const ProjectStatusGrid = () => {
   const getStatusColor = (status: string, type: string) => {
     if (type === 'NPD') {
       switch (status) {
-        case 'CONCEPT': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-        case 'PROTOTYPE': return 'bg-blue-100 text-blue-800 border-blue-200';
+        case 'CONCEPT': return 'bg-warning-wash text-warning border-warning/30';
+        case 'PROTOTYPE': return 'bg-accent text-primary border-primary/30';
         case 'TESTING': return 'bg-purple-100 text-purple-800 border-purple-200';
-        case 'APPROVED': return 'bg-green-100 text-green-800 border-green-200';
-        default: return 'bg-gray-100 text-gray-800 border-gray-200';
+        case 'APPROVED': return 'bg-success-wash text-success border-success/30';
+        default: return 'bg-muted text-foreground border-border';
       }
     } else {
       switch (status) {
-        case 'CUSTOMIZATION': return 'bg-blue-100 text-blue-800 border-blue-200';
-        case 'CUSTOMER APPROVAL': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-        case 'FINALIZED': return 'bg-green-100 text-green-800 border-green-200';
-        default: return 'bg-gray-100 text-gray-800 border-gray-200';
+        case 'CUSTOMIZATION': return 'bg-accent text-primary border-primary/30';
+        case 'CUSTOMER APPROVAL': return 'bg-warning-wash text-warning border-warning/30';
+        case 'FINALIZED': return 'bg-success-wash text-success border-success/30';
+        default: return 'bg-muted text-foreground border-border';
       }
     }
   };
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'HIGH': return 'bg-red-100 text-red-800 border-red-200';
-      case 'MEDIUM': return 'bg-orange-100 text-orange-800 border-orange-200';
-      case 'LOW': return 'bg-green-100 text-green-800 border-green-200';
-      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+      case 'HIGH': return 'bg-destructive-wash text-destructive border-destructive/30';
+      case 'MEDIUM': return 'bg-warning-wash text-warning border-warning/30';
+      case 'LOW': return 'bg-success-wash text-success border-success/30';
+      default: return 'bg-muted text-foreground border-border';
     }
   };
 
   const getProgressColor = (percentage: number) => {
-    if (percentage >= 80) return 'bg-green-500';
-    if (percentage >= 50) return 'bg-blue-500';
-    if (percentage >= 25) return 'bg-yellow-500';
-    return 'bg-red-500';
+    if (percentage >= 80) return 'bg-success';
+    if (percentage >= 50) return 'bg-primary';
+    if (percentage >= 25) return 'bg-warning';
+    return 'bg-destructive';
   };
 
   const getUrgencyIndicator = (daysRemaining: number) => {
-    if (daysRemaining <= 7) return 'text-red-600 font-semibold';
-    if (daysRemaining <= 30) return 'text-orange-600 font-medium';
-    return 'text-green-600';
+    if (daysRemaining <= 7) return 'text-destructive font-semibold';
+    if (daysRemaining <= 30) return 'text-warning font-medium';
+    return 'text-success';
   };
 
   if (isLoading) {
@@ -168,7 +168,7 @@ const ProjectStatusGrid = () => {
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-center h-64">
-            <div className="text-red-500">Error loading project data. Please try again.</div>
+            <div className="text-destructive">Error loading project data. Please try again.</div>
           </div>
         </CardContent>
       </Card>
@@ -236,7 +236,7 @@ const ProjectStatusGrid = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredProjects.map((project) => (
-              <Card key={project.id} className="border border-gray-200 hover:shadow-md transition-shadow">
+              <Card key={project.id} className="border border-border hover:shadow-md transition-shadow">
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
@@ -246,7 +246,7 @@ const ProjectStatusGrid = () => {
                       <div className="flex gap-2 mb-2">
                         <Badge 
                           variant="outline" 
-                          className={`text-xs ${project.type === 'NPD' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-green-50 text-green-700 border-green-200'}`}
+                          className={`text-xs ${project.type === 'NPD' ? 'bg-accent text-primary border-primary/30' : 'bg-success-wash text-success border-success/30'}`}
                         >
                           {project.type}
                         </Badge>
@@ -273,7 +273,7 @@ const ProjectStatusGrid = () => {
                       <span>Progress</span>
                       <span>{project.progressPercentage}%</span>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div className="w-full bg-muted rounded-full h-2">
                       <div 
                         className={`h-2 rounded-full transition-all ${getProgressColor(project.progressPercentage)}`}
                         style={{ width: `${project.progressPercentage}%` }}

@@ -29,28 +29,28 @@ export default function EnhancedScheduledProduction({
   const getKitStatusClass = (status: KitStatus) => {
     switch (status) {
       case "KIT SENT":
-        return "bg-blue-100 text-blue-800";
+        return "bg-accent text-primary";
       case "KIT VERIFIED":
-        return "bg-green-100 text-green-800";
+        return "bg-success-wash text-success";
       case "KIT SCHEDULED":
-        return "bg-yellow-100 text-yellow-800";
+        return "bg-warning-wash text-warning";
       case "KIT SHORTAGE":
-        return "bg-red-100 text-red-800";
+        return "bg-destructive-wash text-destructive";
       default:
-        return "bg-gray-100 text-gray-800";
+        return "bg-muted text-foreground";
     }
   };
 
   const getMaterialStatusClass = (status: string) => {
     switch (status) {
       case "AVAILABLE":
-        return "bg-green-100 text-green-800";
+        return "bg-success-wash text-success";
       case "PARTIAL":
-        return "bg-yellow-100 text-yellow-800";
+        return "bg-warning-wash text-warning";
       case "SHORTAGE":
-        return "bg-red-100 text-red-800";
+        return "bg-destructive-wash text-destructive";
       default:
-        return "bg-gray-100 text-gray-800";
+        return "bg-muted text-foreground";
     }
   };
 
@@ -173,16 +173,16 @@ export default function EnhancedScheduledProduction({
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-3 gap-4 mb-6">
-              <div className="text-center p-4 bg-gray-50 rounded-lg">
-                <p className="text-sm text-gray-600">Production Quantity</p>
+              <div className="text-center p-4 bg-muted rounded-lg">
+                <p className="text-sm text-muted-foreground">Production Quantity</p>
                 <p className="text-2xl font-bold">{voucherDetails.productionQuantity}</p>
               </div>
-              <div className="text-center p-4 bg-gray-50 rounded-lg">
-                <p className="text-sm text-gray-600">Total Parts</p>
+              <div className="text-center p-4 bg-muted rounded-lg">
+                <p className="text-sm text-muted-foreground">Total Parts</p>
                 <p className="text-2xl font-bold">{voucherDetails.bomItems.length}</p>
               </div>
-              <div className="text-center p-4 bg-gray-50 rounded-lg">
-                <p className="text-sm text-gray-600">Overall Status</p>
+              <div className="text-center p-4 bg-muted rounded-lg">
+                <p className="text-sm text-muted-foreground">Overall Status</p>
                 <span className={`${getMaterialStatusClass(voucherDetails.overallStatus)} text-sm px-3 py-1 rounded-full font-medium`}>
                   {voucherDetails.overallStatus}
                 </span>
@@ -208,10 +208,10 @@ export default function EnhancedScheduledProduction({
                     <TableCell>{item.description}</TableCell>
                     <TableCell>{item.quantity}</TableCell>
                     <TableCell className="font-medium">{item.required}</TableCell>
-                    <TableCell className={item.shortage > 0 ? "text-red-600 font-medium" : "text-green-600 font-medium"}>
+                    <TableCell className={item.shortage > 0 ? "text-destructive font-medium" : "text-success font-medium"}>
                       {item.available}
                     </TableCell>
-                    <TableCell className={item.shortage > 0 ? "text-red-600 font-medium" : ""}>
+                    <TableCell className={item.shortage > 0 ? "text-destructive font-medium" : ""}>
                       {item.shortage > 0 ? item.shortage : "-"}
                     </TableCell>
                     <TableCell>

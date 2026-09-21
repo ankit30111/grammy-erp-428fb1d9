@@ -35,15 +35,15 @@ export const PartAnalysisCard = ({ part }: PartAnalysisCardProps) => {
   const getStatusIcon = (status: string) => {
     switch (status) {
       case "PENDING":
-        return <Clock className="h-4 w-4 text-yellow-500" />;
+        return <Clock className="h-4 w-4 text-warning" />;
       case "UNDER_ANALYSIS":
-        return <Microscope className="h-4 w-4 text-blue-500" />;
+        return <Microscope className="h-4 w-4 text-primary" />;
       case "ANALYZED":
-        return <AlertCircle className="h-4 w-4 text-orange-500" />;
+        return <AlertCircle className="h-4 w-4 text-warning" />;
       case "CLOSED":
-        return <CheckCircle className="h-4 w-4 text-green-500" />;
+        return <CheckCircle className="h-4 w-4 text-success" />;
       default:
-        return <Clock className="h-4 w-4 text-gray-500" />;
+        return <Clock className="h-4 w-4 text-muted-foreground" />;
     }
   };
 
@@ -87,7 +87,7 @@ export const PartAnalysisCard = ({ part }: PartAnalysisCardProps) => {
         <div className="space-y-2">
           {part.sent_to_iqc_at && (
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+              <div className="w-2 h-2 bg-primary rounded-full"></div>
               <span>Sent to IQC</span>
               <span>•</span>
               <span>{format(new Date(part.sent_to_iqc_at), 'MMM dd, yyyy')}</span>
@@ -102,7 +102,7 @@ export const PartAnalysisCard = ({ part }: PartAnalysisCardProps) => {
           
           {part.analyzed_at && (
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+              <div className="w-2 h-2 bg-warning rounded-full"></div>
               <span>Analysis Completed</span>
               <span>•</span>
               <span>{format(new Date(part.analyzed_at), 'MMM dd, yyyy')}</span>
@@ -117,7 +117,7 @@ export const PartAnalysisCard = ({ part }: PartAnalysisCardProps) => {
           
           {part.closed_at && (
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+              <div className="w-2 h-2 bg-success rounded-full"></div>
               <span>Closed</span>
               <span>•</span>
               <span>{format(new Date(part.closed_at), 'MMM dd, yyyy')}</span>

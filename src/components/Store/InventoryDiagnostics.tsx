@@ -157,7 +157,7 @@ const InventoryDiagnostics = () => {
                 This part has never moved in this plant.
               </div>
             ) : shapeMismatch ? (
-              <div className="rounded-md border border-amber-500/40 bg-amber-50 dark:bg-amber-950/20 p-4 text-sm space-y-1">
+              <div className="rounded-md border border-warning/30/40 bg-warning-wash dark:bg-amber-950/20 p-4 text-sm space-y-1">
                 <div className="font-medium">This page is out of date with the database</div>
                 <p>
                   The stock statement came back in a shape this screen does not
@@ -234,9 +234,9 @@ const InventoryDiagnostics = () => {
                                 r.is_unexplained
                                   ? "text-destructive font-semibold"
                                   : Number(r.quantity) < 0
-                                  ? "text-amber-600"
+                                  ? "text-warning"
                                   : Number(r.quantity) > 0
-                                  ? "text-green-700"
+                                  ? "text-success"
                                   : "text-muted-foreground"
                               }`}
                             >
@@ -305,12 +305,12 @@ const InventoryDiagnostics = () => {
                   <div
                     className={`rounded-lg border p-4 flex items-start gap-3 ${
                       balances
-                        ? "border-green-600/40 bg-green-50 dark:bg-green-950/20"
+                        ? "border-success/30/40 bg-success-wash dark:bg-green-950/20"
                         : "border-destructive/40 bg-destructive/10"
                     }`}
                   >
                     {balances ? (
-                      <CheckCircle2 className="h-5 w-5 text-green-600 shrink-0 mt-0.5" />
+                      <CheckCircle2 className="h-5 w-5 text-success shrink-0 mt-0.5" />
                     ) : (
                       <XCircle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
                     )}
@@ -333,8 +333,8 @@ const InventoryDiagnostics = () => {
                   </div>
                 )}
 
-                {where.some((r) => r.is_unexplained) && (
-                  <div className="rounded-md border border-amber-500/40 bg-amber-50 dark:bg-amber-950/20 p-3 text-sm flex gap-2">
+                {rows.some((r) => r.is_unexplained) && (
+                  <div className="rounded-md border border-warning/30/40 bg-warning-wash dark:bg-amber-950/20 p-3 text-sm flex gap-2">
                     <Badge variant="destructive" className="shrink-0 h-fit">
                       Open
                     </Badge>

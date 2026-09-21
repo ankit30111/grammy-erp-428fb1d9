@@ -105,9 +105,9 @@ export function TrainingManagement() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'completed': return 'bg-green-500';
-      case 'enrolled': return 'bg-blue-500';
-      case 'dropped': return 'bg-red-500';
+      case 'completed': return 'bg-success';
+      case 'enrolled': return 'bg-primary';
+      case 'dropped': return 'bg-destructive';
       default: return 'bg-gray-500';
     }
   };
@@ -241,13 +241,13 @@ export function TrainingManagement() {
                 {trainingPrograms?.map((program) => (
                   <div key={program.id} className="border rounded-lg p-4">
                     <h3 className="font-semibold">{program.program_name}</h3>
-                    <p className="text-sm text-gray-600 mt-1">{program.description}</p>
+                    <p className="text-sm text-muted-foreground mt-1">{program.description}</p>
                     <div className="flex justify-between items-center mt-2 text-sm">
                       <span>Trainer: {program.trainer_name || 'TBD'}</span>
                       <span>{program.duration_hours}h</span>
                     </div>
                     {program.start_date && (
-                      <div className="text-sm text-gray-500 mt-1">
+                      <div className="text-sm text-muted-foreground mt-1">
                         {new Date(program.start_date).toLocaleDateString()} - {' '}
                         {program.end_date ? new Date(program.end_date).toLocaleDateString() : 'Ongoing'}
                       </div>

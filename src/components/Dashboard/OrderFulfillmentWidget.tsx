@@ -91,7 +91,7 @@ export const OrderFulfillmentWidget = () => {
           <CheckCircle className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold text-green-600">{completionRate}%</div>
+          <div className="text-2xl font-bold text-success">{completionRate}%</div>
           <p className="text-xs text-muted-foreground">
             Orders completed on time
           </p>
@@ -104,7 +104,7 @@ export const OrderFulfillmentWidget = () => {
           <AlertCircle className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold text-red-600">{delayedOrders || 0}</div>
+          <div className="text-2xl font-bold text-destructive">{delayedOrders || 0}</div>
           <p className="text-xs text-muted-foreground">
             Orders past due date
           </p>

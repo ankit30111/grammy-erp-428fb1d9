@@ -135,9 +135,9 @@ const ScheduleProductionForm = ({
             
             {/* Right column */}
             <div className="space-y-4">
-              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <h4 className="font-medium text-blue-800 mb-2">Production Line Assignment</h4>
-                <p className="text-sm text-blue-700">
+              <div className="p-4 bg-accent border border-primary/30 rounded-lg">
+                <h4 className="font-medium text-primary mb-2">Production Line Assignment</h4>
+                <p className="text-sm text-primary">
                   Production line assignment is optional during scheduling. 
                   You can assign production lines later in the production management workflow.
                 </p>

@@ -79,7 +79,7 @@ export function UserProfileDropdown() {
                 {userProfile.role.charAt(0).toUpperCase() + userProfile.role.slice(1)}
               </Badge>
               <div className="flex items-center gap-1">
-                <div className={`w-2 h-2 rounded-full ${userProfile.is_active ? 'bg-green-500' : 'bg-red-500'}`} />
+                <div className={`w-2 h-2 rounded-full ${userProfile.is_active ? 'bg-success' : 'bg-destructive'}`} />
                 <span className="text-xs text-muted-foreground">
                   {userProfile.is_active ? 'Active' : 'Inactive'}
                 </span>

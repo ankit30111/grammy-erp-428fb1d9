@@ -119,9 +119,9 @@ export function SkillMatrix() {
 
   const getSkillLevelColor = (level: string) => {
     switch (level) {
-      case 'expert': return 'bg-green-500';
-      case 'advanced': return 'bg-blue-500';
-      case 'intermediate': return 'bg-yellow-500';
+      case 'expert': return 'bg-success';
+      case 'advanced': return 'bg-primary';
+      case 'intermediate': return 'bg-warning';
       case 'beginner': return 'bg-gray-500';
       default: return 'bg-gray-400';
     }
@@ -249,7 +249,7 @@ export function SkillMatrix() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {empSkill.certified && <Award className="h-4 w-4 text-yellow-500" />}
+                      {empSkill.certified && <Award className="h-4 w-4 text-warning" />}
                     </TableCell>
                     <TableCell>
                       {empSkill.acquired_date ? new Date(empSkill.acquired_date).toLocaleDateString() : '-'}

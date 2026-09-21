@@ -127,8 +127,8 @@ const IQCRejections = () => {
             </TabsList>
             
             <TabsContent value="on-hold" className="space-y-4">
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                <p className="text-sm text-yellow-800 font-medium">
+              <div className="bg-warning-wash border border-warning/30 rounded-lg p-4">
+                <p className="text-sm text-warning font-medium">
                   🔴 Status: Put on Hold — Awaiting Vendor CAPA
                 </p>
               </div>
@@ -154,8 +154,8 @@ const IQCRejections = () => {
                       <TableCell>{rejection.vendors?.name}</TableCell>
                       <TableCell className="font-mono">{rejection.parts?.part_code}</TableCell>
                       <TableCell>{rejection.total_quantity}</TableCell>
-                      <TableCell className="text-green-600">{rejection.iqc_accepted_quantity}</TableCell>
-                      <TableCell className="text-red-600">{rejection.iqc_rejected_quantity}</TableCell>
+                      <TableCell className="text-success">{rejection.iqc_accepted_quantity}</TableCell>
+                      <TableCell className="text-destructive">{rejection.iqc_rejected_quantity}</TableCell>
                       <TableCell>
                         <div className="flex gap-2">
                           <Button 
@@ -209,7 +209,7 @@ const IQCRejections = () => {
                       <TableCell>{rejection.grn?.grn_number}</TableCell>
                       <TableCell>{rejection.vendors?.name}</TableCell>
                       <TableCell className="font-mono">{rejection.parts?.part_code}</TableCell>
-                      <TableCell className="text-red-600">{rejection.iqc_rejected_quantity}</TableCell>
+                      <TableCell className="text-destructive">{rejection.iqc_rejected_quantity}</TableCell>
                       <TableCell>{new Date(rejection.sent_back_at).toLocaleDateString()}</TableCell>
                       <TableCell>
                         <Badge variant="secondary">Returned to Vendor</Badge>
@@ -238,7 +238,7 @@ const IQCRejections = () => {
           
           {selectedRejection && (
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4 text-sm bg-gray-50 p-4 rounded">
+              <div className="grid grid-cols-2 gap-4 text-sm bg-muted p-4 rounded">
                 <div><strong>Vendor:</strong> {selectedRejection.vendors?.name}</div>
                 <div><strong>Contact Person:</strong> {selectedRejection.vendors?.contact_person_name}</div>
                 <div><strong>Phone:</strong> {selectedRejection.vendors?.contact_number}</div>

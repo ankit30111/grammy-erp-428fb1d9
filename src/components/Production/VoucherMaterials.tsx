@@ -235,7 +235,7 @@ export function VoucherMaterials({
                   {fmt(r.required)}
                 </TableCell>
                 <TableCell className="text-right font-mono">{fmt(r.available)}</TableCell>
-                <TableCell className="text-right font-mono text-amber-600">
+                <TableCell className="text-right font-mono text-warning">
                   {r.held > 0 ? fmt(r.held) : "—"}
                 </TableCell>
                 <TableCell className="text-right font-mono">{fmt(r.free)}</TableCell>
@@ -243,7 +243,7 @@ export function VoucherMaterials({
                   {r.balance < 0 ? (
                     <span className="text-destructive">{fmt(r.balance)}</span>
                   ) : (
-                    <span className="text-green-600">{fmt(r.balance)}</span>
+                    <span className="text-success">{fmt(r.balance)}</span>
                   )}
                 </TableCell>
               </TableRow>

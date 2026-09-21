@@ -134,20 +134,20 @@ const NPD = () => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'CONCEPT': return 'bg-yellow-100 text-yellow-800';
-      case 'PROTOTYPE': return 'bg-blue-100 text-blue-800';
+      case 'CONCEPT': return 'bg-warning-wash text-warning';
+      case 'PROTOTYPE': return 'bg-accent text-primary';
       case 'TESTING': return 'bg-purple-100 text-purple-800';
-      case 'APPROVED': return 'bg-green-100 text-green-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'APPROVED': return 'bg-success-wash text-success';
+      default: return 'bg-muted text-foreground';
     }
   };
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'HIGH': return 'bg-red-100 text-red-800';
-      case 'MEDIUM': return 'bg-orange-100 text-orange-800';
-      case 'LOW': return 'bg-green-100 text-green-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'HIGH': return 'bg-destructive-wash text-destructive';
+      case 'MEDIUM': return 'bg-warning-wash text-warning';
+      case 'LOW': return 'bg-success-wash text-success';
+      default: return 'bg-muted text-foreground';
     }
   };
 

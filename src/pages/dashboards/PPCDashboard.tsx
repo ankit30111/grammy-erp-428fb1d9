@@ -73,7 +73,7 @@ const PPCDashboard = () => {
             icon={TrendingUp}
             isLoading={isLoading}
             subtitle="Requiring production scheduling"
-            className={unscheduledProjections.length > 0 ? "border-orange-200" : ""}
+            className={unscheduledProjections.length > 0 ? "border-warning/30" : ""}
           />
           <KPICard
             title="Material Shortages"
@@ -81,7 +81,7 @@ const PPCDashboard = () => {
             icon={AlertTriangle}
             isLoading={isLoading}
             subtitle="Requiring purchase orders"
-            className={shortages.length > 0 ? "border-red-200" : ""}
+            className={shortages.length > 0 ? "border-destructive/30" : ""}
           />
           <KPICard
             title="Scheduled Production"
@@ -183,7 +183,7 @@ const PPCDashboard = () => {
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="text-sm font-medium text-red-600">
+                      <div className="text-sm font-medium text-destructive">
                         -{shortage.shortage_quantity}
                       </div>
                     </div>

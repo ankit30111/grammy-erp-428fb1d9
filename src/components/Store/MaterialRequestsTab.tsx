@@ -258,7 +258,7 @@ const MaterialRequestsTab = memo(() => {
       case 'REJECTED':
         return <Badge variant="destructive" className="gap-1"><ThumbsDown className="h-3 w-3" />Rejected</Badge>;
       case 'SENT':
-        return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 gap-1"><Send className="h-3 w-3" />Material Sent</Badge>;
+        return <Badge variant="outline" className="bg-success-wash text-success border-success/30 gap-1"><Send className="h-3 w-3" />Material Sent</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
@@ -390,7 +390,7 @@ const MaterialRequestsTab = memo(() => {
                               {request.requested_quantity} units
                             </TableCell>
                             <TableCell>
-                              <span className={`font-medium ${availableQty < request.requested_quantity ? 'text-red-600' : 'text-green-600'}`}>
+                              <span className={`font-medium ${availableQty < request.requested_quantity ? 'text-destructive' : 'text-success'}`}>
                                 {availableQty} units
                               </span>
                             </TableCell>

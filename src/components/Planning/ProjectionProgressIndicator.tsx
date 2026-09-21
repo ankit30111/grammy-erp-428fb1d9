@@ -39,11 +39,11 @@ export const ProjectionProgressIndicator = ({
           </div>
           <div className="flex justify-between">
             <span>Scheduled:</span>
-            <span className="font-medium text-blue-600">{totalScheduled.toLocaleString()}</span>
+            <span className="font-medium text-primary">{totalScheduled.toLocaleString()}</span>
           </div>
           <div className="flex justify-between">
             <span>Remaining:</span>
-            <span className={`font-medium ${remaining === 0 ? 'text-red-600' : 'text-green-600'}`}>
+            <span className={`font-medium ${remaining === 0 ? 'text-destructive' : 'text-success'}`}>
               {remaining.toLocaleString()}
             </span>
           </div>

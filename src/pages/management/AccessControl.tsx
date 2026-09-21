@@ -389,8 +389,8 @@ function UserAccessEditor({
           </div>
         )}
         {role === "admin" && (
-          <div className="rounded-md border border-amber-500/30 bg-amber-50 dark:bg-amber-950/20 p-3 text-sm flex gap-2">
-            <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+          <div className="rounded-md border border-warning/30/30 bg-warning-wash dark:bg-amber-950/20 p-3 text-sm flex gap-2">
+            <AlertTriangle className="h-4 w-4 text-warning shrink-0 mt-0.5" />
             <span>
               This user is an <strong>admin</strong> and bypasses all plant /
               module checks. Plant & department assignments below are tracked

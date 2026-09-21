@@ -159,9 +159,9 @@ export function PayrollManagement() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'approved': return 'bg-green-500';
-      case 'draft': return 'bg-yellow-500';
-      case 'paid': return 'bg-blue-500';
+      case 'approved': return 'bg-success';
+      case 'draft': return 'bg-warning';
+      case 'paid': return 'bg-primary';
       default: return 'bg-gray-500';
     }
   };
@@ -213,13 +213,13 @@ export function PayrollManagement() {
                     accept=".csv,.xlsx,.xls"
                     onChange={handleFileUpload}
                   />
-                  <p className="text-sm text-gray-500 mt-1">
+                  <p className="text-sm text-muted-foreground mt-1">
                     Expected format: Employee Code, Date, Check In, Check Out
                   </p>
                 </div>
 
                 {attendanceFile && (
-                  <div className="p-3 bg-gray-50 rounded">
+                  <div className="p-3 bg-muted rounded">
                     <p className="text-sm">
                       Selected file: {attendanceFile.name}
                     </p>
@@ -368,7 +368,7 @@ export function PayrollManagement() {
             <div className="text-2xl font-bold">
               ₹{payrollData?.reduce((sum, p) => sum + (p.net_salary || 0), 0).toLocaleString() || 0}
             </div>
-            <p className="text-sm text-gray-500">Current month</p>
+            <p className="text-sm text-muted-foreground">Current month</p>
           </CardContent>
         </Card>
       </div>

@@ -168,32 +168,32 @@ const Quality = () => {
                   <span className="text-muted-foreground">IQC Rejection Rate:</span>
                   <span className="font-medium">-</span>
                 </div>
-                <div className="h-2 w-full bg-gray-200 rounded-full">
-                  <div className="h-2 rounded-full bg-green-500" style={{ width: '0%' }}></div>
+                <div className="h-2 w-full bg-muted rounded-full">
+                  <div className="h-2 rounded-full bg-success" style={{ width: '0%' }}></div>
                 </div>
                 
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">PQC Defect Rate:</span>
                   <span className="font-medium">-</span>
                 </div>
-                <div className="h-2 w-full bg-gray-200 rounded-full">
-                  <div className="h-2 rounded-full bg-green-500" style={{ width: '0%' }}></div>
+                <div className="h-2 w-full bg-muted rounded-full">
+                  <div className="h-2 rounded-full bg-success" style={{ width: '0%' }}></div>
                 </div>
                 
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">OQC Rejection Rate:</span>
                   <span className="font-medium">-</span>
                 </div>
-                <div className="h-2 w-full bg-gray-200 rounded-full">
-                  <div className="h-2 rounded-full bg-green-500" style={{ width: '0%' }}></div>
+                <div className="h-2 w-full bg-muted rounded-full">
+                  <div className="h-2 rounded-full bg-success" style={{ width: '0%' }}></div>
                 </div>
                 
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">Customer Return Rate:</span>
                   <span className="font-medium">-</span>
                 </div>
-                <div className="h-2 w-full bg-gray-200 rounded-full">
-                  <div className="h-2 rounded-full bg-green-500" style={{ width: '0%' }}></div>
+                <div className="h-2 w-full bg-muted rounded-full">
+                  <div className="h-2 rounded-full bg-success" style={{ width: '0%' }}></div>
                 </div>
                 
                 <Button variant="outline" className="w-full mt-2">

@@ -62,7 +62,7 @@ const RnD = () => {
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Lightbulb className="h-5 w-5 text-blue-600" />
+                  <Lightbulb className="h-5 w-5 text-primary" />
                   <span>NPD (New Product Development)</span>
                 </div>
                 <ArrowRight className="h-4 w-4 text-muted-foreground" />
@@ -75,11 +75,11 @@ const RnD = () => {
               
               <div className="grid grid-cols-2 gap-4">
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-blue-600">{npdStats?.total || 0}</div>
+                  <div className="text-2xl font-bold text-primary">{npdStats?.total || 0}</div>
                   <div className="text-xs text-muted-foreground">Total Projects</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-orange-600">{npdStats?.inProgress || 0}</div>
+                  <div className="text-2xl font-bold text-warning">{npdStats?.inProgress || 0}</div>
                   <div className="text-xs text-muted-foreground">In Development</div>
                 </div>
               </div>
@@ -87,14 +87,14 @@ const RnD = () => {
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
                   <div className="flex items-center gap-2">
-                    <Clock className="h-3 w-3 text-yellow-500" />
+                    <Clock className="h-3 w-3 text-warning" />
                     <span className="text-xs">Design/Prototype/Testing</span>
                   </div>
                   <Badge variant="secondary">{npdStats?.inProgress || 0}</Badge>
                 </div>
                 <div className="flex justify-between items-center">
                   <div className="flex items-center gap-2">
-                    <CheckCircle className="h-3 w-3 text-green-500" />
+                    <CheckCircle className="h-3 w-3 text-success" />
                     <span className="text-xs">Approved for Production</span>
                   </div>
                   <Badge variant="outline">{npdStats?.approved || 0}</Badge>
@@ -132,7 +132,7 @@ const RnD = () => {
           <Card>
             <CardContent className="pt-6">
               <div className="text-center">
-                <div className="text-2xl font-bold text-blue-600">{npdStats?.total || 0}</div>
+                <div className="text-2xl font-bold text-primary">{npdStats?.total || 0}</div>
                 <p className="text-sm text-muted-foreground">Total R&D Projects</p>
               </div>
             </CardContent>
@@ -141,7 +141,7 @@ const RnD = () => {
           <Card>
             <CardContent className="pt-6">
               <div className="text-center">
-                <div className="text-2xl font-bold text-orange-600">{npdStats?.inProgress || 0}</div>
+                <div className="text-2xl font-bold text-warning">{npdStats?.inProgress || 0}</div>
                 <p className="text-sm text-muted-foreground">Active Development</p>
               </div>
             </CardContent>
@@ -159,7 +159,7 @@ const RnD = () => {
           <Card>
             <CardContent className="pt-6">
               <div className="text-center">
-                <div className="text-2xl font-bold text-green-600">{npdStats?.launched || 0}</div>
+                <div className="text-2xl font-bold text-success">{npdStats?.launched || 0}</div>
                 <p className="text-sm text-muted-foreground">Launched</p>
               </div>
             </CardContent>

@@ -209,13 +209,13 @@ export const ManualPOCreationDialog = () => {
                 {filteredMaterials.slice(0, 10).map((material) => (
                   <div
                     key={material.id}
-                    className="flex items-center justify-between p-3 hover:bg-gray-50 cursor-pointer border-b last:border-b-0"
+                    className="flex items-center justify-between p-3 hover:bg-muted cursor-pointer border-b last:border-b-0"
                     onClick={() => handleAddMaterial(material)}
                   >
                     <div className="flex-1">
                       <div className="font-medium">{material.part_code}</div>
-                      <div className="text-sm text-gray-600">{material.name}</div>
-                      <div className="text-xs text-gray-500">
+                      <div className="text-sm text-muted-foreground">{material.name}</div>
+                      <div className="text-xs text-muted-foreground">
                         Current Stock: {material.current_stock}
                       </div>
                     </div>
@@ -225,7 +225,7 @@ export const ManualPOCreationDialog = () => {
                   </div>
                 ))}
                 {filteredMaterials.length === 0 && materialSearchTerm && (
-                  <div className="p-3 text-center text-gray-500">
+                  <div className="p-3 text-center text-muted-foreground">
                     No materials found
                   </div>
                 )}

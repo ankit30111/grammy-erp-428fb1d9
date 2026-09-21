@@ -140,7 +140,7 @@ const ProductionFeedback = () => {
                           <TableCell>{request.parts?.name}</TableCell>
                           <TableCell>{discrepancyData?.quantitySent || '-'}</TableCell>
                           <TableCell>{discrepancyData?.quantityReceived || '-'}</TableCell>
-                          <TableCell className={discrepancyData?.difference && discrepancyData.difference !== 0 ? "text-red-600 font-medium" : ""}>
+                          <TableCell className={discrepancyData?.difference && discrepancyData.difference !== 0 ? "text-destructive font-medium" : ""}>
                             {discrepancyData?.difference ? (discrepancyData.difference > 0 ? `+${discrepancyData.difference}` : discrepancyData.difference) : '-'}
                           </TableCell>
                           <TableCell>

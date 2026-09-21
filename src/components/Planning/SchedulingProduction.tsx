@@ -97,8 +97,8 @@ const SchedulingProduction = () => {
           </div>
 
           {selectedDate && (
-            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-              <p className="text-sm text-blue-800">
+            <div className="p-3 bg-accent border border-primary/30 rounded-lg">
+              <p className="text-sm text-primary">
                 <strong>Selected Date:</strong> {format(selectedDate, 'PPP')}
               </p>
             </div>
@@ -131,7 +131,7 @@ const SchedulingProduction = () => {
             {createSchedule.isPending ? "Scheduling..." : "Schedule Production"}
           </Button>
 
-          <div className="text-sm text-muted-foreground mt-2 p-3 bg-gray-50 rounded-lg">
+          <div className="text-sm text-muted-foreground mt-2 p-3 bg-muted rounded-lg">
             <p className="font-medium">Note:</p>
             <p>Production line assignment will be done later in the production management workflow.</p>
           </div>

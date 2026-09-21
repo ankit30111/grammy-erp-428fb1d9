@@ -16,9 +16,9 @@ export function DashNavItem({ to, icon, label, collapsed }: DashNavItemProps) {
       className={({ isActive }) =>
         cn(
           "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
-          "hover:bg-white/10",
+          "hover:bg-card/10",
           isActive
-            ? "bg-white/15 text-white"
+            ? "bg-card/15 text-white"
             : "text-slate-300"
         )
       }

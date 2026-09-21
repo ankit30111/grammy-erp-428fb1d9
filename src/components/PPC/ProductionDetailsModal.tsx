@@ -61,8 +61,8 @@ const ProductionDetailsModal = ({
                       <Badge 
                         variant="outline" 
                         className={getMaterialStatusForDate(selectedDateDetails)?.available === false ?
-                          "bg-amber-100 text-amber-800 hover:bg-amber-100" :
-                          "bg-green-100 text-green-800 hover:bg-green-100"
+                          "bg-warning-wash text-warning hover:bg-warning-wash" :
+                          "bg-success-wash text-success hover:bg-success-wash"
                         }
                       >
                         {getMaterialStatusForDate(selectedDateDetails)?.available === false ?
@@ -99,7 +99,7 @@ const ProductionDetailsModal = ({
                       <TableCell>{shortage.description}</TableCell>
                       <TableCell>{shortage.required}</TableCell>
                       <TableCell>{shortage.available}</TableCell>
-                      <TableCell className="text-red-600 font-medium">{shortage.shortage}</TableCell>
+                      <TableCell className="text-destructive font-medium">{shortage.shortage}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -112,8 +112,8 @@ const ProductionDetailsModal = ({
               </div>
             </div>
           ) : selectedDateDetails && (
-            <div className="p-4 bg-green-50 border border-green-200 rounded-md">
-              <p className="text-green-800 flex items-center">
+            <div className="p-4 bg-success-wash border border-success/30 rounded-md">
+              <p className="text-success flex items-center">
                 <Check className="mr-2 h-4 w-4" />
                 All materials are available for production on this date
               </p>

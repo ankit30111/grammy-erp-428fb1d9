@@ -210,7 +210,7 @@ const StoreDiscrepancies = () => {
                       {Number(r.store_counted_quantity ?? 0).toLocaleString()}
                     </TableCell>
                     <TableCell className="text-right font-mono font-semibold">
-                      <span className={Number(r.variance) < 0 ? "text-destructive" : "text-green-600"}>
+                      <span className={Number(r.variance) < 0 ? "text-destructive" : "text-success"}>
                         {Number(r.variance) > 0 ? "+" : ""}
                         {Number(r.variance).toLocaleString()}
                       </span>

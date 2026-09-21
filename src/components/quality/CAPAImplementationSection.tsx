@@ -86,7 +86,7 @@ const CAPAImplementationSection = ({
         <p className="text-xs text-muted-foreground">
           Please verify if the following approved CAPAs have been implemented for this material/vendor
         </p>
-        <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1">
+        <p className="text-xs text-warning bg-warning-wash border border-warning/30 rounded px-2 py-1">
           Not available after the rebuild: the CAPA implementation-check table was
           removed, so these answers are shown for the inspector only and are not stored.
         </p>
@@ -124,13 +124,13 @@ const CAPAImplementationSection = ({
                   <SelectContent>
                     <SelectItem value="true">
                       <div className="flex items-center gap-2">
-                        <CheckCircle className="h-3 w-3 text-green-600" />
+                        <CheckCircle className="h-3 w-3 text-success" />
                         Yes
                       </div>
                     </SelectItem>
                     <SelectItem value="false">
                       <div className="flex items-center gap-2">
-                        <XCircle className="h-3 w-3 text-red-600" />
+                        <XCircle className="h-3 w-3 text-destructive" />
                         No
                       </div>
                     </SelectItem>

@@ -16,18 +16,18 @@ interface FeatureUnavailableProps {
  * table so nobody mistakes "no rows" for "no data exists".
  */
 export const FeatureUnavailable = ({ title, droppedTables, detail }: FeatureUnavailableProps) => (
-  <Card className="border-amber-200 bg-amber-50/50">
+  <Card className="border-warning/30 bg-warning-wash/50">
     <CardHeader>
-      <CardTitle className="flex items-center gap-2 text-amber-900">
+      <CardTitle className="flex items-center gap-2 text-warning">
         {title} — not available after the rebuild
       </CardTitle>
-      <CardDescription className="text-amber-800">
+      <CardDescription className="text-warning">
         {droppedTables.length === 1
           ? `The ${droppedTables[0]} table was removed in the database rebuild and has no replacement.`
           : `The ${droppedTables.join(", ")} tables were removed in the database rebuild and have no replacement.`}
       </CardDescription>
     </CardHeader>
-    <CardContent className="text-sm text-amber-900">
+    <CardContent className="text-sm text-warning">
       <p>
         This screen is showing nothing because there is nowhere left to read
         from — not because there is no data. {detail}
