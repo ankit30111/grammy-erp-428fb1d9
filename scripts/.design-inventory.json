@@ -1,0 +1,888 @@
+{
+ "pages": [
+  {
+   "route": "*",
+   "component": "NotFound",
+   "file": "src/pages/NotFound.tsx",
+   "nav": null,
+   "lines": 28,
+   "patterns": [
+    "shell:none",
+    "title:raw-h1"
+   ],
+   "hardcoded_colours": 4,
+   "distinct_hardcoded": 4
+  },
+  {
+   "route": "/",
+   "component": "Auth",
+   "file": "src/pages/Auth.tsx",
+   "nav": null,
+   "lines": 7,
+   "patterns": [
+    "shell:none"
+   ],
+   "hardcoded_colours": 0,
+   "distinct_hardcoded": 0
+  },
+  {
+   "route": "/approvals",
+   "component": "Approvals",
+   "file": "src/pages/Approvals.tsx",
+   "nav": "Approvals",
+   "lines": 33,
+   "patterns": [
+    "shell:DashboardLayout",
+    "title:PageHeader"
+   ],
+   "hardcoded_colours": 0,
+   "distinct_hardcoded": 0
+  },
+  {
+   "route": "/container-tracking",
+   "component": "ContainerTracking",
+   "file": "src/pages/ContainerTracking.tsx",
+   "nav": "Container Tracking",
+   "lines": 107,
+   "patterns": [
+    "list:cards",
+    "shell:DashboardLayout",
+    "title:PageHeader"
+   ],
+   "hardcoded_colours": 10,
+   "distinct_hardcoded": 10
+  },
+  {
+   "route": "/customer-complaints",
+   "component": "CustomerComplaints",
+   "file": "src/pages/CustomerComplaints.tsx",
+   "nav": "Customer Complaints",
+   "lines": 32,
+   "patterns": [
+    "shell:DashboardLayout",
+    "title:PageHeader"
+   ],
+   "hardcoded_colours": 0,
+   "distinct_hardcoded": 0
+  },
+  {
+   "route": "/dash",
+   "component": "DashDashboard",
+   "file": "src/pages/dash/DashDashboard.tsx",
+   "nav": "DASH Brand",
+   "lines": 169,
+   "patterns": [
+    "list:cards",
+    "shell:none",
+    "table:raw",
+    "title:CardTitle",
+    "title:PageHeader"
+   ],
+   "hardcoded_colours": 11,
+   "distinct_hardcoded": 9
+  },
+  {
+   "route": "/dash/customers",
+   "component": "DashCustomers",
+   "file": "src/pages/dash/DashCustomers.tsx",
+   "nav": null,
+   "lines": 170,
+   "patterns": [
+    "shell:none",
+    "title:PageHeader"
+   ],
+   "hardcoded_colours": 0,
+   "distinct_hardcoded": 0
+  },
+  {
+   "route": "/dash/factory-orders",
+   "component": "DashFactoryOrders",
+   "file": "src/pages/dash/DashFactoryOrders.tsx",
+   "nav": null,
+   "lines": 150,
+   "patterns": [
+    "badge",
+    "dialog:Dialog",
+    "filter:Input-search",
+    "filter:Select",
+    "list:cards",
+    "loading:text",
+    "shell:none",
+    "table:shadcn",
+    "title:PageHeader"
+   ],
+   "hardcoded_colours": 0,
+   "distinct_hardcoded": 0
+  },
+  {
+   "route": "/dash/inventory",
+   "component": "DashInventory",
+   "file": "src/pages/dash/DashInventory.tsx",
+   "nav": null,
+   "lines": 139,
+   "patterns": [
+    "badge",
+    "filter:Input-search",
+    "list:cards",
+    "loading:text",
+    "shell:none",
+    "table:shadcn",
+    "title:PageHeader"
+   ],
+   "hardcoded_colours": 0,
+   "distinct_hardcoded": 0
+  },
+  {
+   "route": "/dash/products",
+   "component": "DashProducts",
+   "file": "src/pages/dash/DashProducts.tsx",
+   "nav": null,
+   "lines": 179,
+   "patterns": [
+    "list:cards",
+    "loading:spinner",
+    "shell:none",
+    "title:PageHeader"
+   ],
+   "hardcoded_colours": 0,
+   "distinct_hardcoded": 0
+  },
+  {
+   "route": "/dash/sales",
+   "component": "DashSales",
+   "file": "src/pages/dash/DashSales.tsx",
+   "nav": null,
+   "lines": 203,
+   "patterns": [
+    "badge",
+    "dialog:Dialog",
+    "filter:Input-search",
+    "filter:Select",
+    "list:cards",
+    "loading:text",
+    "shell:none",
+    "table:shadcn",
+    "title:PageHeader"
+   ],
+   "hardcoded_colours": 0,
+   "distinct_hardcoded": 0
+  },
+  {
+   "route": "/dash/service",
+   "component": "DashService",
+   "file": "src/pages/dash/DashService.tsx",
+   "nav": null,
+   "lines": 121,
+   "patterns": [
+    "badge",
+    "dialog:Dialog",
+    "filter:Input-search",
+    "filter:Select",
+    "list:cards",
+    "loading:text",
+    "shell:none",
+    "table:shadcn",
+    "title:PageHeader"
+   ],
+   "hardcoded_colours": 0,
+   "distinct_hardcoded": 0
+  },
+  {
+   "route": "/dash/spares",
+   "component": "DashSpares",
+   "file": "src/pages/dash/DashSpares.tsx",
+   "nav": null,
+   "lines": 128,
+   "patterns": [
+    "badge",
+    "dialog:Dialog",
+    "filter:Input-search",
+    "list:cards",
+    "loading:text",
+    "shell:none",
+    "table:shadcn",
+    "title:PageHeader"
+   ],
+   "hardcoded_colours": 0,
+   "distinct_hardcoded": 0
+  },
+  {
+   "route": "/dash/tracking",
+   "component": "DashOrderTracking",
+   "file": "src/pages/dash/DashOrderTracking.tsx",
+   "nav": null,
+   "lines": 92,
+   "patterns": [
+    "badge",
+    "list:cards",
+    "shell:none",
+    "title:CardTitle",
+    "title:PageHeader"
+   ],
+   "hardcoded_colours": 6,
+   "distinct_hardcoded": 6
+  },
+  {
+   "route": "/dashboard",
+   "component": "Index",
+   "file": "src/pages/Index.tsx",
+   "nav": "Dashboard",
+   "lines": 70,
+   "patterns": [
+    "badge",
+    "shell:DashboardLayout",
+    "title:PageHeader",
+    "title:raw-h2"
+   ],
+   "hardcoded_colours": 0,
+   "distinct_hardcoded": 0
+  },
+  {
+   "route": "/dashboard/ppc",
+   "component": "PPCDashboard",
+   "file": "src/pages/dashboards/PPCDashboard.tsx",
+   "nav": "PPC",
+   "lines": 214,
+   "patterns": [
+    "list:cards",
+    "shell:DashboardLayout",
+    "title:CardTitle",
+    "title:PageHeader",
+    "toast:use-toast"
+   ],
+   "hardcoded_colours": 4,
+   "distinct_hardcoded": 4
+  },
+  {
+   "route": "/dashboard/ppc/serial-numbers",
+   "component": "SerialNumberManagement",
+   "file": "src/pages/SerialNumberManagement.tsx",
+   "nav": null,
+   "lines": 136,
+   "patterns": [
+    "badge",
+    "list:cards",
+    "loading:spinner",
+    "shell:DashboardLayout",
+    "title:PageHeader"
+   ],
+   "hardcoded_colours": 3,
+   "distinct_hardcoded": 3
+  },
+  {
+   "route": "/dashboards/hr",
+   "component": "HRDashboard",
+   "file": "src/pages/dashboards/HRDashboard.tsx",
+   "nav": null,
+   "lines": 187,
+   "patterns": [
+    "list:cards",
+    "shell:DashboardLayout",
+    "table:shadcn",
+    "title:CardTitle",
+    "title:PageHeader"
+   ],
+   "hardcoded_colours": 4,
+   "distinct_hardcoded": 4
+  },
+  {
+   "route": "/dashboards/production",
+   "component": "ProductionMainDashboard",
+   "file": "src/pages/dashboards/ProductionMainDashboard.tsx",
+   "nav": null,
+   "lines": 158,
+   "patterns": [
+    "list:cards",
+    "shell:DashboardLayout",
+    "title:CardTitle",
+    "title:PageHeader"
+   ],
+   "hardcoded_colours": 7,
+   "distinct_hardcoded": 7
+  },
+  {
+   "route": "/dashboards/sales",
+   "component": "SalesDashboard",
+   "file": "src/pages/dashboards/SalesDashboard.tsx",
+   "nav": null,
+   "lines": 160,
+   "patterns": [
+    "list:cards",
+    "shell:DashboardLayout",
+    "title:CardTitle",
+    "title:PageHeader"
+   ],
+   "hardcoded_colours": 2,
+   "distinct_hardcoded": 2
+  },
+  {
+   "route": "/dashboards/store",
+   "component": "StoreDashboard",
+   "file": "src/pages/dashboards/StoreDashboard.tsx",
+   "nav": null,
+   "lines": 123,
+   "patterns": [
+    "list:cards",
+    "shell:DashboardLayout",
+    "title:CardTitle",
+    "title:PageHeader"
+   ],
+   "hardcoded_colours": 1,
+   "distinct_hardcoded": 1
+  },
+  {
+   "route": "/finished-goods",
+   "component": "FinishedGoods",
+   "file": "src/pages/FinishedGoods.tsx",
+   "nav": "Finished Goods",
+   "lines": 246,
+   "patterns": [
+    "badge",
+    "list:cards",
+    "shell:DashboardLayout",
+    "table:shadcn",
+    "title:CardTitle",
+    "title:PageHeader",
+    "toast:sonner"
+   ],
+   "hardcoded_colours": 2,
+   "distinct_hardcoded": 2
+  },
+  {
+   "route": "/grn",
+   "component": "GRN",
+   "file": "src/pages/GRN.tsx",
+   "nav": null,
+   "lines": 413,
+   "patterns": [
+    "badge",
+    "dialog:Dialog",
+    "filter:Input-search",
+    "list:cards",
+    "shell:DashboardLayout",
+    "table:shadcn",
+    "title:CardTitle",
+    "title:PageHeader",
+    "toast:use-toast"
+   ],
+   "hardcoded_colours": 16,
+   "distinct_hardcoded": 9
+  },
+  {
+   "route": "/management/access-control",
+   "component": "AccessControl",
+   "file": "src/pages/management/AccessControl.tsx",
+   "nav": "Users & Access",
+   "lines": 665,
+   "patterns": [
+    "badge",
+    "dialog:Dialog",
+    "filter:Select",
+    "list:cards",
+    "loading:spinner",
+    "shell:DashboardLayout",
+    "table:raw",
+    "title:CardTitle",
+    "title:PageHeader",
+    "toast:sonner"
+   ],
+   "hardcoded_colours": 4,
+   "distinct_hardcoded": 4
+  },
+  {
+   "route": "/management/customers",
+   "component": "CustomersManagement",
+   "file": "src/pages/management/CustomersManagement.tsx",
+   "nav": "Customers",
+   "lines": 648,
+   "patterns": [
+    "badge",
+    "dialog:Dialog",
+    "filter:Select",
+    "list:cards",
+    "shell:DashboardLayout",
+    "table:shadcn",
+    "title:CardTitle",
+    "title:PageHeader",
+    "toast:use-toast"
+   ],
+   "hardcoded_colours": 0,
+   "distinct_hardcoded": 0
+  },
+  {
+   "route": "/management/hr",
+   "component": "HRManagement",
+   "file": "src/pages/management/HRManagement.tsx",
+   "nav": "Human Resources",
+   "lines": 42,
+   "patterns": [
+    "shell:DashboardLayout",
+    "title:PageHeader"
+   ],
+   "hardcoded_colours": 0,
+   "distinct_hardcoded": 0
+  },
+  {
+   "route": "/management/parts",
+   "component": "PartsManagement",
+   "file": "src/pages/management/PartsManagement.tsx",
+   "nav": "Parts",
+   "lines": 1095,
+   "patterns": [
+    "badge",
+    "dialog:Dialog",
+    "filter:Input-search",
+    "filter:Select",
+    "list:cards",
+    "loading:spinner",
+    "shell:DashboardLayout",
+    "table:shadcn",
+    "tabs",
+    "title:CardTitle",
+    "title:PageHeader",
+    "toast:sonner"
+   ],
+   "hardcoded_colours": 2,
+   "distinct_hardcoded": 2
+  },
+  {
+   "route": "/management/plants",
+   "component": "PlantsManagement",
+   "file": "src/pages/management/PlantsManagement.tsx",
+   "nav": "Plants",
+   "lines": 591,
+   "patterns": [
+    "badge",
+    "dialog:Dialog",
+    "list:cards",
+    "loading:spinner",
+    "shell:DashboardLayout",
+    "title:CardTitle",
+    "title:PageHeader",
+    "toast:use-toast"
+   ],
+   "hardcoded_colours": 0,
+   "distinct_hardcoded": 0
+  },
+  {
+   "route": "/planning",
+   "component": "PlanningEnhanced",
+   "file": "src/pages/PlanningEnhanced.tsx",
+   "nav": null,
+   "lines": 495,
+   "patterns": [
+    "badge",
+    "dialog:Dialog",
+    "filter:Select",
+    "list:cards",
+    "shell:DashboardLayout",
+    "table:shadcn",
+    "title:CardTitle",
+    "title:PageHeader",
+    "toast:use-toast"
+   ],
+   "hardcoded_colours": 2,
+   "distinct_hardcoded": 2
+  },
+  {
+   "route": "/production",
+   "component": "Production",
+   "file": "src/pages/Production.tsx",
+   "nav": "Production",
+   "lines": 45,
+   "patterns": [
+    "shell:DashboardLayout",
+    "title:PageHeader"
+   ],
+   "hardcoded_colours": 0,
+   "distinct_hardcoded": 0
+  },
+  {
+   "route": "/projection",
+   "component": "Projection",
+   "file": "src/pages/Projection.tsx",
+   "nav": "Add Projection",
+   "lines": 347,
+   "patterns": [
+    "filter:Select",
+    "list:cards",
+    "loading:text",
+    "shell:DashboardLayout",
+    "table:shadcn",
+    "title:CardTitle",
+    "title:PageHeader",
+    "toast:use-toast"
+   ],
+   "hardcoded_colours": 8,
+   "distinct_hardcoded": 8
+  },
+  {
+   "route": "/purchase",
+   "component": "Purchase",
+   "file": "src/pages/Purchase.tsx",
+   "nav": "Purchase",
+   "lines": 383,
+   "patterns": [
+    "badge",
+    "dialog:Dialog",
+    "filter:Select",
+    "list:cards",
+    "shell:DashboardLayout",
+    "table:shadcn",
+    "title:CardTitle",
+    "title:PageHeader",
+    "toast:use-toast"
+   ],
+   "hardcoded_colours": 0,
+   "distinct_hardcoded": 0
+  },
+  {
+   "route": "/purchase-discrepancies",
+   "component": "PurchaseDiscrepancies",
+   "file": "src/pages/PurchaseDiscrepancies.tsx",
+   "nav": null,
+   "lines": 32,
+   "patterns": [
+    "shell:DashboardLayout",
+    "title:PageHeader"
+   ],
+   "hardcoded_colours": 0,
+   "distinct_hardcoded": 0
+  },
+  {
+   "route": "/quality",
+   "component": "Quality",
+   "file": "src/pages/Quality.tsx",
+   "nav": "Quality Control",
+   "lines": 237,
+   "patterns": [
+    "list:cards",
+    "shell:DashboardLayout",
+    "title:CardTitle",
+    "title:PageHeader"
+   ],
+   "hardcoded_colours": 8,
+   "distinct_hardcoded": 2
+  },
+  {
+   "route": "/quality/capa",
+   "component": "CAPA",
+   "file": "src/pages/quality/CAPA.tsx",
+   "nav": null,
+   "lines": 744,
+   "patterns": [
+    "badge",
+    "filter:Input-search",
+    "list:cards",
+    "shell:DashboardLayout",
+    "table:shadcn",
+    "title:CardTitle",
+    "title:PageHeader",
+    "toast:use-toast"
+   ],
+   "hardcoded_colours": 21,
+   "distinct_hardcoded": 8
+  },
+  {
+   "route": "/quality/iqc",
+   "component": "IQC",
+   "file": "src/pages/quality/IQC.tsx",
+   "nav": null,
+   "lines": 504,
+   "patterns": [
+    "badge",
+    "filter:Input-search",
+    "filter:Select",
+    "list:cards",
+    "shell:DashboardLayout",
+    "table:shadcn",
+    "title:CardTitle",
+    "title:PageHeader"
+   ],
+   "hardcoded_colours": 4,
+   "distinct_hardcoded": 3
+  },
+  {
+   "route": "/quality/oqc",
+   "component": "OQC",
+   "file": "src/pages/quality/OQC.tsx",
+   "nav": null,
+   "lines": 342,
+   "patterns": [
+    "badge",
+    "list:cards",
+    "shell:DashboardLayout",
+    "table:shadcn",
+    "title:CardTitle",
+    "title:PageHeader",
+    "toast:use-toast"
+   ],
+   "hardcoded_colours": 0,
+   "distinct_hardcoded": 0
+  },
+  {
+   "route": "/quality/pqc",
+   "component": "PQC",
+   "file": "src/pages/quality/PQC.tsx",
+   "nav": null,
+   "lines": 232,
+   "patterns": [
+    "badge",
+    "filter:Input-search",
+    "list:cards",
+    "shell:DashboardLayout",
+    "table:shadcn",
+    "title:CardTitle",
+    "title:PageHeader"
+   ],
+   "hardcoded_colours": 0,
+   "distinct_hardcoded": 0
+  },
+  {
+   "route": "/rnd",
+   "component": "RnD",
+   "file": "src/pages/RnD.tsx",
+   "nav": "R&D",
+   "lines": 175,
+   "patterns": [
+    "badge",
+    "list:cards",
+    "shell:DashboardLayout",
+    "title:CardTitle",
+    "title:PageHeader"
+   ],
+   "hardcoded_colours": 9,
+   "distinct_hardcoded": 6
+  },
+  {
+   "route": "/rnd/npd",
+   "component": "NPD",
+   "file": "src/pages/rnd/NPD.tsx",
+   "nav": null,
+   "lines": 390,
+   "patterns": [
+    "badge",
+    "dialog:Dialog",
+    "filter:Select",
+    "list:cards",
+    "shell:DashboardLayout",
+    "table:shadcn",
+    "title:CardTitle",
+    "title:PageHeader",
+    "toast:use-toast"
+   ],
+   "hardcoded_colours": 18,
+   "distinct_hardcoded": 14
+  },
+  {
+   "route": "/rnd/pre-existing",
+   "component": "PreExisting",
+   "file": "src/pages/rnd/PreExisting.tsx",
+   "nav": null,
+   "lines": 411,
+   "patterns": [
+    "badge",
+    "dialog:Dialog",
+    "filter:Select",
+    "list:cards",
+    "shell:DashboardLayout",
+    "table:shadcn",
+    "title:CardTitle",
+    "title:PageHeader",
+    "toast:use-toast"
+   ],
+   "hardcoded_colours": 16,
+   "distinct_hardcoded": 14
+  },
+  {
+   "route": "/sales",
+   "component": "Sales",
+   "file": "src/pages/Sales.tsx",
+   "nav": "Sales",
+   "lines": 30,
+   "patterns": [
+    "shell:DashboardLayout",
+    "title:PageHeader"
+   ],
+   "hardcoded_colours": 0,
+   "distinct_hardcoded": 0
+  },
+  {
+   "route": "/settings",
+   "component": "Settings",
+   "file": "src/pages/Settings.tsx",
+   "nav": null,
+   "lines": 41,
+   "patterns": [
+    "list:cards",
+    "shell:DashboardLayout",
+    "title:CardTitle",
+    "title:PageHeader"
+   ],
+   "hardcoded_colours": 0,
+   "distinct_hardcoded": 0
+  },
+  {
+   "route": "/spare-orders",
+   "component": "SpareOrders",
+   "file": "src/pages/SpareOrders.tsx",
+   "nav": "Spare Orders",
+   "lines": 417,
+   "patterns": [
+    "badge",
+    "dialog:Dialog",
+    "filter:Input-search",
+    "filter:Select",
+    "list:cards",
+    "shell:DashboardLayout",
+    "table:shadcn",
+    "title:CardTitle",
+    "title:PageHeader",
+    "toast:use-toast"
+   ],
+   "hardcoded_colours": 10,
+   "distinct_hardcoded": 10
+  },
+  {
+   "route": "/store",
+   "component": "Store",
+   "file": "src/pages/Store.tsx",
+   "nav": "Store",
+   "lines": 12,
+   "patterns": [
+    "shell:DashboardLayout"
+   ],
+   "hardcoded_colours": 0,
+   "distinct_hardcoded": 0
+  },
+  {
+   "route": "/vendors",
+   "component": "Vendors",
+   "file": "src/pages/Vendors.tsx",
+   "nav": "Vendors",
+   "lines": 329,
+   "patterns": [
+    "dialog:Dialog",
+    "dialog:Sheet",
+    "filter:Input-search",
+    "list:cards",
+    "shell:DashboardLayout",
+    "table:shadcn",
+    "title:CardTitle",
+    "title:PageHeader"
+   ],
+   "hardcoded_colours": 4,
+   "distinct_hardcoded": 2
+  }
+ ],
+ "families": [
+  {
+   "shape": "shell + PageHeader + cards",
+   "count": 17,
+   "routes": [
+    "/approvals",
+    "/container-tracking",
+    "/customer-complaints",
+    "/dashboard",
+    "/dashboard/ppc",
+    "/dashboard/ppc/serial-numbers",
+    "/dashboards/production",
+    "/dashboards/sales",
+    "/dashboards/store",
+    "/management/hr",
+    "/management/plants",
+    "/production",
+    "/purchase-discrepancies",
+    "/quality",
+    "/rnd",
+    "/sales",
+    "/settings"
+   ]
+  },
+  {
+   "shape": "shell + PageHeader + table",
+   "count": 16,
+   "routes": [
+    "/dashboards/hr",
+    "/finished-goods",
+    "/grn",
+    "/management/customers",
+    "/management/parts",
+    "/planning",
+    "/projection",
+    "/purchase",
+    "/quality/capa",
+    "/quality/iqc",
+    "/quality/oqc",
+    "/quality/pqc",
+    "/rnd/npd",
+    "/rnd/pre-existing",
+    "/spare-orders",
+    "/vendors"
+   ]
+  },
+  {
+   "shape": "NO SHELL + PageHeader + table",
+   "count": 5,
+   "routes": [
+    "/dash/factory-orders",
+    "/dash/inventory",
+    "/dash/sales",
+    "/dash/service",
+    "/dash/spares"
+   ]
+  },
+  {
+   "shape": "NO SHELL + PageHeader + cards",
+   "count": 3,
+   "routes": [
+    "/dash/customers",
+    "/dash/products",
+    "/dash/tracking"
+   ]
+  },
+  {
+   "shape": "NO SHELL + raw heading + cards",
+   "count": 1,
+   "routes": [
+    "*"
+   ]
+  },
+  {
+   "shape": "NO SHELL + no title + cards",
+   "count": 1,
+   "routes": [
+    "/"
+   ]
+  },
+  {
+   "shape": "NO SHELL + PageHeader + raw <table>",
+   "count": 1,
+   "routes": [
+    "/dash"
+   ]
+  },
+  {
+   "shape": "shell + PageHeader + raw <table>",
+   "count": 1,
+   "routes": [
+    "/management/access-control"
+   ]
+  },
+  {
+   "shape": "shell + no title + cards",
+   "count": 1,
+   "routes": [
+    "/store"
+   ]
+  }
+ ],
+ "totals": {
+  "routed_pages": 46,
+  "no_shell": 11,
+  "no_page_header": 3,
+  "raw_tables": 2,
+  "hardcoded_colour_uses": 176,
+  "both_toasts": 0
+ }
+}

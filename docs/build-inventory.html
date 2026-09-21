@@ -1,0 +1,410 @@
+<title>Grammy ERP Build Register</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+  :root{
+    --ground:#F5F7F6; --surface:#FFFFFF; --surface-2:#EDF1EF;
+    --ink:#14201F; --ink-2:#4A5C5A; --ink-3:#7C8C8A;
+    --line:#DCE4E1; --line-2:#C6D2CF;
+    --accent:#0E5E5C; --accent-soft:#D8EAE8; --accent-ink:#0A4342;
+    --warn:#A4720B; --warn-soft:#F6EBD2;
+    --crit:#9E3226; --crit-soft:#F6DFDB;
+    --ok:#2C6B42; --ok-soft:#DDEBE1;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ground:#0E1514; --surface:#151D1C; --surface-2:#1C2625;
+      --ink:#E4ECEA; --ink-2:#A2B3B0; --ink-3:#7A8D8A;
+      --line:#26322F; --line-2:#334240;
+      --accent:#49AFA8; --accent-soft:#16302E; --accent-ink:#8FD6D0;
+      --warn:#D9A445; --warn-soft:#2E2617;
+      --crit:#D9736A; --crit-soft:#301B18;
+      --ok:#6FBE89; --ok-soft:#17291D;
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#0E1514; --surface:#151D1C; --surface-2:#1C2625;
+    --ink:#E4ECEA; --ink-2:#A2B3B0; --ink-3:#7A8D8A;
+    --line:#26322F; --line-2:#334240;
+    --accent:#49AFA8; --accent-soft:#16302E; --accent-ink:#8FD6D0;
+    --warn:#D9A445; --warn-soft:#2E2617;
+    --crit:#D9736A; --crit-soft:#301B18;
+    --ok:#6FBE89; --ok-soft:#17291D;
+  }
+
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--ground); color:var(--ink);
+    font-family:"IBM Plex Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    font-size:15px; line-height:1.55; padding-inline:20px; padding-block:0;
+  }
+  .wrap{max-width:1080px;margin:0 auto;padding-block:36px 72px}
+  code,.mono{font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace}
+
+  .eyebrow{font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);font-weight:600}
+  h1{font-size:clamp(28px,4.2vw,40px);line-height:1.08;margin:.3em 0 .25em;font-weight:700;letter-spacing:-.02em;text-wrap:balance}
+  .lede{color:var(--ink-2);max-width:62ch;margin:0 0 28px}
+  h2{font-size:19px;font-weight:600;letter-spacing:-.01em;margin:0}
+  h3{font-size:14px;font-weight:600;margin:0}
+
+  .strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(128px,1fr));gap:1px;background:var(--line);
+         border:1px solid var(--line);border-radius:3px;overflow:hidden;margin-bottom:44px}
+  .stat{background:var(--surface);padding:14px 16px}
+  .stat .n{font-size:26px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1.1}
+  .stat .k{font-size:11.5px;color:var(--ink-3);margin-top:3px}
+  .stat.flag .n{color:var(--crit)}
+
+  .decision{border-top:1px solid var(--line);padding-top:22px;margin-bottom:40px}
+  .dhead{display:flex;gap:14px;align-items:baseline;margin-bottom:6px}
+  .dnum{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--accent);font-weight:500;
+        border:1px solid var(--line-2);border-radius:2px;padding:1px 6px;flex:none}
+  .dsub{color:var(--ink-2);font-size:14px;margin:0 0 18px;max-width:64ch}
+
+  .opts{display:grid;grid-template-columns:repeat(auto-fit,minmax(248px,1fr));gap:14px}
+  .opt{background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:14px;display:flex;flex-direction:column;gap:10px}
+  .opt.lead{border-color:var(--accent);box-shadow:inset 3px 0 0 var(--accent)}
+  .opt .top{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+  .count{font-size:12px;color:var(--ink-3);font-variant-numeric:tabular-nums;white-space:nowrap}
+  .why{font-size:13px;color:var(--ink-2);margin:0}
+  .rec{display:inline-block;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:600;
+       color:var(--accent-ink);background:var(--accent-soft);padding:2px 6px;border-radius:2px}
+
+  /* miniature renderings of what each option actually looks like */
+  .demo{background:var(--surface-2);border:1px solid var(--line);border-radius:3px;padding:10px;font-size:11px}
+  .demo .bar{height:6px;background:var(--line-2);border-radius:1px}
+  .demo .ttl{font-weight:600;font-size:13px}
+  .demo .crumb{font-size:9.5px;color:var(--ink-3);margin-bottom:3px}
+  .demo table{width:100%;border-collapse:collapse;font-size:10.5px}
+  .demo th{text-align:left;font-weight:600;color:var(--ink-3);border-bottom:1px solid var(--line-2);padding:3px 4px}
+  .demo td{padding:3px 4px;border-bottom:1px solid var(--line)}
+  .demo .sk{height:8px;background:var(--line-2);border-radius:2px;margin:5px 0;opacity:.75}
+  .demo .sk:nth-child(2){width:80%}.demo .sk:nth-child(3){width:60%}
+  .spin{width:13px;height:13px;border:2px solid var(--line-2);border-top-color:var(--accent);border-radius:50%;
+        display:inline-block;animation:sp .9s linear infinite;vertical-align:-2px}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  @media (prefers-reduced-motion:reduce){.spin{animation:none}}
+  .swatches{display:flex;gap:4px;flex-wrap:wrap}
+  .sw{width:26px;height:26px;border-radius:2px;border:1px solid var(--line-2)}
+
+  .reg{width:100%;border-collapse:collapse;font-size:13px;margin-top:6px}
+  .reg th{text-align:left;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);
+          font-weight:600;padding:7px 8px;border-bottom:1px solid var(--line-2);position:sticky;top:0;background:var(--ground)}
+  .reg td{padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+  .reg tr:hover td{background:var(--surface)}
+  .reg .num{text-align:right;font-variant-numeric:tabular-nums;color:var(--ink-2)}
+  .grp td{background:var(--surface-2);font-weight:600;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2)}
+  .scroll{overflow-x:auto;border:1px solid var(--line);border-radius:4px;background:var(--surface)}
+  .pill{display:inline-block;font-size:10.5px;padding:1px 6px;border-radius:2px;white-space:nowrap;font-weight:500}
+  .pill.no{background:var(--crit-soft);color:var(--crit)}
+  .pill.yes{background:var(--ok-soft);color:var(--ok)}
+  .pill.warn{background:var(--warn-soft);color:var(--warn)}
+  .route{font-family:"IBM Plex Mono",monospace;font-size:12px}
+
+  .ask{background:var(--surface);border:1px solid var(--accent);border-radius:4px;padding:18px 20px;margin-top:40px}
+  .ask ol{margin:10px 0 0;padding-left:20px}
+  .ask li{margin-bottom:7px;color:var(--ink-2)}
+  .ask li b{color:var(--ink);font-weight:600}
+  footer{margin-top:44px;padding-top:16px;border-top:1px solid var(--line);color:var(--ink-3);font-size:12px}
+</style>
+
+<div class="wrap">
+
+  <p class="eyebrow">Grammy ERP · 21 September 2026</p>
+  <h1>What the app is built out of</h1>
+  <p class="lede">Forty-six routed screens, read from the source. The reason it doesn't feel like one
+  product is mechanical, not aesthetic: the shared pieces exist, and only some screens use them.
+  Six decisions below — tell me which option to keep and I'll make every screen match it.</p>
+
+  <div class="strip">
+    <div class="stat"><div class="n">46</div><div class="k">routed screens</div></div>
+    <div class="stat flag"><div class="n">2</div><div class="k">separate shells</div></div>
+    <div class="stat flag"><div class="n">11</div><div class="k">outside the main shell</div></div>
+    <div class="stat flag"><div class="n">176</div><div class="k">hand-written colours</div></div>
+    <div class="stat"><div class="n">2</div><div class="k">toast systems</div></div>
+    <div class="stat"><div class="n">11,300</div><div class="k">lines across screens</div></div>
+  </div>
+
+  <!-- 1 -->
+  <section class="decision">
+    <div class="dhead"><span class="dnum">01</span><h2>Two shells, one app</h2></div>
+    <p class="dsub">This is the big one, and everything else depends on it. Nine screens under
+      <code>/dash/…</code> run on their own layout with their own navigation — a second product living
+      inside the first. Nothing else in the app links to them.</p>
+    <div class="opts">
+      <div class="opt lead">
+        <div class="top"><h3>DashboardLayout</h3><span class="count">35 screens</span></div>
+        <span class="rec">Recommended</span>
+        <div class="demo">
+          <div style="display:flex;gap:7px">
+            <div style="width:26%;background:var(--line);border-radius:2px;min-height:52px"></div>
+            <div style="flex:1"><div class="crumb">Store / Inventory</div><div class="ttl">Inventory</div>
+              <div class="bar" style="margin-top:7px"></div><div class="bar" style="margin-top:4px;width:70%"></div></div>
+          </div>
+        </div>
+        <p class="why">Sidebar, breadcrumb, plant switcher, role-aware navigation. The real shell.</p>
+      </div>
+      <div class="opt">
+        <div class="top"><h3>DashLayout</h3><span class="count">9 screens</span></div>
+        <div class="demo">
+          <div class="crumb">&nbsp;</div><div class="ttl">Sales Orders</div>
+          <div class="bar" style="margin-top:7px"></div><div class="bar" style="margin-top:4px;width:55%"></div>
+        </div>
+        <p class="why">A parallel shell for the DASH module — own nav, own chrome, unreachable from
+          the main menu. Every one of its tables is empty.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2 -->
+  <section class="decision">
+    <div class="dhead"><span class="dnum">02</span><h2>How a screen names itself</h2></div>
+    <p class="dsub">Three ways a page announces what it is. <code>PageHeader</code> already carries
+      breadcrumb, title and an actions slot — it just isn't used everywhere.</p>
+    <div class="opts">
+      <div class="opt lead">
+        <div class="top"><h3>PageHeader</h3><span class="count">43 screens</span></div>
+        <span class="rec">Recommended</span>
+        <div class="demo"><div class="crumb">Quality / IQC</div><div class="ttl">Incoming Inspection</div></div>
+        <p class="why">Breadcrumb, title, actions. One component, one place to change it.</p>
+      </div>
+      <div class="opt">
+        <div class="top"><h3>CardTitle only</h3><span class="count">27 screens</span></div>
+        <div class="demo"><div style="border:1px solid var(--line-2);border-radius:3px;padding:7px">
+          <div class="ttl" style="font-size:12px">Incoming Inspection</div></div></div>
+        <p class="why">Used <em>alongside</em> PageHeader on most screens, so the title appears twice at
+          different sizes.</p>
+      </div>
+      <div class="opt">
+        <div class="top"><h3>Bare heading / none</h3><span class="count">3 screens</span></div>
+        <div class="demo"><div class="ttl" style="font-size:16px">Store</div></div>
+        <p class="why"><code>/store</code> has no title at all. <code>/dash</code> and the 404 write
+          their own <code>&lt;h1&gt;</code>.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3 -->
+  <section class="decision">
+    <div class="dhead"><span class="dnum">03</span><h2>How a list is drawn</h2></div>
+    <p class="dsub">The same list of rows is drawn three ways. Search, filter, sort, empty and loading
+      states are re-typed on each screen rather than shared, which is where most of the drift comes from.</p>
+    <div class="opts">
+      <div class="opt lead">
+        <div class="top"><h3>Shared Table</h3><span class="count">21 screens</span></div>
+        <span class="rec">Recommended</span>
+        <div class="demo"><table>
+          <tr><th>Part</th><th>Qty</th></tr>
+          <tr><td class="mono">Z-015</td><td>81,600</td></tr>
+          <tr><td class="mono">F-037</td><td>9,000</td></tr></table></div>
+        <p class="why">One component for search, filter, sort, empty and loading — built once.</p>
+      </div>
+      <div class="opt">
+        <div class="top"><h3>Cards in a grid</h3><span class="count">35 screens</span></div>
+        <div class="demo"><div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">
+          <div style="border:1px solid var(--line-2);border-radius:3px;padding:6px"><div class="mono" style="font-size:10px">Z-015</div><b>81,600</b></div>
+          <div style="border:1px solid var(--line-2);border-radius:3px;padding:6px"><div class="mono" style="font-size:10px">F-037</div><b>9,000</b></div>
+        </div></div>
+        <p class="why">Right for summaries. Wrong for 2,000 part codes — you cannot scan or sort them.</p>
+      </div>
+      <div class="opt">
+        <div class="top"><h3>Hand-written &lt;table&gt;</h3><span class="count">2 screens</span></div>
+        <div class="demo"><table style="font-size:10px">
+          <tr><td style="border:1px solid var(--line-2);padding:2px">Part</td><td style="border:1px solid var(--line-2);padding:2px">Qty</td></tr>
+          <tr><td style="border:1px solid var(--line-2);padding:2px">Z-015</td><td style="border:1px solid var(--line-2);padding:2px">81,600</td></tr></table></div>
+        <p class="why"><code>/management/access-control</code> and <code>/dash</code>. Raw HTML, own borders,
+          no sorting.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4 -->
+  <section class="decision">
+    <div class="dhead"><span class="dnum">04</span><h2>What you see while it loads</h2></div>
+    <p class="dsub">Eleven screens show something while waiting; the rest show nothing at all, which
+      reads as a broken page on a slow connection in the factory.</p>
+    <div class="opts">
+      <div class="opt lead">
+        <div class="top"><h3>Skeleton rows</h3><span class="count">0 screens</span></div>
+        <span class="rec">Recommended</span>
+        <div class="demo"><div class="sk"></div><div class="sk"></div><div class="sk"></div></div>
+        <p class="why">The shape of the answer appears first, so the page doesn't jump when data lands.
+          The component exists and nothing uses it.</p>
+      </div>
+      <div class="opt">
+        <div class="top"><h3>Spinner</h3><span class="count">5 screens</span></div>
+        <div class="demo" style="text-align:center;padding:16px"><span class="spin"></span></div>
+        <p class="why">Fine for a button. On a full page it says "wait" without saying for what.</p>
+      </div>
+      <div class="opt">
+        <div class="top"><h3>"Loading…" text</h3><span class="count">6 screens</span></div>
+        <div class="demo" style="text-align:center;padding:16px;color:var(--ink-3)">Loading...</div>
+        <p class="why">Different wording on each screen, centred in an otherwise empty page.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5 -->
+  <section class="decision">
+    <div class="dhead"><span class="dnum">05</span><h2>How the app talks back</h2></div>
+    <p class="dsub">Two notification libraries ship in the same bundle. They look different, stack
+      differently, and sit in different corners — so the same action can be confirmed two ways depending
+      on which screen you're on.</p>
+    <div class="opts">
+      <div class="opt lead">
+        <div class="top"><h3>use-toast</h3><span class="count">12 screens</span></div>
+        <span class="rec">Recommended</span>
+        <div class="demo"><div style="border:1px solid var(--line-2);border-radius:3px;padding:7px;background:var(--surface)">
+          <b style="font-size:11px">Variance resolved</b>
+          <div style="color:var(--ink-3);font-size:10px">CAPA-202609-00001 sent to the vendor.</div></div></div>
+        <p class="why">Title plus detail, which is what a quality claim or a stock movement needs.</p>
+      </div>
+      <div class="opt">
+        <div class="top"><h3>sonner</h3><span class="count">3 screens</span></div>
+        <div class="demo"><div style="border:1px solid var(--line-2);border-radius:14px;padding:6px 10px;background:var(--surface);font-size:11px">Part added</div></div>
+        <p class="why">One line, no detail slot. Keep one of the two and delete the other.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6 -->
+  <section class="decision">
+    <div class="dhead"><span class="dnum">06</span><h2>Where the colours come from</h2></div>
+    <p class="dsub">176 colours are written directly into screens — <code>text-green-600</code>,
+      <code>bg-red-100</code> — instead of coming from the theme. That is why a "rejected" badge is not
+      the same red on CAPA as on GRN, and why nothing responds when the brand colour changes.</p>
+    <div class="opts">
+      <div class="opt lead">
+        <div class="top"><h3>Theme tokens</h3><span class="count">recommended</span></div>
+        <span class="rec">Recommended</span>
+        <div class="demo">
+          <div class="swatches">
+            <div class="sw" style="background:var(--accent)"></div>
+            <div class="sw" style="background:var(--ok)"></div>
+            <div class="sw" style="background:var(--warn)"></div>
+            <div class="sw" style="background:var(--crit)"></div>
+            <div class="sw" style="background:var(--ink-3)"></div>
+          </div>
+          <div style="margin-top:7px;font-size:10.5px;color:var(--ink-3)">accent · pass · hold · reject · muted</div>
+        </div>
+        <p class="why">Five named roles. "Rejected" is one colour everywhere, defined once.</p>
+      </div>
+      <div class="opt">
+        <div class="top"><h3>Written per screen</h3><span class="count">176 uses</span></div>
+        <div class="demo">
+          <div class="swatches">
+            <div class="sw" style="background:#16a34a"></div><div class="sw" style="background:#22c55e"></div>
+            <div class="sw" style="background:#15803d"></div><div class="sw" style="background:#dc2626"></div>
+            <div class="sw" style="background:#ef4444"></div><div class="sw" style="background:#b91c1c"></div>
+          </div>
+          <div style="margin-top:7px;font-size:10.5px;color:var(--ink-3)">three greens, three reds, same meaning</div>
+        </div>
+        <p class="why">Worst offenders: CAPA 21, NPD 18, GRN 16, Pre-existing 16.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- register -->
+  <section class="decision">
+    <div class="dhead"><span class="dnum">—</span><h2>Every screen</h2></div>
+    <p class="dsub">All 46 routes, grouped by the shell they sit in. <b>Colours</b> counts hand-written
+      colour classes on that screen; <b>Lines</b> is its size, which is a fair proxy for how much
+      re-typed table and filter code it carries.</p>
+    <div class="scroll">
+      <table class="reg" id="register"></table>
+    </div>
+  </section>
+
+  <div class="ask">
+    <h2>What I need from you</h2>
+    <ol>
+      <li><b>The DASH module</b> — nine screens on a second shell, all with empty tables, unreachable
+        from the menu. Fold into the main shell, or delete?</li>
+      <li><b>Toasts</b> — keep <b>use-toast</b> and remove sonner, or the other way round?</li>
+      <li><b>Loading</b> — skeleton rows everywhere, or spinners?</li>
+      <li><b>Lists</b> — one shared table component for every list over ~20 rows, cards only for
+        summaries. Agree?</li>
+      <li><b>Colour</b> — five semantic roles (accent, pass, hold, reject, muted) replacing all 176
+        hand-written colours. Any colour meaning I've missed?</li>
+      <li><b>Density</b> — the factory floor reads these on a laptop at arm's length. Tighter rows and
+        more per screen, or as it is now?</li>
+    </ol>
+  </div>
+
+  <footer>
+    Read from the repository at <code class="mono">04f2f84</code>, not from memory. Counts come from
+    <code class="mono">scripts/design-inventory.py</code>, which can be re-run any time to see whether
+    the drift is closing.
+  </footer>
+</div>
+
+<script>
+const PAGES = [
+{"r":"/dashboard","c":"Index","s":1,"h":0,"l":70,"g":"Overview"},
+{"r":"/approvals","c":"Approvals","s":1,"h":0,"l":33,"g":"Overview"},
+{"r":"/settings","c":"Settings","s":1,"h":0,"l":41,"g":"Overview"},
+{"r":"/dashboard/ppc","c":"PPCDashboard","s":1,"h":4,"l":214,"g":"Dashboards"},
+{"r":"/dashboards/production","c":"ProductionMainDashboard","s":1,"h":7,"l":158,"g":"Dashboards"},
+{"r":"/dashboards/sales","c":"SalesDashboard","s":1,"h":2,"l":160,"g":"Dashboards"},
+{"r":"/dashboards/store","c":"StoreDashboard","s":1,"h":1,"l":123,"g":"Dashboards"},
+{"r":"/dashboards/hr","c":"HRDashboard","s":1,"h":4,"l":187,"g":"Dashboards"},
+{"r":"/management/parts","c":"PartsManagement","s":1,"h":2,"l":1095,"g":"Management"},
+{"r":"/management/customers","c":"CustomersManagement","s":1,"h":0,"l":648,"g":"Management"},
+{"r":"/management/plants","c":"PlantsManagement","s":1,"h":0,"l":591,"g":"Management"},
+{"r":"/management/hr","c":"HRManagement","s":1,"h":0,"l":42,"g":"Management"},
+{"r":"/management/access-control","c":"AccessControl","s":1,"h":4,"l":665,"g":"Management","raw":1},
+{"r":"/vendors","c":"Vendors","s":1,"h":4,"l":329,"g":"Purchase"},
+{"r":"/purchase","c":"Purchase","s":1,"h":0,"l":383,"g":"Purchase"},
+{"r":"/grn","c":"GRN","s":1,"h":16,"l":413,"g":"Purchase"},
+{"r":"/purchase-discrepancies","c":"PurchaseDiscrepancies","s":1,"h":0,"l":32,"g":"Purchase"},
+{"r":"/container-tracking","c":"ContainerTracking","s":1,"h":10,"l":107,"g":"Purchase"},
+{"r":"/store","c":"Store","s":1,"h":0,"l":12,"g":"Store","notitle":1},
+{"r":"/finished-goods","c":"FinishedGoods","s":1,"h":2,"l":246,"g":"Store"},
+{"r":"/planning","c":"PlanningEnhanced","s":1,"h":2,"l":495,"g":"Planning"},
+{"r":"/projection","c":"Projection","s":1,"h":8,"l":347,"g":"Planning"},
+{"r":"/production","c":"Production","s":1,"h":0,"l":45,"g":"Production"},
+{"r":"/dashboard/ppc/serial-numbers","c":"SerialNumberManagement","s":1,"h":3,"l":136,"g":"Production"},
+{"r":"/quality","c":"Quality","s":1,"h":8,"l":237,"g":"Quality"},
+{"r":"/quality/iqc","c":"IQC","s":1,"h":4,"l":504,"g":"Quality"},
+{"r":"/quality/pqc","c":"PQC","s":1,"h":0,"l":232,"g":"Quality"},
+{"r":"/quality/oqc","c":"OQC","s":1,"h":0,"l":342,"g":"Quality"},
+{"r":"/quality/capa","c":"CAPA","s":1,"h":21,"l":744,"g":"Quality"},
+{"r":"/customer-complaints","c":"CustomerComplaints","s":1,"h":0,"l":32,"g":"Quality"},
+{"r":"/sales","c":"Sales","s":1,"h":0,"l":30,"g":"Sales"},
+{"r":"/spare-orders","c":"SpareOrders","s":1,"h":10,"l":417,"g":"Sales"},
+{"r":"/rnd","c":"RnD","s":1,"h":9,"l":175,"g":"R&D"},
+{"r":"/rnd/npd","c":"NPD","s":1,"h":18,"l":390,"g":"R&D"},
+{"r":"/rnd/pre-existing","c":"PreExisting","s":1,"h":16,"l":411,"g":"R&D"},
+{"r":"/dash","c":"DashDashboard","s":0,"h":11,"l":169,"g":"DASH module","raw":1},
+{"r":"/dash/products","c":"DashProducts","s":0,"h":0,"l":179,"g":"DASH module"},
+{"r":"/dash/customers","c":"DashCustomers","s":0,"h":0,"l":170,"g":"DASH module"},
+{"r":"/dash/sales","c":"DashSales","s":0,"h":0,"l":203,"g":"DASH module"},
+{"r":"/dash/factory-orders","c":"DashFactoryOrders","s":0,"h":0,"l":150,"g":"DASH module"},
+{"r":"/dash/inventory","c":"DashInventory","s":0,"h":0,"l":139,"g":"DASH module"},
+{"r":"/dash/service","c":"DashService","s":0,"h":0,"l":121,"g":"DASH module"},
+{"r":"/dash/spares","c":"DashSpares","s":0,"h":0,"l":128,"g":"DASH module"},
+{"r":"/dash/tracking","c":"DashOrderTracking","s":0,"h":6,"l":92,"g":"DASH module"},
+{"r":"/","c":"Auth","s":0,"h":0,"l":7,"g":"Outside the app","notitle":1},
+{"r":"*","c":"NotFound","s":0,"h":4,"l":28,"g":"Outside the app","notitle":1}
+];
+
+const t = document.getElementById('register');
+let html = '<thead><tr><th>Route</th><th>Screen</th><th>Shell</th><th class="num">Colours</th><th class="num">Lines</th><th>Note</th></tr></thead><tbody>';
+let group = null;
+for (const p of PAGES) {
+  if (p.g !== group) {
+    group = p.g;
+    html += `<tr class="grp"><td colspan="6">${group}</td></tr>`;
+  }
+  const shell = p.s
+    ? '<span class="pill yes">shell</span>'
+    : '<span class="pill no">no shell</span>';
+  const notes = [];
+  if (p.raw) notes.push('<span class="pill warn">raw &lt;table&gt;</span>');
+  if (p.notitle) notes.push('<span class="pill warn">no title</span>');
+  const colour = p.h >= 10 ? `<b style="color:var(--crit)">${p.h}</b>` : (p.h || '·');
+  html += `<tr><td class="route">${p.r}</td><td>${p.c}</td><td>${shell}</td>`
+        + `<td class="num">${colour}</td><td class="num">${p.l.toLocaleString()}</td>`
+        + `<td>${notes.join(' ') || ''}</td></tr>`;
+}
+t.innerHTML = html + '</tbody>';
+</script>
