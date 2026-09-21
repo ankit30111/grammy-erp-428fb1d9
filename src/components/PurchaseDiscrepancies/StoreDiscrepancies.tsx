@@ -42,7 +42,9 @@ const RESOLUTIONS = [
   {
     value: "SHORT_SUPPLY",
     label: "Short supply — claim from the vendor",
-    effect: "The quantity goes back onto the PO as still owed, and is recorded as a claim.",
+    effect:
+      "The quantity goes back onto the PO as still owed, a CAPA is raised against the vendor, " +
+      "and the claim is emailed to them with the GRN, the part and the quantities.",
   },
   {
     value: "IQC_MISCOUNT",
@@ -92,14 +94,37 @@ const StoreDiscrepancies = () => {
         p_remarks: remarks.trim(),
       });
       if (error) throw error;
+
+      // Ruling "short supply" IS the ruling that this is the vendor's. So the
+      // claim and the mail follow from it rather than waiting for somebody to
+      // remember, open Outlook and retype the GRN number. The other three
+      // resolutions are ours to carry and nothing leaves the building.
+      if (resolution !== "SHORT_SUPPLY") return null;
+
+      const { data, error: capaError } = await supabase.rpc("raise_vendor_capa", {
+        p_grn_item_id: acting.grn_item_id,
+        p_problem: remarks.trim() || null,
+      });
+      if (capaError) throw capaError;
+
+      // Posting is a separate step from raising, so a mail provider that is down
+      // cannot roll back a CAPA that was correctly raised. The claim is on the
+      // record either way; the mail waits in the outbox.
+      await supabase.functions.invoke("send-vendor-notifications").catch(() => undefined);
+      return data as any;
     },
-    onSuccess: () => {
+    onSuccess: (claim: any) => {
       queryClient.invalidateQueries({ queryKey: ["store-receiving-variances"] });
       queryClient.invalidateQueries({ queryKey: ["purchase_orders"] });
       queryClient.invalidateQueries({ queryKey: ["inventory"] });
+      queryClient.invalidateQueries({ queryKey: ["vendor-notifications"] });
       toast({
-        title: "Variance resolved",
-        description: RESOLUTIONS.find((r) => r.value === resolution)?.effect,
+        title: claim ? `Variance resolved — ${claim.capa_number} raised` : "Variance resolved",
+        description: claim
+          ? claim.emailed
+            ? `The claim has been sent to ${claim.to}.`
+            : `The claim is on the record, but ${claim.reason}.`
+          : RESOLUTIONS.find((r) => r.value === resolution)?.effect,
       });
       setActing(null);
       setResolution("");
