@@ -299,7 +299,6 @@ const RegularDispatch = () => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold">Regular Dispatch Management</h2>
         <Dialog open={isCreatingOrder} onOpenChange={setIsCreatingOrder}>
           <DialogTrigger asChild>
             <Button>

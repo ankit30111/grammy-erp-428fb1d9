@@ -235,6 +235,36 @@ function UserAccessEditor({
   const [fullName, setFullName] = useState<string>(user.full_name ?? "");
   const [role, setRole] = useState<string>(user.role ?? "user");
   const [isActive, setIsActive] = useState<boolean>(user.is_active ?? true);
+  const [newEmail, setNewEmail] = useState<string>(user.email ?? "");
+
+  const changeEmail = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.rpc("admin_update_user_email", {
+        p_user_id: user.id,
+        p_email: newEmail.trim(),
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["user-accounts-admin"] });
+      toast({ title: "Email changed", description: `They sign in as ${newEmail.trim()} from now on.` });
+    },
+    // The database's own words. "Already used by another account" and "not an
+    // email address" are both things the person can act on.
+    onError: (e: any) => toast({ title: "Could not change the email", description: e.message, variant: "destructive" }),
+  });
+
+  const removeUser = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.rpc("admin_delete_user", { p_user_id: user.id });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["user-accounts-admin"] });
+      toast({ title: "User deleted" });
+    },
+    onError: (e: any) => toast({ title: "Could not delete the user", description: e.message, variant: "destructive" }),
+  });
 
   // Reset password dialog state.
   const [pwOpen, setPwOpen] = useState(false);
@@ -371,6 +401,38 @@ function UserAccessEditor({
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
+        <div className="rounded-md border p-3 space-y-3">
+          <Label className="text-xs">Sign-in address</Label>
+          <div className="flex flex-wrap items-center gap-2">
+            <Input
+              value={newEmail}
+              onChange={(e) => setNewEmail(e.target.value)}
+              className="max-w-xs"
+              placeholder="name@grammyacoustics.com"
+            />
+            <Button
+              variant="outline"
+              disabled={!newEmail.trim() || newEmail.trim() === user.email || changeEmail.isPending}
+              onClick={() => changeEmail.mutate()}
+            >
+              {changeEmail.isPending ? "Changing..." : "Change email"}
+            </Button>
+            <Button
+              variant="destructive"
+              className="ml-auto"
+              disabled={removeUser.isPending}
+              onClick={() => {
+                // Deleting a person removes their sign-in as well as their
+                // profile, so it is not something to do on a mis-click.
+                if (window.confirm(`Delete ${user.full_name || user.email}? This removes their login and cannot be undone.`)) {
+                  removeUser.mutate();
+                }
+              }}
+            >
+              {removeUser.isPending ? "Deleting..." : "Delete user"}
+            </Button>
+          </div>
+        </div>
         {/*
           There is no sign-in identity behind this profile, so nobody can log in as
           it and Reset password has nothing to reset - it fails with "User not

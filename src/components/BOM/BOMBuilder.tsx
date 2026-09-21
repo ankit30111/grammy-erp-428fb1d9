@@ -158,10 +158,7 @@ export const BOMBuilder = () => {
   return (
     <div className="space-y-4">
       <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Create Bill of Materials</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 pt-5">
           <div className="space-y-2">
             <Label>Which part is this bill of materials for?</Label>
             <Popover open={parentOpen} onOpenChange={setParentOpen}>
@@ -279,7 +276,7 @@ export const BOMBuilder = () => {
                     <TableHead className="w-32">Part Code</TableHead>
                     <TableHead>Part Name</TableHead>
                     <TableHead className="w-40">Category</TableHead>
-                    <TableHead className="w-36">Qty per piece</TableHead>
+                    <TableHead className="w-36">QPS</TableHead>
                     <TableHead className="w-20">Critical</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -340,7 +337,7 @@ export const BOMBuilder = () => {
               </Table>
             </div>
             <p className="text-xs text-muted-foreground">
-              Quantity is per one piece of {parentPart?.part_code}. Unticking a part removes it from
+              QPS is the quantity of that part in one set of {parentPart?.part_code}. Unticking a part removes it from
               the bill when you save.
             </p>
           </CardContent>
