@@ -76,7 +76,7 @@ export function EmployeeManagement() {
           employee_code: data.employee_code,
           first_name: data.first_name,
           last_name: data.last_name,
-          email: data.email,
+          email: data.email || null,
           phone_number: data.phone_number,
           date_of_birth: data.date_of_birth || null,
           position: data.position,
@@ -115,7 +115,7 @@ export function EmployeeManagement() {
           employee_code: data.employee_code,
           first_name: data.first_name,
           last_name: data.last_name,
-          email: data.email,
+          email: data.email || null,
           phone_number: data.phone_number,
           date_of_birth: data.date_of_birth || null,
           position: data.position,
@@ -174,7 +174,7 @@ export function EmployeeManagement() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.employee_code || !formData.first_name || !formData.last_name || !formData.email || !formData.phone_number || !formData.position || !formData.department) {
+    if (!formData.employee_code || !formData.first_name || !formData.last_name || !formData.phone_number || !formData.position || !formData.department) {
       toast({ title: "Please fill all required fields", variant: "destructive" });
       return;
     }
@@ -264,13 +264,12 @@ export function EmployeeManagement() {
                 </div>
                 
                 <div>
-                  <Label htmlFor="email">Email *</Label>
+                  <Label htmlFor="email">Email</Label>
                   <Input
                     id="email"
                     type="email"
                     value={formData.email}
                     onChange={(e) => handleInputChange('email', e.target.value)}
-                    required
                   />
                 </div>
                 

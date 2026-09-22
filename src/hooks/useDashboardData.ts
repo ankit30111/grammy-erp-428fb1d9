@@ -79,7 +79,7 @@ export const useProductionDashboardData = () => {
         supabase.from('hourly_production').select('*').gte('created_at', new Date().toISOString().split('T')[0])
       ]);
 
-      const scheduled = ordersData.data?.filter(o => o.status === 'PENDING').length || 0;
+      const scheduled = ordersData.data?.filter(o => o.status === 'PLANNED').length || 0;
       const completed = ordersData.data?.filter(o => o.status === 'COMPLETED').length || 0;
       const inProgress = ordersData.data?.filter(o => o.status === 'IN_PRODUCTION').length || 0;
 

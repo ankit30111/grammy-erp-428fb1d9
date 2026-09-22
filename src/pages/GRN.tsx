@@ -218,7 +218,7 @@ const GRN = () => {
                               >
                                 {selectedGRN === grn.id ? "Hide Details" : "View Details"}
                               </Button>
-                              {grn.status === 'RECEIVED' && (
+                              {grn.status === 'DRAFT' && (
                                 <Button 
                                   variant="outline" 
                                   size="sm"
@@ -293,7 +293,7 @@ const GRN = () => {
                               <TableRow key={idx}>
                                 <TableCell className="font-mono">{item.parts?.part_code}</TableCell>
                                 <TableCell>{item.parts?.name}</TableCell>
-                                <TableCell>{item.po_quantity?.toLocaleString()}</TableCell>
+                                <TableCell>{(item as any).po_quantity?.toLocaleString?.() ?? item.received_quantity?.toLocaleString()}</TableCell>
                                 <TableCell>{item.received_quantity?.toLocaleString()}</TableCell>
                                 <TableCell>
                                   <Badge 

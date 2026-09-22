@@ -231,6 +231,7 @@ function UserAccessEditor({
   departments: any[];
   onSaved: () => void;
 }) {
+  const queryClient = useQueryClient();
   // Local editable account fields.
   const [fullName, setFullName] = useState<string>(user.full_name ?? "");
   const [role, setRole] = useState<string>(user.role ?? "user");
@@ -239,7 +240,7 @@ function UserAccessEditor({
 
   const changeEmail = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.rpc("admin_update_user_email", {
+      const { error } = await supabase.rpc("admin_update_user_email" as any, {
         p_user_id: user.id,
         p_email: newEmail.trim(),
       });
@@ -247,23 +248,23 @@ function UserAccessEditor({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["user-accounts-admin"] });
-      toast({ title: "Email changed", description: `They sign in as ${newEmail.trim()} from now on.` });
+      toast("Email changed", { description: `They sign in as ${newEmail.trim()} from now on.` });
     },
     // The database's own words. "Already used by another account" and "not an
     // email address" are both things the person can act on.
-    onError: (e: any) => toast({ title: "Could not change the email", description: e.message, variant: "destructive" }),
+    onError: (e: any) => toast.error("Could not change the email", { description: e.message }),
   });
 
   const removeUser = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.rpc("admin_delete_user", { p_user_id: user.id });
+      const { error } = await supabase.rpc("admin_delete_user" as any, { p_user_id: user.id });
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["user-accounts-admin"] });
-      toast({ title: "User deleted" });
+      toast("User deleted");
     },
-    onError: (e: any) => toast({ title: "Could not delete the user", description: e.message, variant: "destructive" }),
+    onError: (e: any) => toast.error("Could not delete the user", { description: e.message }),
   });
 
   // Reset password dialog state.
