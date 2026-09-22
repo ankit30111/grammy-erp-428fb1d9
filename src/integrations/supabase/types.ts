@@ -5611,6 +5611,7 @@ export type Database = {
         Args: { p_feedback_id: string; p_remarks?: string }
         Returns: string
       }
+      admin_delete_user: { Args: { p_user_id: string }; Returns: string }
       admin_list_active_employee_salaries: {
         Args: never
         Returns: {
@@ -5620,6 +5621,10 @@ export type Database = {
           last_name: string
           salary: number
         }[]
+      }
+      admin_update_user_email: {
+        Args: { p_email: string; p_user_id: string }
+        Returns: string
       }
       allocate_finished_goods: {
         Args: {
