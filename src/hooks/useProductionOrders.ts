@@ -48,7 +48,7 @@ export const useUpdateProductionOrder = () => {
         .update({
           ...updates,
           updated_at: new Date().toISOString()
-        })
+        } as any)
         .eq("id", id)
         .select()
         .single();

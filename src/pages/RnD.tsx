@@ -97,7 +97,7 @@ const RnD = () => {
                     <CheckCircle className="h-3 w-3 text-success" />
                     <span className="text-xs">Approved for Production</span>
                   </div>
-                  <Badge variant="outline">{npdStats?.approved || 0}</Badge>
+                  <Badge variant="outline">{npdStats?.launched || 0}</Badge>
                 </div>
               </div>
             </CardContent>

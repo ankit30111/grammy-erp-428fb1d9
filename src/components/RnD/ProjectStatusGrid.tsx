@@ -17,6 +17,7 @@ interface ProjectData {
   customer: string;
   created_at: string;
   estimated_completion_date: string;
+  target_launch_date: string | null;
   daysRemaining: number;
   progressPercentage: number;
 }
@@ -84,6 +85,7 @@ const ProjectStatusGrid = () => {
           customer: project.customers?.name || 'N/A',
           created_at: project.created_at,
           estimated_completion_date: project.target_launch_date,
+          target_launch_date: project.target_launch_date,
           daysRemaining,
           progressPercentage
         });

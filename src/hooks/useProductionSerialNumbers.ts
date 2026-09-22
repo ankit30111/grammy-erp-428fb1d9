@@ -130,7 +130,7 @@ export const useCreateSerialNumberAssignment = () => {
       // does not get to choose which plant a voucher belongs to.
       const { data: result, error } = await supabase
         .from("serial_number_assignments")
-        .insert({ ...data, status: "ASSIGNED" })
+        .insert([{ ...data, status: "ASSIGNED" }])
         .select()
         .single();
 

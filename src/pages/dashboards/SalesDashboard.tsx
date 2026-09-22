@@ -29,8 +29,8 @@ const SalesDashboard = () => {
         new Date(o.created_at).getMonth() === thisMonth
       ).length || 0;
 
-      const pendingDispatches = dispatchData.data?.filter(d => d.status === 'PENDING').length || 0;
-      const openComplaints = complaintsData.data?.filter(c => c.status === 'Open').length || 0;
+      const pendingDispatches = dispatchData.data?.filter(d => d.status === 'DRAFT').length || 0;
+      const openComplaints = complaintsData.data?.filter(c => c.status === 'OPEN').length || 0;
 
       return {
         monthlyOrders,

@@ -94,7 +94,7 @@ export const useCreateContainer = () => {
     mutationFn: async (container: Omit<Container, 'id' | 'created_at' | 'updated_at'>) => {
       const { data, error } = await supabase
         .from("import_containers")
-        .insert([container])
+        .insert([container] as any)
         .select()
         .single();
 
@@ -126,7 +126,7 @@ export const useUpdateContainer = () => {
     mutationFn: async ({ id, ...updates }: Partial<Container> & { id: string }) => {
       const { data, error } = await supabase
         .from("import_containers")
-        .update(updates)
+        .update(updates as any)
         .eq("id", id)
         .select()
         .single();

@@ -55,7 +55,7 @@ const PlanningDashboard = () => {
         .from('bom')
         .select(`
           *,
-          parts (
+          parts!child_part_id (
             id,
             part_code,
             name
@@ -152,10 +152,10 @@ const PlanningDashboard = () => {
   const getVoucherDetails = (schedule: any) => {
     if (!schedule || !bomData || !inventory) return [];
     
-    const productBOM = bomData.filter(bom => bom.part_id === schedule.projections?.parts?.id);
+    const productBOM = bomData.filter(bom => bom.parent_part_id === schedule.projections?.parts?.id);
     
     const materialRequirements = productBOM.map(bomItem => {
-      const inventoryItem = inventory.find(inv => inv.part_id === bomItem.part_id);
+      const inventoryItem = inventory.find(inv => inv.part_id === bomItem.child_part_id);
       const requiredQty = bomItem.quantity * schedule.quantity;
       const availableQty = inventoryItem?.quantity || 0;
       
@@ -241,7 +241,7 @@ const PlanningDashboard = () => {
                             <TableCell className={remainingQty === 0 ? "text-success font-medium" : "text-warning font-medium"}>
                               {remainingQty}
                             </TableCell>
-                            <TableCell>{projection.delivery_month}</TableCell>
+                            <TableCell>{projection.month}</TableCell>
                             <TableCell>
                               <span className={`px-2 py-1 rounded text-xs font-medium ${
                                 remainingQty === 0 
