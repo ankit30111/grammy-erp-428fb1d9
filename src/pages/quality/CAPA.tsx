@@ -181,9 +181,9 @@ const CAPA = () => {
     },
     lineRejection: {
       total: lineRejectionCapas.length,
-      pending: lineRejectionCapas.filter(c => !c.rca_reports || (c.rca_reports as any[]).length === 0).length,
-      rcaSubmitted: lineRejectionCapas.filter(c => (c.rca_reports as any)?.[0]?.capa?.status === 'SUBMITTED').length,
-      approved: lineRejectionCapas.filter(c => (c.rca_reports as any)?.[0]?.capa?.status === 'ACCEPTED').length,
+      pending: lineRejectionCapas.filter(c => !c.rca_reports || (c.rca_reports as unknown as any[]).length === 0).length,
+      rcaSubmitted: lineRejectionCapas.filter(c => (c.rca_reports as unknown as any)?.[0]?.capa?.status === 'SUBMITTED').length,
+      approved: lineRejectionCapas.filter(c => (c.rca_reports as unknown as any)?.[0]?.capa?.status === 'ACCEPTED').length,
     },
     partAnalysis: {
       total: partAnalysisCapas.length,
