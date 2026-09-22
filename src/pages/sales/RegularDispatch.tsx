@@ -172,7 +172,7 @@ const RegularDispatch = () => {
     if (error) {
       console.error('Error fetching dispatch orders:', error);
     } else {
-      setDispatchOrders(data || []);
+      setDispatchOrders((data || []) as unknown as DispatchOrder[]);
     }
   };
 
@@ -230,7 +230,7 @@ const RegularDispatch = () => {
           customer_warehouse_id: orderForm.customer_warehouse_id,
           dispatch_date: orderForm.dispatch_date,
           vehicle_number: orderForm.vehicle_number || null,
-        })
+        } as any)
         .select()
         .single();
 
