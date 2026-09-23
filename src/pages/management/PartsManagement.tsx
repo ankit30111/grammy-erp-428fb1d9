@@ -36,13 +36,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TabBar } from "@/components/shell/TabBar";
 import { BOMBuilder } from "@/components/BOM/BOMBuilder";
 import { CreatePartDialog } from "@/components/Parts/CreatePartDialog";
-import { usePartCategories, PART_TIERS } from "@/hooks/usePartCategories";
+import { usePartCategories, PART_TIERS, tierLabel, type PartTier } from "@/hooks/usePartCategories";
 import { useRawMaterials } from "@/hooks/useRawMaterials";
 import { type PartSourceType } from "@/hooks/useParts";
 import { useVendors } from "@/hooks/useVendors";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { PartBomView, PartWhereUsed } from "@/components/BOM/PartBomView";
+import { PartDocumentInputs, PartDocumentList, docFilesToInput, type DocFiles } from "@/components/Parts/PartDocuments";
 
 // Unit of Measure options
 const UNIT_OPTIONS = [
@@ -107,6 +108,18 @@ const RawMaterialsManagement = () => {
   // The type shown is the category's tier, not the part's source_type.
   const partTier = (prefix?: string | null) =>
     categories.find((c) => c.prefix === prefix)?.tier ?? null;
+  const editTier = (partTier(newMaterial.category) ?? "PURCHASE") as PartTier;
+  const editIsPurchase = editTier === "PURCHASE";
+  const viewTier = (partTier(viewMaterial?.category) ?? "PURCHASE") as PartTier;
+  const [editDocs, setEditDocs] = useState<DocFiles>({});
+  const [bomParentId, setBomParentId] = useState<string | undefined>();
+  // Edit Bill of Materials from a part: the BOM tab opens on that part.
+  const openBomFor = (partId: string) => {
+    setIsEditDialogOpen(false);
+    setIsViewDialogOpen(false);
+    setBomParentId(partId);
+    setActiveTab("BOM");
+  };
   const tierLabelFor = (prefix?: string | null) =>
     PART_TIERS.find((t) => t.value === partTier(prefix))?.label ?? "Purchase Part";
 
@@ -251,8 +264,7 @@ const RawMaterialsManagement = () => {
     });
     setSelectedVendors(material.part_vendors?.map((rv: any) => rv.vendors.id) || []);
     setPrimaryVendor(material.part_vendors?.find((rv: any) => rv.is_primary)?.vendors.id || "");
-    setSpecificationFile(null);
-    setIqcChecklistFile(null);
+    setEditDocs({});
     setIsEditDialogOpen(true);
   };
 
@@ -270,15 +282,18 @@ const RawMaterialsManagement = () => {
         used_in_reference: newMaterial.used_in,
         remarks: newMaterial.remarks,
         specification: newMaterial.specification,
-        sourcing_type: newMaterial.sourcing_type,
-        currency: newMaterial.sourcing_type === 'IMPORTED' ? newMaterial.currency : undefined,
-        unit_price: newMaterial.unit_price ? parseFloat(newMaterial.unit_price) : undefined,
-        cbm_per_unit: newMaterial.cbm_per_unit ? parseFloat(newMaterial.cbm_per_unit) : undefined,
-        supplier_country: newMaterial.sourcing_type === 'IMPORTED' ? newMaterial.supplier_country : undefined,
-        vendorIds: selectedVendors,
-        primaryVendorId: primaryVendor,
-        specificationFile: specificationFile || undefined,
-        iqcChecklistFile: iqcChecklistFile || undefined,
+        ...(editIsPurchase
+          ? {
+              sourcing_type: newMaterial.sourcing_type,
+              currency: newMaterial.sourcing_type === 'IMPORTED' ? newMaterial.currency : undefined,
+              unit_price: newMaterial.unit_price ? parseFloat(newMaterial.unit_price) : undefined,
+              cbm_per_unit: newMaterial.cbm_per_unit ? parseFloat(newMaterial.cbm_per_unit) : undefined,
+              supplier_country: newMaterial.sourcing_type === 'IMPORTED' ? newMaterial.supplier_country : undefined,
+              vendorIds: selectedVendors,
+              primaryVendorId: primaryVendor,
+            }
+          : {}),
+        ...docFilesToInput(editTier, editDocs),
       });
 
       setIsEditDialogOpen(false);
@@ -370,7 +385,7 @@ const RawMaterialsManagement = () => {
       />
       {activeTab === "BOM" && (
         <div className="pt-4">
-          <BOMBuilder />
+          <BOMBuilder initialParentId={bomParentId} />
         </div>
       )}
       {activeTab !== "BOM" && (
@@ -625,7 +640,7 @@ const RawMaterialsManagement = () => {
                   )}
                 </div>
 
-                {/* Sourcing Information */}
+                {viewTier === "PURCHASE" && (
                 <div className="border-t pt-4 space-y-4">
                   <h4 className="text-sm font-semibold text-foreground">Sourcing Information</h4>
                   <div className="grid grid-cols-2 gap-4">
@@ -666,6 +681,7 @@ const RawMaterialsManagement = () => {
                     )}
                   </div>
                 </div>
+                )}
 
                 {viewMaterial.specification && (
                   <div className="space-y-2">
@@ -674,75 +690,19 @@ const RawMaterialsManagement = () => {
                   </div>
                 )}
 
-                <div className="space-y-4">
+                <div className="space-y-2">
                   <Label className="text-sm font-medium text-muted-foreground">Documents</Label>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {viewMaterial.specification_sheet_url && (
-                      <div className="border rounded-lg p-4">
-                        <div className="flex items-center justify-between mb-2">
-                          <h4 className="font-medium">Specification Sheet</h4>
-                          <div className="flex gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => openDocument(viewMaterial.specification_sheet_url)}
-                            >
-                              <ExternalLink className="h-4 w-4 mr-2" />
-                              View
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => downloadDocument(viewMaterial.specification_sheet_url, "specification.pdf")}
-                            >
-                              <Download className="h-4 w-4 mr-2" />
-                              Download
-                            </Button>
-                          </div>
-                        </div>
-                        <div className="bg-muted rounded h-40 flex items-center justify-center">
-                          <FileText className="h-12 w-12 text-muted-foreground" />
-                        </div>
-                      </div>
-                    )}
-                    
-                    {viewMaterial.iqc_checklist_url && (
-                      <div className="border rounded-lg p-4">
-                        <div className="flex items-center justify-between mb-2">
-                          <h4 className="font-medium">IQC Checklist</h4>
-                          <div className="flex gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => openDocument(viewMaterial.iqc_checklist_url)}
-                            >
-                              <ExternalLink className="h-4 w-4 mr-2" />
-                              View
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => downloadDocument(viewMaterial.iqc_checklist_url, "iqc_checklist.pdf")}
-                            >
-                              <Download className="h-4 w-4 mr-2" />
-                              Download
-                            </Button>
-                          </div>
-                        </div>
-                        <div className="bg-muted rounded h-40 flex items-center justify-center">
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                  
-                  {!viewMaterial.specification_sheet_url && !viewMaterial.iqc_checklist_url && (
-                    <p className="text-muted-foreground text-center py-8">No documents uploaded</p>
-                  )}
+                  <PartDocumentList tier={viewTier} part={viewMaterial} />
                 </div>
 
                 {partTier(viewMaterial.category) !== "PURCHASE" && (
                   <div className="space-y-2">
-                    <Label className="text-sm font-medium text-muted-foreground">Bill of Materials</Label>
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <Label className="text-sm font-medium text-muted-foreground">Bill of Materials</Label>
+                      <Button variant="outline" size="sm" onClick={() => openBomFor(viewMaterial.id)}>
+                        <Edit /> Edit Bill of Materials
+                      </Button>
+                    </div>
                     <PartBomView partId={viewMaterial.id} />
                   </div>
                 )}
@@ -752,6 +712,7 @@ const RawMaterialsManagement = () => {
                   <PartWhereUsed partId={viewMaterial.id} />
                 </div>
 
+                {viewTier === "PURCHASE" && (
                 <div className="space-y-2">
                   <Label className="text-sm font-medium text-muted-foreground">Vendors</Label>
                   <div className="flex flex-wrap gap-2">
@@ -767,6 +728,7 @@ const RawMaterialsManagement = () => {
                     ))}
                   </div>
                 </div>
+                )}
               </div>
             )}
             <DialogFooter>
@@ -781,7 +743,7 @@ const RawMaterialsManagement = () => {
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Edit Part</DialogTitle>
+              <DialogTitle>Edit {tierLabel(editTier)}: {selectedMaterial?.part_code}</DialogTitle>
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="space-y-2">
@@ -853,6 +815,8 @@ const RawMaterialsManagement = () => {
                 </Select>
               </div>
 
+              {editIsPurchase && (
+              <>
               {/* Edit Sourcing Type */}
               <div className="space-y-2">
                 <Label htmlFor="edit-sourcing_type">Sourcing Type *</Label>
@@ -1037,6 +1001,9 @@ const RawMaterialsManagement = () => {
                 </div>
               )}
 
+              </>
+              )}
+
               <div className="space-y-2">
                 <Label htmlFor="edit-specification">Specification</Label>
                 <Textarea 
@@ -1067,32 +1034,21 @@ const RawMaterialsManagement = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="edit-spec-file">New Specification Sheet (PDF)</Label>
-                  <Input
-                    id="edit-spec-file"
-                    type="file"
-                    accept=".pdf"
-                    onChange={(e) => setSpecificationFile(e.target.files?.[0] || null)}
-                  />
-                  {selectedMaterial?.specification_sheet_url && (
-                    <p className="text-xs text-muted-foreground">Current file will be replaced if new file is uploaded</p>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-iqc-file">New IQC Checklist (PDF)</Label>
-                  <Input
-                    id="edit-iqc-file"
-                    type="file"
-                    accept=".pdf"
-                    onChange={(e) => setIqcChecklistFile(e.target.files?.[0] || null)}
-                  />
-                  {selectedMaterial?.iqc_checklist_url && (
-                    <p className="text-xs text-muted-foreground">Current file will be replaced if new file is uploaded</p>
-                  )}
-                </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <PartDocumentInputs tier={editTier} files={editDocs} onChange={setEditDocs} part={selectedMaterial} />
               </div>
+
+              {!editIsPurchase && selectedMaterial && (
+                <div className="space-y-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <Label>Bill of Materials</Label>
+                    <Button type="button" variant="outline" size="sm" onClick={() => openBomFor(selectedMaterial.id)}>
+                      <Edit /> Edit Bill of Materials
+                    </Button>
+                  </div>
+                  <PartBomView partId={selectedMaterial.id} />
+                </div>
+              )}
             </div>
             <DialogFooter>
               <Button 

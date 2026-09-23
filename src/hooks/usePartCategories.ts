@@ -141,3 +141,28 @@ export const useBrands = () => {
   });
   return { brands, addBrand };
 };
+
+/**
+ * The documents each kind of part carries. One list, read by the create form,
+ * the edit form and the view, so a new requirement is added in one place.
+ *
+ *   Purchase part  - checked on arrival:      specification sheet, IQC checklist
+ *   Sub-assembly   - checked as it is made:   CIR sheet, PQC checklist
+ *   Finished good  - checked as it is made and before it ships:
+ *                                             specification sheet, PQC and OQC checklists
+ */
+export type PartDocKey = "spec" | "iqc" | "cir" | "pqc" | "oqc";
+
+export const PART_DOCS: Record<PartDocKey, { label: string; column: string; folder: string }> = {
+  spec: { label: "Specification Sheet", column: "specification_sheet_url", folder: "specifications" },
+  iqc: { label: "IQC Checklist", column: "iqc_checklist_url", folder: "iqc_checklists" },
+  cir: { label: "CIR Sheet", column: "cir_sheet_url", folder: "cir_sheets" },
+  pqc: { label: "PQC Checklist", column: "pqc_checklist_url", folder: "pqc_checklists" },
+  oqc: { label: "OQC Checklist", column: "oqc_checklist_url", folder: "oqc_checklists" },
+};
+
+export const DOCS_FOR_TIER: Record<PartTier, PartDocKey[]> = {
+  PURCHASE: ["spec", "iqc"],
+  SUB_ASSEMBLED: ["cir", "pqc"],
+  FINISHED: ["spec", "pqc", "oqc"],
+};

@@ -18,6 +18,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Check, ChevronsUpDown, Loader2, Plus, ShoppingCart, Layers, Package } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { PartDocumentInputs, docFilesToInput, type DocFiles } from "@/components/Parts/PartDocuments";
 import { useParts } from "@/hooks/useParts";
 import {
   usePartCategories, issuePartCode, useBrands, PART_TIERS, type PartTier,
@@ -70,10 +71,7 @@ export const CreatePartDialog = ({ open, onOpenChange }: Props) => {
   const [specification, setSpecification] = useState("");
 
   // Documents. Which two are asked for depends on where the part is inspected.
-  const [specFile, setSpecFile] = useState<File | null>(null);
-  const [iqcFile, setIqcFile] = useState<File | null>(null);
-  const [cirFile, setCirFile] = useState<File | null>(null);
-  const [pqcFile, setPqcFile] = useState<File | null>(null);
+  const [docs, setDocs] = useState<DocFiles>({});
 
   // Purchase-only
   const [sourcingType, setSourcingType] = useState<"LOCAL" | "IMPORTED">("LOCAL");
@@ -104,7 +102,7 @@ export const CreatePartDialog = ({ open, onOpenChange }: Props) => {
   const reset = () => {
     setTier(null); setCategoryPrefix(""); setPartCode("");
     setName(""); setUom("PCS"); setSpecification("");
-    setSpecFile(null); setIqcFile(null); setCirFile(null); setPqcFile(null);
+    setDocs({});
     setSourcingType("LOCAL"); setCurrency(""); setUnitPrice(""); setCbm("");
     setSupplierCountry(""); setSelectedVendors([]); setPrimaryVendor("");
     setAddingCategory(false); setNewPrefix(""); setNewCategoryName("");
@@ -183,8 +181,7 @@ export const CreatePartDialog = ({ open, onOpenChange }: Props) => {
         // from here at all. One writer per column.
         ...(isPurchase
           ? {
-              specificationFile: specFile || undefined,
-              iqcChecklistFile: iqcFile || undefined,
+              ...docFilesToInput("PURCHASE", docs),
               sourcing_type: sourcingType,
               currency: sourcingType === "IMPORTED" ? currency || undefined : undefined,
               unit_price: unitPrice ? parseFloat(unitPrice) : undefined,
@@ -194,10 +191,7 @@ export const CreatePartDialog = ({ open, onOpenChange }: Props) => {
               vendorIds: selectedVendors,
               primaryVendorId: primaryVendor,
             }
-          : {
-              cirSheetFile: cirFile || undefined,
-              pqcChecklistFile: pqcFile || undefined,
-            }),
+          : docFilesToInput(tier, docs)),
       });
       onOpenChange(false);
     } catch {
@@ -450,16 +444,7 @@ export const CreatePartDialog = ({ open, onOpenChange }: Props) => {
                     </>
                   )}
 
-                  <div className="space-y-2">
-                    <Label>Specification Sheet (PDF)</Label>
-                    <Input type="file" accept=".pdf"
-                           onChange={(e) => setSpecFile(e.target.files?.[0] || null)} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>IQC Checklist (PDF)</Label>
-                    <Input type="file" accept=".pdf"
-                           onChange={(e) => setIqcFile(e.target.files?.[0] || null)} />
-                  </div>
+                  <PartDocumentInputs tier="PURCHASE" files={docs} onChange={setDocs} />
 
                   <div className="space-y-2 sm:col-span-2">
                     <Label>Vendors</Label>
@@ -521,20 +506,7 @@ export const CreatePartDialog = ({ open, onOpenChange }: Props) => {
 
               {!isPurchase && (
                 <>
-                  {/* A part Grammy builds is inspected as it is made, not on
-                      arrival, so the two documents it carries are the CIR sheet
-                      and the PQC checklist rather than a spec sheet and an IQC
-                      checklist. Same pair for all three made-here tiers. */}
-                  <div className="space-y-2">
-                    <Label>CIR Sheet (PDF)</Label>
-                    <Input type="file" accept=".pdf"
-                           onChange={(e) => setCirFile(e.target.files?.[0] || null)} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>PQC Checklist (PDF)</Label>
-                    <Input type="file" accept=".pdf"
-                           onChange={(e) => setPqcFile(e.target.files?.[0] || null)} />
-                  </div>
+                  <PartDocumentInputs tier={tier} files={docs} onChange={setDocs} />
                   <div className="sm:col-span-2 rounded-lg border bg-muted/30 p-3 text-sm text-muted-foreground">
                     Built here and stocked: it can be made ahead of a plan, issued a few at a time,
                     and returned to the store. Add its bill of materials on the Bill of Materials tab

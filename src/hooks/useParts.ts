@@ -40,6 +40,8 @@ export interface PartInput {
   // so it carries a CIR sheet and a PQC checklist instead.
   cirSheetFile?: File;
   pqcChecklistFile?: File;
+  /** A finished good is also checked before it ships. */
+  oqcChecklistFile?: File;
   changesDescription?: string;
   /** Models the part goes into, as the team writes them. */
   used_in_reference?: string;
@@ -55,7 +57,10 @@ const uploadDoc = async (folder: string, file: File, prefix?: string) => {
   return fileName;
 };
 
+// vendorIds left out means "not edited here" - a sub-assembly's form has no
+// vendor list, and saving it must not wipe whatever links exist.
 const syncVendors = async (partId: string, vendorIds?: string[], primaryVendorId?: string) => {
+  if (vendorIds === undefined) return;
   const { error: deleteError } = await supabase
     .from("part_vendors")
     .delete()
@@ -111,6 +116,9 @@ export const useParts = () => {
       const pqcChecklistUrl = input.pqcChecklistFile
         ? await uploadDoc("pqc_checklists", input.pqcChecklistFile)
         : null;
+      const oqcChecklistUrl = input.oqcChecklistFile
+        ? await uploadDoc("oqc_checklists", input.oqcChecklistFile)
+        : null;
 
       const { data: part, error } = await supabase
         .from("parts")
@@ -131,6 +139,7 @@ export const useParts = () => {
           iqc_checklist_url: iqcChecklistUrl,
           cir_sheet_url: cirSheetUrl,
           pqc_checklist_url: pqcChecklistUrl,
+          oqc_checklist_url: oqcChecklistUrl,
         })
         .select()
         .single();
@@ -178,6 +187,9 @@ export const useParts = () => {
       const pqcChecklistUrl = input.pqcChecklistFile
         ? await uploadDoc("pqc_checklists", input.pqcChecklistFile, input.id)
         : null;
+      const oqcChecklistUrl = input.oqcChecklistFile
+        ? await uploadDoc("oqc_checklists", input.oqcChecklistFile, input.id)
+        : null;
 
       const updateData: Record<string, any> = {
         name: input.name,
@@ -200,6 +212,7 @@ export const useParts = () => {
       if (iqcChecklistUrl) updateData.iqc_checklist_url = iqcChecklistUrl;
       if (cirSheetUrl) updateData.cir_sheet_url = cirSheetUrl;
       if (pqcChecklistUrl) updateData.pqc_checklist_url = pqcChecklistUrl;
+      if (oqcChecklistUrl) updateData.oqc_checklist_url = oqcChecklistUrl;
 
       const { error } = await supabase.from("parts").update(updateData).eq("id", input.id);
       if (error) throw error;

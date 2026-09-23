@@ -36,13 +36,17 @@ const MADE_HERE = ["ASSEMBLED_INLINE", "ASSEMBLED_STOCKED", "FINISHED_GOOD"];
  * on the bill comes back ticked with its quantity, so the same page edits an
  * existing bill rather than being a separate screen with its own rules.
  */
-export const BOMBuilder = () => {
+export const BOMBuilder = ({ initialParentId }: { initialParentId?: string } = {}) => {
   const { parts, isLoading } = useParts();
   const { categories } = usePartCategories();
   const { data: lines = [] } = useBomLines();
   const { saveBom } = useBomMutations();
 
-  const [parentId, setParentId] = useState("");
+  const [parentId, setParentId] = useState(initialParentId ?? "");
+  // Opened from a part's Edit or View: start on that part.
+  useEffect(() => {
+    if (initialParentId) setParentId(initialParentId);
+  }, [initialParentId]);
   const [parentOpen, setParentOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [filterCategory, setFilterCategory] = useState("all");
