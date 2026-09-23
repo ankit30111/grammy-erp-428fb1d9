@@ -33,6 +33,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Search, Plus, Layers, FileText, Package, Upload, Edit, Trash2, Download, Eye, ExternalLink, Loader2, Check, ChevronsUpDown, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { TabBar } from "@/components/shell/TabBar";
 import { BOMManager } from "@/components/BOM/BOMManager";
 import { BOMBuilder } from "@/components/BOM/BOMBuilder";
 import { CreatePartDialog } from "@/components/Parts/CreatePartDialog";
@@ -57,7 +58,11 @@ const UNIT_OPTIONS = [
 const RawMaterialsManagement = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterCategory, setFilterCategory] = useState("all");
-  const [filterSourceType, setFilterSourceType] = useState("all");
+  // The same full-width tab bar as Sales and Production: one tab per kind of
+  // part, and the bill of materials beside them. The tab IS the type filter, so
+  // the separate "All Types" dropdown goes.
+  const [activeTab, setActiveTab] = useState<string>("PURCHASE");
+  const filterSourceType = activeTab === "BOM" ? "all" : activeTab;
   const [sortConfig, setSortConfig] = useState<{ key: 'part_code' | 'category' | 'vendors' | null; direction: 'asc' | 'desc' }>({ key: null, direction: 'asc' });
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -345,12 +350,19 @@ const RawMaterialsManagement = () => {
       {/* One directory for everything that has a part code - purchased material,
           sub-assemblies and finished goods - with the bill of materials beside it,
           because a finished good is only finished once it has one. */}
-      <Tabs defaultValue="parts" className="pt-4">
-        <TabsList>
-          <TabsTrigger value="parts">Parts</TabsTrigger>
-          <TabsTrigger value="bom">Bill of Materials</TabsTrigger>
-        </TabsList>
-        <TabsContent value="bom" className="pt-4">
+      <TabBar
+        tabs={[
+          { id: "PURCHASE", label: "Purchase Parts" },
+          { id: "SEMI_FINISHED", label: "Semi-finished Goods" },
+          { id: "SUB_ASSEMBLED", label: "Sub-assembled Goods" },
+          { id: "FINISHED", label: "Finished Goods" },
+          { id: "BOM", label: "Bill of Materials" },
+        ]}
+        value={activeTab}
+        onChange={setActiveTab}
+      />
+      {activeTab === "BOM" && (
+        <div className="pt-4">
           {/* Two views of the same bill: the builder is where you make and change
               it, the structure is where you read it exploded through its
               sub-assemblies. Keeping them apart stops the editing page from
@@ -367,8 +379,10 @@ const RawMaterialsManagement = () => {
               <BOMManager />
             </TabsContent>
           </Tabs>
-        </TabsContent>
-        <TabsContent value="parts">
+        </div>
+      )}
+      {activeTab !== "BOM" && (
+      <>
       <div className="pt-4">
         <div className="flex items-center justify-end mb-6">
 
@@ -393,7 +407,7 @@ const RawMaterialsManagement = () => {
               <div className="relative flex-1">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search raw materials..."
+                  placeholder="Search by part code or name..."
                   className="pl-8"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -409,17 +423,6 @@ const RawMaterialsManagement = () => {
                     <SelectItem key={category.prefix} value={category.prefix}>
                       {category.name} ({category.prefix})
                     </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select value={filterSourceType} onValueChange={setFilterSourceType}>
-                <SelectTrigger className="w-full md:w-[200px]">
-                  <SelectValue placeholder="All Types" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Types</SelectItem>
-                  {PART_TIERS.map((t) => (
-                    <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -1084,8 +1087,8 @@ const RawMaterialsManagement = () => {
           </DialogContent>
         </Dialog>
       </div>
-        </TabsContent>
-      </Tabs>
+      </>
+      )}
     </DashboardLayout>
   );
 };

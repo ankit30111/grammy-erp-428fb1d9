@@ -20,7 +20,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useParts } from "@/hooks/useParts";
 import {
-  usePartCategories, issuePartCode, PART_TIERS, type PartTier,
+  usePartCategories, issuePartCode, useBrands, PART_TIERS, type PartTier,
 } from "@/hooks/usePartCategories";
 import { useVendors } from "@/hooks/useVendors";
 
@@ -60,6 +60,10 @@ export const CreatePartDialog = ({ open, onOpenChange }: Props) => {
   const { addPart } = useParts();
   const { categories, freePrefixes, addCategory } = usePartCategories();
   const { vendors = [] } = useVendors();
+  const { brands, addBrand } = useBrands();
+  const [brand, setBrand] = useState("");
+  const [newBrandLetter, setNewBrandLetter] = useState("");
+  const [newBrandName, setNewBrandName] = useState("");
 
   const [tier, setTier] = useState<PartTier | null>(null);
   const [categoryPrefix, setCategoryPrefix] = useState("");
@@ -95,6 +99,7 @@ export const CreatePartDialog = ({ open, onOpenChange }: Props) => {
 
   const tierMeta = PART_TIERS.find((t) => t.value === tier);
   const isPurchase = tier === "PURCHASE";
+  const isFinished = tier === "FINISHED";
 
   const tierCategories = useMemo(
     () => categories.filter((c) => c.tier === tier),
@@ -108,6 +113,7 @@ export const CreatePartDialog = ({ open, onOpenChange }: Props) => {
     setSourcingType("LOCAL"); setCurrency(""); setUnitPrice(""); setCbm("");
     setSupplierCountry(""); setSelectedVendors([]); setPrimaryVendor("");
     setAddingCategory(false); setNewPrefix(""); setNewCategoryName("");
+    setBrand(""); setNewBrandLetter(""); setNewBrandName("");
   };
 
   useEffect(() => {
@@ -122,12 +128,15 @@ export const CreatePartDialog = ({ open, onOpenChange }: Props) => {
     setPartCode("");
   }, [tier]);
 
-  const chooseCategory = async (prefix: string) => {
+  // A finished good's code ends in its brand letter, so it cannot be issued until
+  // both the category and the brand are chosen.
+  const chooseCategory = async (prefix: string, brandLetter = brand) => {
     setCategoryPrefix(prefix);
     setPartCode("");
+    if (isFinished && !brandLetter) return;
     setIssuing(true);
     try {
-      setPartCode(await issuePartCode(prefix));
+      setPartCode(await issuePartCode(prefix, isFinished ? brandLetter : undefined));
     } catch (error: any) {
       // The reason is shown. A code that could not be issued is not a thing to
       // retry blindly - usually the letter has been deactivated.
@@ -139,8 +148,11 @@ export const CreatePartDialog = ({ open, onOpenChange }: Props) => {
   };
 
   const handleAddCategory = async () => {
-    if (!/^[A-Z]{1,2}$/.test(newPrefix.toUpperCase())) {
-      toast.error("A prefix is one or two letters");
+    // Purchase parts keep one letter, as they always have. Anything built here
+    // takes two, so the code alone says which side of the factory door it is from.
+    const rule = isPurchase ? /^[A-Z]$/ : /^[A-Z]{2}$/;
+    if (!rule.test(newPrefix.toUpperCase())) {
+      toast.error(isPurchase ? "A purchase-part prefix is one letter" : "This prefix is two letters");
       return;
     }
     if (!newCategoryName.trim()) {
@@ -287,7 +299,7 @@ export const CreatePartDialog = ({ open, onOpenChange }: Props) => {
                   ) : partCode ? (
                     partCode
                   ) : (
-                    <span className="text-muted-foreground">Choose a category</span>
+                    <span className="text-muted-foreground">{isFinished && !brand ? "Choose a category and brand" : "Choose a category"}</span>
                   )}
                 </div>
                 <p className="text-xs text-muted-foreground">
@@ -296,19 +308,64 @@ export const CreatePartDialog = ({ open, onOpenChange }: Props) => {
               </div>
             </div>
 
+            {isFinished && (
+              <div className="space-y-2">
+                <Label>Brand *</Label>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Select
+                    value={brand}
+                    onValueChange={(v) => { setBrand(v); if (categoryPrefix) chooseCategory(categoryPrefix, v); }}
+                  >
+                    <SelectTrigger className="w-60"><SelectValue placeholder="Built for which brand?" /></SelectTrigger>
+                    <SelectContent>
+                      {brands.map((b) => (
+                        <SelectItem key={b.letter} value={b.letter}>{b.name} ({b.letter})</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Input className="w-16" maxLength={1} placeholder="P" value={newBrandLetter}
+                         onChange={(e) => setNewBrandLetter(e.target.value.toUpperCase().replace(/[^A-Z]/g, ""))} />
+                  <Input className="w-40" placeholder="New brand name" value={newBrandName}
+                         onChange={(e) => setNewBrandName(e.target.value)} />
+                  <Button type="button" variant="outline" size="sm"
+                          disabled={!newBrandLetter || !newBrandName.trim() || addBrand.isPending}
+                          onClick={async () => {
+                            await addBrand.mutateAsync({ letter: newBrandLetter, name: newBrandName });
+                            const l = newBrandLetter;
+                            setNewBrandLetter(""); setNewBrandName(""); setBrand(l);
+                            if (categoryPrefix) chooseCategory(categoryPrefix, l);
+                          }}>
+                    Add brand
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  The last letter of a finished-good code is its brand — JP-001P is built for P.
+                </p>
+              </div>
+            )}
+
             {addingCategory && (
               <div className="rounded-lg border bg-muted/30 p-3 space-y-3">
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="space-y-1">
                     <Label className="text-xs">Letter</Label>
-                    <Select value={newPrefix} onValueChange={setNewPrefix}>
-                      <SelectTrigger><SelectValue placeholder="Free letters" /></SelectTrigger>
-                      <SelectContent>
-                        {freePrefixes.map((p) => (
-                          <SelectItem key={p} value={p}>{p}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    {isPurchase ? (
+                      <Select value={newPrefix} onValueChange={setNewPrefix}>
+                        <SelectTrigger><SelectValue placeholder="Free letters" /></SelectTrigger>
+                        <SelectContent>
+                          {freePrefixes.map((p) => (
+                            <SelectItem key={p} value={p}>{p}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <Input
+                        value={newPrefix}
+                        maxLength={2}
+                        placeholder="e.g. JP"
+                        onChange={(e) => setNewPrefix(e.target.value.toUpperCase().replace(/[^A-Z]/g, ""))}
+                      />
+                    )}
                   </div>
                   <div className="space-y-1 sm:col-span-2">
                     <Label className="text-xs">Category name</Label>

@@ -103,8 +103,43 @@ export const usePartCategories = () => {
  * Create in the same second would both read the same maximum and both be handed
  * P-472. The function takes a row lock, so the second one waits and gets P-473.
  */
-export const issuePartCode = async (prefix: string): Promise<string> => {
-  const { data, error } = await supabase.rpc("next_part_code", { p_prefix: prefix });
+export const issuePartCode = async (prefix: string, brand?: string): Promise<string> => {
+  const { data, error } = await supabase.rpc("next_part_code", {
+    p_prefix: prefix,
+    p_brand: brand ?? null,
+  } as any);
   if (error) throw error;
   return data as string;
+};
+
+/**
+ * The brand letter that closes every finished-good code: JP-001P is built for
+ * the brand registered as P. Kept in the database so a letter means one brand
+ * everywhere, the same way a category prefix means one kind of part.
+ */
+export const useBrands = () => {
+  const queryClient = useQueryClient();
+  const { data: brands = [] } = useQuery({
+    queryKey: ["brands"],
+    queryFn: async (): Promise<{ letter: string; name: string }[]> => {
+      const { data, error } = await (supabase as any)
+        .from("brands").select("letter, name").eq("is_active", true).order("letter");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+  const addBrand = useMutation({
+    mutationFn: async (input: { letter: string; name: string }) => {
+      const { error } = await (supabase as any)
+        .from("brands").insert({ letter: input.letter.toUpperCase(), name: input.name.trim() });
+      if (error) throw error;
+    },
+    onSuccess: (_d, i) => {
+      queryClient.invalidateQueries({ queryKey: ["brands"] });
+      toast.success(`${i.letter.toUpperCase()} is now ${i.name}`);
+    },
+    onError: (e: any) =>
+      toast.error(e?.code === "23505" ? "That letter or brand name is already in use" : e?.message),
+  });
+  return { brands, addBrand };
 };
