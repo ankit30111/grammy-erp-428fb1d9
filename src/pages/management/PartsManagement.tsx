@@ -88,7 +88,9 @@ const RawMaterialsManagement = () => {
     currency: "",
     unit_price: "",
     cbm_per_unit: "",
-    supplier_country: ""
+    supplier_country: "",
+    used_in: "",
+    remarks: ""
   });
 
   // Use the existing hooks
@@ -210,7 +212,9 @@ const RawMaterialsManagement = () => {
         currency: "",
         unit_price: "",
         cbm_per_unit: "",
-        supplier_country: ""
+        supplier_country: "",
+        used_in: "",
+        remarks: ""
       });
       setSelectedVendors([]);
       setPrimaryVendor("");
@@ -232,13 +236,17 @@ const RawMaterialsManagement = () => {
       part_code: material.part_code || "",
       category: material.category,
       source_type: (material.source_type || "PURCHASED") as PartSourceType,
-      unit_of_measure: material.unit_of_measure || "",
+      // The column is uom. Reading unit_of_measure (which does not exist) showed
+      // a blank unit and saved every edited part back as PCS.
+      unit_of_measure: material.uom || "PCS",
       specification: material.specification || "",
       sourcing_type: material.sourcing_type || "LOCAL",
       currency: material.currency || "",
       unit_price: material.unit_price?.toString() || "",
       cbm_per_unit: material.cbm_per_unit?.toString() || "",
-      supplier_country: material.supplier_country || ""
+      supplier_country: material.supplier_country || "",
+      used_in: material.used_in_reference || "",
+      remarks: material.remarks || ""
     });
     setSelectedVendors(material.part_vendors?.map((rv: any) => rv.vendors.id) || []);
     setPrimaryVendor(material.part_vendors?.find((rv: any) => rv.is_primary)?.vendors.id || "");
@@ -257,6 +265,9 @@ const RawMaterialsManagement = () => {
         name: newMaterial.name,
         part_code: newMaterial.part_code,
         category: newMaterial.category,
+        uom: newMaterial.unit_of_measure || "PCS",
+        used_in_reference: newMaterial.used_in,
+        remarks: newMaterial.remarks,
         specification: newMaterial.specification,
         sourcing_type: newMaterial.sourcing_type,
         currency: newMaterial.sourcing_type === 'IMPORTED' ? newMaterial.currency : undefined,
@@ -599,8 +610,18 @@ const RawMaterialsManagement = () => {
                   </div>
                   <div className="space-y-2">
                     <Label className="text-sm font-medium text-muted-foreground">Unit</Label>
-                    <p>{(viewMaterial as any).unit_of_measure || "N/A"}</p>
+                    <p>{(viewMaterial as any).uom || "N/A"}</p>
                   </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium text-muted-foreground">Used In</Label>
+                    <p>{(viewMaterial as any).used_in_reference || "-"}</p>
+                  </div>
+                  {(viewMaterial as any).remarks && (
+                    <div className="space-y-2 col-span-2">
+                      <Label className="text-sm font-medium text-muted-foreground">Remarks</Label>
+                      <p>{(viewMaterial as any).remarks}</p>
+                    </div>
+                  )}
                 </div>
 
                 {/* Sourcing Information */}
@@ -746,7 +767,7 @@ const RawMaterialsManagement = () => {
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Edit Raw Material</DialogTitle>
+              <DialogTitle>Edit Part</DialogTitle>
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="space-y-2">
@@ -1009,6 +1030,26 @@ const RawMaterialsManagement = () => {
                   value={newMaterial.specification} 
                   onChange={(e) => setNewMaterial({...newMaterial, specification: e.target.value})}
                   placeholder="Enter specification details"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-used-in">Used In</Label>
+                <Input
+                  id="edit-used-in"
+                  value={newMaterial.used_in}
+                  onChange={(e) => setNewMaterial({...newMaterial, used_in: e.target.value})}
+                  placeholder="e.g. 9080, F6, JM1082"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-remarks">Remarks</Label>
+                <Textarea
+                  id="edit-remarks"
+                  rows={2}
+                  value={newMaterial.remarks}
+                  onChange={(e) => setNewMaterial({...newMaterial, remarks: e.target.value})}
                 />
               </div>
 

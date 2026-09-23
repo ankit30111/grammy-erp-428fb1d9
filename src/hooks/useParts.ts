@@ -41,6 +41,9 @@ export interface PartInput {
   cirSheetFile?: File;
   pqcChecklistFile?: File;
   changesDescription?: string;
+  /** Models the part goes into, as the team writes them. */
+  used_in_reference?: string;
+  remarks?: string;
 }
 
 const uploadDoc = async (folder: string, file: File, prefix?: string) => {
@@ -188,6 +191,8 @@ export const useParts = () => {
         cbm_per_unit: input.cbm_per_unit ?? null,
         supplier_country: input.supplier_country || null,
       };
+      if (input.used_in_reference !== undefined) updateData.used_in_reference = input.used_in_reference.trim() || null;
+      if (input.remarks !== undefined) updateData.remarks = input.remarks.trim() || null;
       if (input.source_type) updateData.source_type = input.source_type;
       if (input.is_active !== undefined) updateData.is_active = input.is_active;
       if (input.unit_price != null) updateData.last_price_update = new Date().toISOString();
