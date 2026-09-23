@@ -42,6 +42,7 @@ import { type PartSourceType } from "@/hooks/useParts";
 import { useVendors } from "@/hooks/useVendors";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { PartBomView, PartWhereUsed } from "@/components/BOM/PartBomView";
 
 // Unit of Measure options
 const UNIT_OPTIONS = [
@@ -595,7 +596,7 @@ const RawMaterialsManagement = () => {
         <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>View Material: {viewMaterial?.part_code}</DialogTitle>
+              <DialogTitle>View Part: {viewMaterial?.part_code}</DialogTitle>
             </DialogHeader>
             {viewMaterial && (
               <div className="grid gap-6 py-4">
@@ -739,9 +740,22 @@ const RawMaterialsManagement = () => {
                   )}
                 </div>
 
+                {partTier(viewMaterial.category) !== "PURCHASE" && (
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium text-muted-foreground">Bill of Materials</Label>
+                    <PartBomView partId={viewMaterial.id} />
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-muted-foreground">Used In (BOM)</Label>
+                  <PartWhereUsed partId={viewMaterial.id} />
+                </div>
+
                 <div className="space-y-2">
                   <Label className="text-sm font-medium text-muted-foreground">Vendors</Label>
                   <div className="flex flex-wrap gap-2">
+                    {!viewMaterial.part_vendors?.length && <span className="text-sm text-muted-foreground">No vendors assigned</span>}
                     {viewMaterial.part_vendors?.map((rv: any) => (
                       <Badge 
                         key={rv.id} 
@@ -750,7 +764,7 @@ const RawMaterialsManagement = () => {
                         {rv.vendors.vendor_code} - {rv.vendors.name}
                         {rv.is_primary && " (Primary)"}
                       </Badge>
-                    )) || <span className="text-muted-foreground">No vendors assigned</span>}
+                    ))}
                   </div>
                 </div>
               </div>

@@ -232,49 +232,47 @@ const Vendors = () => {
             <CardTitle>Vendors List</CardTitle>
           </CardHeader>
           <CardContent>
-            <Table>
+            <Table className="table-auto w-full">
               <TableHeader>
                 <TableRow>
-                  <TableHead>Vendor Code</TableHead>
+                  <TableHead className="w-20">Code</TableHead>
                   <TableHead>Vendor Name</TableHead>
-                  <TableHead>Contact Person</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Contact</TableHead>
-                  <TableHead>GST Number</TableHead>
+                  <TableHead className="hidden md:table-cell">Contact Person</TableHead>
+                  <TableHead className="hidden lg:table-cell">Contact</TableHead>
+                  <TableHead className="hidden xl:table-cell">GST Number</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredVendors.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-6 text-muted-foreground">
+                    <TableCell colSpan={6} className="text-center py-6 text-muted-foreground">
                       No vendors found. Try adjusting your search or add a new vendor.
                     </TableCell>
                   </TableRow>
                 ) : (
                   filteredVendors.map((vendor) => (
                     <TableRow key={vendor.id}>
-                      <TableCell className="font-medium">{vendor.vendor_code}</TableCell>
-                      <TableCell>{vendor.name}</TableCell>
-                      <TableCell>{vendor.contact_person_name || '-'}</TableCell>
-                      <TableCell>{vendor.email || '-'}</TableCell>
-                      <TableCell>{vendor.contact_number || '-'}</TableCell>
-                      <TableCell>{vendor.gst_number || '-'}</TableCell>
+                      <TableCell className="font-mono whitespace-nowrap">{vendor.vendor_code}</TableCell>
+                      <TableCell className="break-words">{vendor.name}</TableCell>
+                      <TableCell className="hidden md:table-cell">{vendor.contact_person_name || '-'}</TableCell>
+                      <TableCell className="hidden lg:table-cell whitespace-nowrap">{vendor.contact_number || '-'}</TableCell>
+                      <TableCell className="hidden xl:table-cell font-mono whitespace-nowrap">{vendor.gst_number || '-'}</TableCell>
                       <TableCell className="text-right">
-                        <div className="flex items-center justify-end space-x-2">
+                        <div className="flex flex-wrap items-center justify-end gap-1.5">
                           <Button 
                             variant="outline" 
                             size="sm"
                             onClick={() => openEditDialog(vendor)}
                           >
-                            <Edit className="h-4 w-4 mr-1" />
+                            <Edit />
                             Edit
                           </Button>
                           
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
                               <Button variant="outline" size="sm">
-                                <Trash2 className="h-4 w-4 mr-1" />
+                                <Trash2 />
                                 Delete
                               </Button>
                             </AlertDialogTrigger>
