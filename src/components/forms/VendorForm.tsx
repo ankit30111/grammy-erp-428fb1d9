@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, X } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
+import { usePermissions } from "@/hooks/usePermissions";
 import {
   useVendors, useVendorFinance, useVendorContacts, type VendorContact,
 } from "@/hooks/useVendors";
@@ -26,7 +26,8 @@ const EMPTY_FINANCE = { bank_account_number: "", ifsc_code: "", bank_name: "", a
 const EMPTY_CONTACT: VendorContact = { name: "", designation: "", phone: "", email: "" };
 
 export const VendorForm = ({ onSuccess, editingVendor, onCancel }: VendorFormProps) => {
-  const { isAdmin } = useAuth();
+  // Bank details and PAN: Management and Admin only.
+  const { canApprove: isAdmin } = usePermissions();
   const { addVendor, updateVendor } = useVendors();
   const editing = !!editingVendor;
 
@@ -169,7 +170,7 @@ export const VendorForm = ({ onSuccess, editingVendor, onCancel }: VendorFormPro
 
       {canEditFinance && (
         <div className="space-y-2">
-          <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Bank and PAN (admins only)</h4>
+          <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Bank and PAN (Management and Admin)</h4>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {([
               ["bank_name", "Bank"], ["account_holder_name", "Account holder"],

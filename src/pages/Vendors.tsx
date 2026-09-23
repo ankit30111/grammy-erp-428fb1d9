@@ -24,7 +24,8 @@ import { Search, Plus, Building2, Edit, Trash2, FileText } from "lucide-react";
 import { useVendors, useVendorFinance, useVendorContacts } from "@/hooks/useVendors";
 import { VendorForm } from "@/components/forms/VendorForm";
 import { SignedStorageLink } from "@/components/ui/signed-storage-link";
-import { useAuth } from "@/contexts/AuthContext";
+import { usePermissions } from "@/hooks/usePermissions";
+import { ApprovalBadge } from "@/components/Approvals/ApprovalBadge";
 
 /** Admin-only finance section. Fetches bank + certificate URLs via RPC. */
 /** Everyone at the vendor beyond the main contact. */
@@ -47,13 +48,13 @@ const VendorContactsSection = ({ vendorId }: { vendorId: string }) => {
 };
 
 const VendorFinanceSection = ({ vendorId }: { vendorId: string }) => {
-  const { isAdmin } = useAuth();
+  const { canApprove: isAdmin } = usePermissions();
   const { data: finance, isLoading, error } = useVendorFinance(vendorId, isAdmin);
 
   if (!isAdmin) {
     return (
       <p className="text-sm text-muted-foreground">
-        Bank details and certificates are visible to administrators only.
+        Bank details and certificates are visible to Management and Admin only.
       </p>
     );
   }
@@ -122,6 +123,7 @@ const VendorFinanceSection = ({ vendorId }: { vendorId: string }) => {
 
 const Vendors = () => {
   const { vendors, isLoading, deleteVendor } = useVendors();
+  const { canEditMasters, canApprove } = usePermissions();
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -175,7 +177,7 @@ const Vendors = () => {
     <DashboardLayout>
       <PageHeader
         title="Vendors"
-        actions={
+        actions={canEditMasters && (
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
               <Button>
@@ -190,7 +192,7 @@ const Vendors = () => {
               <VendorForm onSuccess={handleAddSuccess} />
             </DialogContent>
           </Dialog>
-        }
+        )}
       />
       <div className="pt-4">
 
@@ -254,12 +256,13 @@ const Vendors = () => {
                   filteredVendors.map((vendor) => (
                     <TableRow key={vendor.id}>
                       <TableCell className="font-mono whitespace-nowrap">{vendor.vendor_code}</TableCell>
-                      <TableCell className="break-words">{vendor.name}</TableCell>
+                      <TableCell className="break-words">{vendor.name}<ApprovalBadge status={vendor.approval_status} reason={vendor.rejection_reason} /></TableCell>
                       <TableCell className="hidden md:table-cell">{vendor.contact_person_name || '-'}</TableCell>
                       <TableCell className="hidden lg:table-cell whitespace-nowrap">{vendor.contact_number || '-'}</TableCell>
                       <TableCell className="hidden xl:table-cell font-mono whitespace-nowrap">{vendor.gst_number || '-'}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex flex-wrap items-center justify-end gap-1.5">
+                          {canEditMasters && (
                           <Button 
                             variant="outline" 
                             size="sm"
@@ -268,7 +271,9 @@ const Vendors = () => {
                             <Edit />
                             Edit
                           </Button>
-                          
+                          )}
+
+                          {canApprove && (
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
                               <Button variant="outline" size="sm">
@@ -291,6 +296,7 @@ const Vendors = () => {
                               </AlertDialogFooter>
                             </AlertDialogContent>
                           </AlertDialog>
+                          )}
 
                           <Sheet>
                             <SheetTrigger asChild>

@@ -38,6 +38,10 @@ export const readableBomError = (error: any) => {
   if (message.includes("bom_no_self_reference") || message.includes("parent_part_id <> child_part_id")) {
     return "A part cannot be inside itself.";
   }
+  if (message.includes("waiting for approval") || message.includes("rejected in approval")) {
+    return message.replace(/^.*ERROR:\s*/, "") + ". Approve it in Approvals first.";
+  }
+  if (message.includes("Only R&D, Management or Admin")) return message;
   if (message.includes("duplicate key")) {
     return "That part is already on this bill of materials.";
   }
@@ -162,66 +166,34 @@ export const useBomMutations = () => {
       parent_part_id: string;
       lines: { child_part_id: string; quantity: number; uom: string; is_critical?: boolean }[];
     }) => {
-      const { data: existing, error: readError } = await supabase
-        .from("bom")
-        .select("id, child_part_id, quantity, is_critical")
-        .eq("parent_part_id", input.parent_part_id)
-        .eq("is_active", true);
-      if (readError) throw readError;
-
-      const before = new Map((existing ?? []).map((r: any) => [r.child_part_id, r]));
-      const after = new Map(input.lines.map((l) => [l.child_part_id, l]));
-
-      const toInsert = input.lines.filter((l) => !before.has(l.child_part_id));
-      const toDelete = (existing ?? []).filter((r: any) => !after.has(r.child_part_id));
-      const toUpdate = (existing ?? []).filter((r: any) => {
-        const next = after.get(r.child_part_id);
-        return (
-          next &&
-          (Number(r.quantity) !== Number(next.quantity) ||
-            Boolean(r.is_critical) !== Boolean(next.is_critical))
-        );
+      // One database call decides: Management and Admin change the live BOM;
+      // R&D's save becomes a change request that waits in Approvals.
+      const { data, error } = await supabase.rpc("save_bom" as any, {
+        p_parent: input.parent_part_id,
+        p_lines: input.lines,
       });
-
-      if (toInsert.length) {
-        const { error } = await supabase.from("bom").insert(
-          toInsert.map((l) => ({ ...l, parent_part_id: input.parent_part_id })),
-        );
-        if (error) throw error;
-      }
-      for (const row of toUpdate) {
-        const next = after.get(row.child_part_id)!;
-        const { error } = await supabase
-          .from("bom")
-          .update({ quantity: next.quantity, uom: next.uom, is_critical: next.is_critical ?? false })
-          .eq("id", row.id);
-        if (error) throw error;
-      }
-      if (toDelete.length) {
-        const { error } = await supabase
-          .from("bom")
-          .delete()
-          .in("id", toDelete.map((r: any) => r.id));
-        if (error) throw error;
-      }
-
-      return { added: toInsert.length, changed: toUpdate.length, removed: toDelete.length };
+      if (error) throw error;
+      return data as { applied: boolean; added?: number; changed?: number; removed?: number };
     },
     onSuccess: (result) => {
       invalidate();
+      queryClient.invalidateQueries({ queryKey: ["bom-change-requests"] });
+      queryClient.invalidateQueries({ queryKey: ["master-approvals"] });
+      if (!result.applied) {
+        toast.success("Sent to Management for approval. The current BOM stays in use until then.");
+        return;
+      }
       const parts = [
         result.added ? `${result.added} added` : null,
         result.changed ? `${result.changed} changed` : null,
         result.removed ? `${result.removed} removed` : null,
       ].filter(Boolean);
-      // Says what changed rather than "Saved". On a sixty-line bill, "Saved" is
-      // not enough to tell whether the one edit you meant to make went in.
       toast.success(parts.length ? `Bill of materials saved — ${parts.join(", ")}` : "No changes to save");
     },
     onError: (error: any) => toast.error(readableBomError(error)),
   });
 
-  return { addLine, updateLine, removeLine, saveBom };
+    return { addLine, updateLine, removeLine, saveBom };
 };
 
 /** Backwards-compatible shape for screens not yet rewired. */
@@ -230,3 +202,22 @@ export const useBOMByProduct = (partId: string) => {
   const { tree, isLoading } = useBomTree(partId);
   return { data: tree, isLoading };
 };
+
+/** The change waiting for approval on each part's BOM, if any. */
+export const useBomChangeRequests = () =>
+  useQuery({
+    queryKey: ["bom-change-requests"],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("bom_change_requests")
+        .select("id, parent_part_id, lines, submitted_at, status, rejection_reason, reviewed_at")
+        .in("status", ["PENDING", "REJECTED"])
+        .order("submitted_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as {
+        id: string; parent_part_id: string; submitted_at: string; status: "PENDING" | "REJECTED";
+        rejection_reason: string | null; reviewed_at: string | null;
+        lines: { child_part_id: string; quantity: number; uom: string; is_critical?: boolean }[];
+      }[];
+    },
+  });

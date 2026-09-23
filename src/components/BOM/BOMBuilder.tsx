@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { usePermissions } from "@/hooks/usePermissions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,7 +20,7 @@ import { ChevronsUpDown, Loader2, Save, Search, X } from "lucide-react";
 import { toast } from "sonner";
 import { useParts } from "@/hooks/useParts";
 import { usePartCategories, PART_TIERS } from "@/hooks/usePartCategories";
-import { useBomLines, useBomMutations } from "@/hooks/useBOM";
+import { useBomLines, useBomMutations, useBomChangeRequests } from "@/hooks/useBOM";
 
 const MADE_HERE = ["ASSEMBLED_INLINE", "ASSEMBLED_STOCKED", "FINISHED_GOOD"];
 
@@ -41,6 +42,8 @@ export const BOMBuilder = ({ initialParentId }: { initialParentId?: string } = {
   const { categories } = usePartCategories();
   const { data: lines = [] } = useBomLines();
   const { saveBom } = useBomMutations();
+  const { canEditMasters, needsApproval } = usePermissions();
+  const { data: requests = [] } = useBomChangeRequests();
 
   const [parentId, setParentId] = useState(initialParentId ?? "");
   // Opened from a part's Edit or View: start on that part.
@@ -66,8 +69,21 @@ export const BOMBuilder = ({ initialParentId }: { initialParentId?: string } = {
 
   // What the bill is now, as the page's starting state. Keyed by child part so a
   // part unticked and ticked again is the same line, not a new one.
+  const pendingRequest = requests.find((q) => q.parent_part_id === parentId && q.status === "PENDING");
+  const rejectedRequest = !pendingRequest
+    ? requests.find((q) => q.parent_part_id === parentId && q.status === "REJECTED")
+    : undefined;
+
   const existing = useMemo(() => {
     const map: Record<string, { quantity: string; is_critical: boolean }> = {};
+    // R&D reopening a part carries on from the change they already sent, not
+    // from the live BOM - otherwise saving again would quietly undo it.
+    if (needsApproval && pendingRequest) {
+      for (const l of pendingRequest.lines) {
+        map[l.child_part_id] = { quantity: String(l.quantity), is_critical: Boolean(l.is_critical) };
+      }
+      return map;
+    }
     for (const line of lines as any[]) {
       if (line.parent_part_id === parentId) {
         map[line.child_part_id] = {
@@ -77,7 +93,7 @@ export const BOMBuilder = ({ initialParentId }: { initialParentId?: string } = {
       }
     }
     return map;
-  }, [lines, parentId]);
+  }, [lines, parentId, needsApproval, pendingRequest]);
 
   useEffect(() => {
     setPicked(Object.fromEntries(Object.entries(existing).map(([k, v]) => [k, v.quantity])));
@@ -217,13 +233,27 @@ export const BOMBuilder = ({ initialParentId }: { initialParentId?: string } = {
               </CardTitle>
               <div className="flex items-center gap-2">
                 {dirty && <Badge variant="secondary">Unsaved changes</Badge>}
-                <Button onClick={handleSave} disabled={!dirty || saveBom.isPending}>
-                  {saveBom.isPending
-                    ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Saving…</>
-                    : <><Save className="h-4 w-4 mr-2" />Save Bill of Materials</>}
-                </Button>
+                {canEditMasters && (
+                  <Button onClick={handleSave} disabled={!dirty || saveBom.isPending}>
+                    {saveBom.isPending
+                      ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Saving…</>
+                      : <><Save className="h-4 w-4 mr-2" />{needsApproval ? "Send for Approval" : "Save Bill of Materials"}</>}
+                  </Button>
+                )}
               </div>
             </div>
+            {pendingRequest && (
+              <p className="mt-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200">
+                {needsApproval
+                  ? `Your change sent on ${new Date(pendingRequest.submitted_at).toLocaleDateString()} is waiting for Management. You are editing that change; the BOM in use has not changed yet.`
+                  : "A change from R&D is waiting in Approvals. You are looking at the BOM in use; saving here changes it directly."}
+              </p>
+            )}
+            {rejectedRequest && needsApproval && (
+              <p className="mt-3 rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+                The last change sent for this BOM was rejected: {rejectedRequest.rejection_reason}
+              </p>
+            )}
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex flex-col md:flex-row gap-3">

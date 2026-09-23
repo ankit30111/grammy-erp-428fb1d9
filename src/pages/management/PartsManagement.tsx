@@ -43,6 +43,8 @@ import { useVendors } from "@/hooks/useVendors";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { PartBomView, PartWhereUsed } from "@/components/BOM/PartBomView";
+import { usePermissions } from "@/hooks/usePermissions";
+import { ApprovalBadge } from "@/components/Approvals/ApprovalBadge";
 import { PartDocumentInputs, PartDocumentList, docFilesToInput, type DocFiles } from "@/components/Parts/PartDocuments";
 
 // Unit of Measure options
@@ -108,6 +110,7 @@ const RawMaterialsManagement = () => {
   // The type shown is the category's tier, not the part's source_type.
   const partTier = (prefix?: string | null) =>
     categories.find((c) => c.prefix === prefix)?.tier ?? null;
+  const { canEditMasters, canApprove } = usePermissions();
   const editTier = (partTier(newMaterial.category) ?? "PURCHASE") as PartTier;
   const editIsPurchase = editTier === "PURCHASE";
   const viewTier = (partTier(viewMaterial?.category) ?? "PURCHASE") as PartTier;
@@ -399,10 +402,12 @@ const RawMaterialsManagement = () => {
                 no answer to. CreatePartDialog asks what kind of part it is first
                 and then shows only that kind's fields, and the code comes from
                 the registry rather than being typed. */}
-            <Button onClick={() => setIsAddDialogOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" />
-              Create New Part Code
-            </Button>
+            {canEditMasters && (
+              <Button onClick={() => setIsAddDialogOpen(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                Create New Part Code
+              </Button>
+            )}
             <CreatePartDialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen} />
           </div>
         </div>
@@ -502,7 +507,7 @@ const RawMaterialsManagement = () => {
                     <TableRow key={material.id}>
                       <TableCell className="text-muted-foreground text-sm">{index + 1}</TableCell>
                       <TableCell className="font-medium">{material.part_code}</TableCell>
-                      <TableCell>{material.name}</TableCell>
+                      <TableCell>{material.name}<ApprovalBadge status={(material as any).approval_status} reason={(material as any).rejection_reason} /></TableCell>
                       <TableCell>{categoryName(material.category)}</TableCell>
                       <TableCell>
                         <Badge
@@ -566,6 +571,7 @@ const RawMaterialsManagement = () => {
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
+                          {canEditMasters && (
                           <Button
                             variant="outline"
                             size="sm"
@@ -573,6 +579,8 @@ const RawMaterialsManagement = () => {
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
+                          )}
+                          {canApprove && (
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
                               <Button variant="outline" size="sm">
@@ -581,7 +589,7 @@ const RawMaterialsManagement = () => {
                             </AlertDialogTrigger>
                             <AlertDialogContent>
                               <AlertDialogHeader>
-                                <AlertDialogTitle>Delete Raw Material</AlertDialogTitle>
+                                <AlertDialogTitle>Delete Part</AlertDialogTitle>
                                 <AlertDialogDescription>
                                   Are you sure you want to delete "{material.name}"? This action cannot be undone.
                                 </AlertDialogDescription>
@@ -597,6 +605,7 @@ const RawMaterialsManagement = () => {
                               </AlertDialogFooter>
                             </AlertDialogContent>
                           </AlertDialog>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -615,6 +624,16 @@ const RawMaterialsManagement = () => {
             </DialogHeader>
             {viewMaterial && (
               <div className="grid gap-6 py-4">
+                {(viewMaterial as any).approval_status === "PENDING" && (
+                  <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200">
+                    Waiting for Management approval. It cannot go on a PO, a plan or a production order until then.
+                  </p>
+                )}
+                {(viewMaterial as any).approval_status === "REJECTED" && (
+                  <p className="rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+                    Rejected: {(viewMaterial as any).rejection_reason}. Edit and save it to send it again.
+                  </p>
+                )}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label className="text-sm font-medium text-muted-foreground">Part Name</Label>
@@ -699,9 +718,11 @@ const RawMaterialsManagement = () => {
                   <div className="space-y-2">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <Label className="text-sm font-medium text-muted-foreground">Bill of Materials</Label>
-                      <Button variant="outline" size="sm" onClick={() => openBomFor(viewMaterial.id)}>
-                        <Edit /> Edit Bill of Materials
-                      </Button>
+                      {canEditMasters && (
+                        <Button variant="outline" size="sm" onClick={() => openBomFor(viewMaterial.id)}>
+                          <Edit /> Edit Bill of Materials
+                        </Button>
+                      )}
                     </div>
                     <PartBomView partId={viewMaterial.id} />
                   </div>

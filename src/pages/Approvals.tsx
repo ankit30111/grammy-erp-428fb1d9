@@ -6,21 +6,24 @@ import { TabBar } from "@/components/shell/TabBar";
 import PurchaseOrderApprovalsEnhanced from "@/components/Approvals/PurchaseOrderApprovalsEnhanced";
 import CAPAApprovalsTab from "@/components/Approvals/CAPAApprovalsTab";
 import CAPATrackingTab from "@/components/Approvals/CAPATrackingTab";
+import MasterApprovalsTab from "@/components/Approvals/MasterApprovalsTab";
 
 const tabs = [
+  { id: "masters", label: "Parts, BOMs & Vendors" },
   { id: "purchase-orders", label: "Purchase Order Approvals" },
   { id: "capa-approvals", label: "CAPA Approvals" },
   { id: "capa-tracking", label: "CAPA Tracking" },
 ];
 
 const Approvals = () => {
-  const [activeTab, setActiveTab] = useState("purchase-orders");
+  const [activeTab, setActiveTab] = useState("masters");
 
   return (
     <DashboardLayout>
       <PageHeader title="Approvals" />
       <TabBar tabs={tabs} value={activeTab} onChange={setActiveTab} />
       <div className="pt-4">
+        {activeTab === "masters" && <MasterApprovalsTab />}
         {activeTab === "purchase-orders" && <PurchaseOrderApprovalsEnhanced />}
         {activeTab === "capa-approvals" && <CAPAApprovalsTab />}
         {activeTab === "capa-tracking" && <CAPATrackingTab />}

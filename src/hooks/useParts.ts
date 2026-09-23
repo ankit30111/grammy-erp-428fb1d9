@@ -160,9 +160,14 @@ export const useParts = () => {
 
       return part;
     },
-    onSuccess: () => {
+    onSuccess: (part: any) => {
       invalidate();
-      toast.success("Part added");
+      queryClient.invalidateQueries({ queryKey: ["master-approvals"] });
+      toast.success(
+        part?.approval_status === "PENDING"
+          ? `${part.part_code} created and sent to Management for approval`
+          : "Part added",
+      );
     },
     onError: (error: any) => {
       if (error?.code === "23505" || error?.code === "23505" || error?.message?.includes("duplicate key")) {

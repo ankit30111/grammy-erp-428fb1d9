@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Edit, Trash2, MapPin, Upload } from "lucide-react";
+import { usePermissions } from "@/hooks/usePermissions";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useCustomerForm } from "@/hooks/useCustomerForm";
@@ -47,6 +48,7 @@ const CustomersManagement = () => {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [warehouses, setWarehouses] = useState<CustomerWarehouse[]>([]);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>("");
+  const { canEditCustomers, canApprove } = usePermissions();
   const [isAddingCustomer, setIsAddingCustomer] = useState(false);
   const [isEditingCustomer, setIsEditingCustomer] = useState(false);
   const [isAddingWarehouse, setIsAddingWarehouse] = useState(false);
@@ -417,12 +419,14 @@ const CustomersManagement = () => {
               resetForm();
             }
           }}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Customer
-              </Button>
-            </DialogTrigger>
+            {canEditCustomers && (
+              <DialogTrigger asChild>
+                <Button>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Customer
+                </Button>
+              </DialogTrigger>
+            )}
             <DialogContent className="max-w-2xl">
               <DialogHeader>
                 <DialogTitle>Add New Customer</DialogTitle>
@@ -497,12 +501,16 @@ const CustomersManagement = () => {
                       </TableCell>
                       <TableCell>
                         <div className="flex space-x-2">
-                          <Button variant="ghost" size="sm" onClick={() => openEditDialog(customer)}>
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="sm" onClick={() => handleDeleteCustomer(customer.id)}>
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          {canEditCustomers && (
+                            <Button variant="ghost" size="sm" onClick={() => openEditDialog(customer)}>
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {canApprove && (
+                            <Button variant="ghost" size="sm" onClick={() => handleDeleteCustomer(customer.id)}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -517,7 +525,7 @@ const CustomersManagement = () => {
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
                 <span>Customer Warehouses</span>
-                {selectedCustomerId && (
+                {selectedCustomerId && canEditCustomers && (
                   <Dialog open={isAddingWarehouse} onOpenChange={setIsAddingWarehouse}>
                     <DialogTrigger asChild>
                       <Button size="sm">

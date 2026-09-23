@@ -639,11 +639,6 @@ function ModulesMatrixTab() {
   }
 
   const toggle = (dept: any, modKey: string) => {
-    const isAdminLike = dept.name === "Admin" || dept.name === "Management";
-    if (isAdminLike) {
-      toast.info(`${dept.name} always has access to every module.`);
-      return;
-    }
     const current = new Set<string>(dept.modules ?? []);
     current.has(modKey) ? current.delete(modKey) : current.add(modKey);
     // 'core' is always granted to anyone who has any department.
@@ -656,8 +651,11 @@ function ModulesMatrixTab() {
       <CardHeader>
         <CardTitle>Which modules each department can see</CardTitle>
         <CardDescription>
-          Admin and Management always see everything. Toggle a cell to grant or
-          revoke that module for the department.
+          A tick shows that module in the menu for everyone in the department.
+          Editing and approving come from the department itself, not from this grid:
+          Management can edit parts, BOMs, vendors and customers and approve;
+          R&amp;D can edit parts, BOMs and vendors, and what they save waits in Approvals.
+          Only an admin manages users.
         </CardDescription>
       </CardHeader>
       <CardContent className="overflow-x-auto">
@@ -678,22 +676,22 @@ function ModulesMatrixTab() {
           <tbody>
             {rows.map((d: any) => {
               const granted = new Set<string>(d.modules ?? []);
-              const isAdminLike = d.name === "Admin" || d.name === "Management";
+              const rights = d.name === "Management" ? "edits · approves" : d.name === "R&D" ? "edits · needs approval" : null;
               return (
                 <tr key={d.department_id} className="border-b">
                   <td className="p-2 font-medium">
                     {d.name}
-                    {isAdminLike && (
-                      <Badge variant="outline" className="ml-2 text-[14px]">
-                        full access
+                    {rights && (
+                      <Badge variant="outline" className="ml-2 text-xs font-normal">
+                        {rights}
                       </Badge>
                     )}
                   </td>
                   {MODULES.map((m) => (
                     <td key={m.key} className="p-2 text-center">
                       <Checkbox
-                        checked={isAdminLike || granted.has(m.key)}
-                        disabled={isAdminLike || save.isPending}
+                        checked={granted.has(m.key)}
+                        disabled={save.isPending}
                         onCheckedChange={() => toggle(d, m.key)}
                       />
                     </td>

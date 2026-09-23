@@ -3,10 +3,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 // The columns every signed-in user may read. Bank details, PAN and certificate
-// URLs are not granted to them at all; admins fetch those through
+// URLs are not granted to them at all; Management and Admin fetch those through
 // get_vendor_finance(uuid).
 const VENDOR_SAFE_COLS =
-  "id, vendor_code, name, email, contact_number, address, gst_number, is_active, created_at, updated_at, created_by, contact_person_name, contact_designation, supplies, location";
+  "id, vendor_code, name, email, contact_number, address, gst_number, is_active, created_at, updated_at, created_by, contact_person_name, contact_designation, supplies, location, approval_status, rejection_reason";
 
 export type VendorFinance = {
   id: string;
@@ -180,14 +180,18 @@ export const useVendors = () => {
     mutationFn: async (v: VendorInput) => {
       // vendor_code is left blank on purpose: the database issues the next V-number.
       const row = { ...(await toRow(v)), vendor_code: "" };
-      const { data, error } = await supabase.from("vendors").insert(row as any).select("id, vendor_code").single();
+      const { data, error } = await (supabase as any).from("vendors").insert(row).select("id, vendor_code, approval_status").single();
       if (error) throw new Error(friendly(error));
       if (v.contacts) await syncContacts(data.id, v.contacts);
       return data;
     },
     onSuccess: (data) => {
       refresh(data.id);
-      toast.success(`Vendor ${data.vendor_code} added`);
+      toast.success(
+        (data as any).approval_status === "PENDING"
+          ? `Vendor ${data.vendor_code} sent to Management for approval`
+          : `Vendor ${data.vendor_code} added`,
+      );
     },
     onError: (e: any) => toast.error(e.message || "Could not add the vendor"),
   });
