@@ -174,7 +174,7 @@ export const CreatePartDialog = ({ open, onOpenChange }: Props) => {
   const handleSave = async () => {
     if (!name.trim()) return toast.error("Part name is required");
     if (!categoryPrefix) return toast.error("Choose a category");
-    if (!partCode) return toast.error("No part code was issued — choose the category again");
+    if (!partCode.trim()) return toast.error("Enter a part code, or choose the category to have one issued");
 
     setSaving(true);
     try {
@@ -284,27 +284,23 @@ export const CreatePartDialog = ({ open, onOpenChange }: Props) => {
                   onClick={() => setAddingCategory((v) => !v)}
                 >
                   <Plus className="h-3 w-3 mr-1" />
-                  New category for {tierMeta?.label.toLowerCase()}
+                  New category
                 </Button>
               </div>
 
               <div className="space-y-2">
                 <Label>Part Code</Label>
-                <div className="flex h-10 items-center rounded-md border bg-muted/40 px-3 font-mono text-sm">
-                  {issuing ? (
-                    <span className="flex items-center text-muted-foreground">
-                      <Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" />
-                      Issuing…
-                    </span>
-                  ) : partCode ? (
-                    partCode
-                  ) : (
-                    <span className="text-muted-foreground">{isFinished && !brand ? "Choose a category and brand" : "Choose a category"}</span>
-                  )}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Issued by the system, so two people creating a part at once cannot get the same code.
-                </p>
+                {/* Issued by the system, and editable: Grammy has running article
+                    lists to continue, so a typed code wins over the issued one. The
+                    database still checks that it starts with the category letters
+                    and that no other part already has it. */}
+                <Input
+                  className="font-mono"
+                  value={partCode}
+                  disabled={issuing}
+                  placeholder={issuing ? "Issuing…" : isFinished && !brand ? "Choose a category and brand" : "Choose a category"}
+                  onChange={(e) => setPartCode(e.target.value.toUpperCase().replace(/\s+/g, ""))}
+                />
               </div>
             </div>
 

@@ -34,7 +34,6 @@ import { Badge } from "@/components/ui/badge";
 import { Search, Plus, Layers, FileText, Package, Upload, Edit, Trash2, Download, Eye, ExternalLink, Loader2, Check, ChevronsUpDown, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TabBar } from "@/components/shell/TabBar";
-import { BOMManager } from "@/components/BOM/BOMManager";
 import { BOMBuilder } from "@/components/BOM/BOMBuilder";
 import { CreatePartDialog } from "@/components/Parts/CreatePartDialog";
 import { usePartCategories, PART_TIERS } from "@/hooks/usePartCategories";
@@ -363,22 +362,7 @@ const RawMaterialsManagement = () => {
       />
       {activeTab === "BOM" && (
         <div className="pt-4">
-          {/* Two views of the same bill: the builder is where you make and change
-              it, the structure is where you read it exploded through its
-              sub-assemblies. Keeping them apart stops the editing page from
-              having to also be a tree. */}
-          <Tabs defaultValue="build">
-            <TabsList>
-              <TabsTrigger value="build">Create / Edit</TabsTrigger>
-              <TabsTrigger value="structure">Structure</TabsTrigger>
-            </TabsList>
-            <TabsContent value="build" className="pt-4">
-              <BOMBuilder />
-            </TabsContent>
-            <TabsContent value="structure" className="pt-4">
-              <BOMManager />
-            </TabsContent>
-          </Tabs>
+          <BOMBuilder />
         </div>
       )}
       {activeTab !== "BOM" && (
