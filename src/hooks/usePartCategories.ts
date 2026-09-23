@@ -113,8 +113,8 @@ export const issuePartCode = async (prefix: string, brand?: string): Promise<str
 };
 
 /**
- * The brand letter that closes every finished-good code: JP-001P is built for
- * the brand registered as P. Kept in the database so a letter means one brand
+ * The two-letter brand code that closes every finished-good code: JP-001PH is built for
+ * the brand registered as PH. Kept in the database so a code means one brand
  * everywhere, the same way a category prefix means one kind of part.
  */
 export const useBrands = () => {

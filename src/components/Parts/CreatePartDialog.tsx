@@ -128,7 +128,7 @@ export const CreatePartDialog = ({ open, onOpenChange }: Props) => {
     setPartCode("");
   }, [tier]);
 
-  // A finished good's code ends in its brand letter, so it cannot be issued until
+  // A finished good's code ends in its two-letter brand, so it cannot be issued until
   // both the category and the brand are chosen.
   const chooseCategory = async (prefix: string, brandLetter = brand) => {
     setCategoryPrefix(prefix);
@@ -319,12 +319,12 @@ export const CreatePartDialog = ({ open, onOpenChange }: Props) => {
                       ))}
                     </SelectContent>
                   </Select>
-                  <Input className="w-16" maxLength={1} placeholder="P" value={newBrandLetter}
+                  <Input className="w-16" maxLength={2} placeholder="PH" value={newBrandLetter}
                          onChange={(e) => setNewBrandLetter(e.target.value.toUpperCase().replace(/[^A-Z]/g, ""))} />
                   <Input className="w-40" placeholder="New brand name" value={newBrandName}
                          onChange={(e) => setNewBrandName(e.target.value)} />
                   <Button type="button" variant="outline" size="sm"
-                          disabled={!newBrandLetter || !newBrandName.trim() || addBrand.isPending}
+                          disabled={newBrandLetter.length !== 2 || !newBrandName.trim() || addBrand.isPending}
                           onClick={async () => {
                             await addBrand.mutateAsync({ letter: newBrandLetter, name: newBrandName });
                             const l = newBrandLetter;
@@ -335,7 +335,7 @@ export const CreatePartDialog = ({ open, onOpenChange }: Props) => {
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  The last letter of a finished-good code is its brand — JP-001P is built for P.
+                  The last two letters of a finished-good code are its brand: JP-001PH.
                 </p>
               </div>
             )}
