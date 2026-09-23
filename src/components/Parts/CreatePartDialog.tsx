@@ -15,7 +15,7 @@ import {
   Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Check, ChevronsUpDown, Loader2, Plus, ShoppingCart, Wrench, Layers, Package } from "lucide-react";
+import { Check, ChevronsUpDown, Loader2, Plus, ShoppingCart, Layers, Package } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useParts } from "@/hooks/useParts";
@@ -39,14 +39,9 @@ const UNIT_OPTIONS = ["PCS", "KG", "METER", "LITER", "SET", "PACK", "ROLL", "SHE
  * than on arrival - so each carries a CIR sheet and a PQC checklist where a
  * purchased part carries a specification sheet and an IQC checklist.
  *
- * Semi-finished and sub-assembled are therefore identical to the ledger and
- * different on the floor. The names are still being settled inside Grammy; the
- * tier is where that decision lands, and nothing in stock or planning depends on
- * it.
  */
 const TIER_ICON: Record<PartTier, typeof ShoppingCart> = {
   PURCHASE: ShoppingCart,
-  SEMI_FINISHED: Wrench,
   SUB_ASSEMBLED: Layers,
   FINISHED: Package,
 };
@@ -225,7 +220,7 @@ export const CreatePartDialog = ({ open, onOpenChange }: Props) => {
         {/* ---- 1. what kind of part ---------------------------------------- */}
         <div className="space-y-2">
           <Label>What kind of part is this?</Label>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
             {PART_TIERS.map((k) => {
               const Icon = TIER_ICON[k.value];
               const active = tier === k.value;

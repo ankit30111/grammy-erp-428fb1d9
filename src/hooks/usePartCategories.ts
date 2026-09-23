@@ -4,17 +4,15 @@ import { toast } from "sonner";
 import type { PartSourceType } from "@/hooks/useParts";
 
 /**
- * What the floor calls a kind of part. Semi-finished and sub-assembled are two
- * different things on the floor and the same thing in the ledger - both are
- * built here, both hold stock - so the distinction lives here, where a naming
- * decision can change it without touching stock or planning.
+ * What the floor calls a kind of part. Semi-finished and sub-assembled goods are
+ * one tier, "Sub-assembly": both are built here, stocked, issued and used inside
+ * other parts (Grammy's decision, 23 Sep 2026).
  */
-export type PartTier = "PURCHASE" | "SEMI_FINISHED" | "SUB_ASSEMBLED" | "FINISHED";
+export type PartTier = "PURCHASE" | "SUB_ASSEMBLED" | "FINISHED";
 
 export const PART_TIERS: { value: PartTier; label: string; blurb: string }[] = [
   { value: "PURCHASE", label: "Purchase Part", blurb: "Bought from a vendor as it is" },
-  { value: "SEMI_FINISHED", label: "Semi-finished Good", blurb: "Built here, stocked, issued and returned" },
-  { value: "SUB_ASSEMBLED", label: "Sub-assembled Good", blurb: "Built here, stocked, used inside other parts" },
+  { value: "SUB_ASSEMBLED", label: "Sub-assembly", blurb: "Built here, stocked, used inside other parts" },
   { value: "FINISHED", label: "Finished Good", blurb: "What gets packed and dispatched" },
 ];
 

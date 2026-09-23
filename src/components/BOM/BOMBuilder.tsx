@@ -83,8 +83,6 @@ export const BOMBuilder = () => {
 
   const categoryName = (prefix?: string | null) =>
     categories.find((c) => c.prefix === prefix)?.name ?? prefix ?? "";
-  // Filtered by tier, not source_type: semi-finished and sub-assembled are both
-  // ASSEMBLED_STOCKED, so source_type cannot separate them here either.
   const tierOf = (prefix?: string | null) =>
     categories.find((c) => c.prefix === prefix)?.tier ?? "PURCHASE";
 
@@ -196,7 +194,7 @@ export const BOMBuilder = () => {
               </PopoverContent>
             </Popover>
             <p className="text-xs text-muted-foreground">
-              Only parts Grammy builds — semi-finished, sub-assembled and finished goods. A purchased
+              Only parts Grammy builds — sub-assemblies and finished goods. A purchased
               part is bought as it is, so it has nothing to break down into.
             </p>
           </div>

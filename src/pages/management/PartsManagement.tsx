@@ -101,10 +101,7 @@ const RawMaterialsManagement = () => {
   // find. The lookup goes one way now, from prefix to label.
   const categoryName = (prefix?: string | null) =>
     categories.find((c) => c.prefix === prefix)?.name ?? prefix ?? "";
-  // The type shown is the category's tier, not the part's source_type. Semi-
-  // finished and sub-assembled are the same thing to the ledger - both stocked,
-  // both built here - so source_type cannot tell them apart and would label every
-  // semi-finished part "Sub-assembled Good".
+  // The type shown is the category's tier, not the part's source_type.
   const partTier = (prefix?: string | null) =>
     categories.find((c) => c.prefix === prefix)?.tier ?? null;
   const tierLabelFor = (prefix?: string | null) =>
@@ -352,8 +349,7 @@ const RawMaterialsManagement = () => {
       <TabBar
         tabs={[
           { id: "PURCHASE", label: "Purchase Parts" },
-          { id: "SEMI_FINISHED", label: "Semi-finished Goods" },
-          { id: "SUB_ASSEMBLED", label: "Sub-assembled Goods" },
+          { id: "SUB_ASSEMBLED", label: "Sub-assemblies" },
           { id: "FINISHED", label: "Finished Goods" },
           { id: "BOM", label: "Bill of Materials" },
         ]}
