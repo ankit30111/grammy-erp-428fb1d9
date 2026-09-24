@@ -212,7 +212,10 @@ RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
 DECLARE v_added int; v_changed int; v_removed int;
 BEGIN
   CREATE TEMP TABLE IF NOT EXISTS _bom_next (child_part_id uuid PRIMARY KEY, quantity numeric, uom text, is_critical boolean) ON COMMIT DROP;
-  DELETE FROM _bom_next;
+  -- WHERE true: Supabase runs pg_safeupdate for API calls, which refuses a
+  -- DELETE without a WHERE clause - even on a temp table. Every BOM save from
+  -- the screen failed on this line.
+  DELETE FROM _bom_next WHERE true;
   INSERT INTO _bom_next
   SELECT (l->>'child_part_id')::uuid, (l->>'quantity')::numeric, coalesce(nullif(l->>'uom', ''), 'PCS'),
          coalesce((l->>'is_critical')::boolean, false)

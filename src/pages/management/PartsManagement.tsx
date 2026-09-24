@@ -98,7 +98,8 @@ const RawMaterialsManagement = () => {
   });
 
   // Use the existing hooks
-  const { rawMaterials, isLoading, addRawMaterial, updateRawMaterial, deleteRawMaterial } = useRawMaterials();
+  const { rawMaterials, isLoading, addRawMaterial, updateRawMaterial, deleteRawMaterial, reactivatePart } = useRawMaterials();
+  const [showInactive, setShowInactive] = useState(false);
   const { vendors = [] } = useVendors();
   const { categories } = usePartCategories();
   // parts.category holds the PREFIX ('P'), not the name ('Plastic'). All 2,290
@@ -138,7 +139,9 @@ const RawMaterialsManagement = () => {
       filterSourceType === "all" ||
       (categories.find((c) => c.prefix === material.category)?.tier ?? "PURCHASE") ===
         filterSourceType;
-    return matchesSearch && matchesCategory && matchesType;
+    // Deactivated parts are out of the way unless asked for.
+    const matchesActive = showInactive ? !material.is_active : material.is_active !== false;
+    return matchesSearch && matchesCategory && matchesType && matchesActive;
   });
 
   const getVendorSortValue = (material: any) => {
@@ -438,6 +441,9 @@ const RawMaterialsManagement = () => {
                   ))}
                 </SelectContent>
               </Select>
+              <Button variant={showInactive ? "default" : "outline"} onClick={() => setShowInactive((v) => !v)}>
+                {showInactive ? "Show active parts" : "Show deactivated"}
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -580,6 +586,11 @@ const RawMaterialsManagement = () => {
                             <Edit className="h-4 w-4" />
                           </Button>
                           )}
+                          {canApprove && material.is_active === false && (
+                            <Button variant="outline" size="sm" onClick={() => reactivatePart.mutate(material.id)}>
+                              Reactivate
+                            </Button>
+                          )}
                           {canApprove && (
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
@@ -591,7 +602,10 @@ const RawMaterialsManagement = () => {
                               <AlertDialogHeader>
                                 <AlertDialogTitle>Delete Part</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                  Are you sure you want to delete "{material.name}"? This action cannot be undone.
+                                  Delete {material.part_code} "{material.name}"? If nothing uses it yet, it is removed
+                                  with its own BOM and its code can be used again. If stock, orders or other records
+                                  use it, it is deactivated instead. A part inside another part's BOM has to be
+                                  taken out of that BOM first.
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>

@@ -258,16 +258,34 @@ export const useParts = () => {
     },
   });
 
+  // Deleted outright when nothing uses it (its code is then issued again);
+  // deactivated when stock, orders or other records refer to it. The database
+  // decides, so the rule holds for every screen.
   const deletePart = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("parts").update({ is_active: false }).eq("id", id);
+      const { data, error } = await supabase.rpc("delete_part" as any, { p_part_id: id });
+      if (error) throw error;
+      return data as { result: "DELETED" | "DEACTIVATED"; part_code: string; used_in?: string[] };
+    },
+    onSuccess: (r) => {
+      invalidate();
+      queryClient.invalidateQueries({ queryKey: ["bom-lines"] });
+      if (r.result === "DELETED") toast.success(`${r.part_code} deleted. Its code is free to use again.`);
+      else toast.warning(`${r.part_code} is used in ${(r.used_in ?? []).join(", ")}, so it was deactivated, not deleted.`);
+    },
+    onError: (error: any) => toast.error(error?.message || "Could not delete the part"),
+  });
+
+  const reactivatePart = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.rpc("reactivate_part" as any, { p_part_id: id });
       if (error) throw error;
     },
     onSuccess: () => {
       invalidate();
-      toast.success("Part deactivated");
+      toast.success("Part reactivated");
     },
-    onError: (error: any) => toast.error(error?.message || "Could not deactivate the part"),
+    onError: (error: any) => toast.error(error?.message || "Could not reactivate the part"),
   });
 
   return {
@@ -276,6 +294,7 @@ export const useParts = () => {
     addPart,
     updatePart,
     deletePart,
+    reactivatePart,
     // aliases kept so screens not yet rewired keep working
     rawMaterials: parts,
     addRawMaterial: addPart,

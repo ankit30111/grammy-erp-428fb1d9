@@ -63,7 +63,7 @@ export const BOMBuilder = ({ initialParentId }: { initialParentId?: string } = {
   const parentPart = parts.find((p: any) => p.id === parentId);
 
   const parentCandidates = useMemo(
-    () => parts.filter((p: any) => MADE_HERE.includes(p.source_type ?? "PURCHASED")),
+    () => parts.filter((p: any) => p.is_active !== false && MADE_HERE.includes(p.source_type ?? "PURCHASED")),
     [parts],
   );
 
@@ -95,11 +95,17 @@ export const BOMBuilder = ({ initialParentId }: { initialParentId?: string } = {
     return map;
   }, [lines, parentId, needsApproval, pendingRequest]);
 
+  // Reset the ticks only when the part changes or the saved BOM itself changes.
+  // This used to run on every refetch of the BOM lines - which React Query does
+  // whenever the window regains focus - so ticks made, then a switch to another
+  // window, and they were silently back to the saved BOM before Save.
+  const existingKey = useMemo(() => JSON.stringify(existing), [existing]);
   useEffect(() => {
     setPicked(Object.fromEntries(Object.entries(existing).map(([k, v]) => [k, v.quantity])));
     setCritical(Object.fromEntries(Object.entries(existing).map(([k, v]) => [k, v.is_critical])));
     setOnlySelected(false);
-  }, [parentId, lines]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [parentId, existingKey]);
 
   const categoryName = (prefix?: string | null) =>
     categories.find((c) => c.prefix === prefix)?.name ?? prefix ?? "";
@@ -113,6 +119,9 @@ export const BOMBuilder = ({ initialParentId }: { initialParentId?: string } = {
         // A part cannot be inside itself, and the database refuses it anyway -
         // better to not offer it than to explain the refusal afterwards.
         if (p.id === parentId) return false;
+        // A deactivated part is not offered - unless it is already on this BOM,
+        // so it can be seen and taken off.
+        if (p.is_active === false && picked[p.id] === undefined) return false;
         if (onlySelected && picked[p.id] === undefined) return false;
         if (filterCategory !== "all" && p.category !== filterCategory) return false;
         if (filterType !== "all" && tierOf(p.category) !== filterType) return false;
