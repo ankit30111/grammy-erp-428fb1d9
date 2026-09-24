@@ -44,10 +44,13 @@ export const navigationItems: NavigationItem[] = [
   { to: "/dash", icon: <Speaker size={18} />, label: "DASH Brand", group: "WORKSPACES", module: "dash" },
 ];
 
+// Parts, customers and vendors are open to everyone to look up. Who may add or
+// change them is decided by department (Management, R&D) in the database, and
+// the pages hide the buttons for everyone else. Plants and users stay admin-only.
 export const managementItems: NavigationItem[] = [
-  { to: "/management/parts", icon: <Layers size={18} />, label: "Parts", adminOnly: true },
-  { to: "/management/customers", icon: <UserPlus size={18} />, label: "Customers", adminOnly: true },
-  { to: "/vendors", icon: <Building2 size={18} />, label: "Vendors", adminOnly: true },
+  { to: "/management/parts", icon: <Layers size={18} />, label: "Parts" },
+  { to: "/management/customers", icon: <UserPlus size={18} />, label: "Customers" },
+  { to: "/vendors", icon: <Building2 size={18} />, label: "Vendors" },
   { to: "/management/plants", icon: <Building2 size={18} />, label: "Plants", adminOnly: true },
   { to: "/management/hr", icon: <Users size={18} />, label: "Human Resources", module: "hr" },
   { to: "/management/access-control", icon: <ShieldCheck size={18} />, label: "Users & Access", adminOnly: true },
