@@ -742,10 +742,14 @@ const RawMaterialsManagement = () => {
                   </div>
                 )}
 
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium text-muted-foreground">Used In (BOM)</Label>
-                  <PartWhereUsed partId={viewMaterial.id} />
-                </div>
+                {/* Which saved BOMs this part is a line in. A finished good is the top
+                    of its BOM and goes into nothing, so it is not shown there. */}
+                {viewTier !== "FINISHED" && (
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium text-muted-foreground">Goes into</Label>
+                    <PartWhereUsed partId={viewMaterial.id} />
+                  </div>
+                )}
 
                 {viewTier === "PURCHASE" && (
                 <div className="space-y-2">

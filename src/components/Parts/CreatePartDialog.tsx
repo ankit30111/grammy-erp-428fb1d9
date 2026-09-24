@@ -58,6 +58,9 @@ export const CreatePartDialog = ({ open, onOpenChange }: Props) => {
   const { vendors = [] } = useVendors();
   const { brands, addBrand } = useBrands();
   const [brand, setBrand] = useState("");
+  // A finished good is named, not numbered: JA-06C-PH is category JA, model
+  // 06C, brand PH. Its code is put together from the three, never issued.
+  const [modelCode, setModelCode] = useState("");
   const [newBrandLetter, setNewBrandLetter] = useState("");
   const [newBrandName, setNewBrandName] = useState("");
 
@@ -93,6 +96,8 @@ export const CreatePartDialog = ({ open, onOpenChange }: Props) => {
   const tierMeta = PART_TIERS.find((t) => t.value === tier);
   const isPurchase = tier === "PURCHASE";
   const isFinished = tier === "FINISHED";
+  const finishedCode = categoryPrefix && modelCode && brand ? `${categoryPrefix}-${modelCode}-${brand}` : "";
+  const codeToSave = isFinished ? finishedCode : partCode;
 
   const tierCategories = useMemo(
     () => categories.filter((c) => c.tier === tier),
@@ -119,6 +124,7 @@ export const CreatePartDialog = ({ open, onOpenChange }: Props) => {
   useEffect(() => {
     setCategoryPrefix("");
     setPartCode("");
+    setModelCode("");
   }, [tier]);
 
   // A finished good's code ends in its two-letter brand, so it cannot be issued until
@@ -126,7 +132,7 @@ export const CreatePartDialog = ({ open, onOpenChange }: Props) => {
   const chooseCategory = async (prefix: string, brandLetter = brand) => {
     setCategoryPrefix(prefix);
     setPartCode("");
-    if (isFinished && !brandLetter) return;
+    if (isFinished) return;
     setIssuing(true);
     try {
       setPartCode(await issuePartCode(prefix, isFinished ? brandLetter : undefined));
@@ -167,13 +173,14 @@ export const CreatePartDialog = ({ open, onOpenChange }: Props) => {
   const handleSave = async () => {
     if (!name.trim()) return toast.error("Part name is required");
     if (!categoryPrefix) return toast.error("Choose a category");
-    if (!partCode.trim()) return toast.error("Enter a part code, or choose the category to have one issued");
+    if (isFinished && !finishedCode) return toast.error("Choose the category, type the model code and choose the brand");
+    if (!codeToSave.trim()) return toast.error("Enter a part code, or choose the category to have one issued");
 
     setSaving(true);
     try {
       await addPart.mutateAsync({
         name: name.trim(),
-        part_code: partCode,
+        part_code: codeToSave,
         category: categoryPrefix,
         uom,
         specification: specification.trim() || undefined,
@@ -285,13 +292,22 @@ export const CreatePartDialog = ({ open, onOpenChange }: Props) => {
                     and that no other part already has it. */}
                 <Input
                   className="font-mono"
-                  value={partCode}
+                  value={isFinished ? finishedCode : partCode}
+                  readOnly={isFinished}
                   disabled={issuing}
-                  placeholder={issuing ? "Issuing…" : isFinished && !brand ? "Choose a category and brand" : "Choose a category"}
+                  placeholder={issuing ? "Issuing…" : isFinished ? "Category, model and brand make the code" : "Choose a category"}
                   onChange={(e) => setPartCode(e.target.value.toUpperCase().replace(/\s+/g, ""))}
                 />
               </div>
             </div>
+
+            {isFinished && (
+              <div className="space-y-2">
+                <Label>Model Code *</Label>
+                <Input className="w-40 font-mono" placeholder="e.g. 06C" value={modelCode}
+                       onChange={(e) => setModelCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))} />
+              </div>
+            )}
 
             {isFinished && (
               <div className="space-y-2">
@@ -324,7 +340,7 @@ export const CreatePartDialog = ({ open, onOpenChange }: Props) => {
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  The last two letters of a finished-good code are its brand: JP-001PH.
+                  A finished-good code is category, model and brand: JA-06C-PH is a party speaker (JA), model 06C, for Philips (PH).
                 </p>
               </div>
             )}
@@ -520,7 +536,7 @@ export const CreatePartDialog = ({ open, onOpenChange }: Props) => {
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={handleSave} disabled={!tier || !partCode || saving || issuing}>
+          <Button onClick={handleSave} disabled={!tier || !codeToSave || saving || issuing}>
             {saving ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Saving…</> : "Create Part"}
           </Button>
         </DialogFooter>

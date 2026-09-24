@@ -56,7 +56,7 @@ export const PartWhereUsed = ({ partId }: { partId: string }) => {
   const parents = (lines as any[])
     .filter((l) => l.child_part_id === partId)
     .sort((a, b) => (a.parent?.part_code ?? "").localeCompare(b.parent?.part_code ?? ""));
-  if (!parents.length) return <p className="text-sm text-muted-foreground">Not on any bill of materials yet.</p>;
+  if (!parents.length) return <p className="text-sm text-muted-foreground">Not a line in any saved BOM yet.</p>;
   return (
     <div className="flex flex-wrap gap-2">
       {parents.map((l) => (
