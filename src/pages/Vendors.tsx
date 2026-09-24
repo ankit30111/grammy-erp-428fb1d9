@@ -37,9 +37,16 @@ const VendorContactsSection = ({ vendorId }: { vendorId: string }) => {
       <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Other contacts</h4>
       <div className="divide-y rounded-md border">
         {contacts.map((c) => (
-          <div key={c.id} className="grid grid-cols-2 gap-2 px-3 py-2 text-sm">
-            <span>{[c.name, c.designation].filter(Boolean).join(" · ") || "-"}</span>
-            <span className="text-muted-foreground break-all">{[c.phone, c.email].filter(Boolean).join(" · ")}</span>
+          // Name | phone | email, with the email given the most room: names are
+          // short, addresses are long and must stay on one line where they fit.
+          <div key={c.id}
+               className="grid grid-cols-1 gap-x-4 gap-y-0.5 px-3 py-2 text-sm sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,2fr)] sm:items-baseline">
+            <span className="font-medium">
+              {c.name || "-"}
+              {c.designation && <span className="font-normal text-muted-foreground"> · {c.designation}</span>}
+            </span>
+            <span className="whitespace-nowrap tabular-nums text-muted-foreground">{c.phone || ""}</span>
+            <span className="text-muted-foreground [overflow-wrap:anywhere]">{c.email || ""}</span>
           </div>
         ))}
       </div>
@@ -302,7 +309,7 @@ const Vendors = () => {
                             <SheetTrigger asChild>
                               <Button variant="outline" size="sm">View Details</Button>
                             </SheetTrigger>
-                            <SheetContent className="w-full sm:max-w-xl overflow-y-auto">
+                            <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
                               <SheetHeader>
                                 <SheetTitle>{vendor.name} Details</SheetTitle>
                               </SheetHeader>
