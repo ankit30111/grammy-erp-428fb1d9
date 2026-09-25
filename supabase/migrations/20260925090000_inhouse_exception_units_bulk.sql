@@ -149,3 +149,37 @@ BEGIN
   RETURN jsonb_build_object('applied', false, 'request_id', v_req);
 END $$;
 GRANT EXECUTE ON FUNCTION public.save_bom(uuid, jsonb) TO authenticated;
+
+-- 4 -------------------------------------------------------------------------
+-- Finished goods: the issuer returns category-number-brand with both dashes
+-- (JA-007-PH), the same shape the database accepts. It used to glue the brand
+-- on (JA-001PH), which the finished-good rule now refuses. The create form
+-- builds the code from the model code the user types; this only matters for
+-- anything that still asks the issuer.
+CREATE OR REPLACE FUNCTION public.next_part_code(p_prefix text, p_brand text DEFAULT NULL::text)
+ RETURNS text LANGUAGE plpgsql SECURITY DEFINER SET search_path TO ''
+AS $function$
+DECLARE v_tier text; v_seq int; v_base text; v_brand text := upper(nullif(btrim(p_brand), ''));
+BEGIN
+  SELECT tier INTO v_tier FROM public.part_categories WHERE prefix = upper(p_prefix) AND is_active;
+  IF NOT FOUND THEN RAISE EXCEPTION 'No active part category with prefix "%"', upper(p_prefix); END IF;
+
+  IF v_tier = 'FINISHED' THEN
+    IF v_brand IS NULL THEN RAISE EXCEPTION 'A finished good needs a brand code'; END IF;
+    IF NOT EXISTS (SELECT 1 FROM public.brands WHERE letter = v_brand AND is_active) THEN
+      RAISE EXCEPTION 'No active brand with code "%"', v_brand; END IF;
+    SELECT coalesce(max((regexp_match(part_code, '^' || upper(p_prefix) || '-([0-9]+)-'))[1]::int), 0) + 1
+      INTO v_seq FROM public.parts WHERE category = upper(p_prefix);
+    RETURN upper(p_prefix) || '-' || lpad(v_seq::text, 3, '0') || '-' || v_brand;
+  END IF;
+
+  SELECT r.part_code INTO v_base FROM public.released_part_codes r
+   WHERE r.prefix = upper(p_prefix)
+     AND NOT EXISTS (SELECT 1 FROM public.parts pa WHERE pa.part_code ~ ('^' || r.part_code || '[A-Z]{0,2}$'))
+   ORDER BY r.seq LIMIT 1;
+  IF v_base IS NOT NULL THEN RETURN v_base; END IF;
+
+  SELECT coalesce(max((regexp_match(part_code, '^' || upper(p_prefix) || '-([0-9]+)'))[1]::int), 0) + 1
+    INTO v_seq FROM public.parts WHERE category = upper(p_prefix);
+  RETURN upper(p_prefix) || '-' || lpad(v_seq::text, 3, '0');
+END; $function$;
