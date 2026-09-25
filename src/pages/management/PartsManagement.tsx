@@ -30,6 +30,7 @@ import {
 import { 
   Popover, PopoverContent, PopoverTrigger 
 } from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Search, Plus, Layers, FileText, Package, Upload, Edit, Trash2, Download, Eye, ExternalLink, Loader2, Check, ChevronsUpDown, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -49,7 +50,7 @@ import { PartDocumentInputs, PartDocumentList, docFilesToInput, type DocFiles } 
 
 // Unit of Measure options
 const UNIT_OPTIONS = [
-  "PCS", "KG", "METER", "LITER", "SET", "PACK", "ROLL", "SHEET", "BOX"
+  "PCS", "MM", "METER", "GRAM", "KG", "LITER", "SET", "PACK", "ROLL", "SHEET", "BOX"
 ];
 
 // The categories are no longer a list in this file. They live in
@@ -94,7 +95,10 @@ const RawMaterialsManagement = () => {
     cbm_per_unit: "",
     supplier_country: "",
     used_in: "",
-    remarks: ""
+    remarks: "",
+    made_in_house: false,
+    purchase_uom: "",
+    purchase_factor: "1"
   });
 
   // Use the existing hooks
@@ -112,9 +116,14 @@ const RawMaterialsManagement = () => {
   const partTier = (prefix?: string | null) =>
     categories.find((c) => c.prefix === prefix)?.tier ?? null;
   const { canEditMasters, canApprove } = usePermissions();
-  const editTier = (partTier(newMaterial.category) ?? "PURCHASE") as PartTier;
+  // A purchase-letter part marked made in-house (the O-code battery packs) is a
+  // sub-assembly everywhere on this page; its code keeps its letter.
+  const tierOfPart = (p: any): PartTier =>
+    p?.made_in_house ? "SUB_ASSEMBLED" : ((partTier(p?.category) ?? "PURCHASE") as PartTier);
+  const editTier = tierOfPart({ category: newMaterial.category, made_in_house: newMaterial.made_in_house });
   const editIsPurchase = editTier === "PURCHASE";
-  const viewTier = (partTier(viewMaterial?.category) ?? "PURCHASE") as PartTier;
+  const editIsPurchaseLetter = partTier(newMaterial.category) === "PURCHASE";
+  const viewTier = tierOfPart(viewMaterial);
   const [editDocs, setEditDocs] = useState<DocFiles>({});
   const [bomParentId, setBomParentId] = useState<string | undefined>();
   // Edit Bill of Materials from a part: the BOM tab opens on that part.
@@ -135,10 +144,7 @@ const RawMaterialsManagement = () => {
     // Rows written before the type was on this screen have no source_type of their
     // own and are purchased by default, so they must answer to that filter too -
     // otherwise "Purchased" would hide the 2,000-odd parts it is naming.
-    const matchesType =
-      filterSourceType === "all" ||
-      (categories.find((c) => c.prefix === material.category)?.tier ?? "PURCHASE") ===
-        filterSourceType;
+    const matchesType = filterSourceType === "all" || tierOfPart(material) === filterSourceType;
     // Deactivated parts are out of the way unless asked for.
     const matchesActive = showInactive ? !material.is_active : material.is_active !== false;
     return matchesSearch && matchesCategory && matchesType && matchesActive;
@@ -234,7 +240,10 @@ const RawMaterialsManagement = () => {
         cbm_per_unit: "",
         supplier_country: "",
         used_in: "",
-        remarks: ""
+        remarks: "",
+        made_in_house: false,
+        purchase_uom: "",
+        purchase_factor: "1"
       });
       setSelectedVendors([]);
       setPrimaryVendor("");
@@ -266,7 +275,10 @@ const RawMaterialsManagement = () => {
       cbm_per_unit: material.cbm_per_unit?.toString() || "",
       supplier_country: material.supplier_country || "",
       used_in: material.used_in_reference || "",
-      remarks: material.remarks || ""
+      remarks: material.remarks || "",
+      made_in_house: Boolean(material.made_in_house),
+      purchase_uom: material.purchase_uom || "",
+      purchase_factor: String(material.purchase_factor ?? 1)
     });
     setSelectedVendors(material.part_vendors?.map((rv: any) => rv.vendors.id) || []);
     setPrimaryVendor(material.part_vendors?.find((rv: any) => rv.is_primary)?.vendors.id || "");
@@ -287,6 +299,10 @@ const RawMaterialsManagement = () => {
         uom: newMaterial.unit_of_measure || "PCS",
         used_in_reference: newMaterial.used_in,
         remarks: newMaterial.remarks,
+        purchase_uom: newMaterial.purchase_uom && newMaterial.purchase_uom !== newMaterial.unit_of_measure ? newMaterial.purchase_uom : null,
+        purchase_factor: newMaterial.purchase_uom && newMaterial.purchase_uom !== newMaterial.unit_of_measure
+          ? Number(newMaterial.purchase_factor) || 1 : 1,
+        ...(canApprove && editIsPurchaseLetter ? { made_in_house: newMaterial.made_in_house } : {}),
         specification: newMaterial.specification,
         ...(editIsPurchase
           ? {
@@ -517,10 +533,11 @@ const RawMaterialsManagement = () => {
                       <TableCell>{categoryName(material.category)}</TableCell>
                       <TableCell>
                         <Badge
-                          variant={partTier(material.category) === "PURCHASE" ? "outline" : "default"}
+                          variant={tierOfPart(material) === "PURCHASE" ? "outline" : "default"}
                           className="w-fit text-xs whitespace-nowrap"
                         >
-                          {tierLabelFor(material.category)}
+                          {tierLabel(tierOfPart(material))}
+                          {(material as any).made_in_house && " · in-house"}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -728,7 +745,7 @@ const RawMaterialsManagement = () => {
                   <PartDocumentList tier={viewTier} part={viewMaterial} />
                 </div>
 
-                {partTier(viewMaterial.category) !== "PURCHASE" && (
+                {viewTier !== "PURCHASE" && (
                   <div className="space-y-2">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <Label className="text-sm font-medium text-muted-foreground">Bill of Materials</Label>
@@ -812,8 +829,21 @@ const RawMaterialsManagement = () => {
               <div className="space-y-2">
                 <Label>Part Type</Label>
                 <div className="flex h-10 items-center rounded-md border bg-muted/40 px-3 text-sm">
-                  {tierLabelFor(newMaterial.category)}
+                  {tierLabel(editTier)}
                 </div>
+                {/* The exception for purchase-letter codes that are built here -
+                    the O-code battery packs. Management and Admin only. */}
+                {partTier(newMaterial.category) === "PURCHASE" && canApprove && (
+                  <label className="flex items-start gap-2 pt-1 text-sm">
+                    <Checkbox
+                      checked={newMaterial.made_in_house}
+                      onCheckedChange={(v) => setNewMaterial({ ...newMaterial, made_in_house: Boolean(v) })}
+                    />
+                    <span>
+                      Made in-house: keep this code, but treat it as a sub-assembly (BOM, CIR, PQC).
+                    </span>
+                  </label>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -836,7 +866,7 @@ const RawMaterialsManagement = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="edit-unit_of_measure">Unit of Measure</Label>
+                <Label htmlFor="edit-unit_of_measure">Stock Unit (used on BOM and issue)</Label>
                 <Select 
                   value={newMaterial.unit_of_measure} 
                   onValueChange={(value) => setNewMaterial({...newMaterial, unit_of_measure: value})}
@@ -852,6 +882,34 @@ const RawMaterialsManagement = () => {
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+
+              {/* How it is bought, when that differs from how it is used:
+                  1 ROLL = 50000 MM, 1 KG = 120 PCS. */}
+              <div className="space-y-2">
+                <Label>Bought In</Label>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Select
+                    value={newMaterial.purchase_uom || newMaterial.unit_of_measure}
+                    onValueChange={(v) => setNewMaterial({ ...newMaterial, purchase_uom: v })}
+                  >
+                    <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {UNIT_OPTIONS.map((u) => <SelectItem key={u} value={u}>{u}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  {newMaterial.purchase_uom && newMaterial.purchase_uom !== newMaterial.unit_of_measure && (
+                    <>
+                      <span className="text-sm">1 {newMaterial.purchase_uom} =</span>
+                      <Input
+                        type="number" min="0" step="any" className="w-32"
+                        value={newMaterial.purchase_factor}
+                        onChange={(e) => setNewMaterial({ ...newMaterial, purchase_factor: e.target.value })}
+                      />
+                      <span className="text-sm">{newMaterial.unit_of_measure}</span>
+                    </>
+                  )}
+                </div>
               </div>
 
               {editIsPurchase && (

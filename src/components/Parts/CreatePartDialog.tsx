@@ -25,7 +25,7 @@ import {
 } from "@/hooks/usePartCategories";
 import { useVendors } from "@/hooks/useVendors";
 
-const UNIT_OPTIONS = ["PCS", "KG", "METER", "LITER", "SET", "PACK", "ROLL", "SHEET", "BOX"];
+const UNIT_OPTIONS = ["PCS", "MM", "METER", "GRAM", "KG", "LITER", "SET", "PACK", "ROLL", "SHEET", "BOX"];
 
 /**
  * One dialog, four forms.

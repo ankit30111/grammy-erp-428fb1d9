@@ -20,7 +20,7 @@ export const PartBomView = ({ partId }: { partId: string }) => {
             {n.part_code}
           </TableCell>
           <TableCell>{n.name}</TableCell>
-          <TableCell className="text-right tabular-nums">{n.quantity}</TableCell>
+          <TableCell className="text-right tabular-nums">{n.bulk ? "Bulk" : n.quantity}</TableCell>
           <TableCell>{n.uom}</TableCell>
         </TableRow>
         {rows(n.children)}

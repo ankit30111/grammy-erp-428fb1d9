@@ -46,6 +46,11 @@ export interface PartInput {
   /** Models the part goes into, as the team writes them. */
   used_in_reference?: string;
   remarks?: string;
+  /** Exception: purchase-letter code built here (battery packs). Management only. */
+  made_in_house?: boolean;
+  /** Bought in this unit; 1 purchase_uom = purchase_factor x uom. */
+  purchase_uom?: string | null;
+  purchase_factor?: number;
 }
 
 const uploadDoc = async (folder: string, file: File, prefix?: string) => {
@@ -210,6 +215,9 @@ export const useParts = () => {
       };
       if (input.used_in_reference !== undefined) updateData.used_in_reference = input.used_in_reference.trim() || null;
       if (input.remarks !== undefined) updateData.remarks = input.remarks.trim() || null;
+      if (input.made_in_house !== undefined) updateData.made_in_house = input.made_in_house;
+      if (input.purchase_uom !== undefined) updateData.purchase_uom = input.purchase_uom || null;
+      if (input.purchase_factor !== undefined) updateData.purchase_factor = input.purchase_factor;
       if (input.source_type) updateData.source_type = input.source_type;
       if (input.is_active !== undefined) updateData.is_active = input.is_active;
       if (input.unit_price != null) updateData.last_price_update = new Date().toISOString();

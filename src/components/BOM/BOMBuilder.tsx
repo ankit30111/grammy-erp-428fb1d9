@@ -59,6 +59,8 @@ export const BOMBuilder = ({ initialParentId }: { initialParentId?: string } = {
   /** child part id -> quantity typed, as a string so a half-typed "0." survives */
   const [picked, setPicked] = useState<Record<string, string>>({});
   const [critical, setCritical] = useState<Record<string, boolean>>({});
+  /** Bulk lines (solder, flux): on the BOM, issued to the line from stock, no QPS. */
+  const [bulk, setBulk] = useState<Record<string, boolean>>({});
 
   const parentPart = parts.find((p: any) => p.id === parentId);
 
@@ -75,20 +77,25 @@ export const BOMBuilder = ({ initialParentId }: { initialParentId?: string } = {
     : undefined;
 
   const existing = useMemo(() => {
-    const map: Record<string, { quantity: string; is_critical: boolean }> = {};
+    const map: Record<string, { quantity: string; is_critical: boolean; bulk: boolean }> = {};
     // R&D reopening a part carries on from the change they already sent, not
     // from the live BOM - otherwise saving again would quietly undo it.
     if (needsApproval && pendingRequest) {
       for (const l of pendingRequest.lines) {
-        map[l.child_part_id] = { quantity: String(l.quantity), is_critical: Boolean(l.is_critical) };
+        map[l.child_part_id] = {
+          quantity: (l as any).bulk ? "" : String(l.quantity),
+          is_critical: Boolean(l.is_critical),
+          bulk: Boolean((l as any).bulk),
+        };
       }
       return map;
     }
     for (const line of lines as any[]) {
       if (line.parent_part_id === parentId) {
         map[line.child_part_id] = {
-          quantity: String(line.quantity ?? 0),
+          quantity: line.issue_mode === "BULK" ? "" : String(line.quantity ?? 0),
           is_critical: Boolean(line.is_critical),
+          bulk: line.issue_mode === "BULK",
         };
       }
     }
@@ -103,6 +110,7 @@ export const BOMBuilder = ({ initialParentId }: { initialParentId?: string } = {
   useEffect(() => {
     setPicked(Object.fromEntries(Object.entries(existing).map(([k, v]) => [k, v.quantity])));
     setCritical(Object.fromEntries(Object.entries(existing).map(([k, v]) => [k, v.is_critical])));
+    setBulk(Object.fromEntries(Object.entries(existing).map(([k, v]) => [k, v.bulk])));
     setOnlySelected(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [parentId, existingKey]);
@@ -154,14 +162,15 @@ export const BOMBuilder = ({ initialParentId }: { initialParentId?: string } = {
     return Object.keys(picked).some(
       (id) =>
         Number(picked[id]) !== Number(existing[id]?.quantity ?? NaN) ||
-        Boolean(critical[id]) !== Boolean(existing[id]?.is_critical),
+        Boolean(critical[id]) !== Boolean(existing[id]?.is_critical) ||
+        Boolean(bulk[id]) !== Boolean(existing[id]?.bulk),
     );
-  }, [picked, critical, existing]);
+  }, [picked, critical, bulk, existing]);
 
   const handleSave = async () => {
     if (!parentId) return toast.error("Choose the part this bill of materials belongs to");
 
-    const bad = Object.entries(picked).filter(([, q]) => !(Number(q) > 0));
+    const bad = Object.entries(picked).filter(([id, q]) => !bulk[id] && !(Number(q) > 0));
     if (bad.length) {
       const codes = bad
         .map(([id]) => parts.find((p: any) => p.id === id)?.part_code)
@@ -175,7 +184,8 @@ export const BOMBuilder = ({ initialParentId }: { initialParentId?: string } = {
       parent_part_id: parentId,
       lines: Object.entries(picked).map(([child_part_id, quantity]) => ({
         child_part_id,
-        quantity: Number(quantity),
+        quantity: bulk[child_part_id] ? null : Number(quantity),
+        bulk: Boolean(bulk[child_part_id]),
         uom: parts.find((p: any) => p.id === child_part_id)?.uom || "PCS",
         is_critical: Boolean(critical[child_part_id]),
       })),
@@ -317,14 +327,15 @@ export const BOMBuilder = ({ initialParentId }: { initialParentId?: string } = {
                     <TableHead className="w-32">Part Code</TableHead>
                     <TableHead>Part Name</TableHead>
                     <TableHead className="w-40">Category</TableHead>
-                    <TableHead className="w-36">QPS</TableHead>
+                    <TableHead className="w-44">QPS</TableHead>
+                    <TableHead className="w-20" title="Issued to the line from stock, not counted per set">Bulk</TableHead>
                     <TableHead className="w-20">Critical</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {candidates.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                         {onlySelected
                           ? "Nothing selected yet."
                           : "No parts match this search or filter."}
@@ -348,16 +359,29 @@ export const BOMBuilder = ({ initialParentId }: { initialParentId?: string } = {
                             {categoryName(p.category)}
                           </TableCell>
                           <TableCell>
-                            <Input
-                              type="number"
-                              min="0"
-                              step="0.0001"
-                              className="h-8"
+                            <div className="flex items-center gap-1.5">
+                              <Input
+                                type="number"
+                                min="0"
+                                step="0.0001"
+                                className="h-8"
+                                disabled={!on || Boolean(bulk[p.id])}
+                                placeholder={bulk[p.id] ? "bulk" : undefined}
+                                value={on && !bulk[p.id] ? picked[p.id] : ""}
+                                onChange={(e) =>
+                                  setPicked((prev) => ({ ...prev, [p.id]: e.target.value }))
+                                }
+                              />
+                              {/* QPS is in the part's stock unit: 198 against a part stocked in MM is 198 mm. */}
+                              <span className="w-10 shrink-0 text-xs text-muted-foreground">{p.uom || "PCS"}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Checkbox
+                              checked={Boolean(bulk[p.id])}
                               disabled={!on}
-                              value={on ? picked[p.id] : ""}
-                              onChange={(e) =>
-                                setPicked((prev) => ({ ...prev, [p.id]: e.target.value }))
-                              }
+                              onCheckedChange={(v) => setBulk((prev) => ({ ...prev, [p.id]: Boolean(v) }))}
+                              aria-label={`Issue ${p.part_code} in bulk`}
                             />
                           </TableCell>
                           <TableCell>

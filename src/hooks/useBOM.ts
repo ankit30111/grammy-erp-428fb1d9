@@ -23,6 +23,8 @@ export interface BomTreeNode {
   uom: string;
   source_type: string;
   quantity: number;
+  /** Issued to the line from stock; no quantity per set. */
+  bulk: boolean;
   level: number;
   children: BomTreeNode[];
 }
@@ -56,7 +58,7 @@ export const useBomLines = () => {
       const { data, error } = await supabase
         .from("bom")
         .select(
-          `id, parent_part_id, child_part_id, quantity, uom, version, is_active, is_critical, notes,
+          `id, parent_part_id, child_part_id, quantity, uom, version, is_active, is_critical, notes, issue_mode,
            parent:parts!bom_parent_part_id_fkey ( id, part_code, name, category, uom, source_type ),
            child:parts!bom_child_part_id_fkey ( id, part_code, name, category, uom, source_type )`,
         )
@@ -85,6 +87,7 @@ export const useBomTree = (parentPartId?: string) => {
         uom: line.uom ?? line.child?.uom ?? "PCS",
         source_type: line.child?.source_type ?? "PURCHASED",
         quantity: Number(line.quantity) || 0,
+        bulk: line.issue_mode === "BULK",
         level,
         children: build(line.child_part_id, level + 1, nextSeen),
       }))
@@ -164,7 +167,7 @@ export const useBomMutations = () => {
   const saveBom = useMutation({
     mutationFn: async (input: {
       parent_part_id: string;
-      lines: { child_part_id: string; quantity: number; uom: string; is_critical?: boolean }[];
+      lines: { child_part_id: string; quantity: number | null; uom: string; is_critical?: boolean; bulk?: boolean }[];
     }) => {
       // One database call decides: Management and Admin change the live BOM;
       // R&D's save becomes a change request that waits in Approvals.
