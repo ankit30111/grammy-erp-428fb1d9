@@ -1,5 +1,7 @@
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { format } from "date-fns";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,7 +17,13 @@ interface EditScheduleDialogProps {
 
 export const EditScheduleDialog = ({ isOpen, onClose, schedule, maxQuantity }: EditScheduleDialogProps) => {
   const [quantity, setQuantity] = useState(schedule?.quantity?.toString() || "");
+  const [date, setDate] = useState<string>(schedule?.scheduled_date || "");
   const updateSchedule = useUpdateProductionSchedule();
+
+  useEffect(() => {
+    setQuantity(schedule?.quantity?.toString() || "");
+    setDate(schedule?.scheduled_date || "");
+  }, [schedule?.id, isOpen]);
 
   const handleSave = async () => {
     const newQuantity = parseInt(quantity);
@@ -26,7 +34,7 @@ export const EditScheduleDialog = ({ isOpen, onClose, schedule, maxQuantity }: E
     try {
       await updateSchedule.mutateAsync({
         scheduleId: schedule.id,
-        updates: { quantity: newQuantity }
+        updates: { quantity: newQuantity, ...(date && date !== schedule.scheduled_date ? { scheduled_date: date } : {}) }
       });
       onClose();
     } catch (error) {
@@ -38,7 +46,7 @@ export const EditScheduleDialog = ({ isOpen, onClose, schedule, maxQuantity }: E
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Edit Production Quantity</DialogTitle>
+          <DialogTitle>Edit Schedule</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <div>
@@ -46,7 +54,10 @@ export const EditScheduleDialog = ({ isOpen, onClose, schedule, maxQuantity }: E
               Product: {(schedule?.projections?.parts ?? schedule?.parts)?.name}
             </p>
             <p className="text-sm text-muted-foreground mb-4">
-              Customer: {schedule?.projections?.customers?.name ?? "Stock build"}
+              For: {schedule?.projections?.customers?.name
+                ?? (schedule?.production_orders?.[0]?.parent?.voucher_number
+                  ? `${schedule.production_orders[0].parent.voucher_number} (${schedule.production_orders[0].parent.part_code})`
+                  : "Stock build")}
             </p>
           </div>
           
@@ -64,6 +75,11 @@ export const EditScheduleDialog = ({ isOpen, onClose, schedule, maxQuantity }: E
             <p className="text-sm text-muted-foreground mt-1">
               {Number.isFinite(maxQuantity) ? `Maximum available: ${maxQuantity} units` : "Stock build: no projection limit"}
             </p>
+          </div>
+
+          <div>
+            <Label>Production date</Label>
+            <DatePicker value={date} min={format(new Date(), "yyyy-MM-dd")} onChange={setDate} />
           </div>
 
           <div className="flex justify-end gap-2">

@@ -12,9 +12,17 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
+import { attachParentVouchers } from "@/utils/voucherLinks";
 import ProductionDetailsDialog from "@/components/Production/ProductionDetailsDialog";
 import CustomerComplaintHandling from "@/components/quality/CustomerComplaintHandling";
 
+
+const isSubAssembly = (order: any) => order?.parts?.source_type === "ASSEMBLED_STOCKED";
+
+/** Who the output is for: the customer, the finished-good voucher, or stock. */
+const forLabel = (order: any) =>
+  order.production_schedules?.projections?.customers?.name
+  ?? (order.parent?.voucher_number ? `For ${order.parent.voucher_number}` : "Stock build");
 
 const OQC = () => {
   const [selectedTab, setSelectedTab] = useState("pending");
@@ -31,7 +39,7 @@ const OQC = () => {
         .from("production_orders")
         .select(`
           *,
-          parts!inner(name, part_code),
+          parts!part_id(name, part_code, source_type),
           production_schedules!inner(
             production_lines (
               name
@@ -45,7 +53,7 @@ const OQC = () => {
         .order("updated_at", { ascending: false });
       
       if (error) throw error;
-      return data || [];
+      return attachParentVouchers(data || []);
     },
   });
 
@@ -57,7 +65,7 @@ const OQC = () => {
         .from("production_orders")
         .select(`
           *,
-          parts!inner(name, part_code),
+          parts!part_id(name, part_code, source_type),
           production_schedules!inner(
             production_lines (
               name
@@ -71,7 +79,7 @@ const OQC = () => {
         .order("updated_at", { ascending: false });
       
       if (error) throw error;
-      return data || [];
+      return attachParentVouchers(data || []);
     },
   });
 
@@ -86,6 +94,17 @@ const OQC = () => {
       status: "OQC_PASSED" | "OQC_FAILED";
       remarks?: string;
     }) => {
+      // Book the output in first, then mark the voucher. The booking is
+      // idempotent, so a retry after a failed status update cannot double it.
+      //   finished good -> finished-goods store
+      //   sub-assembly  -> Main Store, ready to be issued to the finished-good kit
+      if (status === "OQC_PASSED") {
+        const { error: fgError } = await supabase.rpc("receive_finished_goods", {
+          p_production_order_id: orderId,
+        });
+        if (fgError) throw fgError;
+      }
+
       const { error } = await supabase
         .from("production_orders")
         .update({
@@ -95,28 +114,23 @@ const OQC = () => {
         .eq("id", orderId);
 
       if (error) throw error;
-
-      // If passed, create finished goods inventory entry
-      if (status === "OQC_PASSED") {
-        // Booking finished goods in is one call rather than an insert from here.
-        // The old insert wrote quantity, quality_status and production_date - none
-        // of which are columns - and left out plant_id and production_order_id,
-        // both NOT NULL. Passing OQC therefore never produced finished goods, and
-        // the failure was swallowed because the result was never checked.
-        const { error: fgError } = await supabase.rpc("receive_finished_goods", {
-          p_production_order_id: orderId,
-        });
-        if (fgError) throw fgError;
-      }
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["pending-oqc"] });
       queryClient.invalidateQueries({ queryKey: ["completed-oqc"] });
       queryClient.invalidateQueries({ queryKey: ["finished-goods"] });
-      
+      queryClient.invalidateQueries({ queryKey: ["inventory"] });
+      queryClient.invalidateQueries({ queryKey: ["subassembly-positions"] });
+
+      const order = [...pendingOQC].find((o: any) => o.id === variables.orderId) as any;
+      const passed = variables.status === "OQC_PASSED";
       toast({
-        title: "OQC Inspection Completed",
-        description: `Production order ${variables.status === "OQC_PASSED" ? "passed" : "failed"} OQC inspection`,
+        title: passed ? "OQC passed" : "OQC failed",
+        description: !passed
+          ? `${order?.voucher_number ?? "Voucher"} failed OQC - nothing was booked into stock`
+          : isSubAssembly(order)
+            ? `${order.parts?.part_code} x ${order.produced_quantity || order.quantity} received into Main Store`
+            : `${order?.parts?.part_code ?? "Output"} booked into Finished Goods`,
       });
     },
     onError: (error) => {
@@ -177,7 +191,7 @@ const OQC = () => {
                       <TableRow>
                         <TableHead>Voucher</TableHead>
                         <TableHead>Product</TableHead>
-                        <TableHead>Customer</TableHead>
+                        <TableHead>For</TableHead>
                         <TableHead>Quantity</TableHead>
                         <TableHead>Production Line</TableHead>
                         <TableHead>Completed Date</TableHead>
@@ -188,14 +202,17 @@ const OQC = () => {
                     <TableBody>
                       {pendingOQC.map((order) => (
                         <TableRow key={order.id}>
-                          <TableCell className="font-medium">{order.voucher_number}</TableCell>
+                          <TableCell className="font-medium font-mono whitespace-nowrap">{order.voucher_number}</TableCell>
                           <TableCell>
                             <div>
                               <div className="font-medium">{order.parts?.name}</div>
-                              <div className="text-sm text-muted-foreground">{order.parts?.part_code}</div>
+                              <div className="text-sm text-muted-foreground">
+                                {order.parts?.part_code}
+                                {isSubAssembly(order) && <div><Badge variant="outline" className="mt-1 whitespace-nowrap">Sub-assembly</Badge></div>}
+                              </div>
                             </div>
                           </TableCell>
-                          <TableCell>{order.production_schedules?.projections?.customers?.name ?? "Stock build"}</TableCell>
+                          <TableCell>{forLabel(order)}</TableCell>
                           <TableCell>{order.quantity} units</TableCell>
                           <TableCell>{order.production_schedules?.production_lines?.name}</TableCell>
                           <TableCell>{format(new Date(order.updated_at), 'MMM dd, yyyy')}</TableCell>
@@ -263,7 +280,7 @@ const OQC = () => {
                       <TableRow>
                         <TableHead>Voucher Number</TableHead>
                         <TableHead>Product</TableHead>
-                        <TableHead>Customer</TableHead>
+                        <TableHead>For</TableHead>
                         <TableHead>Quantity</TableHead>
                         <TableHead>Result</TableHead>
                         <TableHead>Completed Date</TableHead>
@@ -272,14 +289,17 @@ const OQC = () => {
                     <TableBody>
                       {completedOQC.map((order: any) => (
                         <TableRow key={order.id}>
-                          <TableCell className="font-mono">{order.voucher_number}</TableCell>
+                          <TableCell className="font-mono whitespace-nowrap">{order.voucher_number}</TableCell>
                           <TableCell>
                             <div>
                               <div className="font-medium">{order.parts?.name}</div>
-                              <div className="text-sm text-muted-foreground">{order.parts?.part_code}</div>
+                              <div className="text-sm text-muted-foreground">
+                                {order.parts?.part_code}
+                                {isSubAssembly(order) && <div><Badge variant="outline" className="mt-1 whitespace-nowrap">Sub-assembly</Badge></div>}
+                              </div>
                             </div>
                           </TableCell>
-                          <TableCell>{order.production_schedules?.projections?.customers?.name ?? "Stock build"}</TableCell>
+                          <TableCell>{forLabel(order)}</TableCell>
                           <TableCell>{order.quantity}</TableCell>
                           <TableCell>
                             <Badge 

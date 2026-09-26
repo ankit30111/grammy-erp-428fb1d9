@@ -21,6 +21,7 @@ export const MOVEMENT_TYPES = {
   ADJUSTMENT: "ADJUSTMENT",
   STOCK_RECONCILIATION: "STOCK_RECONCILIATION",
   KIT_RETURN: "KIT_RETURN",
+  SUBASSEMBLY_RECEIPT: "SUBASSEMBLY_RECEIPT",
 } as const;
 
 export type MovementType = (typeof MOVEMENT_TYPES)[keyof typeof MOVEMENT_TYPES];
@@ -40,6 +41,7 @@ export const MOVEMENT_TYPE_LABELS: Record<MovementType, string> = {
   ADJUSTMENT: "Stock Adjustment",
   STOCK_RECONCILIATION: "Stock Reconciliation",
   KIT_RETURN: "Kit Return",
+  SUBASSEMBLY_RECEIPT: "Sub-assembly received (after OQC)",
 };
 
 /** The subset offered in the LogBook filter dropdown, in display order. */
@@ -49,6 +51,7 @@ export const LOGBOOK_FILTER_TYPES: MovementType[] = [
   MOVEMENT_TYPES.PRODUCTION_RETURN,
   MOVEMENT_TYPES.PRODUCTION_FEEDBACK_RETURN,
   MOVEMENT_TYPES.KIT_RETURN,
+  MOVEMENT_TYPES.SUBASSEMBLY_RECEIPT,
   MOVEMENT_TYPES.MATERIAL_REQUEST_CREATED,
   MOVEMENT_TYPES.ADJUSTMENT,
   MOVEMENT_TYPES.STOCK_RECONCILIATION,

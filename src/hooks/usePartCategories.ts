@@ -163,6 +163,6 @@ export const PART_DOCS: Record<PartDocKey, { label: string; column: string; fold
 
 export const DOCS_FOR_TIER: Record<PartTier, PartDocKey[]> = {
   PURCHASE: ["spec", "iqc"],
-  SUB_ASSEMBLED: ["cir", "pqc"],
+  SUB_ASSEMBLED: ["cir", "pqc", "oqc"],
   FINISHED: ["spec", "pqc", "oqc"],
 };

@@ -2,6 +2,13 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { usePlantId } from "@/hooks/usePlantId";
+import { attachParentVouchers } from "@/utils/voucherLinks";
+
+/** Voucher states after which a schedule belongs in Completed Production. */
+const DONE_STATES = ["COMPLETED", "OQC_PASSED", "OQC_FAILED", "CANCELLED"];
+
+const PLANNING_KEYS = ["production_schedules", "projections", "production-orders", "production-orders-list",
+  "scheduled-productions", "production-lines-overview", "production-queue", "subassembly-positions"];
 
 export const useProductionSchedules = () => {
   const plantId = usePlantId();
@@ -33,8 +40,14 @@ export const useProductionSchedules = () => {
             id,
             voucher_number,
             status,
+            quantity,
+            parent_order_id,
             kit_preparation (
               status
+            ),
+            subs:production_orders!parent_order_id (
+              id, voucher_number, status, quantity, planned_date,
+              parts!part_id ( part_code, name )
             )
           )
         `)
@@ -43,11 +56,18 @@ export const useProductionSchedules = () => {
       
       if (error) throw error;
       // Hide schedules whose production is already completed — they belong in Completed Production
-      return (data || []).filter((s: any) => {
+      const open = (data || []).filter((s: any) => {
         const orders = Array.isArray(s.production_orders) ? s.production_orders : [];
         if (orders.length === 0) return true;
-        return !orders.every((o: any) => o.status === 'COMPLETED');
+        return !orders.every((o: any) => DONE_STATES.includes(o.status));
       });
+      // A sub-assembly voucher issued for a finished-good voucher: show which one.
+      const orders = await attachParentVouchers(open.flatMap((s: any) => s.production_orders ?? []));
+      const byId = new Map(orders.map((o: any) => [o.id, o]));
+      return open.map((s: any) => ({
+        ...s,
+        production_orders: (s.production_orders ?? []).map((o: any) => byId.get(o.id) ?? o),
+      }));
     },
   });
 };
@@ -245,6 +265,7 @@ export const useDeleteProductionSchedule = () => {
       queryClient.invalidateQueries({ queryKey: ['production-orders'] });
       queryClient.invalidateQueries({ queryKey: ['production-orders-list'] });
       queryClient.invalidateQueries({ queryKey: ['projections'] });
+      queryClient.invalidateQueries({ queryKey: ['subassembly-positions'] });
       toast({
         title: "Success",
         description: "Production schedule deleted successfully",
@@ -273,11 +294,14 @@ export const useUpdateProductionSchedule = () => {
 
       if (error) throw error;
 
-      // Also update related production order if quantity changed
-      if (updates.quantity) {
+      // Keep the voucher in step with its schedule.
+      const orderUpdates: Record<string, any> = {};
+      if (updates.quantity) orderUpdates.quantity = updates.quantity;
+      if (updates.scheduled_date) orderUpdates.planned_date = updates.scheduled_date;
+      if (Object.keys(orderUpdates).length) {
         const { error: orderError } = await supabase
           .from('production_orders')
-          .update({ quantity: updates.quantity })
+          .update(orderUpdates)
           .eq('production_schedule_id', scheduleId);
 
         if (orderError) throw orderError;
@@ -288,6 +312,7 @@ export const useUpdateProductionSchedule = () => {
       queryClient.invalidateQueries({ queryKey: ['production-orders'] });
       queryClient.invalidateQueries({ queryKey: ['production-orders-list'] });
       queryClient.invalidateQueries({ queryKey: ['projections'] });
+      queryClient.invalidateQueries({ queryKey: ['subassembly-positions'] });
       toast({
         title: "Success",
         description: "Production schedule updated successfully",
@@ -303,9 +328,59 @@ export const useUpdateProductionSchedule = () => {
   });
 };
 
+export interface SubAssemblyToIssue {
+  part_id: string;
+  quantity: number;
+  date: string;
+  line_id?: string | null;
+}
+
 /**
- * A sub-assembly built for stock: a schedule and its voucher with no customer
- * projection behind them. The database refuses this for a finished good.
+ * Schedule a finished good from its projection, together with the new
+ * sub-assembly vouchers the planner chose to issue for it. One database call:
+ * either all of the vouchers are created or none are.
+ */
+export const useScheduleFinishedGood = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const plantId = usePlantId();
+
+  return useMutation({
+    mutationFn: async (input: {
+      projection_id: string; quantity: number; scheduled_date: string;
+      production_line_id?: string | null; subassemblies: SubAssemblyToIssue[];
+    }) => {
+      if (!plantId) throw new Error("No active plant selected");
+      const { data, error } = await (supabase as any).rpc("schedule_finished_good", {
+        p_plant_id: plantId,
+        p_projection_id: input.projection_id,
+        p_quantity: input.quantity,
+        p_date: input.scheduled_date,
+        p_line_id: input.production_line_id || null,
+        p_subassemblies: input.subassemblies.map((s) => ({ ...s, line_id: s.line_id || null })),
+      });
+      if (error) throw error;
+      return data as { voucher_number: string; subassemblies: { voucher_number: string }[] };
+    },
+    onSuccess: (data) => {
+      for (const k of PLANNING_KEYS) queryClient.invalidateQueries({ queryKey: [k] });
+      const subs = data.subassemblies?.map((s) => s.voucher_number) ?? [];
+      toast({
+        title: "Production scheduled",
+        description: subs.length
+          ? `Voucher ${data.voucher_number}, with sub-assembly vouchers ${subs.join(", ")}`
+          : `Voucher ${data.voucher_number}`,
+      });
+    },
+    onError: (error: any) => {
+      toast({ title: "Could not schedule", description: error?.message ?? "Unknown error", variant: "destructive" });
+    },
+  });
+};
+
+/**
+ * A sub-assembly voucher: for stock, or for a finished-good voucher already
+ * scheduled (parent_order_id). The database refuses one without a BOM.
  */
 export const useCreateStockBuild = () => {
   const queryClient = useQueryClient();
@@ -313,48 +388,25 @@ export const useCreateStockBuild = () => {
   const plantId = usePlantId();
 
   return useMutation({
-    mutationFn: async (input: { part_id: string; quantity: number; scheduled_date: string; production_line_id?: string | null; notes?: string }) => {
+    mutationFn: async (input: {
+      part_id: string; quantity: number; scheduled_date: string;
+      production_line_id?: string | null; parent_order_id?: string | null; notes?: string;
+    }) => {
       if (!plantId) throw new Error("No active plant selected");
-      const { data: schedule, error: scheduleError } = await supabase
-        .from("production_schedules")
-        .insert({
-          projection_id: null,
-          part_id: input.part_id,
-          scheduled_date: input.scheduled_date,
-          quantity: input.quantity,
-          production_line_id: input.production_line_id || null,
-          notes: input.notes || "Stock build",
-          status: "PLANNED",
-          plant_id: plantId,
-        } as any)
-        .select()
-        .single();
-      if (scheduleError) throw scheduleError;
-
-      const { data: order, error: orderError } = await supabase
-        .from("production_orders")
-        .insert({
-          production_schedule_id: schedule.id,
-          part_id: input.part_id,
-          quantity: input.quantity,
-          planned_date: input.scheduled_date,
-          voucher_number: "",
-          status: "PLANNED",
-          plant_id: plantId,
-        })
-        .select("voucher_number")
-        .single();
-      if (orderError) {
-        await supabase.from("production_schedules").delete().eq("id", schedule.id);
-        throw orderError;
-      }
-      return order.voucher_number as string;
+      const { data, error } = await (supabase as any).rpc("schedule_subassembly", {
+        p_plant_id: plantId,
+        p_part_id: input.part_id,
+        p_quantity: input.quantity,
+        p_date: input.scheduled_date,
+        p_line_id: input.production_line_id || null,
+        p_parent_order_id: input.parent_order_id || null,
+        p_notes: input.notes || null,
+      });
+      if (error) throw error;
+      return (data as any).voucher_number as string;
     },
     onSuccess: (voucher) => {
-      for (const k of ["production_schedules", "production-orders", "production-orders-list", "scheduled-productions",
-                       "production-lines-overview", "production-queue"]) {
-        queryClient.invalidateQueries({ queryKey: [k] });
-      }
+      for (const k of PLANNING_KEYS) queryClient.invalidateQueries({ queryKey: [k] });
       toast({ title: "Sub-assembly scheduled", description: `Voucher ${voucher}` });
     },
     onError: (error: any) => {

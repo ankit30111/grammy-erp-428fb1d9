@@ -37,6 +37,8 @@ export interface VoucherMaterialRow {
   held: number;
   free: number;
   balance: number;
+  /** Sub-assemblies only: open sub-assembly vouchers that will bring it into store */
+  beingBuilt: { voucher: string; quantity: number; status: string }[];
 }
 
 export function useVoucherMaterials(
@@ -89,6 +91,23 @@ export function useVoucherMaterials(
         .in("part_id", partIds);
       if (holdError) throw holdError;
 
+      // A sub-assembly on this BOM comes from its own voucher: show what is on the way.
+      const subIds = bom.filter((b: any) => b.parts?.source_type === "ASSEMBLED_STOCKED").map((b: any) => b.child_part_id);
+      const building = new Map<string, VoucherMaterialRow["beingBuilt"]>();
+      if (subIds.length) {
+        const { data: open, error: openError } = await supabase
+          .from("production_orders")
+          .select("part_id, voucher_number, quantity, status")
+          .eq("plant_id", plantId!)
+          .in("part_id", subIds)
+          .not("status", "in", "(OQC_PASSED,OQC_FAILED,CANCELLED)")
+          .order("planned_date");
+        if (openError) throw openError;
+        (open ?? []).forEach((o: any) =>
+          building.set(o.part_id, [...(building.get(o.part_id) ?? []),
+            { voucher: o.voucher_number, quantity: Number(o.quantity), status: o.status }]));
+      }
+
       const otherHolds = productionOrderId
         ? (holds ?? []).filter((h: any) => h.production_order_id !== productionOrderId)
         : (holds ?? []);
@@ -121,6 +140,7 @@ export function useVoucherMaterials(
             held,
             free,
             balance: free - required,
+            beingBuilt: building.get(b.child_part_id) ?? [],
           };
         })
         .sort((a, b) => a.partCode.localeCompare(b.partCode));
@@ -223,8 +243,14 @@ export function VoucherMaterials({
                   {r.partName}
                   {r.sourceType !== "PURCHASED" && (
                     <Badge variant="outline" className="ml-2 text-xs">
-                      {r.sourceType === "ASSEMBLED_INLINE" ? "in-line" : "assembled"}
+                      {r.sourceType === "ASSEMBLED_INLINE" ? "in-line" : "Sub-assembly"}
                     </Badge>
+                  )}
+                  {r.beingBuilt.length > 0 && (
+                    <div className="text-xs text-muted-foreground mt-0.5">
+                      Being built: {r.beingBuilt.map((v) => `${v.voucher} × ${fmt(v.quantity)}`).join(", ")}
+                      {" "}· enters the store after OQC
+                    </div>
                   )}
                 </TableCell>
                 <TableCell className="text-right font-mono text-muted-foreground">

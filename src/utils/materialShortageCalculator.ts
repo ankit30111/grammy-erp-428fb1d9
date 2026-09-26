@@ -10,6 +10,14 @@ import { supabase } from "@/integrations/supabase/client";
  *   - ASSEMBLED_STOCKED child   -> consume its own stock first, explode the remainder
  *   - FINISHED_GOOD child       -> explode through it
  * Only PURCHASED parts ever reach the shortage output, so Purchase only sees buyable parts.
+ *
+ * Nothing is counted twice:
+ *   - a projection only adds demand for what is NOT on a voucher yet; vouchered
+ *     sets are already represented by their holds (or, after the kit, by stock
+ *     that has left the store);
+ *   - an open sub-assembly voucher is incoming stock of that sub-assembly, so a
+ *     finished good that needs it does not also ask for its cells again - those
+ *     are held (or were issued) by the sub-assembly voucher itself.
  */
 
 export interface DemandSource {
@@ -119,7 +127,7 @@ export const calculateShortages = async (plantId?: string | null): Promise<Short
     supabase.from("bom").select("parent_part_id, child_part_id, quantity").eq("is_active", true),
     supabase
       .from("projections")
-      .select(`id, part_id, quantity, produced_quantity, month, customers!customer_id ( name ), parts!part_id ( part_code, name )`),
+      .select(`id, part_id, quantity, vouchered_quantity, produced_quantity, month, customers!customer_id ( name ), parts!part_id ( part_code, name )`),
   ]);
 
   if (partsRes.error) throw partsRes.error;
@@ -137,6 +145,15 @@ export const calculateShortages = async (plantId?: string | null): Promise<Short
   if (plantId) holdQuery = holdQuery.eq("plant_id", plantId);
   const holdRes = await holdQuery;
   if (holdRes.error) throw holdRes.error;
+
+  // Open vouchers: a sub-assembly voucher not through OQC is stock on its way in.
+  let openQuery = supabase
+    .from("production_orders")
+    .select("part_id, quantity, status, plant_id")
+    .not("status", "in", "(OQC_PASSED,OQC_FAILED,CANCELLED)");
+  if (plantId) openQuery = openQuery.eq("plant_id", plantId);
+  const openRes = await openQuery;
+  if (openRes.error) throw openRes.error;
 
   const partsById = new Map<string, PartRow>((partsRes.data || []).map((p: any) => [p.id, p]));
   const bomByParent = new Map<string, BomRow[]>();
@@ -163,26 +180,55 @@ export const calculateShortages = async (plantId?: string | null): Promise<Short
   const sources = new Map<string, DemandSource[]>();
   const neededOn = new Map<string, string | null>();
 
+  const addSources = (before: Map<string, number>, source: Omit<DemandSource, "quantity">) => {
+    for (const [partId, total] of requirements) {
+      const delta = total - (before.get(partId) || 0);
+      if (delta <= 0) continue;
+      const list = sources.get(partId) || [];
+      list.push({ ...source, quantity: delta });
+      sources.set(partId, list);
+      neededOn.set(partId, earlier(neededOn.get(partId) ?? null, source.needed_on));
+    }
+  };
+
+  // Sub-assemblies: what is free = in store + being built - held by vouchers.
+  // Held beyond that must still be built, so its parts are real demand.
+  const incoming = new Map<string, number>();
+  for (const o of openRes.data || []) {
+    if (partsById.get(o.part_id)?.source_type !== "ASSEMBLED_STOCKED") continue;
+    incoming.set(o.part_id, (incoming.get(o.part_id) || 0) + Number(o.quantity || 0));
+  }
+  for (const part of partsById.values()) {
+    if (part.source_type !== "ASSEMBLED_STOCKED") continue;
+    const free = (available.get(part.id) || 0) + (incoming.get(part.id) || 0) - (holds.get(part.id) || 0);
+    stockLeft.set(part.id, Math.max(0, free));
+    if (free < 0) {
+      const before = new Map(requirements);
+      explodeDemand(part.id, -free, bomByParent, partsById, stockLeft, requirements);
+      addSources(before, { label: `${part.part_code} ${part.name}`.trim(), customer: "Held by open vouchers", needed_on: null });
+    }
+  }
+
   for (const projection of projRes.data || []) {
-    const outstanding = Number(projection.quantity || 0) - Number(projection.produced_quantity || 0);
+    // Only what is not on a voucher yet: vouchered sets already hold their parts.
+    const covered = Math.max(Number((projection as any).vouchered_quantity || 0), Number(projection.produced_quantity || 0));
+    const outstanding = Number(projection.quantity || 0) - covered;
     if (outstanding <= 0) continue;
 
     const before = new Map(requirements);
     explodeDemand(projection.part_id, outstanding, bomByParent, partsById, stockLeft, requirements);
 
-    for (const [partId, total] of requirements) {
-      const delta = total - (before.get(partId) || 0);
-      if (delta <= 0) continue;
-      const list = sources.get(partId) || [];
-      list.push({
-        label: `${(projection as any).parts?.part_code || ""} ${(projection as any).parts?.name || ""}`.trim(),
-        customer: (projection as any).customers?.name ?? null,
-        quantity: delta,
-        needed_on: projection.month,
-      });
-      sources.set(partId, list);
-      neededOn.set(partId, earlier(neededOn.get(partId) ?? null, projection.month));
-    }
+    addSources(before, {
+      label: `${(projection as any).parts?.part_code || ""} ${(projection as any).parts?.name || ""}`.trim(),
+      customer: (projection as any).customers?.name ?? null,
+      needed_on: projection.month,
+    });
+  }
+
+  // A part held by open vouchers is a line even when no projection adds to it.
+  for (const partId of holds.keys()) {
+    if (requirements.has(partId) || partsById.get(partId)?.source_type !== "PURCHASED") continue;
+    requirements.set(partId, 0);
   }
 
   const lines: ShortageLine[] = [];

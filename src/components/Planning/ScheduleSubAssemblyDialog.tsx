@@ -1,45 +1,76 @@
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { format } from "date-fns";
-import { Check, ChevronsUpDown } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
-import { useParts } from "@/hooks/useParts";
+import { supabase } from "@/integrations/supabase/client";
+import { usePlantId } from "@/hooks/usePlantId";
 import { useCreateStockBuild } from "@/hooks/useProductionSchedules";
 import { useProductionLinesList } from "@/hooks/useProductionLinesList";
+import { CLOSED_VOUCHER_STATES, type SubAssemblyPosition } from "@/hooks/useSubAssemblyPositions";
+
+const STOCK = "__stock__";
+const n = (v: number) => v.toLocaleString("en-IN", { maximumFractionDigits: 3 });
 
 /**
- * Schedule a sub-assembly without a customer projection - built for stock.
- * Finished goods are not offered: they are scheduled from a projection.
+ * Issue a voucher for one sub-assembly: for stock, or for a finished-good
+ * voucher that uses it. Opened from a row of the Sub-assemblies tab.
  */
-export const ScheduleSubAssemblyDialog = ({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) => {
-  const { parts } = useParts();
+export const ScheduleSubAssemblyDialog = ({
+  part, open, onOpenChange,
+}: { part: SubAssemblyPosition | null; open: boolean; onOpenChange: (o: boolean) => void }) => {
+  const plantId = usePlantId();
   const { rows: lines } = useProductionLinesList();
   const create = useCreateStockBuild();
-  const [partId, setPartId] = useState("");
-  const [pickerOpen, setPickerOpen] = useState(false);
   const [quantity, setQuantity] = useState("");
-  const [date, setDate] = useState(format(new Date(), "yyyy-MM-dd"));
+  const [date, setDate] = useState("");
   const [lineId, setLineId] = useState("");
+  const [forOrder, setForOrder] = useState(STOCK);
 
-  const subAssemblies = useMemo(
-    () => (parts as any[])
-      .filter((p) => p.source_type === "ASSEMBLED_STOCKED" && p.is_active !== false && p.approval_status !== "PENDING"
-                     && p.approval_status !== "REJECTED")
-      .sort((a, b) => a.part_code.localeCompare(b.part_code)),
-    [parts],
-  );
-  const part = subAssemblies.find((p) => p.id === partId);
+  useEffect(() => {
+    if (!open || !part) return;
+    setQuantity(part.toMake > 0 ? String(part.toMake) : "");
+    setDate(format(new Date(), "yyyy-MM-dd"));
+    setLineId("");
+    setForOrder(STOCK);
+  }, [open, part?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Open finished-good vouchers that use this sub-assembly.
+  const usedInIds = part?.usedIn.map((u) => u.id) ?? [];
+  const { data: parents = [] } = useQuery({
+    queryKey: ["fg-vouchers-using", part?.id, plantId],
+    enabled: open && !!plantId && usedInIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("production_orders")
+        .select("id, voucher_number, quantity, planned_date, parts!part_id ( part_code )")
+        .eq("plant_id", plantId)
+        .in("part_id", usedInIds)
+        .not("status", "in", `(${CLOSED_VOUCHER_STATES.join(",")})`)
+        .order("planned_date");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  // Sub-assembly lines first; any line can still be chosen.
+  const sortedLines = [...lines].sort((a, b) =>
+    Number(b.line_type?.toUpperCase() === "SUB_ASSEMBLY") - Number(a.line_type?.toUpperCase() === "SUB_ASSEMBLY"));
+
+  const ok = !!part?.hasBom && Number(quantity) > 0 && !!date;
   const submit = async () => {
-    if (!partId || !(Number(quantity) > 0) || !date) return;
-    await create.mutateAsync({ part_id: partId, quantity: Number(quantity), scheduled_date: date, production_line_id: lineId || null });
-    setPartId(""); setQuantity(""); setLineId("");
+    if (!ok || !part) return;
+    await create.mutateAsync({
+      part_id: part.id,
+      quantity: Number(quantity),
+      scheduled_date: date,
+      production_line_id: lineId || null,
+      parent_order_id: forOrder === STOCK ? null : forOrder,
+    });
     onOpenChange(false);
   };
 
@@ -49,59 +80,58 @@ export const ScheduleSubAssemblyDialog = ({ open, onOpenChange }: { open: boolea
         <DialogHeader>
           <DialogTitle>Schedule Sub-assembly</DialogTitle>
         </DialogHeader>
-        <div className="space-y-4 py-2">
-          <div className="space-y-1.5">
-            <Label>Sub-assembly *</Label>
-            <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
-              <PopoverTrigger asChild>
-                <Button variant="outline" className="w-full justify-between normal-case tracking-normal font-normal">
-                  {part ? `${part.part_code} — ${part.name}` : "Choose a sub-assembly"}
-                  <ChevronsUpDown className="opacity-50" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
-                <Command>
-                  <CommandInput placeholder="Search code or name..." />
-                  <CommandList>
-                    <CommandEmpty>No sub-assembly found.</CommandEmpty>
-                    <CommandGroup>
-                      {subAssemblies.map((p) => (
-                        <CommandItem key={p.id} value={`${p.part_code} ${p.name}`}
-                                     onSelect={() => { setPartId(p.id); setPickerOpen(false); }}>
-                          <Check className={cn("mr-2 h-4 w-4", p.id === partId ? "opacity-100" : "opacity-0")} />
-                          <span className="font-mono mr-2">{p.part_code}</span>{p.name}
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  </CommandList>
-                </Command>
-              </PopoverContent>
-            </Popover>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label>Quantity *</Label>
-              <Input type="number" min="1" value={quantity} onChange={(e) => setQuantity(e.target.value)} />
+        {part && (
+          <div className="space-y-4 py-1">
+            <div className="rounded-md border bg-muted/40 px-3 py-2 text-sm">
+              <div className="font-medium"><span className="font-mono">{part.part_code}</span> · {part.name}</div>
+              <div className="text-muted-foreground">
+                In store {n(part.inStore)} · being built {n(part.beingBuilt)} · held {n(part.held)} · to make {n(part.toMake)}
+              </div>
             </div>
-            <div className="space-y-1.5">
-              <Label>Production date *</Label>
-              <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="sa-qty">Quantity *</Label>
+                <Input id="sa-qty" type="number" min={1} value={quantity} onChange={(e) => setQuantity(e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Production date *</Label>
+                <DatePicker value={date} min={format(new Date(), "yyyy-MM-dd")} onChange={setDate} />
+              </div>
             </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label>Production line</Label>
+                <Select value={lineId} onValueChange={setLineId}>
+                  <SelectTrigger><SelectValue placeholder="Assign later" /></SelectTrigger>
+                  <SelectContent>
+                    {sortedLines.map((l) => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Built for</Label>
+                <Select value={forOrder} onValueChange={setForOrder}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={STOCK}>Stock</SelectItem>
+                    {parents.map((o: any) => (
+                      <SelectItem key={o.id} value={o.id}>
+                        {o.voucher_number} · {o.parts?.part_code} × {n(Number(o.quantity))}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            {!part.hasBom && (
+              <p className="text-sm text-destructive">{part.part_code} has no BOM yet. Add its bill of materials before scheduling it.</p>
+            )}
           </div>
-          <div className="space-y-1.5">
-            <Label>Production line</Label>
-            <Select value={lineId} onValueChange={setLineId}>
-              <SelectTrigger><SelectValue placeholder="Assign later" /></SelectTrigger>
-              <SelectContent>
-                {lines.map((l: any) => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
+        )}
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={submit} disabled={!partId || !(Number(quantity) > 0) || !date || create.isPending}>
-            {create.isPending ? "Scheduling…" : "Schedule and create voucher"}
+          <Button onClick={submit} disabled={!ok || create.isPending}>
+            {create.isPending ? "Scheduling…" : "Schedule and issue voucher"}
           </Button>
         </DialogFooter>
       </DialogContent>
