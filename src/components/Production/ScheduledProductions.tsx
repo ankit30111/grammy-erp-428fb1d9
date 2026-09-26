@@ -160,7 +160,7 @@ const ScheduledProductions = () => {
                       {production.parts?.part_code || 'N/A'}
                     </TableCell>
                     <TableCell>
-                      {production.production_schedules?.projections?.customers?.name || 'N/A'}
+                      {production.production_schedules?.projections?.customers?.name || 'Stock build'}
                     </TableCell>
                     <TableCell>
                       {production.planned_date ? format(new Date(production.planned_date), "MMM dd, yyyy") : 'N/A'}

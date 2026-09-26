@@ -155,7 +155,7 @@ const SerialNumberAssignment = ({ voucher }: SerialNumberAssignmentProps) => {
           </div>
           <div>
             <Label className="text-muted-foreground">Customer</Label>
-            <p className="font-medium">{voucher.production_schedules?.projections?.customers?.name}</p>
+            <p className="font-medium">{voucher.production_schedules?.projections?.customers?.name ?? "Stock build"}</p>
           </div>
           <div>
             <Label className="text-muted-foreground">Quantity</Label>

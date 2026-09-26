@@ -537,7 +537,6 @@ const RawMaterialsManagement = () => {
                           className="w-fit text-xs whitespace-nowrap"
                         >
                           {tierLabel(tierOfPart(material))}
-                          {(material as any).made_in_house && " · in-house"}
                         </Badge>
                       </TableCell>
                       <TableCell>

@@ -17,8 +17,8 @@ const OQCRejections = () => {
             production_lines (
               name
             ),
-            projections!inner(
-              customers!inner(name)
+            projections(
+              customers(name)
             )
           )
         `)

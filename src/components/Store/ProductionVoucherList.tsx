@@ -168,7 +168,7 @@ const ProductionVoucherList = memo(({ onSelectVoucher }: ProductionVoucherListPr
                         <div>
                           <span className="text-muted-foreground">Customer</span>
                           <div className="font-medium">
-                            {o.production_schedules?.projections?.customers?.name ?? "—"}
+                            {o.production_schedules?.projections?.customers?.name ?? "Stock build"}
                           </div>
                         </div>
                         <div>

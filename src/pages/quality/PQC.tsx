@@ -40,8 +40,8 @@ const PQC = () => {
           ),
           production_schedules!inner(
             *,
-            projections!inner(
-              customers!inner(name)
+            projections(
+              customers(name)
             )
           )
         `)
@@ -63,8 +63,8 @@ const PQC = () => {
           parts!inner(name),
           production_schedules!inner(
             *,
-            projections!inner(
-              customers!inner(name)
+            projections(
+              customers(name)
             )
           )
         `)
@@ -119,7 +119,7 @@ const PQC = () => {
                         <TableRow key={prod.id}>
                           <TableCell className="font-medium">{prod.voucher_number}</TableCell>
                           <TableCell>{prod.parts?.name}</TableCell>
-                          <TableCell>{prod.production_schedules?.projections?.customers?.name}</TableCell>
+                          <TableCell>{prod.production_schedules?.projections?.customers?.name ?? "Stock build"}</TableCell>
                           <TableCell>{prod.quantity}</TableCell>
                           <TableCell>
                             <Badge variant="outline">
@@ -177,7 +177,7 @@ const PQC = () => {
                         <TableRow key={prod.id}>
                           <TableCell className="font-medium">{prod.voucher_number}</TableCell>
                           <TableCell>{prod.parts?.name}</TableCell>
-                          <TableCell>{prod.production_schedules?.projections?.customers?.name}</TableCell>
+                          <TableCell>{prod.production_schedules?.projections?.customers?.name ?? "Stock build"}</TableCell>
                           <TableCell>{prod.quantity.toLocaleString()}</TableCell>
                           <TableCell>{new Date(prod.updated_at).toLocaleDateString()}</TableCell>
                           <TableCell>

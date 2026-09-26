@@ -23,6 +23,7 @@ import { VoucherMaterials } from "@/components/Production/VoucherMaterials";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, getDay } from "date-fns";
 import { EditScheduleDialog } from "@/components/Planning/EditScheduleDialog";
 import { DeleteScheduleDialog } from "@/components/Planning/DeleteScheduleDialog";
+import { ScheduleSubAssemblyDialog } from "@/components/Planning/ScheduleSubAssemblyDialog";
 
 const planningTabs = [
   { id: "planning", label: "Production Planning" },
@@ -31,6 +32,8 @@ const planningTabs = [
 
 const PlanningEnhanced: React.FC = () => {
   const [activeTab, setActiveTab] = useState("planning");
+  // Sub-assemblies built for stock, without a customer projection.
+  const [stockBuildOpen, setStockBuildOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date>();
 
   const [selectedProjection, setSelectedProjection] = useState<string>("");
@@ -115,6 +118,8 @@ const PlanningEnhanced: React.FC = () => {
   };
 
   const getMaxQuantityForEdit = (schedule: any) => {
+    // A stock build has no projection to stay within.
+    if (!schedule.projection_id) return Infinity;
     const projection = projections?.find(p => p.id === schedule.projection_id);
     if (!projection) return 0;
     
@@ -175,7 +180,7 @@ const PlanningEnhanced: React.FC = () => {
                   }}
                 >
                   <div className="font-medium truncate">
-                    {schedule.projections?.parts?.name}
+                    {(schedule.projections?.parts ?? schedule.parts)?.name}
                   </div>
                   <div className="text-muted-foreground">
                     {schedule.quantity} units
@@ -202,14 +207,14 @@ const PlanningEnhanced: React.FC = () => {
     const selectedSchedule = schedules?.find(s => s.id === selectedScheduleId);
     if (!selectedSchedule) return null;
 
-    const productId = selectedSchedule.projections?.parts?.id;
+    const productId = (selectedSchedule.projections?.parts ?? selectedSchedule.parts)?.id;
     const voucher = selectedSchedule.production_orders?.[0];
 
     return (
       <div className="space-y-4">
         <div className="pb-4 border-b">
           <h3 className="text-xl font-bold">
-            {selectedSchedule.projections?.parts?.name}
+            {(selectedSchedule.projections?.parts ?? selectedSchedule.parts)?.name}
           </h3>
           <p className="text-muted-foreground">
             Voucher: {voucher?.voucher_number || "Generating…"} · Scheduled quantity:{" "}
@@ -229,7 +234,15 @@ const PlanningEnhanced: React.FC = () => {
 
   return (
     <DashboardLayout>
-      <PageHeader title="Planning" />
+      <PageHeader
+        title="Planning"
+        actions={
+          <Button onClick={() => setStockBuildOpen(true)}>
+            <Package /> Schedule Sub-assembly
+          </Button>
+        }
+      />
+      <ScheduleSubAssemblyDialog open={stockBuildOpen} onOpenChange={setStockBuildOpen} />
       <TabBar tabs={planningTabs} value={activeTab} onChange={setActiveTab} />
       <div className="space-y-6 pt-4">
           {activeTab === "planning" && (
@@ -394,10 +407,10 @@ const PlanningEnhanced: React.FC = () => {
                               {voucherNumber}
                             </TableCell>
                             <TableCell className="font-medium">
-                              {schedule.projections?.parts?.name}
+                              {(schedule.projections?.parts ?? schedule.parts)?.name}
                             </TableCell>
                             <TableCell>
-                              {schedule.projections?.customers?.name}
+                              {schedule.projections?.customers?.name ?? "Stock build"}
                             </TableCell>
                             <TableCell>{schedule.quantity}</TableCell>
                             <TableCell>{format(new Date(schedule.scheduled_date), 'PPP')}</TableCell>

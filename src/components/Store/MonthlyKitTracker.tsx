@@ -19,9 +19,10 @@ const MonthlyKitTracker = () => {
         .from("production_orders")
         .select(`
           *,
+          parts!part_id ( name ),
           production_schedules!inner(
-            projections!inner(
-              parts!inner(name)
+            projections(
+              parts(name)
             )
           ),
           kit_preparation(
@@ -109,7 +110,7 @@ const MonthlyKitTracker = () => {
             {filteredData.map((voucher) => (
               <TableRow key={voucher.id}>
                 <TableCell className="font-mono">{voucher.voucher_number}</TableCell>
-                <TableCell>{voucher.production_schedules.projections.parts.name}</TableCell>
+                <TableCell>{voucher.parts?.name}</TableCell>
                 <TableCell>{voucher.quantity}</TableCell>
                 <TableCell>{format(new Date(voucher.planned_date), 'MMM dd, yyyy')}</TableCell>
                 <TableCell>

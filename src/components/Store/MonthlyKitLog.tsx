@@ -25,9 +25,10 @@ const MonthlyKitLog = () => {
             voucher_number,
             quantity,
             planned_date,
+            parts!part_id ( name ),
             production_schedules!inner(
-              projections!inner(
-                parts!inner(name)
+              projections(
+                parts(name)
               )
             )
           )
@@ -138,7 +139,7 @@ const MonthlyKitLog = () => {
             {finalFilteredKits.map((kit) => (
               <TableRow key={kit.id}>
                 <TableCell className="font-mono">{kit.production_orders.voucher_number}</TableCell>
-                <TableCell>{kit.production_orders.production_schedules.projections.parts.name}</TableCell>
+                <TableCell>{kit.production_orders?.parts?.name}</TableCell>
                 <TableCell>{kit.production_orders.quantity}</TableCell>
                 <TableCell>{format(new Date(kit.production_orders.planned_date), 'MMM dd, yyyy')}</TableCell>
                 <TableCell>

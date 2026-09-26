@@ -184,7 +184,7 @@ const BOMKitStatusView = ({
           <div className="grid grid-cols-2 gap-4 p-4 bg-muted rounded-lg">
             <div>
               <p className="text-sm font-medium">Product:</p>
-              <p className="text-lg">{productionOrder.production_schedules?.projections?.parts?.name}</p>
+              <p className="text-lg">{(productionOrder.production_schedules?.projections?.parts ?? productionOrder.parts)?.name}</p>
             </div>
             <div>
               <p className="text-sm font-medium">Production Quantity:</p>

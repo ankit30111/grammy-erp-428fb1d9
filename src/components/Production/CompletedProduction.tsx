@@ -21,11 +21,12 @@ const CompletedProduction = () => {
         .from("production_orders")
         .select(`
           *,
+          parts!part_id ( name, part_code ),
           production_schedules!inner(
             *,
-            projections!inner(
-              customers!inner(name),
-              parts!inner(name, part_code)
+            projections(
+              customers(name),
+              parts(name, part_code)
             )
           )
         `)
@@ -44,8 +45,8 @@ const CompletedProduction = () => {
     const searchLower = searchTerm.toLowerCase();
     return (
       order.voucher_number.toLowerCase().includes(searchLower) ||
-      order.production_schedules?.projections?.parts?.name.toLowerCase().includes(searchLower) ||
-      order.production_schedules?.projections?.customers?.name.toLowerCase().includes(searchLower)
+      order.parts?.name?.toLowerCase().includes(searchLower) ||
+      order.production_schedules?.projections?.customers?.name?.toLowerCase().includes(searchLower)
     );
   });
 
@@ -117,15 +118,15 @@ const CompletedProduction = () => {
                   <TableCell>
                     <div>
                       <div className="font-medium">
-                        {order.production_schedules?.projections?.parts?.name}
+                        {order.parts?.name}
                       </div>
                       <div className="text-sm text-muted-foreground">
-                        {order.production_schedules?.projections?.parts?.part_code}
+                        {order.parts?.part_code}
                       </div>
                     </div>
                   </TableCell>
                   <TableCell>
-                    {order.production_schedules?.projections?.customers?.name}
+                    {order.production_schedules?.projections?.customers?.name ?? "Stock build"}
                   </TableCell>
                   <TableCell className="font-medium">
                     {order.quantity.toLocaleString()}

@@ -13,6 +13,7 @@ export const useProductionSchedules = () => {
         .from('production_schedules')
         .select(`
           *,
+          parts ( id, name, part_code ),
           production_lines (
             name
           ),
@@ -298,6 +299,66 @@ export const useUpdateProductionSchedule = () => {
         description: error?.message || "Failed to update production schedule",
         variant: "destructive",
       });
+    },
+  });
+};
+
+/**
+ * A sub-assembly built for stock: a schedule and its voucher with no customer
+ * projection behind them. The database refuses this for a finished good.
+ */
+export const useCreateStockBuild = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const plantId = usePlantId();
+
+  return useMutation({
+    mutationFn: async (input: { part_id: string; quantity: number; scheduled_date: string; production_line_id?: string | null; notes?: string }) => {
+      if (!plantId) throw new Error("No active plant selected");
+      const { data: schedule, error: scheduleError } = await supabase
+        .from("production_schedules")
+        .insert({
+          projection_id: null,
+          part_id: input.part_id,
+          scheduled_date: input.scheduled_date,
+          quantity: input.quantity,
+          production_line_id: input.production_line_id || null,
+          notes: input.notes || "Stock build",
+          status: "PLANNED",
+          plant_id: plantId,
+        } as any)
+        .select()
+        .single();
+      if (scheduleError) throw scheduleError;
+
+      const { data: order, error: orderError } = await supabase
+        .from("production_orders")
+        .insert({
+          production_schedule_id: schedule.id,
+          part_id: input.part_id,
+          quantity: input.quantity,
+          planned_date: input.scheduled_date,
+          voucher_number: "",
+          status: "PLANNED",
+          plant_id: plantId,
+        })
+        .select("voucher_number")
+        .single();
+      if (orderError) {
+        await supabase.from("production_schedules").delete().eq("id", schedule.id);
+        throw orderError;
+      }
+      return order.voucher_number as string;
+    },
+    onSuccess: (voucher) => {
+      for (const k of ["production_schedules", "production-orders", "production-orders-list", "scheduled-productions",
+                       "production-lines-overview", "production-queue"]) {
+        queryClient.invalidateQueries({ queryKey: [k] });
+      }
+      toast({ title: "Sub-assembly scheduled", description: `Voucher ${voucher}` });
+    },
+    onError: (error: any) => {
+      toast({ title: "Could not schedule", description: error?.message ?? "Unknown error", variant: "destructive" });
     },
   });
 };

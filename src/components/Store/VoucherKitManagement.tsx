@@ -78,7 +78,7 @@ const VoucherKitManagement = ({
                 <TableRow key={order.id}>
                   <TableCell className="font-mono">{order.voucher_number}</TableCell>
                   <TableCell className="font-medium">
-                    {order.production_schedules?.projections?.parts?.name}
+                    {(order.production_schedules?.projections?.parts ?? order.parts)?.name}
                   </TableCell>
                   <TableCell>{format(new Date(order.planned_date), 'MMM dd, yyyy')}</TableCell>
                   <TableCell>{order.quantity}</TableCell>

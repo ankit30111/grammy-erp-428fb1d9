@@ -43,10 +43,10 @@ export const EditScheduleDialog = ({ isOpen, onClose, schedule, maxQuantity }: E
         <div className="space-y-4">
           <div>
             <p className="text-sm text-muted-foreground mb-2">
-              Product: {schedule?.projections?.parts?.name}
+              Product: {(schedule?.projections?.parts ?? schedule?.parts)?.name}
             </p>
             <p className="text-sm text-muted-foreground mb-4">
-              Customer: {schedule?.projections?.customers?.name}
+              Customer: {schedule?.projections?.customers?.name ?? "Stock build"}
             </p>
           </div>
           
@@ -56,13 +56,13 @@ export const EditScheduleDialog = ({ isOpen, onClose, schedule, maxQuantity }: E
               id="quantity"
               type="number"
               min="1"
-              max={maxQuantity}
+              max={Number.isFinite(maxQuantity) ? maxQuantity : undefined}
               value={quantity}
               onChange={(e) => setQuantity(e.target.value)}
               placeholder="Enter quantity"
             />
             <p className="text-sm text-muted-foreground mt-1">
-              Maximum available: {maxQuantity} units
+              {Number.isFinite(maxQuantity) ? `Maximum available: ${maxQuantity} units` : "Stock build: no projection limit"}
             </p>
           </div>
 

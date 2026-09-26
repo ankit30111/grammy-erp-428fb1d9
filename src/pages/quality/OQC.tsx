@@ -36,8 +36,8 @@ const OQC = () => {
             production_lines (
               name
             ),
-            projections!inner(
-              customers!inner(name)
+            projections(
+              customers(name)
             )
           )
         `)
@@ -62,8 +62,8 @@ const OQC = () => {
             production_lines (
               name
             ),
-            projections!inner(
-              customers!inner(name)
+            projections(
+              customers(name)
             )
           )
         `)
@@ -195,7 +195,7 @@ const OQC = () => {
                               <div className="text-sm text-muted-foreground">{order.parts?.part_code}</div>
                             </div>
                           </TableCell>
-                          <TableCell>{order.production_schedules?.projections?.customers?.name}</TableCell>
+                          <TableCell>{order.production_schedules?.projections?.customers?.name ?? "Stock build"}</TableCell>
                           <TableCell>{order.quantity} units</TableCell>
                           <TableCell>{order.production_schedules?.production_lines?.name}</TableCell>
                           <TableCell>{format(new Date(order.updated_at), 'MMM dd, yyyy')}</TableCell>
@@ -279,7 +279,7 @@ const OQC = () => {
                               <div className="text-sm text-muted-foreground">{order.parts?.part_code}</div>
                             </div>
                           </TableCell>
-                          <TableCell>{order.production_schedules?.projections?.customers?.name}</TableCell>
+                          <TableCell>{order.production_schedules?.projections?.customers?.name ?? "Stock build"}</TableCell>
                           <TableCell>{order.quantity}</TableCell>
                           <TableCell>
                             <Badge 

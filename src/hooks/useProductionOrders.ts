@@ -13,6 +13,7 @@ export const useProductionOrders = () => {
         .from("production_orders")
         .select(`
           *,
+          parts!part_id ( name, part_code ),
           production_schedules!production_schedule_id (
             *,
             projections!projection_id (

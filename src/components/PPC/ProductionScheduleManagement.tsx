@@ -187,9 +187,9 @@ const ProductionScheduleManagement = () => {
                 <TableRow key={schedule.id}>
                   <TableCell>
                     <div>
-                      <div className="font-medium">{schedule.projections?.parts?.name}</div>
+                      <div className="font-medium">{(schedule.projections?.parts ?? schedule.parts)?.name}</div>
                       <div className="text-sm text-muted-foreground">
-                        {schedule.projections?.parts?.part_code}
+                        {(schedule.projections?.parts ?? schedule.parts)?.part_code}
                       </div>
                     </div>
                   </TableCell>

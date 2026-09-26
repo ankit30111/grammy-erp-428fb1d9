@@ -50,8 +50,8 @@ const ProductionSchedule = ({
                 productionsForDate.map((schedule) => (
                   <TableRow key={schedule.id}>
                     <TableCell className="font-medium">{schedule.id.slice(0, 8)}</TableCell>
-                    <TableCell>{schedule.projections?.customers?.name}</TableCell>
-                    <TableCell>{schedule.projections?.parts?.name}</TableCell>
+                    <TableCell>{schedule.projections?.customers?.name ?? "Stock build"}</TableCell>
+                    <TableCell>{(schedule.projections?.parts ?? schedule.parts)?.name}</TableCell>
                     <TableCell>{schedule.quantity}</TableCell>
                     <TableCell>{schedule.production_lines?.name}</TableCell>
                     <TableCell>
