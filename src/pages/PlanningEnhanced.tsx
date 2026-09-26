@@ -1,66 +1,25 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { TabBar } from "@/components/shell/TabBar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ChevronLeft, ChevronRight, Edit, Factory, FileText, Search, Trash2 } from "lucide-react";
-import {
-  addMonths, eachDayOfInterval, endOfMonth, format, getDay, isSameDay, isToday, parseISO, startOfMonth,
-} from "date-fns";
+import { Edit, Factory, FileText, Trash2 } from "lucide-react";
+import { format, parseISO } from "date-fns";
 import { useProjections } from "@/hooks/useProjections";
 import { useProductionSchedules } from "@/hooks/useProductionSchedules";
-import { useSubAssemblyPositions, type SubAssemblyPosition } from "@/hooks/useSubAssemblyPositions";
 import { VoucherMaterials } from "@/components/Production/VoucherMaterials";
 import { EditScheduleDialog } from "@/components/Planning/EditScheduleDialog";
 import { DeleteScheduleDialog } from "@/components/Planning/DeleteScheduleDialog";
-import { ScheduleSubAssemblyDialog } from "@/components/Planning/ScheduleSubAssemblyDialog";
-import { ScheduleFinishedGoodDialog } from "@/components/Planning/ScheduleFinishedGoodDialog";
+import { ScheduleProductionForm, type ProductionKind } from "@/components/Planning/ScheduleProductionForm";
+import { PlanningCalendar } from "@/components/Planning/PlanningCalendar";
+import { STATUS_LABEL, toVoucherRow, type VoucherRow } from "@/components/Planning/voucherRows";
 import { cn } from "@/lib/utils";
 
 const n = (v: number) => Number(v || 0).toLocaleString("en-IN", { maximumFractionDigits: 3 });
-
-const STATUS_LABEL: Record<string, string> = {
-  PLANNED: "Planned",
-  KIT_PREPARED: "Kit prepared",
-  KIT_SENT: "Kit issued",
-  IN_PRODUCTION: "In production · PQC",
-  COMPLETED: "Awaiting OQC",
-  OQC_PASSED: "OQC passed",
-  OQC_FAILED: "OQC failed",
-  CANCELLED: "Cancelled",
-};
-
-/** One row per voucher, whatever it builds. */
-type VoucherRow = {
-  schedule: any;
-  order: any;
-  kind: "FG" | "SA";
-  product: { id?: string; part_code?: string; name?: string } | undefined;
-  forLabel: string;
-  status: string;
-};
-
-const toVoucherRow = (s: any): VoucherRow => {
-  const order = s.production_orders?.[0];
-  const isFg = !!s.projection_id;
-  return {
-    schedule: s,
-    order,
-    kind: isFg ? "FG" : "SA",
-    product: s.projections?.parts ?? s.parts,
-    forLabel: isFg
-      ? s.projections?.customers?.name ?? "—"
-      : order?.parent?.voucher_number
-        ? `For ${order.parent.voucher_number} · ${order.parent.part_code ?? ""}`
-        : "Stock build",
-    status: order?.status ?? s.status,
-  };
-};
 
 /** A row of toggle buttons used as a filter. */
 const Chips = ({ options, value, onChange }: {
@@ -81,43 +40,26 @@ const TypeBadge = ({ kind }: { kind: "FG" | "SA" }) =>
     : <Badge variant="outline" className="whitespace-nowrap">Sub-assembly</Badge>;
 
 const PlanningEnhanced: React.FC = () => {
-  const [activeTab, setActiveTab] = useState("finished");
+  const [activeTab, setActiveTab] = useState("schedule");
 
   const { data: projections = [] } = useProjections();
   const { data: schedules = [] } = useProductionSchedules();
-  const { data: positions = [], isLoading: positionsLoading } = useSubAssemblyPositions();
 
-  // Dialogs
-  const [fgProjection, setFgProjection] = useState<any>(null);
-  const [saPart, setSaPart] = useState<SubAssemblyPosition | null>(null);
+  const [preset, setPreset] = useState<{ kind?: ProductionKind; projectionId?: string; date?: string; key: number } | null>(null);
+  const formRef = useRef<HTMLDivElement>(null);
+  const prefill = (p: { kind?: ProductionKind; projectionId?: string; date?: string }) => {
+    setPreset({ ...p, key: Date.now() });
+    formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
   const [voucherScheduleId, setVoucherScheduleId] = useState<string>("");
   const [editSchedule, setEditSchedule] = useState<any>(null);
   const [deleteSchedule, setDeleteSchedule] = useState<any>(null);
-
-  // Filters
-  const [saFamily, setSaFamily] = useState("all");
-  const [saSearch, setSaSearch] = useState("");
   const [voucherType, setVoucherType] = useState("all");
-  const [month, setMonth] = useState(() => startOfMonth(new Date()));
 
   const toSchedule = (projections as any[]).filter((p) => Number(p.quantity) - Number(p.scheduled_quantity || 0) > 0);
   const vouchers = useMemo(() => (schedules as any[]).map(toVoucherRow), [schedules]);
 
-  // ---- Sub-assemblies ----
-  const families = useMemo(() => {
-    const all = new Map<string, number>();
-    for (const p of positions) for (const f of p.families) all.set(f, (all.get(f) || 0) + 1);
-    return [...all.entries()].sort((a, b) => a[0].localeCompare(b[0]));
-  }, [positions]);
-  const noBomCount = positions.filter((p) => !p.hasBom).length;
-  const saRows = positions.filter((p) => {
-    if (saFamily === "nobom" && p.hasBom) return false;
-    if (saFamily !== "all" && saFamily !== "nobom" && !p.families.includes(saFamily)) return false;
-    const q = saSearch.trim().toLowerCase();
-    return !q || p.part_code.toLowerCase().includes(q) || p.name.toLowerCase().includes(q);
-  });
-
-  // ---- Scheduled production ----
   // A finished-good voucher is followed by the sub-assembly vouchers issued for it.
   const voucherRows = useMemo(() => {
     const shown = vouchers.filter((v) => voucherType === "all" || v.kind === voucherType);
@@ -149,10 +91,8 @@ const PlanningEnhanced: React.FC = () => {
   const voucherSchedule = (schedules as any[]).find((s) => s.id === voucherScheduleId);
 
   const tabs = [
-    { id: "finished", label: "Finished Goods", count: toSchedule.length },
-    { id: "subassemblies", label: "Sub-assemblies", count: positions.filter((p) => p.toMake > 0).length },
-    { id: "scheduled", label: "Scheduled Production", count: vouchers.length },
-    { id: "calendar", label: "Calendar" },
+    { id: "schedule", label: "Schedule Production" },
+    { id: "scheduled", label: "Productions Scheduled", count: vouchers.length },
   ];
 
   return (
@@ -161,140 +101,56 @@ const PlanningEnhanced: React.FC = () => {
       <TabBar tabs={tabs} value={activeTab} onChange={setActiveTab} />
 
       <div className="space-y-6 pt-4">
-        {/* ---------------- Finished goods ---------------- */}
-        {activeTab === "finished" && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Projections to schedule</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {toSchedule.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">All projections have been scheduled</div>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Customer</TableHead>
-                      <TableHead>Product</TableHead>
-                      <TableHead className="hidden md:table-cell">Month</TableHead>
-                      <TableHead className="hidden lg:table-cell text-right">Projected</TableHead>
-                      <TableHead className="hidden lg:table-cell text-right">Scheduled</TableHead>
-                      <TableHead className="text-right">Left</TableHead>
-                      <TableHead className="text-right w-px">Action</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {toSchedule.map((p: any) => (
-                      <TableRow key={p.id}>
-                        <TableCell>{p.customers?.name}</TableCell>
-                        <TableCell>
-                          <div className="font-medium">{p.parts?.name}</div>
-                          <div className="text-xs text-muted-foreground font-mono">{p.parts?.part_code}</div>
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell">{p.month ? format(parseISO(p.month), "MMM yyyy") : ""}</TableCell>
-                        <TableCell className="hidden lg:table-cell text-right">{n(p.quantity)}</TableCell>
-                        <TableCell className="hidden lg:table-cell text-right">{n(p.scheduled_quantity)}</TableCell>
-                        <TableCell className="text-right font-semibold">{n(Number(p.quantity) - Number(p.scheduled_quantity || 0))}</TableCell>
-                        <TableCell className="text-right">
-                          <Button size="sm" onClick={() => setFgProjection(p)}>
-                            <Factory /> Schedule
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
-        )}
-
-        {/* ---------------- Sub-assemblies ---------------- */}
-        {activeTab === "subassemblies" && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Sub-assemblies</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex flex-col lg:flex-row lg:items-center gap-3 lg:justify-between">
-                <Chips
-                  value={saFamily}
-                  onChange={setSaFamily}
-                  options={[
-                    { id: "all", label: "All", count: positions.length },
-                    ...families.map(([f, c]) => ({ id: f, label: f, count: c })),
-                    ...(noBomCount ? [{ id: "nobom", label: "No BOM", count: noBomCount }] : []),
-                  ]}
-                />
-                <div className="relative lg:w-64">
-                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input value={saSearch} onChange={(e) => setSaSearch(e.target.value)} placeholder="Search code or name" className="pl-8" />
-                </div>
-              </div>
-
-              {positionsLoading ? (
-                <div className="text-center py-8 text-muted-foreground">Loading…</div>
-              ) : saRows.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">No sub-assemblies match</div>
-              ) : (
-                <Table>
-                  <TableHeader className="[&_th]:whitespace-nowrap">
-                    <TableRow>
-                      <TableHead>Sub-assembly</TableHead>
-                      <TableHead className="hidden xl:table-cell">Used in</TableHead>
-                      <TableHead className="text-right">In store</TableHead>
-                      <TableHead className="hidden md:table-cell text-right">Being built</TableHead>
-                      <TableHead className="hidden md:table-cell text-right">Held</TableHead>
-                      <TableHead className="hidden lg:table-cell text-right">Projections</TableHead>
-                      <TableHead className="text-right">To make</TableHead>
-                      <TableHead className="text-right w-px">Action</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {saRows.map((p) => (
-                      <TableRow key={p.id}>
-                        <TableCell>
-                          <div className="font-medium">{p.name}</div>
-                          <div className="text-xs text-muted-foreground font-mono flex flex-wrap items-center gap-2">
-                            {p.part_code}
-                            {!p.hasBom && <Badge variant="destructive">No BOM</Badge>}
+        {activeTab === "schedule" && (
+          <>
+            <Card>
+              <CardHeader>
+                <CardTitle>Unscheduled Projections</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {toSchedule.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">All projections have been scheduled</div>
+                ) : (
+                  <div className="space-y-2">
+                    {toSchedule.map((p: any) => {
+                      const left = Number(p.quantity) - Number(p.scheduled_quantity || 0);
+                      return (
+                        <div key={p.id} className="flex flex-wrap items-center justify-between gap-3 p-3 border rounded-lg">
+                          <div className="min-w-0">
+                            <div className="font-medium">
+                              {p.customers?.name} — <span className="font-mono">{p.parts?.part_code}</span> {p.parts?.name}
+                            </div>
+                            <div className="text-sm text-muted-foreground">
+                              {p.month ? `${format(parseISO(p.month), "MMM yyyy")} · ` : ""}
+                              Total {n(p.quantity)} · Scheduled {n(p.scheduled_quantity)} · Balance {n(left)}
+                            </div>
                           </div>
-                        </TableCell>
-                        <TableCell className="hidden xl:table-cell text-sm">
-                          {p.usedIn.length
-                            ? p.usedIn.map((u) => <div key={u.id} className="font-mono whitespace-nowrap">{u.part_code}</div>)
-                            : <span className="text-muted-foreground">—</span>}
-                        </TableCell>
-                        <TableCell className="text-right">{n(p.inStore)}</TableCell>
-                        <TableCell className="hidden md:table-cell text-right">{n(p.beingBuilt)}</TableCell>
-                        <TableCell className="hidden md:table-cell text-right">{n(p.held)}</TableCell>
-                        <TableCell className="hidden lg:table-cell text-right">{n(p.projectionNeed)}</TableCell>
-                        <TableCell className={cn("text-right font-semibold", p.toMake > 0 && "text-destructive")}>{n(p.toMake)}</TableCell>
-                        <TableCell className="text-right">
-                          <Button size="sm" variant={p.toMake > 0 ? "default" : "outline"} disabled={!p.hasBom}
-                                  title={p.hasBom ? undefined : "Add its BOM before scheduling"}
-                                  onClick={() => setSaPart(p)}>
-                            <Factory /> Schedule
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-              <p className="text-xs text-muted-foreground">
-                To make = held for finished-good vouchers + still to be vouchered on projections − in store − being built.
-                A sub-assembly enters the store only after its OQC passes; its raw parts left the store with its own kit.
-              </p>
-            </CardContent>
-          </Card>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="whitespace-nowrap">{n(left)} remaining</Badge>
+                            <Button size="sm" onClick={() => prefill({ kind: "FG", projectionId: p.id })}>
+                              <Factory /> Schedule
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <div ref={formRef} className="scroll-mt-4">
+              <ScheduleProductionForm projections={projections as any[]} preset={preset} />
+            </div>
+
+            <PlanningCalendar vouchers={vouchers} onScheduleOn={(date) => prefill({ date })} />
+          </>
         )}
 
-        {/* ---------------- Scheduled production ---------------- */}
         {activeTab === "scheduled" && (
           <Card>
             <CardHeader>
-              <CardTitle>Scheduled Production</CardTitle>
+              <CardTitle>Productions Scheduled</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <Chips
@@ -307,7 +163,7 @@ const PlanningEnhanced: React.FC = () => {
                 ]}
               />
               {voucherRows.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">No scheduled production</div>
+                <div className="text-center py-8 text-muted-foreground">No production scheduled yet</div>
               ) : (
                 <Table>
                   <TableHeader>
@@ -380,30 +236,7 @@ const PlanningEnhanced: React.FC = () => {
           </Card>
         )}
 
-        {/* ---------------- Calendar ---------------- */}
-        {activeTab === "calendar" && (
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
-              <CardTitle>{format(month, "MMMM yyyy")}</CardTitle>
-              <div className="flex items-center gap-2">
-                <Button variant="outline" size="icon" aria-label="Previous month" onClick={() => setMonth((m) => addMonths(m, -1))}><ChevronLeft /></Button>
-                <Button variant="outline" size="sm" onClick={() => setMonth(startOfMonth(new Date()))}>Today</Button>
-                <Button variant="outline" size="icon" aria-label="Next month" onClick={() => setMonth((m) => addMonths(m, 1))}><ChevronRight /></Button>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex gap-4 text-xs text-muted-foreground">
-                <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded-sm bg-primary" /> Finished good</span>
-                <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded-sm border-2 border-primary" /> Sub-assembly</span>
-              </div>
-              <MonthGrid month={month} vouchers={vouchers} onOpen={(id) => setVoucherScheduleId(id)} />
-            </CardContent>
-          </Card>
-        )}
       </div>
-
-      <ScheduleFinishedGoodDialog projection={fgProjection} open={!!fgProjection} onOpenChange={(o) => !o && setFgProjection(null)} />
-      <ScheduleSubAssemblyDialog part={saPart} open={!!saPart} onOpenChange={(o) => !o && setSaPart(null)} />
 
       {editSchedule && (
         <EditScheduleDialog isOpen={!!editSchedule} onClose={() => setEditSchedule(null)}
@@ -444,40 +277,6 @@ const PlanningEnhanced: React.FC = () => {
         </DialogContent>
       </Dialog>
     </DashboardLayout>
-  );
-};
-
-/** A month of vouchers. Each day is a fixed-height cell that scrolls if busy. */
-const MonthGrid = ({ month, vouchers, onOpen }: { month: Date; vouchers: VoucherRow[]; onOpen: (scheduleId: string) => void }) => {
-  const days = eachDayOfInterval({ start: startOfMonth(month), end: endOfMonth(month) });
-  const cells: (Date | null)[] = [...Array(getDay(days[0])).fill(null), ...days];
-  return (
-    <div className="overflow-x-auto">
-      <div className="grid grid-cols-7 gap-1 min-w-[640px]">
-        {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
-          <div key={d} className="p-2 text-center text-xs font-semibold text-muted-foreground border-b">{d}</div>
-        ))}
-        {cells.map((date, i) => {
-          if (!date) return <div key={i} className="h-28 rounded border border-transparent" />;
-          const day = vouchers.filter((v) => isSameDay(parseISO(v.schedule.scheduled_date), date));
-          return (
-            <div key={i} className={cn("h-28 rounded border p-1 overflow-y-auto", isToday(date) && "border-primary")}>
-              <div className="text-xs font-medium mb-1">{format(date, "d")}</div>
-              {day.map((v) => (
-                <button key={v.schedule.id} type="button" onClick={() => onOpen(v.schedule.id)}
-                        className={cn(
-                          "block w-full text-left text-[11px] leading-tight rounded px-1 py-0.5 mb-1",
-                          v.kind === "FG" ? "bg-primary text-primary-foreground" : "border border-primary text-foreground",
-                        )}>
-                  <div className="font-medium truncate">{v.product?.part_code}</div>
-                  <div className="opacity-80">{n(v.schedule.quantity)} pcs</div>
-                </button>
-              ))}
-            </div>
-          );
-        })}
-      </div>
-    </div>
   );
 };
 
