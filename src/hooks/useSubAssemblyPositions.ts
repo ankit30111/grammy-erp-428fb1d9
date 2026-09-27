@@ -50,6 +50,13 @@ export interface SubAssemblyPosition {
   /** Finished-good families it goes into, or "Battery packs" */
   families: string[];
   usedIn: { id: string; part_code: string; qps: number }[];
+  /** Sub-assemblies inside this one (e.g. the printed tube inside the mic) */
+  children: { id: string; qps: number }[];
+  /** Brand version: the brand; null for common parts */
+  brand: string | null;
+  branded_from: string | null;
+  /** A base part built per brand: schedule one of its brand versions instead */
+  perBrand: boolean;
   inStore: number;
   held: number;
   holds: SubAssemblyHoldRef[];
@@ -72,7 +79,7 @@ export const useSubAssemblyPositions = () => {
       const db = supabase as any;
       const [partsRes, catsRes, locRes, projRes] = await Promise.all([
         db.from("parts")
-          .select("id, part_code, name, uom, category, made_in_house, source_type")
+          .select("id, part_code, name, uom, category, made_in_house, source_type, brand, branded_from, brand_relevant")
           .in("source_type", ["ASSEMBLED_STOCKED", "FINISHED_GOOD"])
           .eq("is_active", true),
         db.from("part_categories").select("prefix, name"),
@@ -117,11 +124,15 @@ export const useSubAssemblyPositions = () => {
 
       return subs.map((p): SubAssemblyPosition => {
         const own = bom.filter((b) => b.parent_part_id === p.id);
+        const subSet = new Set(subIds);
+        const children = own
+          .filter((b) => subSet.has(b.child_part_id) && Number(b.quantity || 0) > 0)
+          .map((b) => ({ id: b.child_part_id, qps: Number(b.quantity) }));
         const usedIn = bom
           .filter((b) => b.child_part_id === p.id && fgs.has(b.parent_part_id))
           .map((b) => ({ id: b.parent_part_id, part_code: fgs.get(b.parent_part_id).part_code, qps: Number(b.quantity || 0) }));
         const families = new Set<string>();
-        if (p.made_in_house) families.add(BATTERY_FAMILY);
+        if (p.made_in_house && !p.branded_from) families.add(BATTERY_FAMILY);
         for (const u of usedIn) families.add(catName.get(fgs.get(u.id)?.category) ?? "Other");
         if (families.size === 0) families.add(UNUSED_FAMILY);
 
@@ -156,6 +167,10 @@ export const useSubAssemblyPositions = () => {
           bomLines: own.length,
           families: [...families],
           usedIn,
+          children,
+          brand: p.branded_from ? p.brand : null,
+          branded_from: p.branded_from ?? null,
+          perBrand: !p.branded_from && !!p.brand_relevant,
           inStore,
           held,
           holds,

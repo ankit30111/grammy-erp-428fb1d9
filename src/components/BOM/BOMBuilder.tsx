@@ -65,7 +65,8 @@ export const BOMBuilder = ({ initialParentId }: { initialParentId?: string } = {
   const parentPart = parts.find((p: any) => p.id === parentId);
 
   const parentCandidates = useMemo(
-    () => parts.filter((p: any) => p.is_active !== false && MADE_HERE.includes(p.source_type ?? "PURCHASED")),
+    // Brand versions are not offered: their BOM follows the base part's.
+    () => parts.filter((p: any) => p.is_active !== false && !p.branded_from && MADE_HERE.includes(p.source_type ?? "PURCHASED")),
     [parts],
   );
 
@@ -250,6 +251,16 @@ export const BOMBuilder = ({ initialParentId }: { initialParentId?: string } = {
                   {selectedCount} part{selectedCount === 1 ? "" : "s"} selected
                 </span>
               </CardTitle>
+              {(parentPart as any)?.brand_relevant && (
+                <p className="basis-full text-xs text-muted-foreground">
+                  This part is built per brand: its brand versions ({parts.filter((p: any) => p.branded_from === parentId && p.is_active).map((p: any) => p.part_code).join(", ") || "none yet"}) follow this BOM automatically.
+                </p>
+              )}
+              {(parentPart as any)?.source_type === "FINISHED_GOOD" && (parentPart as any)?.brand && (
+                <p className="basis-full text-xs text-muted-foreground">
+                  Parts printed per brand are switched to their {(parentPart as any).brand} version when saved.
+                </p>
+              )}
               <div className="flex items-center gap-2">
                 {dirty && <Badge variant="secondary">Unsaved changes</Badge>}
                 {canEditMasters && (

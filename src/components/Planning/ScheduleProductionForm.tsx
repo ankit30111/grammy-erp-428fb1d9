@@ -17,6 +17,7 @@ import { usePlantId } from "@/hooks/usePlantId";
 import { useProductionLinesList } from "@/hooks/useProductionLinesList";
 import { useCreateStockBuild, useScheduleFinishedGood } from "@/hooks/useProductionSchedules";
 import { CLOSED_VOUCHER_STATES, useSubAssemblyPositions, type SubAssemblyPosition } from "@/hooks/useSubAssemblyPositions";
+import { useBrandIssues } from "@/components/Parts/PartBranding";
 import { cn } from "@/lib/utils";
 
 export type ProductionKind = "FG" | "SA";
@@ -27,7 +28,7 @@ const STOCK = "__stock__";
 
 type Choice = { mode: "use" | "new"; qty: string; date: string };
 
-/** The day before the finished good, but never in the past. */
+/** The day before what it is built for, but never in the past. */
 const subDate = (fgDate: string) => {
   if (!fgDate) return today();
   const d = format(addDays(parseISO(fgDate), -1), "yyyy-MM-dd");
@@ -95,24 +96,48 @@ export const ScheduleProductionForm = ({ projections, preset }: Props) => {
   const maxQty = projection ? balanceOf(projection) : Infinity;
   const qtyOk = qty > 0 && qty <= maxQty;
 
-  // Finished good: the sub-assemblies on its BOM and what this production needs of each.
-  const subs = useMemo(
-    () => !projection ? [] : positions
-      .map((p) => ({ pos: p, qps: p.usedIn.find((u) => u.id === projection.part_id)?.qps ?? 0 }))
-      .filter((s) => s.qps > 0)
-      .map((s) => ({ ...s, need: qty * s.qps })),
-    [positions, projection, qty],
+  // Everything built here that goes into what is being scheduled, level by level:
+  // the Croma mic inside the Croma finished good, the printed tube inside that
+  // mic. A level is only opened when a new voucher is issued for its parent.
+  type Row = { key: string; pos: SubAssemblyPosition; need: number; depth: number; parentPartId: string | null; c: Choice };
+  const byId = useMemo(() => new Map(positions.map((p) => [p.id, p])), [positions]);
+  const rootChildren = useMemo(
+    () => kind === "FG"
+      ? (!projection ? [] : positions
+          .map((p) => ({ id: p.id, qps: p.usedIn.find((u) => u.id === projection.part_id)?.qps ?? 0 }))
+          .filter((x) => x.qps > 0))
+      : sub?.children ?? [],
+    [kind, positions, projection, sub],
   );
-  const defaultChoice = (pos: SubAssemblyPosition, need: number): Choice => {
+  const defaultChoice = (pos: SubAssemblyPosition, need: number, parentDate: string): Choice => {
     const short = Math.max(0, need - Math.max(0, pos.free));
-    return short > 0 && pos.hasBom
-      ? { mode: "new", qty: String(short), date: subDate(date) }
-      : { mode: "use", qty: String(short || need), date: subDate(date) };
+    return short > 0 && pos.hasBom && !pos.perBrand
+      ? { mode: "new", qty: String(short), date: subDate(parentDate) }
+      : { mode: "use", qty: String(short || need), date: subDate(parentDate) };
   };
-  const choiceFor = (pos: SubAssemblyPosition, need: number) => choices[pos.id] ?? defaultChoice(pos, need);
-  const setChoice = (pos: SubAssemblyPosition, need: number, c: Partial<Choice>) =>
-    setChoices((all) => ({ ...all, [pos.id]: { ...choiceFor(pos, need), ...c } }));
-  const newOnes = subs.map(({ pos, need }) => ({ pos, c: choiceFor(pos, need) })).filter(({ c }) => c.mode === "new");
+  const rows: Row[] = [];
+  const walk = (list: { id: string; qps: number }[], parentQty: number, parentDate: string,
+                parentKey: string, parentPartId: string | null, depth: number) => {
+    for (const ch of list) {
+      const pos = byId.get(ch.id);
+      if (!pos || depth > 6) continue;
+      const key = `${parentKey}/${pos.id}`;
+      const need = parentQty * ch.qps;
+      const c = choices[key] ?? defaultChoice(pos, need, parentDate);
+      rows.push({ key, pos, need, depth, parentPartId, c });
+      if (c.mode === "new" && pos.hasBom) walk(pos.children, Number(c.qty) || 0, c.date, key, pos.id, depth + 1);
+    }
+  };
+  if (qty > 0) walk(rootChildren, qty, date, "root", null, 0);
+  const setChoice = (row: Row, c: Partial<Choice>) =>
+    setChoices((all) => ({ ...all, [row.key]: { ...row.c, ...c } }));
+  const newOnes = rows.filter((r) => r.c.mode === "new");
+
+  // Branding: a finished good whose printed parts have no version for its brand.
+  const { data: brandIssues = [] } = useBrandIssues();
+  const gaps = kind === "FG" && projection
+    ? brandIssues.filter((i) => i.part_id === projection.part_id && i.kind === "GAP") : [];
+  const perBrandLines = rows.filter((r) => r.pos.perBrand);
 
   // Sub-assembly: open finished-good vouchers that use it, to build it for.
   const usedInIds = sub?.usedIn.map((u) => u.id) ?? [];
@@ -132,8 +157,13 @@ export const ScheduleProductionForm = ({ projections, preset }: Props) => {
   });
 
   const pending = scheduleFg.isPending || scheduleSa.isPending;
-  const canSubmit = !!itemId && qtyOk && !!date && !pending
-    && (kind === "SA" ? !!sub?.hasBom : newOnes.every(({ pos, c }) => pos.hasBom && Number(c.qty) > 0 && c.date));
+  const canSubmit = !!itemId && qtyOk && !!date && !pending && gaps.length === 0 && perBrandLines.length === 0
+    && (kind === "FG" || (!!sub?.hasBom && !sub?.perBrand))
+    && newOnes.every((r) => r.pos.hasBom && Number(r.c.qty) > 0 && r.c.date);
+  const items = newOnes.map((r) => ({
+    part_id: r.pos.id, quantity: Number(r.c.qty), date: r.c.date,
+    ...(r.parentPartId ? { parent_part_id: r.parentPartId } : {}),
+  }));
 
   const submit = async () => {
     if (!canSubmit) return;
@@ -143,7 +173,7 @@ export const ScheduleProductionForm = ({ projections, preset }: Props) => {
         quantity: qty,
         scheduled_date: date,
         production_line_id: lineId || null,
-        subassemblies: newOnes.map(({ pos, c }) => ({ part_id: pos.id, quantity: Number(c.qty), date: c.date })),
+        subassemblies: items,
       });
     } else if (sub) {
       await scheduleSa.mutateAsync({
@@ -152,6 +182,7 @@ export const ScheduleProductionForm = ({ projections, preset }: Props) => {
         scheduled_date: date,
         production_line_id: lineId || null,
         parent_order_id: forOrder === STOCK ? null : forOrder,
+        children: items,
       });
     }
     reset(kind);
@@ -209,8 +240,8 @@ export const ScheduleProductionForm = ({ projections, preset }: Props) => {
                             </CommandItem>
                           ))
                         : positions.map((p) => (
-                            <CommandItem key={p.id} value={`${p.part_code} ${p.name}`} disabled={!p.hasBom}
-                                         onSelect={() => { if (p.hasBom) { pickSub(p.id); setPickerOpen(false); } }}>
+                            <CommandItem key={p.id} value={`${p.part_code} ${p.name}`} disabled={!p.hasBom || p.perBrand}
+                                         onSelect={() => { if (p.hasBom && !p.perBrand) { pickSub(p.id); setPickerOpen(false); } }}>
                               <Check className={cn("mr-2 h-4 w-4 shrink-0", p.id === itemId ? "opacity-100" : "opacity-0")} />
                               <div className="min-w-0 flex-1">
                                 <div className="truncate"><span className="font-mono">{p.part_code}</span> {p.name}</div>
@@ -219,6 +250,8 @@ export const ScheduleProductionForm = ({ projections, preset }: Props) => {
                                 </div>
                               </div>
                               {!p.hasBom && <Badge variant="destructive" className="ml-2">No BOM</Badge>}
+                              {p.perBrand && <Badge variant="outline" className="ml-2 whitespace-nowrap">Per brand · pick its version</Badge>}
+                              {p.brand && <Badge variant="secondary" className="ml-2">{p.brand}</Badge>}
                             </CommandItem>
                           ))}
                     </CommandGroup>
@@ -271,12 +304,20 @@ export const ScheduleProductionForm = ({ projections, preset }: Props) => {
           </div>
         )}
 
-        {kind === "FG" && projection && qty > 0 && subs.length > 0 && (
+        {gaps.map((g) => (
+          <p key={g.id} className="flex items-start gap-1.5 text-sm text-destructive">
+            <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" /> {g.message}
+          </p>
+        ))}
+
+        {rows.length > 0 && (
           <div className="space-y-2">
-            <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Sub-assemblies on this product</h4>
+            <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Built here, going into this {kind === "FG" ? "product" : "sub-assembly"}
+            </h4>
             <div className="rounded-md border divide-y">
-              {subs.map(({ pos, need }) => {
-                const c = choiceFor(pos, need);
+              {rows.map((row) => {
+                const { pos, need, c } = row;
                 const free = Math.max(0, pos.free);
                 const short = Math.max(0, need - free);
                 const others = [
@@ -284,11 +325,14 @@ export const ScheduleProductionForm = ({ projections, preset }: Props) => {
                   ...pos.holds.map((h) => `${n(h.quantity)} held for ${h.voucher_number} (${h.product_code})`),
                 ];
                 return (
-                  <div key={pos.id} className="p-3 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] gap-3">
+                  <div key={row.key} className="p-3 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] gap-3"
+                       style={{ paddingLeft: 12 + row.depth * 28 }}>
                     <div className="min-w-0 space-y-1">
                       <div className="text-sm font-medium flex flex-wrap items-center gap-2">
+                        {row.depth > 0 && <span className="text-muted-foreground">↳</span>}
                         <span className="font-mono">{pos.part_code}</span> <span className="truncate">{pos.name}</span>
                         {!pos.hasBom && <Badge variant="destructive">No BOM</Badge>}
+                        {pos.perBrand && <Badge variant="destructive">Per brand · version missing</Badge>}
                       </div>
                       <div className="text-xs text-muted-foreground">
                         Needs <span className="font-semibold text-foreground">{n(need)}</span> · in store {n(pos.inStore)} ·
@@ -297,26 +341,26 @@ export const ScheduleProductionForm = ({ projections, preset }: Props) => {
                       {others.length > 0 && <div className="text-xs text-muted-foreground">{others.join(" · ")}</div>}
                     </div>
                     <div className="space-y-2">
-                      <RadioGroup value={c.mode} onValueChange={(v) => setChoice(pos, need, { mode: v as Choice["mode"] })}
+                      <RadioGroup value={c.mode} onValueChange={(v) => setChoice(row, { mode: v as Choice["mode"] })}
                                   className="flex flex-wrap gap-x-5 gap-y-1">
                         <label className="flex items-center gap-2 text-sm cursor-pointer">
                           <RadioGroupItem value="use" /> Use existing
                         </label>
-                        <label className={cn("flex items-center gap-2 text-sm", pos.hasBom ? "cursor-pointer" : "opacity-60")}>
-                          <RadioGroupItem value="new" disabled={!pos.hasBom} /> Issue new voucher
+                        <label className={cn("flex items-center gap-2 text-sm", pos.hasBom && !pos.perBrand ? "cursor-pointer" : "opacity-60")}>
+                          <RadioGroupItem value="new" disabled={!pos.hasBom || pos.perBrand} /> Issue new voucher
                         </label>
                       </RadioGroup>
                       {c.mode === "use" && short > 0 && (
                         <p className="flex items-center gap-1 text-xs text-destructive">
                           <AlertTriangle className="h-3 w-3 shrink-0" />
-                          Short by {n(short)}: this kit cannot be issued until they are in store.
+                          Short by {n(short)}: the kit that needs it cannot be issued until they are in store.
                         </p>
                       )}
                       {c.mode === "new" && (
                         <div className="grid grid-cols-2 gap-2">
                           <Input type="number" min={1} aria-label="Quantity to build" value={c.qty}
-                                 onChange={(e) => setChoice(pos, need, { qty: e.target.value })} />
-                          <DatePicker value={c.date} min={today()} onChange={(d) => setChoice(pos, need, { date: d })} />
+                                 onChange={(e) => setChoice(row, { qty: e.target.value })} />
+                          <DatePicker value={c.date} min={today()} onChange={(d) => setChoice(row, { date: d })} />
                         </div>
                       )}
                     </div>
@@ -327,6 +371,9 @@ export const ScheduleProductionForm = ({ projections, preset }: Props) => {
           </div>
         )}
 
+        {kind === "SA" && sub?.perBrand && (
+          <p className="text-sm text-destructive">{sub.part_code} is built per brand. Pick one of its brand versions instead.</p>
+        )}
         {kind === "SA" && sub && !sub.hasBom && (
           <p className="text-sm text-destructive">{sub.part_code} has no BOM yet. Add its bill of materials before scheduling it.</p>
         )}
@@ -334,7 +381,7 @@ export const ScheduleProductionForm = ({ projections, preset }: Props) => {
         <div className="flex justify-end">
           <Button onClick={submit} disabled={!canSubmit}>
             <Factory />
-            {pending ? "Scheduling…" : newOnes.length && kind === "FG"
+            {pending ? "Scheduling…" : newOnes.length
               ? `Schedule Production (${newOnes.length + 1} vouchers)` : "Schedule Production"}
           </Button>
         </div>

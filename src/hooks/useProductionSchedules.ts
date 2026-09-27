@@ -333,6 +333,8 @@ export interface SubAssemblyToIssue {
   quantity: number;
   date: string;
   line_id?: string | null;
+  /** Built for another sub-assembly in the same request (listed before it) */
+  parent_part_id?: string;
 }
 
 /**
@@ -390,24 +392,30 @@ export const useCreateStockBuild = () => {
   return useMutation({
     mutationFn: async (input: {
       part_id: string; quantity: number; scheduled_date: string;
-      production_line_id?: string | null; parent_order_id?: string | null; notes?: string;
+      production_line_id?: string | null; parent_order_id?: string | null;
+      /** Vouchers for what goes into it (e.g. printed tubes), parents first */
+      children?: (SubAssemblyToIssue & { parent_part_id?: string })[];
     }) => {
       if (!plantId) throw new Error("No active plant selected");
-      const { data, error } = await (supabase as any).rpc("schedule_subassembly", {
+      const { data, error } = await (supabase as any).rpc("schedule_subassembly_tree", {
         p_plant_id: plantId,
         p_part_id: input.part_id,
         p_quantity: input.quantity,
         p_date: input.scheduled_date,
         p_line_id: input.production_line_id || null,
         p_parent_order_id: input.parent_order_id || null,
-        p_notes: input.notes || null,
+        p_children: input.children ?? [],
       });
       if (error) throw error;
-      return (data as any).voucher_number as string;
+      return data as { voucher_number: string; subassemblies?: { voucher_number: string }[] };
     },
-    onSuccess: (voucher) => {
+    onSuccess: (data) => {
       for (const k of PLANNING_KEYS) queryClient.invalidateQueries({ queryKey: [k] });
-      toast({ title: "Sub-assembly scheduled", description: `Voucher ${voucher}` });
+      const subs = data.subassemblies?.map((s) => s.voucher_number) ?? [];
+      toast({
+        title: "Sub-assembly scheduled",
+        description: subs.length ? `Voucher ${data.voucher_number}, with ${subs.join(", ")}` : `Voucher ${data.voucher_number}`,
+      });
     },
     onError: (error: any) => {
       toast({ title: "Could not schedule", description: error?.message ?? "Unknown error", variant: "destructive" });

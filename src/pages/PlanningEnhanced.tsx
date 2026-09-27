@@ -60,22 +60,26 @@ const PlanningEnhanced: React.FC = () => {
   const toSchedule = (projections as any[]).filter((p) => Number(p.quantity) - Number(p.scheduled_quantity || 0) > 0);
   const vouchers = useMemo(() => (schedules as any[]).map(toVoucherRow), [schedules]);
 
-  // A finished-good voucher is followed by the sub-assembly vouchers issued for it.
+  // A voucher is followed by the vouchers issued for it, at any depth:
+  // finished good → Croma mic → printed tubes.
   const voucherRows = useMemo(() => {
     const shown = vouchers.filter((v) => voucherType === "all" || v.kind === voucherType);
-    if (voucherType !== "all") return shown.map((v) => ({ ...v, child: false }));
+    if (voucherType !== "all") return shown.map((v) => ({ ...v, depth: 0 }));
     const ids = new Set(shown.map((v) => v.order?.id).filter(Boolean));
     const childrenOf = new Map<string, VoucherRow[]>();
     for (const v of shown) {
       const parent = v.order?.parent_order_id;
       if (parent && ids.has(parent)) childrenOf.set(parent, [...(childrenOf.get(parent) ?? []), v]);
     }
-    const out: (VoucherRow & { child: boolean })[] = [];
+    const out: (VoucherRow & { depth: number })[] = [];
+    const push = (v: VoucherRow, depth: number) => {
+      out.push({ ...v, depth });
+      if (depth < 6) for (const c of childrenOf.get(v.order?.id) ?? []) push(c, depth + 1);
+    };
     for (const v of shown) {
       const parent = v.order?.parent_order_id;
       if (parent && ids.has(parent)) continue;
-      out.push({ ...v, child: false });
-      for (const c of childrenOf.get(v.order?.id) ?? []) out.push({ ...c, child: true });
+      push(v, 0);
     }
     return out;
   }, [vouchers, voucherType]);
@@ -183,9 +187,9 @@ const PlanningEnhanced: React.FC = () => {
                       const subs: any[] = voucherType === "FG" ? v.order?.subs ?? [] : [];
                       const editable = v.status === "PLANNED";
                       return (
-                        <TableRow key={v.schedule.id} className={v.child ? "bg-muted/30" : undefined}>
-                          <TableCell className={cn("whitespace-nowrap", v.child && "pl-8")}>
-                            <div className="font-mono font-medium">{v.child && <span className="text-muted-foreground mr-1">↳</span>}{v.order?.voucher_number || "Generating…"}</div>
+                        <TableRow key={v.schedule.id} className={v.depth ? "bg-muted/30" : undefined}>
+                          <TableCell className="whitespace-nowrap" style={v.depth ? { paddingLeft: 16 + v.depth * 20 } : undefined}>
+                            <div className="font-mono font-medium">{v.depth > 0 && <span className="text-muted-foreground mr-1">↳</span>}{v.order?.voucher_number || "Generating…"}</div>
                             <div className="mt-1"><TypeBadge kind={v.kind} /></div>
                           </TableCell>
                           <TableCell>
@@ -202,7 +206,7 @@ const PlanningEnhanced: React.FC = () => {
                             )}
                             <div className="lg:hidden text-xs text-muted-foreground mt-1">{v.forLabel}</div>
                           </TableCell>
-                          <TableCell className="hidden lg:table-cell text-sm">{v.forLabel}</TableCell>
+                          <TableCell className="hidden lg:table-cell text-sm min-w-[11rem]">{v.forLabel}</TableCell>
                           <TableCell className="text-right">{n(v.schedule.quantity)}</TableCell>
                           <TableCell className="hidden md:table-cell whitespace-nowrap">{format(parseISO(v.schedule.scheduled_date), "d MMM yyyy")}</TableCell>
                           <TableCell className="hidden md:table-cell">

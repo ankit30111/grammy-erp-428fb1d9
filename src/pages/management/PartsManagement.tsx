@@ -44,6 +44,7 @@ import { useVendors } from "@/hooks/useVendors";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { PartBomView, PartWhereUsed } from "@/components/BOM/PartBomView";
+import { PartBranding, BrandIssuesBanner } from "@/components/Parts/PartBranding";
 import { usePermissions } from "@/hooks/usePermissions";
 import { ApprovalBadge } from "@/components/Approvals/ApprovalBadge";
 import { PartDocumentInputs, PartDocumentList, docFilesToInput, type DocFiles } from "@/components/Parts/PartDocuments";
@@ -413,6 +414,7 @@ const RawMaterialsManagement = () => {
       {activeTab !== "BOM" && (
       <>
       <div className="pt-4">
+        <div className="mb-4"><BrandIssuesBanner /></div>
         <div className="flex items-center justify-end mb-6">
 
           <div className="flex gap-2">
@@ -529,7 +531,15 @@ const RawMaterialsManagement = () => {
                     <TableRow key={material.id}>
                       <TableCell className="text-muted-foreground text-sm">{index + 1}</TableCell>
                       <TableCell className="font-medium">{material.part_code}</TableCell>
-                      <TableCell>{material.name}<ApprovalBadge status={(material as any).approval_status} reason={(material as any).rejection_reason} /></TableCell>
+                      <TableCell>
+                        {material.name}<ApprovalBadge status={(material as any).approval_status} reason={(material as any).rejection_reason} />
+                        {(material as any).branded_from && (
+                          <Badge variant="outline" className="ml-2 whitespace-nowrap">{(material as any).brand} version</Badge>
+                        )}
+                        {!(material as any).branded_from && (material as any).brand_relevant && (
+                          <Badge variant="outline" className="ml-2 whitespace-nowrap">Per brand</Badge>
+                        )}
+                      </TableCell>
                       <TableCell>{categoryName(material.category)}</TableCell>
                       <TableCell>
                         <Badge
@@ -593,7 +603,7 @@ const RawMaterialsManagement = () => {
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
-                          {canEditMasters && (
+                          {canEditMasters && !(material as any).branded_from && (
                           <Button
                             variant="outline"
                             size="sm"
@@ -607,7 +617,7 @@ const RawMaterialsManagement = () => {
                               Reactivate
                             </Button>
                           )}
-                          {canApprove && (
+                          {canApprove && !(material as any).branded_from && (
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
                               <Button variant="outline" size="sm">
@@ -744,11 +754,13 @@ const RawMaterialsManagement = () => {
                   <PartDocumentList tier={viewTier} part={viewMaterial} />
                 </div>
 
+                <PartBranding part={viewMaterial} allParts={rawMaterials} />
+
                 {viewTier !== "PURCHASE" && (
                   <div className="space-y-2">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <Label className="text-sm font-medium text-muted-foreground">Bill of Materials</Label>
-                      {canEditMasters && (
+                      {canEditMasters && !viewMaterial.branded_from && (
                         <Button variant="outline" size="sm" onClick={() => openBomFor(viewMaterial.id)}>
                           <Edit /> Edit Bill of Materials
                         </Button>
@@ -1133,6 +1145,8 @@ const RawMaterialsManagement = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <PartDocumentInputs tier={editTier} files={editDocs} onChange={setEditDocs} part={selectedMaterial} />
               </div>
+
+              {selectedMaterial && <PartBranding editable part={selectedMaterial} allParts={rawMaterials} />}
 
               {!editIsPurchase && selectedMaterial && (
                 <div className="space-y-2">
