@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, Stamp } from "lucide-react";
+import { AlertTriangle, Check, ChevronsUpDown, Stamp, X } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { useBrands } from "@/hooks/usePartCategories";
 import { usePermissions } from "@/hooks/usePermissions";
 import { cn } from "@/lib/utils";
@@ -63,6 +65,7 @@ export const PartBranding = ({ part: given, allParts, editable = false }: {
 
   const [on, setOn] = useState(false);
   const [picked, setPicked] = useState<string[]>([]);
+  const [pickerOpen, setPickerOpen] = useState(false);
   useEffect(() => {
     setOn(!!part?.branding_required);
     setPicked(saved);
@@ -142,19 +145,53 @@ export const PartBranding = ({ part: given, allParts, editable = false }: {
       )}
 
       {canEdit && on && (
-        <div className="space-y-1.5">
+        <div className="space-y-2">
           <div className="text-xs text-muted-foreground">Brands</div>
-          <div className="flex flex-wrap gap-2">
-            {brands.map((b) => {
-              const sel = picked.includes(b.letter);
-              return (
-                <Button key={b.letter} type="button" size="sm" variant={sel ? "default" : "outline"}
-                        onClick={() => setPicked((p) => (sel ? p.filter((x) => x !== b.letter) : [...p, b.letter]))}>
-                  <span className="font-mono">{b.letter}</span> {b.name}
-                </Button>
-              );
-            })}
-          </div>
+          {/* A searchable list rather than a button per brand: there will be dozens. */}
+          <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
+            <PopoverTrigger asChild>
+              <Button type="button" variant="outline"
+                      className="w-full justify-between normal-case tracking-normal font-normal text-sm min-h-10">
+                <span className={cn("truncate", !picked.length && "text-muted-foreground")}>
+                  {picked.length ? `${picked.length} brand${picked.length === 1 ? "" : "s"} selected` : "Choose brands"}
+                </span>
+                <ChevronsUpDown className="opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+              <Command filter={(value, search) => (value.toLowerCase().includes(search.trim().toLowerCase()) ? 1 : 0)}>
+                <CommandInput placeholder="Search brand or code…" />
+                <CommandList>
+                  <CommandEmpty>No brand found.</CommandEmpty>
+                  <CommandGroup>
+                    {brands.map((b) => {
+                      const sel = picked.includes(b.letter);
+                      return (
+                        <CommandItem key={b.letter} value={`${b.letter} ${b.name}`}
+                                     onSelect={() => setPicked((p) => (sel ? p.filter((x) => x !== b.letter) : [...p, b.letter]))}>
+                          <Check className={cn("mr-2 h-4 w-4", sel ? "opacity-100" : "opacity-0")} />
+                          <span className="font-mono mr-2">{b.letter}</span>{b.name}
+                        </CommandItem>
+                      );
+                    })}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
+          {picked.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {[...picked].sort().map((l) => (
+                <Badge key={l} variant="secondary" className="gap-1 pr-1">
+                  <span className="font-mono">{l}</span> {brandName(l)}
+                  <button type="button" aria-label={`Remove ${brandName(l)}`} className="rounded hover:bg-muted-foreground/20 p-0.5"
+                          onClick={() => setPicked((p) => p.filter((x) => x !== l))}>
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

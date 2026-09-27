@@ -32,7 +32,7 @@ import {
 } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { Search, Plus, Layers, FileText, Package, Upload, Edit, Trash2, Download, Eye, ExternalLink, Loader2, Check, ChevronsUpDown, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
+import { Search, Plus, Layers, FileText, Package, Upload, Edit, Trash2, Download, Eye, ExternalLink, Loader2, Check, ChevronsUpDown, ArrowUp, ArrowDown, ArrowUpDown, RotateCcw } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TabBar } from "@/components/shell/TabBar";
 import { BOMBuilder } from "@/components/BOM/BOMBuilder";
@@ -68,6 +68,8 @@ const RawMaterialsManagement = () => {
   // the separate "All Types" dropdown goes.
   const [activeTab, setActiveTab] = useState<string>("PURCHASE");
   const filterSourceType = activeTab === "BOM" ? "all" : activeTab;
+  // Sourcing, price and vendors only mean something for bought parts.
+  const isPurchaseTab = activeTab === "PURCHASE";
   const [sortConfig, setSortConfig] = useState<{ key: 'part_code' | 'category' | 'vendors' | null; direction: 'asc' | 'desc' }>({ key: null, direction: 'asc' });
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -475,7 +477,7 @@ const RawMaterialsManagement = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-12">S.No.</TableHead>
+                  <TableHead className="w-12 hidden 2xl:table-cell">S.No.</TableHead>
                   <TableHead>
                     <button
                       type="button"
@@ -487,7 +489,7 @@ const RawMaterialsManagement = () => {
                     </button>
                   </TableHead>
                   <TableHead>Part Name</TableHead>
-                  <TableHead>
+                  <TableHead className="hidden lg:table-cell">
                     <button
                       type="button"
                       onClick={() => handleSort('category')}
@@ -497,10 +499,8 @@ const RawMaterialsManagement = () => {
                       <SortIcon column="category" />
                     </button>
                   </TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Sourcing</TableHead>
-                  <TableHead>Price</TableHead>
-                  <TableHead>
+                  {isPurchaseTab && <TableHead className="hidden xl:table-cell">Sourcing · Price</TableHead>}
+                  {isPurchaseTab && <TableHead className="hidden xl:table-cell">
                     <button
                       type="button"
                       onClick={() => handleSort('vendors')}
@@ -509,8 +509,8 @@ const RawMaterialsManagement = () => {
                       Vendors
                       <SortIcon column="vendors" />
                     </button>
-                  </TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  </TableHead>}
+                  <TableHead className="text-right w-px whitespace-nowrap">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -529,8 +529,8 @@ const RawMaterialsManagement = () => {
                 ) : (
                   sortedMaterials.map((material, index) => (
                     <TableRow key={material.id}>
-                      <TableCell className="text-muted-foreground text-sm">{index + 1}</TableCell>
-                      <TableCell className="font-medium">{material.part_code}</TableCell>
+                      <TableCell className="text-muted-foreground text-sm hidden 2xl:table-cell">{index + 1}</TableCell>
+                      <TableCell className="font-medium whitespace-nowrap">{material.part_code}</TableCell>
                       <TableCell>
                         {material.name}<ApprovalBadge status={(material as any).approval_status} reason={(material as any).rejection_reason} />
                         {(material as any).branded_from && (
@@ -540,16 +540,16 @@ const RawMaterialsManagement = () => {
                           <Badge variant="outline" className="ml-2 whitespace-nowrap">Per brand</Badge>
                         )}
                       </TableCell>
-                      <TableCell>{categoryName(material.category)}</TableCell>
-                      <TableCell>
+                      <TableCell className="hidden lg:table-cell">
+                        <div className="text-sm">{categoryName(material.category)}</div>
                         <Badge
                           variant={tierOfPart(material) === "PURCHASE" ? "outline" : "default"}
-                          className="w-fit text-xs whitespace-nowrap"
+                          className="mt-1 w-fit text-xs whitespace-nowrap"
                         >
                           {tierLabel(tierOfPart(material))}
                         </Badge>
                       </TableCell>
-                      <TableCell>
+                      {isPurchaseTab && <TableCell className="hidden xl:table-cell">
                         <div className="flex flex-col gap-1">
                           <Badge
                             variant={(material as any).sourcing_type === 'IMPORTED' ? "default" : "secondary"}
@@ -562,9 +562,6 @@ const RawMaterialsManagement = () => {
                               {(material as any).supplier_country}
                             </span>
                           )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
                         {(material as any).unit_price ? (
                           <div className="text-sm">
                             <span className="font-medium">
@@ -579,26 +576,28 @@ const RawMaterialsManagement = () => {
                         ) : (
                           <span className="text-muted-foreground text-sm">No price</span>
                         )}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex flex-wrap gap-1">
-                          {material.part_vendors?.map((rv: any) => (
-                            <Badge 
-                              key={rv.id} 
-                              variant={rv.is_primary ? "default" : "secondary"}
-                              className="text-xs"
-                            >
-                              {rv.vendors.vendor_code}
-                              {rv.is_primary && " (Primary)"}
-                            </Badge>
-                          )) || <span className="text-muted-foreground">No vendors</span>}
                         </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
+                      </TableCell>}
+                      {isPurchaseTab && <TableCell className="hidden xl:table-cell">
+                        {(() => {
+                          // One vendor shown (the primary), the rest counted, so the column stays narrow.
+                          const vs: any[] = material.part_vendors ?? [];
+                          if (!vs.length) return <span className="text-muted-foreground text-sm">None</span>;
+                          const first = vs.find((v) => v.is_primary) ?? vs[0];
+                          return (
+                            <span className="text-sm whitespace-nowrap" title={vs.map((v) => `${v.vendors?.vendor_code} ${v.vendors?.name}`).join("\n")}>
+                              <span className="font-mono">{first.vendors?.vendor_code}</span>
+                              {vs.length > 1 && <span className="text-muted-foreground"> +{vs.length - 1}</span>}
+                            </span>
+                          );
+                        })()}
+                      </TableCell>}
+                      <TableCell className="text-right whitespace-nowrap">
+                        <div className="flex justify-end gap-1.5">
                           <Button
                             variant="outline"
-                            size="sm"
+                            size="icon"
+                            aria-label="View"
                             onClick={() => handleViewMaterial(material)}
                           >
                             <Eye className="h-4 w-4" />
@@ -606,21 +605,23 @@ const RawMaterialsManagement = () => {
                           {canEditMasters && !(material as any).branded_from && (
                           <Button
                             variant="outline"
-                            size="sm"
+                            size="icon"
+                            aria-label="Edit"
                             onClick={() => handleEditMaterial(material)}
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
                           )}
                           {canApprove && material.is_active === false && (
-                            <Button variant="outline" size="sm" onClick={() => reactivatePart.mutate(material.id)}>
-                              Reactivate
+                            <Button variant="outline" size="icon" aria-label="Reactivate" title="Reactivate"
+                                    onClick={() => reactivatePart.mutate(material.id)}>
+                              <RotateCcw className="h-4 w-4" />
                             </Button>
                           )}
                           {canApprove && !(material as any).branded_from && (
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
-                              <Button variant="outline" size="sm">
+                              <Button variant="outline" size="icon" aria-label="Delete">
                                 <Trash2 className="h-4 w-4" />
                               </Button>
                             </AlertDialogTrigger>
