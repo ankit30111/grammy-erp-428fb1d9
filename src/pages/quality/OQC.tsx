@@ -96,8 +96,9 @@ const OQC = () => {
     }) => {
       // Book the output in first, then mark the voucher. The booking is
       // idempotent, so a retry after a failed status update cannot double it.
-      //   finished good -> finished-goods store
-      //   sub-assembly  -> Main Store, ready to be issued to the finished-good kit
+      //   finished good                      -> finished-goods store
+      //   sub-assembly built for stock       -> Main Store
+      //   sub-assembly built for a voucher   -> handed to that voucher's line (no store)
       if (status === "OQC_PASSED") {
         const { error: fgError } = await supabase.rpc("receive_finished_goods", {
           p_production_order_id: orderId,
@@ -128,6 +129,8 @@ const OQC = () => {
         title: passed ? "OQC passed" : "OQC failed",
         description: !passed
           ? `${order?.voucher_number ?? "Voucher"} failed OQC - nothing was booked into stock`
+          : isSubAssembly(order) && order?.parent?.voucher_number
+            ? `${order.parts?.part_code} x ${order.produced_quantity || order.quantity} handed to ${order.parent.voucher_number} on the line (not to the store)`
           : isSubAssembly(order)
             ? `${order.parts?.part_code} x ${order.produced_quantity || order.quantity} received into Main Store`
             : `${order?.parts?.part_code ?? "Output"} booked into Finished Goods`,

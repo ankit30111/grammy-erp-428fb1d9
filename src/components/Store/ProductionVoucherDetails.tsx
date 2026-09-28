@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { coverOf } from "@/components/Production/VoucherMaterials";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
@@ -35,6 +36,9 @@ interface VoucherTableRow extends Record<string, unknown> {
   pending?: number;
   isFullyReceived?: boolean;
   hasInsufficientStock?: boolean;
+  /** Sub-assembly built for this voucher: comes to the line, not from the store */
+  linkedNote?: string;
+  fullRequired?: number;
 }
 
 const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetailsProps) => {
@@ -128,6 +132,22 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
     },
   });
 
+  // Sub-assembly vouchers built FOR this voucher. After OQC their output goes to
+  // this voucher's line directly; the store does not issue that quantity.
+  const { data: linkedVouchers = [] } = useQuery({
+    queryKey: ["linked-vouchers", voucherId],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("production_orders")
+        .select("part_id, voucher_number, quantity, status, handed_over_quantity")
+        .eq("parent_order_id", voucherId);
+      if (error) throw error;
+      return (data ?? []) as any[];
+    },
+  });
+  const getLinkedCover = (materialId: string) =>
+    linkedVouchers.filter((v) => v.part_id === materialId).reduce((a, v) => a + coverOf(v), 0);
+
   // Create inventory lookup map
   const inventoryMap = new Map();
   inventoryData.forEach(item => {
@@ -191,7 +211,7 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
           currentStock,
           quantityToSend,
           newStock: currentStock - quantityToSend,
-          requiredQuantity: material.quantity * productionOrder.quantity,
+          requiredQuantity: Math.max(0, material.quantity * productionOrder.quantity - getLinkedCover(material.parts.id)),
           plantId: productionOrder.plant_id as string,
         });
       }
@@ -534,7 +554,11 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
     if (group.items.length === 0) return [];
     const materialRows = group.items.map((item): VoucherTableRow => {
       const materialId = item.parts.id;
-      const required = item.quantity * orderQuantity;
+      const fullRequired = item.quantity * orderQuantity;
+      const linkedCover = Math.min(fullRequired, getLinkedCover(materialId));
+      const linked = linkedVouchers.filter((v) => v.part_id === materialId);
+      // What the store has to supply: sub-assemblies built for this voucher are not.
+      const required = fullRequired - linkedCover;
       const stock = getCurrentStock(materialId);
       const sent = getDispatchedQuantity(materialId);
       const received = getActualReceivedQuantity(materialId);
@@ -553,6 +577,10 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
         pending: Math.max(0, sent - received),
         isFullyReceived: received >= required,
         hasInsufficientStock: toSend > stock,
+        fullRequired,
+        linkedNote: linked.length
+          ? `${linked.map((v) => `${v.voucher_number} × ${coverOf(v).toLocaleString()}`).join(", ")} built for this voucher: goes to the line after OQC, not issued by store`
+          : undefined,
       };
     });
     return [
@@ -638,11 +666,15 @@ const ProductionVoucherDetails = ({ voucherId, onBack }: ProductionVoucherDetail
                 <TableCell className="font-mono font-medium whitespace-nowrap">
                   {row.materialCode}
                 </TableCell>
-                <TableCell className="max-w-xs truncate" title={row.description ?? ""}>
-                  {row.description ?? "—"}
+                <TableCell className="max-w-xs" title={row.description ?? ""}>
+                  <div className="truncate">{row.description ?? "—"}</div>
+                  {row.linkedNote && <div className="text-xs text-primary whitespace-normal">{row.linkedNote}</div>}
                 </TableCell>
                 <TableCell className="text-right font-mono">
                   {(row.required ?? 0).toLocaleString()}
+                  {row.linkedNote && (row.fullRequired ?? 0) !== (row.required ?? 0) && (
+                    <div className="text-xs text-muted-foreground">of {(row.fullRequired ?? 0).toLocaleString()}</div>
+                  )}
                 </TableCell>
                 <TableCell className="text-right font-mono">
                   <span className={(row.stock ?? 0) === 0 ? "text-muted-foreground" : ""}>

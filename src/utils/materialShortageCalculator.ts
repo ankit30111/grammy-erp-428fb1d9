@@ -146,10 +146,12 @@ export const calculateShortages = async (plantId?: string | null): Promise<Short
   const holdRes = await holdQuery;
   if (holdRes.error) throw holdRes.error;
 
-  // Open vouchers: a sub-assembly voucher not through OQC is stock on its way in.
+  // Open vouchers: a stock-build sub-assembly voucher not through OQC is stock on
+  // its way into the store. One built for a finished-good voucher is not: it goes
+  // to that voucher's line, and that voucher does not hold it from the store.
   let openQuery = supabase
     .from("production_orders")
-    .select("part_id, quantity, status, plant_id")
+    .select("part_id, quantity, status, plant_id, parent_order_id")
     .not("status", "in", "(OQC_PASSED,OQC_FAILED,CANCELLED)");
   if (plantId) openQuery = openQuery.eq("plant_id", plantId);
   const openRes = await openQuery;
@@ -195,7 +197,7 @@ export const calculateShortages = async (plantId?: string | null): Promise<Short
   // Held beyond that must still be built, so its parts are real demand.
   const incoming = new Map<string, number>();
   for (const o of openRes.data || []) {
-    if (partsById.get(o.part_id)?.source_type !== "ASSEMBLED_STOCKED") continue;
+    if (partsById.get(o.part_id)?.source_type !== "ASSEMBLED_STOCKED" || (o as any).parent_order_id) continue;
     incoming.set(o.part_id, (incoming.get(o.part_id) || 0) + Number(o.quantity || 0));
   }
   for (const part of partsById.values()) {

@@ -6,9 +6,13 @@ import { attachParentVouchers } from "@/utils/voucherLinks";
 /**
  * Where every sub-assembly stands, for planning.
  *
- *   in store      built, OQC passed, sitting in the Main Store
- *   held          reserved by finished-good vouchers whose kit has not gone yet
- *   being built   open sub-assembly vouchers (not yet through OQC)
+ *   in store      built for stock, OQC passed, sitting in the Main Store
+ *   held          what finished-good vouchers still need FROM THE STORE (their
+ *                 kit has not gone yet). A voucher's linked sub-assembly vouchers
+ *                 are not held: they go straight to its line after OQC.
+ *   being built   open stock-build vouchers (no parent), not yet through OQC.
+ *                 Vouchers built for a finished-good voucher are listed but not
+ *                 counted: that output is already spoken for.
  *   projections   finished goods still to be vouchered x quantity per set
  *
  *   free    = in store + being built - held
@@ -154,7 +158,7 @@ export const useSubAssemblyPositions = () => {
           for_voucher: o.parent?.voucher_number ?? null,
           for_product: o.parent?.part_code ?? null,
         }));
-        const beingBuilt = vouchers.reduce((a, v) => a + v.quantity, 0);
+        const beingBuilt = vouchers.filter((v) => !v.for_voucher).reduce((a, v) => a + v.quantity, 0);
         const projectionNeed = usedIn.reduce((a, u) => a + (toVoucher.get(u.id) || 0) * u.qps, 0);
         const free = inStore + beingBuilt - held;
 

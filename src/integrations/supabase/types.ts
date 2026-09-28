@@ -3207,6 +3207,8 @@ export type Database = {
           completed_at: string | null
           created_at: string
           created_by: string | null
+          handed_over_at: string | null
+          handed_over_quantity: number | null
           id: string
           parent_order_id: string | null
           part_id: string
@@ -3225,6 +3227,8 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           created_by?: string | null
+          handed_over_at?: string | null
+          handed_over_quantity?: number | null
           id?: string
           parent_order_id?: string | null
           part_id: string
@@ -3243,6 +3247,8 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           created_by?: string | null
+          handed_over_at?: string | null
+          handed_over_quantity?: number | null
           id?: string
           parent_order_id?: string | null
           part_id?: string
@@ -4830,6 +4836,10 @@ export type Database = {
           p_root_part: string
         }
         Returns: Json
+      }
+      linked_cover: {
+        Args: { p_order_id: string; p_part_id: string }
+        Returns: number
       }
       list_departments_with_modules: {
         Args: never

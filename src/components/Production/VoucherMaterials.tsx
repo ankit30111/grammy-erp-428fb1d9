@@ -37,9 +37,23 @@ export interface VoucherMaterialRow {
   held: number;
   free: number;
   balance: number;
-  /** Sub-assemblies only: open sub-assembly vouchers that will bring it into store */
+  /** Sub-assemblies only: open stock-build vouchers that will bring it into store */
   beingBuilt: { voucher: string; quantity: number; status: string }[];
+  /** Sub-assemblies only: vouchers built FOR this voucher. Their output comes to
+   *  this voucher's line after OQC, never through the store. */
+  linked: { voucher: string; quantity: number; status: string }[];
+  /** How much of Required the linked vouchers cover (same rule as linked_cover()) */
+  linkedCover: number;
+  /** Required - linkedCover: what the store has to supply */
+  fromStore: number;
 }
+
+/** Same rule as the database's linked_cover(): planned while open, what was
+ *  handed over once OQC passed, nothing if it failed or was cancelled. */
+export const coverOf = (o: { status: string; quantity: number | string; handed_over_quantity?: number | string | null }) =>
+  o.status === "OQC_PASSED" ? Number(o.handed_over_quantity ?? 0)
+    : o.status === "OQC_FAILED" || o.status === "CANCELLED" ? 0
+    : Number(o.quantity ?? 0);
 
 export function useVoucherMaterials(
   partId: string | undefined,
@@ -100,12 +114,30 @@ export function useVoucherMaterials(
           .select("part_id, voucher_number, quantity, status")
           .eq("plant_id", plantId!)
           .in("part_id", subIds)
+          .is("parent_order_id", null)
           .not("status", "in", "(OQC_PASSED,OQC_FAILED,CANCELLED)")
           .order("planned_date");
         if (openError) throw openError;
         (open ?? []).forEach((o: any) =>
           building.set(o.part_id, [...(building.get(o.part_id) ?? []),
             { voucher: o.voucher_number, quantity: Number(o.quantity), status: o.status }]));
+      }
+
+      // Sub-assembly vouchers built for THIS voucher.
+      const linked = new Map<string, { list: VoucherMaterialRow["linked"]; cover: number }>();
+      if (subIds.length && productionOrderId) {
+        const { data: kids, error: kidError } = await (supabase as any)
+          .from("production_orders")
+          .select("part_id, voucher_number, quantity, status, handed_over_quantity")
+          .eq("parent_order_id", productionOrderId)
+          .order("planned_date");
+        if (kidError) throw kidError;
+        (kids ?? []).forEach((o: any) => {
+          const cur = linked.get(o.part_id) ?? { list: [], cover: 0 };
+          cur.list.push({ voucher: o.voucher_number, quantity: coverOf(o), status: o.status });
+          cur.cover += coverOf(o);
+          linked.set(o.part_id, cur);
+        });
       }
 
       const otherHolds = productionOrderId
@@ -128,6 +160,9 @@ export function useVoucherMaterials(
           const available = availableBy.get(b.child_part_id) ?? 0;
           const held = heldBy.get(b.child_part_id) ?? 0;
           const free = available - held;
+          const link = linked.get(b.child_part_id);
+          const linkedCover = Math.min(required, link?.cover ?? 0);
+          const fromStore = required - linkedCover;
           return {
             partId: b.child_part_id,
             partCode: b.parts?.part_code ?? "—",
@@ -139,8 +174,11 @@ export function useVoucherMaterials(
             available,
             held,
             free,
-            balance: free - required,
+            balance: free - fromStore,
             beingBuilt: building.get(b.child_part_id) ?? [],
+            linked: link?.list ?? [],
+            linkedCover,
+            fromStore,
           };
         })
         .sort((a, b) => a.partCode.localeCompare(b.partCode));
@@ -246,9 +284,16 @@ export function VoucherMaterials({
                       {r.sourceType === "ASSEMBLED_INLINE" ? "in-line" : "Sub-assembly"}
                     </Badge>
                   )}
+                  {r.linked.length > 0 && (
+                    <div className="text-xs text-primary mt-0.5">
+                      Built for this voucher: {r.linked.map((v) => `${v.voucher} × ${fmt(v.quantity)}`).join(", ")}
+                      {" "}· comes to this line after OQC, not from the store
+                      {r.fromStore > 0 && <> · {fmt(r.fromStore)} from store</>}
+                    </div>
+                  )}
                   {r.beingBuilt.length > 0 && (
                     <div className="text-xs text-muted-foreground mt-0.5">
-                      Being built: {r.beingBuilt.map((v) => `${v.voucher} × ${fmt(v.quantity)}`).join(", ")}
+                      Being built for stock: {r.beingBuilt.map((v) => `${v.voucher} × ${fmt(v.quantity)}`).join(", ")}
                       {" "}· enters the store after OQC
                     </div>
                   )}
@@ -280,7 +325,9 @@ export function VoucherMaterials({
       <p className="text-xs text-muted-foreground">
         Available is physical stock in the main store. Held is reserved by other
         production vouchers — this voucher's own hold is excluded. Free is what this
-        voucher can draw on, and Balance is Free minus Required.
+        voucher can draw on. Balance is Free minus what the store has to supply:
+        sub-assemblies built for this voucher come to the line directly and are not
+        drawn from the store.
       </p>
     </div>
   );
