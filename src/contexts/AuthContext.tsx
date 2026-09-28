@@ -32,7 +32,6 @@ export const KNOWN_MODULES = [
   'sales',
   'imports',
   'approvals',
-  'dash',
   'commerce',
 ] as const;
 

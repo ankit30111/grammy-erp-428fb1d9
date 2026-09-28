@@ -34,7 +34,6 @@ const MODULES: { key: string; label: string; hint: string }[] = [
   { key: "production", label: "Production", hint: "Production orders & finished goods" },
   { key: "quality", label: "Quality", hint: "IQC, PQC, OQC, complaints" },
   { key: "rnd", label: "R&D", hint: "NPD and pre-existing" },
-  { key: "dash", label: "DASH", hint: "DASH brand workspace" },
   { key: "hr", label: "HR", hint: "Human Resources" },
   { key: "approvals", label: "Approvals", hint: "Management / Admin only" },
 ];

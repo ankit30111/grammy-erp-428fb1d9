@@ -156,9 +156,10 @@ export type Database = {
           id: string
           is_active: boolean
           is_critical: boolean
+          issue_mode: string
           notes: string | null
           parent_part_id: string
-          quantity: number
+          quantity: number | null
           uom: string
           updated_at: string
           version: number
@@ -170,9 +171,10 @@ export type Database = {
           id?: string
           is_active?: boolean
           is_critical?: boolean
+          issue_mode?: string
           notes?: string | null
           parent_part_id: string
-          quantity: number
+          quantity?: number | null
           uom?: string
           updated_at?: string
           version?: number
@@ -184,9 +186,10 @@ export type Database = {
           id?: string
           is_active?: boolean
           is_critical?: boolean
+          issue_mode?: string
           notes?: string | null
           parent_part_id?: string
-          quantity?: number
+          quantity?: number | null
           uom?: string
           updated_at?: string
           version?: number
@@ -221,6 +224,123 @@ export type Database = {
             referencedColumns: ["part_id"]
           },
         ]
+      }
+      bom_change_requests: {
+        Row: {
+          id: string
+          lines: Json
+          parent_part_id: string
+          rejection_reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          submitted_at: string
+          submitted_by: string
+        }
+        Insert: {
+          id?: string
+          lines: Json
+          parent_part_id: string
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          submitted_at?: string
+          submitted_by?: string
+        }
+        Update: {
+          id?: string
+          lines?: Json
+          parent_part_id?: string
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          submitted_at?: string
+          submitted_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bom_change_requests_parent_part_id_fkey"
+            columns: ["parent_part_id"]
+            isOneToOne: false
+            referencedRelation: "parts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bom_change_requests_parent_part_id_fkey"
+            columns: ["parent_part_id"]
+            isOneToOne: false
+            referencedRelation: "store_receiving_variances"
+            referencedColumns: ["part_id"]
+          },
+        ]
+      }
+      brand_sync_issues: {
+        Row: {
+          brand: string | null
+          created_at: string
+          id: number
+          kind: string
+          message: string
+          part_code: string | null
+          part_id: string | null
+        }
+        Insert: {
+          brand?: string | null
+          created_at?: string
+          id?: number
+          kind: string
+          message: string
+          part_code?: string | null
+          part_id?: string | null
+        }
+        Update: {
+          brand?: string | null
+          created_at?: string
+          id?: number
+          kind?: string
+          message?: string
+          part_code?: string | null
+          part_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brand_sync_issues_part_id_fkey"
+            columns: ["part_id"]
+            isOneToOne: false
+            referencedRelation: "parts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "brand_sync_issues_part_id_fkey"
+            columns: ["part_id"]
+            isOneToOne: false
+            referencedRelation: "store_receiving_variances"
+            referencedColumns: ["part_id"]
+          },
+        ]
+      }
+      brands: {
+        Row: {
+          created_at: string
+          is_active: boolean
+          letter: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          is_active?: boolean
+          letter: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          is_active?: boolean
+          letter?: string
+          name?: string
+        }
+        Relationships: []
       }
       capa: {
         Row: {
@@ -357,44 +477,6 @@ export type Database = {
             columns: ["vendor_id"]
             isOneToOne: false
             referencedRelation: "vendors"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      capa_checks: {
-        Row: {
-          capa_id: string
-          check_date: string
-          checked_by: string | null
-          created_at: string
-          effective: boolean | null
-          id: string
-          observation: string | null
-        }
-        Insert: {
-          capa_id: string
-          check_date?: string
-          checked_by?: string | null
-          created_at?: string
-          effective?: boolean | null
-          id?: string
-          observation?: string | null
-        }
-        Update: {
-          capa_id?: string
-          check_date?: string
-          checked_by?: string | null
-          created_at?: string
-          effective?: boolean | null
-          id?: string
-          observation?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "capa_checks_capa_id_fkey"
-            columns: ["capa_id"]
-            isOneToOne: false
-            referencedRelation: "capa"
             referencedColumns: ["id"]
           },
         ]
@@ -684,6 +766,7 @@ export type Database = {
       customers: {
         Row: {
           address: string | null
+          approval_status: string
           bank_account_number: string | null
           brand_authorization_url: string | null
           brand_name: string | null
@@ -700,10 +783,15 @@ export type Database = {
           is_active: boolean
           msme_certificate_url: string | null
           name: string
+          rejection_reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          submitted_by: string | null
           updated_at: string
         }
         Insert: {
           address?: string | null
+          approval_status?: string
           bank_account_number?: string | null
           brand_authorization_url?: string | null
           brand_name?: string | null
@@ -720,10 +808,15 @@ export type Database = {
           is_active?: boolean
           msme_certificate_url?: string | null
           name: string
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          submitted_by?: string | null
           updated_at?: string
         }
         Update: {
           address?: string | null
+          approval_status?: string
           bank_account_number?: string | null
           brand_authorization_url?: string | null
           brand_name?: string | null
@@ -740,1150 +833,10 @@ export type Database = {
           is_active?: boolean
           msme_certificate_url?: string | null
           name?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      dash_customer_documents: {
-        Row: {
-          created_at: string
-          customer_id: string
-          document_type: string
-          file_name: string
-          file_url: string
-          id: string
-          uploaded_by: string | null
-        }
-        Insert: {
-          created_at?: string
-          customer_id: string
-          document_type: string
-          file_name: string
-          file_url: string
-          id?: string
-          uploaded_by?: string | null
-        }
-        Update: {
-          created_at?: string
-          customer_id?: string
-          document_type?: string
-          file_name?: string
-          file_url?: string
-          id?: string
-          uploaded_by?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "dash_customer_documents_customer_id_fkey"
-            columns: ["customer_id"]
-            isOneToOne: false
-            referencedRelation: "dash_customers"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      dash_customers: {
-        Row: {
-          address: string | null
-          assigned_sales_manager: string | null
-          bank_account_number: string | null
-          bank_ifsc: string | null
-          bank_name: string | null
-          cancelled_cheque_url: string | null
-          city: string | null
-          contact_person: string | null
-          created_at: string
-          created_by: string | null
-          credit_limit: number
-          customer_name: string
-          customer_type: Database["public"]["Enums"]["dash_customer_type"]
-          email: string | null
-          godown_address: string | null
-          gst_certificate_url: string | null
-          gst_number: string | null
-          id: string
-          is_active: boolean
-          msme_certificate_url: string | null
-          msme_number: string | null
-          notes: string | null
-          outstanding_balance: number
-          owner_name: string | null
-          owner_phone: string | null
-          pan_number: string | null
-          phone: string | null
-          pincode: string | null
-          primary_address: string | null
-          salesman_name: string | null
-          state: string | null
-          territory: string | null
-          updated_at: string
-          updated_by: string | null
-        }
-        Insert: {
-          address?: string | null
-          assigned_sales_manager?: string | null
-          bank_account_number?: string | null
-          bank_ifsc?: string | null
-          bank_name?: string | null
-          cancelled_cheque_url?: string | null
-          city?: string | null
-          contact_person?: string | null
-          created_at?: string
-          created_by?: string | null
-          credit_limit?: number
-          customer_name: string
-          customer_type?: Database["public"]["Enums"]["dash_customer_type"]
-          email?: string | null
-          godown_address?: string | null
-          gst_certificate_url?: string | null
-          gst_number?: string | null
-          id?: string
-          is_active?: boolean
-          msme_certificate_url?: string | null
-          msme_number?: string | null
-          notes?: string | null
-          outstanding_balance?: number
-          owner_name?: string | null
-          owner_phone?: string | null
-          pan_number?: string | null
-          phone?: string | null
-          pincode?: string | null
-          primary_address?: string | null
-          salesman_name?: string | null
-          state?: string | null
-          territory?: string | null
-          updated_at?: string
-          updated_by?: string | null
-        }
-        Update: {
-          address?: string | null
-          assigned_sales_manager?: string | null
-          bank_account_number?: string | null
-          bank_ifsc?: string | null
-          bank_name?: string | null
-          cancelled_cheque_url?: string | null
-          city?: string | null
-          contact_person?: string | null
-          created_at?: string
-          created_by?: string | null
-          credit_limit?: number
-          customer_name?: string
-          customer_type?: Database["public"]["Enums"]["dash_customer_type"]
-          email?: string | null
-          godown_address?: string | null
-          gst_certificate_url?: string | null
-          gst_number?: string | null
-          id?: string
-          is_active?: boolean
-          msme_certificate_url?: string | null
-          msme_number?: string | null
-          notes?: string | null
-          outstanding_balance?: number
-          owner_name?: string | null
-          owner_phone?: string | null
-          pan_number?: string | null
-          phone?: string | null
-          pincode?: string | null
-          primary_address?: string | null
-          salesman_name?: string | null
-          state?: string | null
-          territory?: string | null
-          updated_at?: string
-          updated_by?: string | null
-        }
-        Relationships: []
-      }
-      dash_factory_orders: {
-        Row: {
-          batch_number: string | null
-          cost_per_unit: number
-          created_at: string
-          created_by: string | null
-          dispatch_date: string | null
-          expected_production_date: string | null
-          factory_invoice_url: string | null
-          fo_number: string
-          id: string
-          notes: string | null
-          product_id: string
-          qc_status: Database["public"]["Enums"]["dash_qc_status"]
-          quantity_ordered: number
-          shipment_tracking_number: string | null
-          status: Database["public"]["Enums"]["dash_factory_order_status"]
-          total_cost: number
-          updated_at: string
-        }
-        Insert: {
-          batch_number?: string | null
-          cost_per_unit?: number
-          created_at?: string
-          created_by?: string | null
-          dispatch_date?: string | null
-          expected_production_date?: string | null
-          factory_invoice_url?: string | null
-          fo_number: string
-          id?: string
-          notes?: string | null
-          product_id: string
-          qc_status?: Database["public"]["Enums"]["dash_qc_status"]
-          quantity_ordered?: number
-          shipment_tracking_number?: string | null
-          status?: Database["public"]["Enums"]["dash_factory_order_status"]
-          total_cost?: number
-          updated_at?: string
-        }
-        Update: {
-          batch_number?: string | null
-          cost_per_unit?: number
-          created_at?: string
-          created_by?: string | null
-          dispatch_date?: string | null
-          expected_production_date?: string | null
-          factory_invoice_url?: string | null
-          fo_number?: string
-          id?: string
-          notes?: string | null
-          product_id?: string
-          qc_status?: Database["public"]["Enums"]["dash_qc_status"]
-          quantity_ordered?: number
-          shipment_tracking_number?: string | null
-          status?: Database["public"]["Enums"]["dash_factory_order_status"]
-          total_cost?: number
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "dash_factory_orders_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "dash_products"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      dash_inventory: {
-        Row: {
-          batch_number: string | null
-          created_at: string
-          damaged_stock: number
-          id: string
-          in_transit_stock: number
-          location: string | null
-          low_stock_threshold: number
-          product_id: string
-          reserved_stock: number
-          total_stock: number
-          unit_cost: number
-          updated_at: string
-        }
-        Insert: {
-          batch_number?: string | null
-          created_at?: string
-          damaged_stock?: number
-          id?: string
-          in_transit_stock?: number
-          location?: string | null
-          low_stock_threshold?: number
-          product_id: string
-          reserved_stock?: number
-          total_stock?: number
-          unit_cost?: number
-          updated_at?: string
-        }
-        Update: {
-          batch_number?: string | null
-          created_at?: string
-          damaged_stock?: number
-          id?: string
-          in_transit_stock?: number
-          location?: string | null
-          low_stock_threshold?: number
-          product_id?: string
-          reserved_stock?: number
-          total_stock?: number
-          unit_cost?: number
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "dash_inventory_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "dash_products"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      dash_inventory_movements: {
-        Row: {
-          batch_number: string | null
-          created_at: string
-          created_by: string | null
-          id: string
-          movement_type: Database["public"]["Enums"]["dash_movement_type"]
-          notes: string | null
-          product_id: string
-          quantity: number
-          reference_id: string | null
-          reference_type: string | null
-        }
-        Insert: {
-          batch_number?: string | null
-          created_at?: string
-          created_by?: string | null
-          id?: string
-          movement_type: Database["public"]["Enums"]["dash_movement_type"]
-          notes?: string | null
-          product_id: string
-          quantity: number
-          reference_id?: string | null
-          reference_type?: string | null
-        }
-        Update: {
-          batch_number?: string | null
-          created_at?: string
-          created_by?: string | null
-          id?: string
-          movement_type?: Database["public"]["Enums"]["dash_movement_type"]
-          notes?: string | null
-          product_id?: string
-          quantity?: number
-          reference_id?: string | null
-          reference_type?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "dash_inventory_movements_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "dash_products"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      dash_payments: {
-        Row: {
-          amount: number
-          created_at: string
-          created_by: string | null
-          customer_id: string
-          id: string
-          notes: string | null
-          payment_date: string
-          payment_mode: string | null
-          reference_number: string | null
-          sales_order_id: string | null
-        }
-        Insert: {
-          amount?: number
-          created_at?: string
-          created_by?: string | null
-          customer_id: string
-          id?: string
-          notes?: string | null
-          payment_date?: string
-          payment_mode?: string | null
-          reference_number?: string | null
-          sales_order_id?: string | null
-        }
-        Update: {
-          amount?: number
-          created_at?: string
-          created_by?: string | null
-          customer_id?: string
-          id?: string
-          notes?: string | null
-          payment_date?: string
-          payment_mode?: string | null
-          reference_number?: string | null
-          sales_order_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "dash_payments_customer_id_fkey"
-            columns: ["customer_id"]
-            isOneToOne: false
-            referencedRelation: "dash_customers"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "dash_payments_sales_order_id_fkey"
-            columns: ["sales_order_id"]
-            isOneToOne: false
-            referencedRelation: "dash_sales_orders"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      dash_product_artwork: {
-        Row: {
-          created_at: string
-          file_name: string
-          file_type: Database["public"]["Enums"]["dash_artwork_type"]
-          file_url: string
-          id: string
-          product_id: string
-          uploaded_by: string | null
-        }
-        Insert: {
-          created_at?: string
-          file_name: string
-          file_type: Database["public"]["Enums"]["dash_artwork_type"]
-          file_url: string
-          id?: string
-          product_id: string
-          uploaded_by?: string | null
-        }
-        Update: {
-          created_at?: string
-          file_name?: string
-          file_type?: Database["public"]["Enums"]["dash_artwork_type"]
-          file_url?: string
-          id?: string
-          product_id?: string
-          uploaded_by?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "dash_product_artwork_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "dash_products"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      dash_product_compliance: {
-        Row: {
-          bis_certificate_number: string | null
-          bis_expiry_date: string | null
-          brand_logo_location: string | null
-          compliance_notes: string | null
-          compliance_status: string
-          created_at: string
-          id: string
-          mrp_label_location_box: string | null
-          notes: string | null
-          other_certifications: Json | null
-          product_id: string
-          rating_label_location_box: string | null
-          rating_label_location_product: string | null
-          updated_at: string
-        }
-        Insert: {
-          bis_certificate_number?: string | null
-          bis_expiry_date?: string | null
-          brand_logo_location?: string | null
-          compliance_notes?: string | null
-          compliance_status?: string
-          created_at?: string
-          id?: string
-          mrp_label_location_box?: string | null
-          notes?: string | null
-          other_certifications?: Json | null
-          product_id: string
-          rating_label_location_box?: string | null
-          rating_label_location_product?: string | null
-          updated_at?: string
-        }
-        Update: {
-          bis_certificate_number?: string | null
-          bis_expiry_date?: string | null
-          brand_logo_location?: string | null
-          compliance_notes?: string | null
-          compliance_status?: string
-          created_at?: string
-          id?: string
-          mrp_label_location_box?: string | null
-          notes?: string | null
-          other_certifications?: Json | null
-          product_id?: string
-          rating_label_location_box?: string | null
-          rating_label_location_product?: string | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "dash_product_compliance_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "dash_products"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      dash_product_documents: {
-        Row: {
-          created_at: string
-          doc_name: string | null
-          doc_type: string | null
-          document_type: string
-          file_name: string
-          file_url: string
-          id: string
-          is_current: boolean
-          product_id: string
-          uploaded_by: string | null
-          version: number
-        }
-        Insert: {
-          created_at?: string
-          doc_name?: string | null
-          doc_type?: string | null
-          document_type: string
-          file_name: string
-          file_url: string
-          id?: string
-          is_current?: boolean
-          product_id: string
-          uploaded_by?: string | null
-          version?: number
-        }
-        Update: {
-          created_at?: string
-          doc_name?: string | null
-          doc_type?: string | null
-          document_type?: string
-          file_name?: string
-          file_url?: string
-          id?: string
-          is_current?: boolean
-          product_id?: string
-          uploaded_by?: string | null
-          version?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "dash_product_documents_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "dash_products"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      dash_product_qc_checklist: {
-        Row: {
-          created_at: string | null
-          expected_value: string | null
-          id: string
-          is_mandatory: boolean | null
-          parameter_category: string | null
-          parameter_name: string
-          product_id: string
-          sort_order: number | null
-        }
-        Insert: {
-          created_at?: string | null
-          expected_value?: string | null
-          id?: string
-          is_mandatory?: boolean | null
-          parameter_category?: string | null
-          parameter_name: string
-          product_id: string
-          sort_order?: number | null
-        }
-        Update: {
-          created_at?: string | null
-          expected_value?: string | null
-          id?: string
-          is_mandatory?: boolean | null
-          parameter_category?: string | null
-          parameter_name?: string
-          product_id?: string
-          sort_order?: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "dash_product_qc_checklist_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "dash_products"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      dash_product_spare_parts: {
-        Row: {
-          created_at: string | null
-          current_stock: number | null
-          description: string | null
-          id: string
-          part_name: string
-          part_number: string
-          product_id: string
-          reorder_level: number | null
-          selling_price: number | null
-          unit_cost: number | null
-          updated_at: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          current_stock?: number | null
-          description?: string | null
-          id?: string
-          part_name: string
-          part_number: string
-          product_id: string
-          reorder_level?: number | null
-          selling_price?: number | null
-          unit_cost?: number | null
-          updated_at?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          current_stock?: number | null
-          description?: string | null
-          id?: string
-          part_name?: string
-          part_number?: string
-          product_id?: string
-          reorder_level?: number | null
-          selling_price?: number | null
-          unit_cost?: number | null
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "dash_product_spare_parts_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "dash_products"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      dash_product_spares: {
-        Row: {
-          created_at: string
-          id: string
-          product_id: string
-          spare_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          product_id: string
-          spare_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          product_id?: string
-          spare_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "dash_product_spares_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "dash_products"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "dash_product_spares_spare_id_fkey"
-            columns: ["spare_id"]
-            isOneToOne: false
-            referencedRelation: "dash_spare_parts"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      dash_product_specs: {
-        Row: {
-          box_contents: string[] | null
-          color_variants: string[] | null
-          connectivity: string[] | null
-          country_of_origin: string | null
-          created_at: string | null
-          custom_specs: Json | null
-          dimensions_h: number | null
-          dimensions_l: number | null
-          dimensions_w: number | null
-          frequency_response: string | null
-          id: string
-          power_output: string | null
-          product_id: string
-          updated_at: string | null
-          weight_kg: number | null
-        }
-        Insert: {
-          box_contents?: string[] | null
-          color_variants?: string[] | null
-          connectivity?: string[] | null
-          country_of_origin?: string | null
-          created_at?: string | null
-          custom_specs?: Json | null
-          dimensions_h?: number | null
-          dimensions_l?: number | null
-          dimensions_w?: number | null
-          frequency_response?: string | null
-          id?: string
-          power_output?: string | null
-          product_id: string
-          updated_at?: string | null
-          weight_kg?: number | null
-        }
-        Update: {
-          box_contents?: string[] | null
-          color_variants?: string[] | null
-          connectivity?: string[] | null
-          country_of_origin?: string | null
-          created_at?: string | null
-          custom_specs?: Json | null
-          dimensions_h?: number | null
-          dimensions_l?: number | null
-          dimensions_w?: number | null
-          frequency_response?: string | null
-          id?: string
-          power_output?: string | null
-          product_id?: string
-          updated_at?: string | null
-          weight_kg?: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "dash_product_specs_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: true
-            referencedRelation: "dash_products"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      dash_products: {
-        Row: {
-          barcode_ean: string | null
-          branding_info: string | null
-          category: Database["public"]["Enums"]["dash_product_category"]
-          created_at: string
-          created_by: string | null
-          dealer_price: number
-          description: string | null
-          distributor_price: number
-          dp: number | null
-          gross_weight: number | null
-          gst_percent: number | null
-          hsn_code: string | null
-          id: string
-          model_number: string
-          mrp: number
-          net_weight: number | null
-          nlc: number | null
-          product_name: string
-          purchase_price: number | null
-          qa_checklist: Json | null
-          serial_next_number: number | null
-          serial_prefix: string | null
-          software_button_details: string | null
-          status: Database["public"]["Enums"]["dash_product_status"]
-          technical_specs: Json | null
-          updated_at: string
-          updated_by: string | null
-          warranty_period_months: number
-        }
-        Insert: {
-          barcode_ean?: string | null
-          branding_info?: string | null
-          category?: Database["public"]["Enums"]["dash_product_category"]
-          created_at?: string
-          created_by?: string | null
-          dealer_price?: number
-          description?: string | null
-          distributor_price?: number
-          dp?: number | null
-          gross_weight?: number | null
-          gst_percent?: number | null
-          hsn_code?: string | null
-          id?: string
-          model_number: string
-          mrp?: number
-          net_weight?: number | null
-          nlc?: number | null
-          product_name: string
-          purchase_price?: number | null
-          qa_checklist?: Json | null
-          serial_next_number?: number | null
-          serial_prefix?: string | null
-          software_button_details?: string | null
-          status?: Database["public"]["Enums"]["dash_product_status"]
-          technical_specs?: Json | null
-          updated_at?: string
-          updated_by?: string | null
-          warranty_period_months?: number
-        }
-        Update: {
-          barcode_ean?: string | null
-          branding_info?: string | null
-          category?: Database["public"]["Enums"]["dash_product_category"]
-          created_at?: string
-          created_by?: string | null
-          dealer_price?: number
-          description?: string | null
-          distributor_price?: number
-          dp?: number | null
-          gross_weight?: number | null
-          gst_percent?: number | null
-          hsn_code?: string | null
-          id?: string
-          model_number?: string
-          mrp?: number
-          net_weight?: number | null
-          nlc?: number | null
-          product_name?: string
-          purchase_price?: number | null
-          qa_checklist?: Json | null
-          serial_next_number?: number | null
-          serial_prefix?: string | null
-          software_button_details?: string | null
-          status?: Database["public"]["Enums"]["dash_product_status"]
-          technical_specs?: Json | null
-          updated_at?: string
-          updated_by?: string | null
-          warranty_period_months?: number
-        }
-        Relationships: []
-      }
-      dash_sales_order_items: {
-        Row: {
-          batch_number: string | null
-          discount_percent: number
-          id: string
-          line_total: number
-          product_id: string
-          quantity: number
-          sales_order_id: string
-          unit_price: number
-        }
-        Insert: {
-          batch_number?: string | null
-          discount_percent?: number
-          id?: string
-          line_total?: number
-          product_id: string
-          quantity?: number
-          sales_order_id: string
-          unit_price?: number
-        }
-        Update: {
-          batch_number?: string | null
-          discount_percent?: number
-          id?: string
-          line_total?: number
-          product_id?: string
-          quantity?: number
-          sales_order_id?: string
-          unit_price?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "dash_sales_order_items_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "dash_products"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "dash_sales_order_items_sales_order_id_fkey"
-            columns: ["sales_order_id"]
-            isOneToOne: false
-            referencedRelation: "dash_sales_orders"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      dash_sales_orders: {
-        Row: {
-          created_at: string
-          created_by: string | null
-          customer_id: string
-          discount_amount: number
-          dispatch_status: Database["public"]["Enums"]["dash_dispatch_status"]
-          e_invoice_url: string | null
-          id: string
-          net_amount: number
-          notes: string | null
-          order_date: string
-          payment_status: Database["public"]["Enums"]["dash_payment_status"]
-          scheme_details: string | null
-          so_number: string
-          total_amount: number
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          created_by?: string | null
-          customer_id: string
-          discount_amount?: number
-          dispatch_status?: Database["public"]["Enums"]["dash_dispatch_status"]
-          e_invoice_url?: string | null
-          id?: string
-          net_amount?: number
-          notes?: string | null
-          order_date?: string
-          payment_status?: Database["public"]["Enums"]["dash_payment_status"]
-          scheme_details?: string | null
-          so_number: string
-          total_amount?: number
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          created_by?: string | null
-          customer_id?: string
-          discount_amount?: number
-          dispatch_status?: Database["public"]["Enums"]["dash_dispatch_status"]
-          e_invoice_url?: string | null
-          id?: string
-          net_amount?: number
-          notes?: string | null
-          order_date?: string
-          payment_status?: Database["public"]["Enums"]["dash_payment_status"]
-          scheme_details?: string | null
-          so_number?: string
-          total_amount?: number
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "dash_sales_orders_customer_id_fkey"
-            columns: ["customer_id"]
-            isOneToOne: false
-            referencedRelation: "dash_customers"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      dash_service_history: {
-        Row: {
-          action_type: string
-          created_at: string
-          description: string | null
-          id: string
-          performed_by: string | null
-          serial_number: string | null
-          ticket_id: string
-        }
-        Insert: {
-          action_type: string
-          created_at?: string
-          description?: string | null
-          id?: string
-          performed_by?: string | null
-          serial_number?: string | null
-          ticket_id: string
-        }
-        Update: {
-          action_type?: string
-          created_at?: string
-          description?: string | null
-          id?: string
-          performed_by?: string | null
-          serial_number?: string | null
-          ticket_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "dash_service_history_ticket_id_fkey"
-            columns: ["ticket_id"]
-            isOneToOne: false
-            referencedRelation: "dash_service_tickets"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      dash_service_tickets: {
-        Row: {
-          assigned_engineer: string | null
-          closed_at: string | null
-          created_at: string
-          customer_name: string
-          customer_phone: string | null
-          id: string
-          issue_description: string
-          product_id: string
-          repair_status: Database["public"]["Enums"]["dash_repair_status"]
-          replacement_approval_notes: string | null
-          replacement_approved: boolean
-          serial_number: string | null
-          service_notes: string | null
-          ticket_number: string
-          updated_at: string
-          warranty_valid: boolean
-        }
-        Insert: {
-          assigned_engineer?: string | null
-          closed_at?: string | null
-          created_at?: string
-          customer_name: string
-          customer_phone?: string | null
-          id?: string
-          issue_description: string
-          product_id: string
-          repair_status?: Database["public"]["Enums"]["dash_repair_status"]
-          replacement_approval_notes?: string | null
-          replacement_approved?: boolean
-          serial_number?: string | null
-          service_notes?: string | null
-          ticket_number: string
-          updated_at?: string
-          warranty_valid?: boolean
-        }
-        Update: {
-          assigned_engineer?: string | null
-          closed_at?: string | null
-          created_at?: string
-          customer_name?: string
-          customer_phone?: string | null
-          id?: string
-          issue_description?: string
-          product_id?: string
-          repair_status?: Database["public"]["Enums"]["dash_repair_status"]
-          replacement_approval_notes?: string | null
-          replacement_approved?: boolean
-          serial_number?: string | null
-          service_notes?: string | null
-          ticket_number?: string
-          updated_at?: string
-          warranty_valid?: boolean
-        }
-        Relationships: [
-          {
-            foreignKeyName: "dash_service_tickets_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "dash_products"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      dash_spare_consumption: {
-        Row: {
-          consumed_by: string | null
-          created_at: string
-          id: string
-          notes: string | null
-          quantity_used: number
-          spare_id: string
-          ticket_id: string | null
-        }
-        Insert: {
-          consumed_by?: string | null
-          created_at?: string
-          id?: string
-          notes?: string | null
-          quantity_used?: number
-          spare_id: string
-          ticket_id?: string | null
-        }
-        Update: {
-          consumed_by?: string | null
-          created_at?: string
-          id?: string
-          notes?: string | null
-          quantity_used?: number
-          spare_id?: string
-          ticket_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "dash_spare_consumption_spare_id_fkey"
-            columns: ["spare_id"]
-            isOneToOne: false
-            referencedRelation: "dash_spare_parts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "dash_spare_consumption_ticket_id_fkey"
-            columns: ["ticket_id"]
-            isOneToOne: false
-            referencedRelation: "dash_service_tickets"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      dash_spare_dispatch_log: {
-        Row: {
-          created_at: string
-          dispatch_type: Database["public"]["Enums"]["dash_spare_dispatch_type"]
-          dispatched_by: string | null
-          dispatched_to: string | null
-          id: string
-          notes: string | null
-          quantity: number
-          reference_number: string | null
-          spare_id: string
-        }
-        Insert: {
-          created_at?: string
-          dispatch_type?: Database["public"]["Enums"]["dash_spare_dispatch_type"]
-          dispatched_by?: string | null
-          dispatched_to?: string | null
-          id?: string
-          notes?: string | null
-          quantity?: number
-          reference_number?: string | null
-          spare_id: string
-        }
-        Update: {
-          created_at?: string
-          dispatch_type?: Database["public"]["Enums"]["dash_spare_dispatch_type"]
-          dispatched_by?: string | null
-          dispatched_to?: string | null
-          id?: string
-          notes?: string | null
-          quantity?: number
-          reference_number?: string | null
-          spare_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "dash_spare_dispatch_log_spare_id_fkey"
-            columns: ["spare_id"]
-            isOneToOne: false
-            referencedRelation: "dash_spare_parts"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      dash_spare_parts: {
-        Row: {
-          cost_price: number
-          created_at: string
-          description: string | null
-          id: string
-          linked_product_ids: Json | null
-          low_stock_threshold: number
-          selling_price: number
-          spare_code: string
-          spare_name: string
-          stock_quantity: number
-          updated_at: string
-        }
-        Insert: {
-          cost_price?: number
-          created_at?: string
-          description?: string | null
-          id?: string
-          linked_product_ids?: Json | null
-          low_stock_threshold?: number
-          selling_price?: number
-          spare_code: string
-          spare_name: string
-          stock_quantity?: number
-          updated_at?: string
-        }
-        Update: {
-          cost_price?: number
-          created_at?: string
-          description?: string | null
-          id?: string
-          linked_product_ids?: Json | null
-          low_stock_threshold?: number
-          selling_price?: number
-          spare_code?: string
-          spare_name?: string
-          stock_quantity?: number
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          submitted_by?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -2169,7 +1122,7 @@ export type Database = {
           created_by: string | null
           date_of_birth: string | null
           department: string
-          email: string
+          email: string | null
           employee_code: string
           esic_number: string | null
           first_name: string
@@ -2196,7 +1149,7 @@ export type Database = {
           created_by?: string | null
           date_of_birth?: string | null
           department: string
-          email: string
+          email?: string | null
           employee_code: string
           esic_number?: string | null
           first_name: string
@@ -2223,7 +1176,7 @@ export type Database = {
           created_by?: string | null
           date_of_birth?: string | null
           department?: string
-          email?: string
+          email?: string | null
           employee_code?: string
           esic_number?: string | null
           first_name?: string
@@ -2645,27 +1598,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      ht_store: {
-        Row: {
-          account_key: string
-          store_key: string
-          updated_at: string
-          value: Json
-        }
-        Insert: {
-          account_key: string
-          store_key: string
-          updated_at?: string
-          value: Json
-        }
-        Update: {
-          account_key?: string
-          store_key?: string
-          updated_at?: string
-          value?: Json
-        }
-        Relationships: []
       }
       import_containers: {
         Row: {
@@ -3533,6 +2465,49 @@ export type Database = {
           },
         ]
       }
+      part_brands: {
+        Row: {
+          brand: string
+          created_at: string
+          created_by: string | null
+          part_id: string
+        }
+        Insert: {
+          brand: string
+          created_at?: string
+          created_by?: string | null
+          part_id: string
+        }
+        Update: {
+          brand?: string
+          created_at?: string
+          created_by?: string | null
+          part_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "part_brands_brand_fkey"
+            columns: ["brand"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["letter"]
+          },
+          {
+            foreignKeyName: "part_brands_part_id_fkey"
+            columns: ["part_id"]
+            isOneToOne: false
+            referencedRelation: "parts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "part_brands_part_id_fkey"
+            columns: ["part_id"]
+            isOneToOne: false
+            referencedRelation: "store_receiving_variances"
+            referencedColumns: ["part_id"]
+          },
+        ]
+      }
       part_categories: {
         Row: {
           created_at: string
@@ -3669,102 +2644,147 @@ export type Database = {
       }
       parts: {
         Row: {
-          bom_url: string | null
+          approval_status: string
+          brand: string | null
+          brand_relevant: boolean
+          branded_from: string | null
+          branding_required: boolean
           category: string
           cbm_per_unit: number | null
-          ccl_url: string | null
           cir_sheet_url: string | null
           created_at: string
           created_by: string | null
-          crs_url: string | null
           currency: string | null
           id: string
           iqc_checklist_url: string | null
           is_active: boolean
           last_price_update: string | null
+          made_in_house: boolean
           name: string
           oqc_checklist_url: string | null
           part_code: string
           plant_id: string | null
           pqc_checklist_url: string | null
+          purchase_factor: number
+          purchase_uom: string | null
+          rejection_reason: string | null
+          remarks: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
           source_type: Database["public"]["Enums"]["part_source_type"]
           sourcing_type: string | null
-          spec_changes_description: string | null
           spec_version: number
           specification: string | null
           specification_sheet_url: string | null
+          submitted_by: string | null
           supplier_country: string | null
           unit_price: number | null
           uom: string
           updated_at: string
           used_in_reference: string | null
-          wi_url: string | null
         }
         Insert: {
-          bom_url?: string | null
+          approval_status?: string
+          brand?: string | null
+          brand_relevant?: boolean
+          branded_from?: string | null
+          branding_required?: boolean
           category: string
           cbm_per_unit?: number | null
-          ccl_url?: string | null
           cir_sheet_url?: string | null
           created_at?: string
           created_by?: string | null
-          crs_url?: string | null
           currency?: string | null
           id?: string
           iqc_checklist_url?: string | null
           is_active?: boolean
           last_price_update?: string | null
+          made_in_house?: boolean
           name: string
           oqc_checklist_url?: string | null
           part_code: string
           plant_id?: string | null
           pqc_checklist_url?: string | null
+          purchase_factor?: number
+          purchase_uom?: string | null
+          rejection_reason?: string | null
+          remarks?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           source_type?: Database["public"]["Enums"]["part_source_type"]
           sourcing_type?: string | null
-          spec_changes_description?: string | null
           spec_version?: number
           specification?: string | null
           specification_sheet_url?: string | null
+          submitted_by?: string | null
           supplier_country?: string | null
           unit_price?: number | null
           uom?: string
           updated_at?: string
           used_in_reference?: string | null
-          wi_url?: string | null
         }
         Update: {
-          bom_url?: string | null
+          approval_status?: string
+          brand?: string | null
+          brand_relevant?: boolean
+          branded_from?: string | null
+          branding_required?: boolean
           category?: string
           cbm_per_unit?: number | null
-          ccl_url?: string | null
           cir_sheet_url?: string | null
           created_at?: string
           created_by?: string | null
-          crs_url?: string | null
           currency?: string | null
           id?: string
           iqc_checklist_url?: string | null
           is_active?: boolean
           last_price_update?: string | null
+          made_in_house?: boolean
           name?: string
           oqc_checklist_url?: string | null
           part_code?: string
           plant_id?: string | null
           pqc_checklist_url?: string | null
+          purchase_factor?: number
+          purchase_uom?: string | null
+          rejection_reason?: string | null
+          remarks?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           source_type?: Database["public"]["Enums"]["part_source_type"]
           sourcing_type?: string | null
-          spec_changes_description?: string | null
           spec_version?: number
           specification?: string | null
           specification_sheet_url?: string | null
+          submitted_by?: string | null
           supplier_country?: string | null
           unit_price?: number | null
           uom?: string
           updated_at?: string
           used_in_reference?: string | null
-          wi_url?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "parts_brand_fkey"
+            columns: ["brand"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["letter"]
+          },
+          {
+            foreignKeyName: "parts_branded_from_fkey"
+            columns: ["branded_from"]
+            isOneToOne: false
+            referencedRelation: "parts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "parts_branded_from_fkey"
+            columns: ["branded_from"]
+            isOneToOne: false
+            referencedRelation: "store_receiving_variances"
+            referencedColumns: ["part_id"]
+          },
           {
             foreignKeyName: "parts_plant_id_fkey"
             columns: ["plant_id"]
@@ -4188,6 +3208,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           id: string
+          parent_order_id: string | null
           part_id: string
           planned_date: string
           plant_id: string
@@ -4205,6 +3226,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
+          parent_order_id?: string | null
           part_id: string
           planned_date?: string
           plant_id: string
@@ -4222,6 +3244,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
+          parent_order_id?: string | null
           part_id?: string
           planned_date?: string
           plant_id?: string
@@ -4235,6 +3258,13 @@ export type Database = {
           voucher_number?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "production_orders_parent_order_id_fkey"
+            columns: ["parent_order_id"]
+            isOneToOne: false
+            referencedRelation: "production_orders"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "production_orders_part_id_fkey"
             columns: ["part_id"]
@@ -4281,7 +3311,7 @@ export type Database = {
           part_id: string
           plant_id: string
           production_line_id: string | null
-          projection_id: string
+          projection_id: string | null
           quantity: number
           scheduled_date: string
           status: Database["public"]["Enums"]["schedule_status"]
@@ -4295,7 +3325,7 @@ export type Database = {
           part_id: string
           plant_id: string
           production_line_id?: string | null
-          projection_id: string
+          projection_id?: string | null
           quantity: number
           scheduled_date: string
           status?: Database["public"]["Enums"]["schedule_status"]
@@ -4309,7 +3339,7 @@ export type Database = {
           part_id?: string
           plant_id?: string
           production_line_id?: string | null
-          projection_id?: string
+          projection_id?: string | null
           quantity?: number
           scheduled_date?: string
           status?: Database["public"]["Enums"]["schedule_status"]
@@ -4349,38 +3379,6 @@ export type Database = {
             columns: ["projection_id"]
             isOneToOne: false
             referencedRelation: "projections"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      production_serial_numbers: {
-        Row: {
-          created_at: string
-          id: string
-          production_order_id: string
-          serial_number: string
-          status: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          production_order_id: string
-          serial_number: string
-          status?: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          production_order_id?: string
-          serial_number?: string
-          status?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "production_serial_numbers_production_order_id_fkey"
-            columns: ["production_order_id"]
-            isOneToOne: false
-            referencedRelation: "production_orders"
             referencedColumns: ["id"]
           },
         ]
@@ -4668,33 +3666,27 @@ export type Database = {
           },
         ]
       }
-      restore_points: {
+      released_part_codes: {
         Row: {
-          id: string
-          label: string
-          row_count: number
-          schema_name: string
-          table_count: number
-          taken_at: string
-          taken_by: string | null
+          part_code: string
+          prefix: string
+          released_at: string
+          released_by: string | null
+          seq: number
         }
         Insert: {
-          id?: string
-          label: string
-          row_count?: number
-          schema_name: string
-          table_count?: number
-          taken_at?: string
-          taken_by?: string | null
+          part_code: string
+          prefix: string
+          released_at?: string
+          released_by?: string | null
+          seq: number
         }
         Update: {
-          id?: string
-          label?: string
-          row_count?: number
-          schema_name?: string
-          table_count?: number
-          taken_at?: string
-          taken_by?: string | null
+          part_code?: string
+          prefix?: string
+          released_at?: string
+          released_by?: string | null
+          seq?: number
         }
         Relationships: []
       }
@@ -5414,6 +4406,51 @@ export type Database = {
           },
         ]
       }
+      vendor_contacts: {
+        Row: {
+          created_at: string
+          designation: string | null
+          email: string | null
+          id: string
+          name: string | null
+          phone: string | null
+          vendor_id: string
+        }
+        Insert: {
+          created_at?: string
+          designation?: string | null
+          email?: string | null
+          id?: string
+          name?: string | null
+          phone?: string | null
+          vendor_id: string
+        }
+        Update: {
+          created_at?: string
+          designation?: string | null
+          email?: string | null
+          id?: string
+          name?: string | null
+          phone?: string | null
+          vendor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_contacts_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "store_receiving_variances"
+            referencedColumns: ["vendor_id"]
+          },
+          {
+            foreignKeyName: "vendor_contacts_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vendor_notifications: {
         Row: {
           attempts: number
@@ -5502,8 +4539,12 @@ export type Database = {
       }
       vendors: {
         Row: {
+          account_holder_name: string | null
           address: string | null
+          approval_status: string
           bank_account_number: string | null
+          bank_name: string | null
+          contact_designation: string | null
           contact_number: string | null
           contact_person_name: string | null
           created_at: string
@@ -5514,14 +4555,25 @@ export type Database = {
           id: string
           ifsc_code: string | null
           is_active: boolean
+          location: string | null
           msme_certificate_url: string | null
           name: string
+          pan_number: string | null
+          rejection_reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          submitted_by: string | null
+          supplies: string | null
           updated_at: string
           vendor_code: string
         }
         Insert: {
+          account_holder_name?: string | null
           address?: string | null
+          approval_status?: string
           bank_account_number?: string | null
+          bank_name?: string | null
+          contact_designation?: string | null
           contact_number?: string | null
           contact_person_name?: string | null
           created_at?: string
@@ -5532,14 +4584,25 @@ export type Database = {
           id?: string
           ifsc_code?: string | null
           is_active?: boolean
+          location?: string | null
           msme_certificate_url?: string | null
           name: string
+          pan_number?: string | null
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          submitted_by?: string | null
+          supplies?: string | null
           updated_at?: string
           vendor_code: string
         }
         Update: {
+          account_holder_name?: string | null
           address?: string | null
+          approval_status?: string
           bank_account_number?: string | null
+          bank_name?: string | null
+          contact_designation?: string | null
           contact_number?: string | null
           contact_person_name?: string | null
           created_at?: string
@@ -5550,8 +4613,15 @@ export type Database = {
           id?: string
           ifsc_code?: string | null
           is_active?: boolean
+          location?: string | null
           msme_certificate_url?: string | null
           name?: string
+          pan_number?: string | null
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          submitted_by?: string | null
+          supplies?: string | null
           updated_at?: string
           vendor_code?: string
         }
@@ -5638,6 +4708,7 @@ export type Database = {
           taken: number
         }[]
       }
+      apply_bom: { Args: { p_lines: Json; p_parent: string }; Returns: Json }
       auth_is_admin: { Args: never; Returns: boolean }
       auth_my_plants: {
         Args: never
@@ -5654,15 +4725,14 @@ export type Database = {
       }
       auth_user_in_department: { Args: { dept_name: string }; Returns: boolean }
       auth_user_in_plant: { Args: { p_plant_id: string }; Returns: boolean }
-      create_restore_point: { Args: { p_label: string }; Returns: string }
+      can_approve: { Args: never; Returns: boolean }
+      can_edit_customers: { Args: never; Returns: boolean }
+      can_edit_masters: { Args: never; Returns: boolean }
+      delete_part: { Args: { p_part_id: string }; Returns: Json }
       delete_production_schedule_cascade: {
         Args: { p_schedule_id: string }
         Returns: undefined
       }
-      drop_restore_point: { Args: { p_schema: string }; Returns: string }
-      generate_dash_fo_number: { Args: never; Returns: string }
-      generate_dash_so_number: { Args: never; Returns: string }
-      generate_dash_ticket_number: { Args: never; Returns: string }
       generate_temp_part_code: {
         Args: { part_category?: string }
         Returns: string
@@ -5676,20 +4746,6 @@ export type Database = {
           id: string
           ifsc_code: string
           msme_certificate_url: string
-        }[]
-      }
-      get_dash_customer_finance: {
-        Args: { p_customer_id: string }
-        Returns: {
-          bank_account_number: string
-          bank_ifsc: string
-          bank_name: string
-          cancelled_cheque_url: string
-          gst_certificate_url: string
-          id: string
-          msme_certificate_url: string
-          msme_number: string
-          pan_number: string
         }[]
       }
       get_employee_sensitive: {
@@ -5751,16 +4807,30 @@ export type Database = {
       get_vendor_finance: {
         Args: { p_vendor_id: string }
         Returns: {
+          account_holder_name: string
           bank_account_number: string
+          bank_name: string
           gst_certificate_url: string
           id: string
           ifsc_code: string
           msme_certificate_url: string
+          pan_number: string
         }[]
       }
       has_role: { Args: { _module?: string }; Returns: boolean }
+      in_department: { Args: { p_names: string[] }; Returns: boolean }
       in_plant: { Args: { _plant_id: string }; Returns: boolean }
       is_admin: { Args: never; Returns: boolean }
+      issue_child_vouchers: {
+        Args: {
+          p_default_date: string
+          p_items: Json
+          p_plant_id: string
+          p_root_order: string
+          p_root_part: string
+        }
+        Returns: Json
+      }
       list_departments_with_modules: {
         Args: never
         Returns: {
@@ -5776,6 +4846,20 @@ export type Database = {
           email: string
           id: string
           last_sign_in_at: string
+        }[]
+      }
+      list_master_approvals: {
+        Args: never
+        Returns: {
+          code: string
+          detail: string
+          id: string
+          kind: string
+          lines: Json
+          name: string
+          parent_part_id: string
+          submitted_at: string
+          submitted_by_name: string
         }[]
       }
       list_user_accounts_for_admin: {
@@ -5808,11 +4892,15 @@ export type Database = {
         }
         Returns: string
       }
+      my_permissions: { Args: never; Returns: Json }
       next_doc_number: {
         Args: { _prefix: string; _seq: unknown }
         Returns: string
       }
-      next_part_code: { Args: { p_prefix: string }; Returns: string }
+      next_part_code: {
+        Args: { p_brand?: string; p_prefix: string }
+        Returns: string
+      }
       next_po_number: { Args: never; Returns: string }
       part_stock_statement: {
         Args: { p_part_id: string; p_plant_id: string }
@@ -5828,6 +4916,11 @@ export type Database = {
           section: string
           seq: number
         }[]
+      }
+      part_usage: { Args: { p_part_id: string }; Returns: string[] }
+      post_stock_count: {
+        Args: { p_lines: Json; p_plant_id: string; p_reference?: string }
+        Returns: Json
       }
       post_stock_movement: {
         Args: {
@@ -5849,6 +4942,7 @@ export type Database = {
         Args: { p_due_days?: number; p_grn_item_id: string; p_problem?: string }
         Returns: Json
       }
+      reactivate_part: { Args: { p_part_id: string }; Returns: undefined }
       receive_finished_goods: {
         Args: { p_production_order_id: string }
         Returns: string
@@ -5863,7 +4957,6 @@ export type Database = {
         Args: { p_feedback_id: string; p_remarks: string }
         Returns: undefined
       }
-      reset_business_data: { Args: { p_confirm: string }; Returns: Json }
       resolve_store_variance: {
         Args: {
           p_grn_item_id: string
@@ -5872,10 +4965,62 @@ export type Database = {
         }
         Returns: string
       }
-      restore_from_point: { Args: { p_schema: string }; Returns: string }
+      review_bom_change: {
+        Args: { p_approve: boolean; p_id: string; p_reason?: string }
+        Returns: Json
+      }
+      review_master: {
+        Args: {
+          p_approve: boolean
+          p_id: string
+          p_kind: string
+          p_reason?: string
+        }
+        Returns: undefined
+      }
+      save_bom: { Args: { p_lines: Json; p_parent: string }; Returns: Json }
+      schedule_finished_good: {
+        Args: {
+          p_date: string
+          p_line_id?: string
+          p_plant_id: string
+          p_projection_id: string
+          p_quantity: number
+          p_subassemblies?: Json
+        }
+        Returns: Json
+      }
+      schedule_subassembly: {
+        Args: {
+          p_date: string
+          p_line_id?: string
+          p_notes?: string
+          p_parent_order_id?: string
+          p_part_id: string
+          p_plant_id: string
+          p_quantity: number
+        }
+        Returns: Json
+      }
+      schedule_subassembly_tree: {
+        Args: {
+          p_children?: Json
+          p_date: string
+          p_line_id?: string
+          p_parent_order_id?: string
+          p_part_id: string
+          p_plant_id: string
+          p_quantity: number
+        }
+        Returns: Json
+      }
       set_department_modules: {
         Args: { p_department_id: string; p_modules: string[] }
         Returns: undefined
+      }
+      set_part_branding: {
+        Args: { p_brands: string[]; p_part_id: string; p_required: boolean }
+        Returns: Json
       }
       set_user_departments: {
         Args: { p_department_ids: string[]; p_user_id: string }
@@ -5885,9 +5030,20 @@ export type Database = {
         Args: { p_plant_ids: string[]; p_user_id: string }
         Returns: undefined
       }
+      sync_brand_variants: { Args: never; Returns: Json }
       sync_voucher_holds: {
         Args: { p_production_order_id: string }
         Returns: number
+      }
+      system_health_check: {
+        Args: never
+        Returns: {
+          area: string
+          detail: string
+          records: number
+          rule: string
+          status: string
+        }[]
       }
     }
     Enums: {
@@ -5906,57 +5062,6 @@ export type Database = {
         | "INDIA_CUSTOM"
         | "ARRIVED"
         | "AT_FACTORY"
-      dash_artwork_type:
-        | "box_artwork"
-        | "product_artwork"
-        | "marketing_creative"
-      dash_customer_type:
-        | "Distributor"
-        | "Dealer"
-        | "Retailer"
-        | "Institutional"
-      dash_dispatch_status: "Pending" | "Dispatched" | "Delivered"
-      dash_factory_order_status:
-        | "Draft"
-        | "Ordered"
-        | "In Production"
-        | "Dispatched"
-        | "Received"
-        | "QC Pending"
-        | "QC Done"
-      dash_movement_type:
-        | "GRN_RECEIPT"
-        | "SALES_DISPATCH"
-        | "DAMAGE"
-        | "RETURN"
-        | "ADJUSTMENT"
-        | "TRANSFER"
-      dash_payment_status: "Pending" | "Partial" | "Paid"
-      dash_product_category:
-        | "Party Speaker"
-        | "Tower Speaker"
-        | "Soundbar"
-        | "Multimedia Speaker"
-        | "Portable Speaker"
-        | "Home Theatre"
-        | "Subwoofer"
-        | "Other"
-        | "Accessories"
-      dash_product_status:
-        | "Active"
-        | "Discontinued"
-        | "Development"
-        | "Ready for Production"
-      dash_qc_status: "Pending" | "Passed" | "Failed" | "Partial"
-      dash_repair_status:
-        | "Open"
-        | "Assigned"
-        | "In Progress"
-        | "Awaiting Parts"
-        | "Repaired"
-        | "Replaced"
-        | "Closed"
-      dash_spare_dispatch_type: "Service" | "Customer" | "Warehouse"
       dispatch_status:
         | "DRAFT"
         | "PACKED"
@@ -6163,64 +5268,6 @@ export const Constants = {
         "ARRIVED",
         "AT_FACTORY",
       ],
-      dash_artwork_type: [
-        "box_artwork",
-        "product_artwork",
-        "marketing_creative",
-      ],
-      dash_customer_type: [
-        "Distributor",
-        "Dealer",
-        "Retailer",
-        "Institutional",
-      ],
-      dash_dispatch_status: ["Pending", "Dispatched", "Delivered"],
-      dash_factory_order_status: [
-        "Draft",
-        "Ordered",
-        "In Production",
-        "Dispatched",
-        "Received",
-        "QC Pending",
-        "QC Done",
-      ],
-      dash_movement_type: [
-        "GRN_RECEIPT",
-        "SALES_DISPATCH",
-        "DAMAGE",
-        "RETURN",
-        "ADJUSTMENT",
-        "TRANSFER",
-      ],
-      dash_payment_status: ["Pending", "Partial", "Paid"],
-      dash_product_category: [
-        "Party Speaker",
-        "Tower Speaker",
-        "Soundbar",
-        "Multimedia Speaker",
-        "Portable Speaker",
-        "Home Theatre",
-        "Subwoofer",
-        "Other",
-        "Accessories",
-      ],
-      dash_product_status: [
-        "Active",
-        "Discontinued",
-        "Development",
-        "Ready for Production",
-      ],
-      dash_qc_status: ["Pending", "Passed", "Failed", "Partial"],
-      dash_repair_status: [
-        "Open",
-        "Assigned",
-        "In Progress",
-        "Awaiting Parts",
-        "Repaired",
-        "Replaced",
-        "Closed",
-      ],
-      dash_spare_dispatch_type: ["Service", "Customer", "Warehouse"],
       dispatch_status: [
         "DRAFT",
         "PACKED",

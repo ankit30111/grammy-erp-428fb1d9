@@ -32,6 +32,7 @@ import PartsManagement from "./pages/management/PartsManagement";
 import Settings from "./pages/Settings";
 import PlantsManagement from "./pages/management/PlantsManagement";
 import AccessControl from "./pages/management/AccessControl";
+import SystemCheck from "./pages/management/SystemCheck";
 import NotFound from "./pages/NotFound";
 import PPCDashboard from "@/pages/dashboards/PPCDashboard";
 import SerialNumberManagement from "./pages/SerialNumberManagement";
@@ -238,6 +239,12 @@ function App() {
               </AuthGuard>
             } />
 
+            <Route path="/management/system-check" element={
+              <AuthGuard>
+                <SystemCheck />
+              </AuthGuard>
+            } />
+
             {/* Dashboard Routes */}
             <Route path="/dashboards/store" element={
               <AuthGuard>
@@ -279,17 +286,6 @@ function App() {
                 <PreExisting />
               </AuthGuard>
             } />
-            
-            {/* DASH Brand Routes */}
-
-
-
-
-
-
-
-
-            
             {/* 404 Route */}
             <Route path="*" element={<NotFound />} />
           </Routes>
