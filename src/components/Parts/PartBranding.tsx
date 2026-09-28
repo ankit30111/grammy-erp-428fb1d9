@@ -77,7 +77,24 @@ export const PartBranding = ({ part: given, allParts, editable = false }: {
   );
   const base = part?.branded_from ? allParts.find((p) => p.id === part.branded_from) : null;
   const brandName = (l: string) => brands.find((b) => b.letter === l)?.name ?? l;
-  const myIssues = issues.filter((i) => i.part_id === part?.id);
+  // Issues about this part: raised on it, or naming it (a product that uses it).
+  const codeRe = part?.part_code ? new RegExp(`(^|[^\\w-])${part.part_code.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![\\w-])`) : null;
+  const myIssues = issues.filter((i) => i.part_id === part?.id || (codeRe && codeRe.test(i.message)));
+
+  // Printed / per-brand parts directly inside this one, with the brands ticked on them.
+  const { data: inside = [] } = useQuery({
+    queryKey: ["brand-inside", part?.id],
+    enabled: !!part?.id && !part?.branded_from && part?.source_type !== "PURCHASED",
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("bom")
+        .select("parts!child_part_id ( id, part_code, name, branding_required, brand_relevant, part_brands ( brand ) )")
+        .eq("parent_part_id", part.id).eq("is_active", true);
+      if (error) throw error;
+      return (data ?? []).map((r: any) => r.parts).filter((c: any) => c && (c.branding_required || c.brand_relevant));
+    },
+  });
+  const isAssembly = part?.source_type !== "PURCHASED";
 
   const save = useMutation({
     mutationFn: async () => {
@@ -88,7 +105,7 @@ export const PartBranding = ({ part: given, allParts, editable = false }: {
       return data;
     },
     onSuccess: (d: any) => {
-      for (const k of ["parts", "raw-materials", "part-brands", "brand-sync-issues", "bom", "subassembly-positions"]) {
+      for (const k of ["parts", "raw-materials", "part-brands", "brand-sync-issues", "bom", "subassembly-positions", "brand-inside"]) {
         qc.invalidateQueries({ queryKey: [k] });
       }
       toast.success(
@@ -129,22 +146,46 @@ export const PartBranding = ({ part: given, allParts, editable = false }: {
         )}
       </div>
 
-      {canEdit ? (
+      {inside.length > 0 ? (
+        // Its versions come from what is inside it and the products that use it.
+        <div className="text-sm space-y-1">
+          <p className="text-muted-foreground">
+            Built per brand because it contains printed parts. A brand version is made for each brand of the
+            finished goods that use it, as long as every printed part inside is ticked for that brand.
+          </p>
+          <ul className="space-y-0.5">
+            {inside.map((c: any) => (
+              <li key={c.id}>
+                <span className="font-mono">{c.part_code}</span> {c.name}
+                {c.branding_required
+                  ? <span className="text-muted-foreground"> · printed for {(c.part_brands ?? []).map((b: any) => b.brand).sort().join(", ") || "no brand yet"}</span>
+                  : <span className="text-muted-foreground"> · built per brand</span>}
+              </li>
+            ))}
+          </ul>
+          {part.branding_required && canEdit && (
+            <label className="flex items-start gap-2 text-xs text-destructive cursor-pointer">
+              <Checkbox checked={on} onCheckedChange={(v) => setOn(Boolean(v))} />
+              <span>Also ticked as printed after assembly. Untick and save: its versions come from the parts inside.</span>
+            </label>
+          )}
+        </div>
+      ) : canEdit ? (
         <label className="flex items-start gap-2 text-sm cursor-pointer">
           <Checkbox checked={on} onCheckedChange={(v) => setOn(Boolean(v))} />
-          <span>Printed with the brand in-house before use. A separate code is kept for each brand.</span>
+          <span>
+            {isAssembly
+              ? "Printed with the brand after assembly (the logo goes on the assembled part). A separate code is kept for each brand."
+              : "Printed with the brand in-house before use. A separate code is kept for each brand."}
+          </span>
         </label>
       ) : (
         <p className="text-sm text-muted-foreground">
-          {part.branding_required
-            ? "Printed per brand in-house."
-            : part.brand_relevant
-              ? "Contains a printed part, so it is built per brand. Its brand versions are made automatically."
-              : "Not printed per brand."}
+          {part.branding_required ? "Printed per brand in-house." : "Not printed per brand."}
         </p>
       )}
 
-      {canEdit && on && (
+      {canEdit && on && inside.length === 0 && (
         <div className="space-y-2">
           <div className="text-xs text-muted-foreground">Brands</div>
           {/* A searchable list rather than a button per brand: there will be dozens. */}
@@ -215,7 +256,7 @@ export const PartBranding = ({ part: given, allParts, editable = false }: {
         </p>
       ))}
 
-      {canEdit && (
+      {canEdit && (inside.length === 0 || part.branding_required) && (
         <div className="flex justify-end">
           <Button type="button" size="sm" disabled={!dirty || save.isPending || (on && picked.length === 0)}
                   onClick={() => save.mutate()}>

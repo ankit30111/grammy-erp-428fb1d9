@@ -181,6 +181,25 @@ export const BOMBuilder = ({ initialParentId }: { initialParentId?: string } = {
       return toast.error(`Quantity must be more than zero — check ${codes}`);
     }
 
+    // Adding a printed (per-brand) part to a common assembly makes the whole
+    // assembly per brand, and every product using it then needs that part
+    // printed for its own brand. Say so before it happens, not after.
+    if ((parentPart as any)?.source_type !== "FINISHED_GOOD" && !(parentPart as any)?.brand_relevant) {
+      const printed = Object.keys(picked)
+        .filter((id) => !existing[id])
+        .map((id) => parts.find((p: any) => p.id === id))
+        .filter((p: any) => p && (p.branding_required || p.brand_relevant));
+      if (printed.length) {
+        const ok = window.confirm(
+          `${printed.map((p: any) => p.part_code).join(", ")} ${printed.length === 1 ? "is" : "are"} printed per brand.\n\n` +
+          `Adding ${printed.length === 1 ? "it" : "them"} makes ${parentPart?.part_code} built per brand: every finished good that uses ` +
+          `${parentPart?.part_code} will need ${printed.length === 1 ? "this part" : "these parts"} printed for its own brand, and cannot be ` +
+          `scheduled until it is.\n\nContinue?`,
+        );
+        if (!ok) return;
+      }
+    }
+
     await saveBom.mutateAsync({
       parent_part_id: parentId,
       lines: Object.entries(picked).map(([child_part_id, quantity]) => ({
