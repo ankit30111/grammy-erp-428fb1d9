@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { PartUnitFields, unitColumns, unitProblem, unitValueFromPart, type UnitValue } from "@/components/Parts/PartUnitFields";
 import { format } from "date-fns";
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 import { PageHeader } from "@/components/shell/PageHeader";
@@ -49,10 +50,6 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { ApprovalBadge } from "@/components/Approvals/ApprovalBadge";
 import { PartDocumentInputs, PartDocumentList, docFilesToInput, type DocFiles } from "@/components/Parts/PartDocuments";
 
-// Unit of Measure options
-const UNIT_OPTIONS = [
-  "PCS", "MM", "METER", "GRAM", "KG", "LITER", "SET", "PACK", "ROLL", "SHEET", "BOX"
-];
 
 // The categories are no longer a list in this file. They live in
 // public.part_categories, where the database can actually enforce that a letter
@@ -67,7 +64,7 @@ const RawMaterialsManagement = () => {
   // part, and the bill of materials beside them. The tab IS the type filter, so
   // the separate "All Types" dropdown goes.
   const [activeTab, setActiveTab] = useState<string>("PURCHASE");
-  const filterSourceType = activeTab === "BOM" ? "all" : activeTab;
+  const filterSourceType = activeTab;
   // Sourcing, price and vendors only mean something for bought parts.
   const isPurchaseTab = activeTab === "PURCHASE";
   const [sortConfig, setSortConfig] = useState<{ key: 'part_code' | 'category' | 'vendors' | null; direction: 'asc' | 'desc' }>({ key: null, direction: 'asc' });
@@ -129,12 +126,14 @@ const RawMaterialsManagement = () => {
   const viewTier = tierOfPart(viewMaterial);
   const [editDocs, setEditDocs] = useState<DocFiles>({});
   const [bomParentId, setBomParentId] = useState<string | undefined>();
+  const [editUnits, setEditUnits] = useState<UnitValue>(unitValueFromPart(null));
   // Edit Bill of Materials from a part: the BOM tab opens on that part.
+  // The bill of materials is only ever opened from its own part, never from a
+  // free-standing tab where any BOM could be picked and edited by accident.
   const openBomFor = (partId: string) => {
     setIsEditDialogOpen(false);
     setIsViewDialogOpen(false);
     setBomParentId(partId);
-    setActiveTab("BOM");
   };
   const tierLabelFor = (prefix?: string | null) =>
     PART_TIERS.find((t) => t.value === partTier(prefix))?.label ?? "Purchase Part";
@@ -283,6 +282,7 @@ const RawMaterialsManagement = () => {
       purchase_uom: material.purchase_uom || "",
       purchase_factor: String(material.purchase_factor ?? 1)
     });
+    setEditUnits(unitValueFromPart(material));
     setSelectedVendors(material.part_vendors?.map((rv: any) => rv.vendors.id) || []);
     setPrimaryVendor(material.part_vendors?.find((rv: any) => rv.is_primary)?.vendors.id || "");
     setEditDocs({});
@@ -291,6 +291,8 @@ const RawMaterialsManagement = () => {
 
   const handleUpdateMaterial = async () => {
     if (!selectedMaterial) return;
+    const unitErr = unitProblem(editUnits);
+    if (unitErr) { toast.error(unitErr); return; }
 
     setIsUploading(true);
     try {
@@ -299,12 +301,9 @@ const RawMaterialsManagement = () => {
         name: newMaterial.name,
         part_code: newMaterial.part_code,
         category: newMaterial.category,
-        uom: newMaterial.unit_of_measure || "PCS",
+        ...unitColumns(editUnits),
         used_in_reference: newMaterial.used_in,
         remarks: newMaterial.remarks,
-        purchase_uom: newMaterial.purchase_uom && newMaterial.purchase_uom !== newMaterial.unit_of_measure ? newMaterial.purchase_uom : null,
-        purchase_factor: newMaterial.purchase_uom && newMaterial.purchase_uom !== newMaterial.unit_of_measure
-          ? Number(newMaterial.purchase_factor) || 1 : 1,
         ...(canApprove && editIsPurchaseLetter ? { made_in_house: newMaterial.made_in_house } : {}),
         specification: newMaterial.specification,
         ...(editIsPurchase
@@ -403,17 +402,16 @@ const RawMaterialsManagement = () => {
           { id: "PURCHASE", label: "Purchase Parts" },
           { id: "SUB_ASSEMBLED", label: "Sub-assemblies" },
           { id: "FINISHED", label: "Finished Goods" },
-          { id: "BOM", label: "Bill of Materials" },
         ]}
         value={activeTab}
-        onChange={setActiveTab}
+        onChange={(t) => { setBomParentId(undefined); setActiveTab(t); }}
       />
-      {activeTab === "BOM" && (
+      {bomParentId && (
         <div className="pt-4">
-          <BOMBuilder initialParentId={bomParentId} />
+          <BOMBuilder partId={bomParentId} onClose={() => setBomParentId(undefined)} />
         </div>
       )}
-      {activeTab !== "BOM" && (
+      {!bomParentId && (
       <>
       <div className="pt-4">
         <div className="mb-4"><BrandIssuesBanner /></div>
@@ -877,52 +875,7 @@ const RawMaterialsManagement = () => {
                 </Select>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="edit-unit_of_measure">Stock Unit (used on BOM and issue)</Label>
-                <Select 
-                  value={newMaterial.unit_of_measure} 
-                  onValueChange={(value) => setNewMaterial({...newMaterial, unit_of_measure: value})}
-                >
-                  <SelectTrigger id="edit-unit_of_measure">
-                    <SelectValue placeholder="Select unit" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {UNIT_OPTIONS.map((unit) => (
-                      <SelectItem key={unit} value={unit}>
-                        {unit}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* How it is bought, when that differs from how it is used:
-                  1 ROLL = 50000 MM, 1 KG = 120 PCS. */}
-              <div className="space-y-2">
-                <Label>Bought In</Label>
-                <div className="flex flex-wrap items-center gap-2">
-                  <Select
-                    value={newMaterial.purchase_uom || newMaterial.unit_of_measure}
-                    onValueChange={(v) => setNewMaterial({ ...newMaterial, purchase_uom: v })}
-                  >
-                    <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {UNIT_OPTIONS.map((u) => <SelectItem key={u} value={u}>{u}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                  {newMaterial.purchase_uom && newMaterial.purchase_uom !== newMaterial.unit_of_measure && (
-                    <>
-                      <span className="text-sm">1 {newMaterial.purchase_uom} =</span>
-                      <Input
-                        type="number" min="0" step="any" className="w-32"
-                        value={newMaterial.purchase_factor}
-                        onChange={(e) => setNewMaterial({ ...newMaterial, purchase_factor: e.target.value })}
-                      />
-                      <span className="text-sm">{newMaterial.unit_of_measure}</span>
-                    </>
-                  )}
-                </div>
-              </div>
+              <PartUnitFields idPrefix="edit-unit" value={editUnits} onChange={setEditUnits} />
 
               {editIsPurchase && (
               <>
@@ -1153,9 +1106,11 @@ const RawMaterialsManagement = () => {
                 <div className="space-y-2">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <Label>Bill of Materials</Label>
-                    <Button type="button" variant="outline" size="sm" onClick={() => openBomFor(selectedMaterial.id)}>
-                      <Edit /> Edit Bill of Materials
-                    </Button>
+                    {canEditMasters && !selectedMaterial.branded_from && (
+                      <Button type="button" variant="outline" size="sm" onClick={() => openBomFor(selectedMaterial.id)}>
+                        <Edit /> Edit Bill of Materials
+                      </Button>
+                    )}
                   </div>
                   <PartBomView partId={selectedMaterial.id} />
                 </div>

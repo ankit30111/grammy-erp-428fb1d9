@@ -132,6 +132,8 @@ export const useParts = () => {
           part_code: input.part_code,
           category: input.category,
           uom: input.uom || "PCS",
+          purchase_uom: input.purchase_uom || null,
+          purchase_factor: input.purchase_uom ? input.purchase_factor ?? 1 : 1,
           source_type: input.source_type || "PURCHASED",
           specification: input.specification || null,
           sourcing_type: input.sourcing_type || "LOCAL",

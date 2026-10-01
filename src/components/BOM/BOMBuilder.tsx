@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { entryUnitsFor, fmtQty, fromStockQty, toStockQty } from "@/lib/units";
 import { usePermissions } from "@/hooks/usePermissions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,11 +12,11 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { ArrowLeft, Loader2, Save, Search, X } from "lucide-react";
 import {
-  Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
-} from "@/components/ui/command";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { ChevronsUpDown, Loader2, Save, Search, X } from "lucide-react";
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
+  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { useParts } from "@/hooks/useParts";
 import { usePartCategories, PART_TIERS } from "@/hooks/usePartCategories";
@@ -38,7 +37,13 @@ const MADE_HERE = ["ASSEMBLED_INLINE", "ASSEMBLED_STOCKED", "FINISHED_GOOD"];
  * on the bill comes back ticked with its quantity, so the same page edits an
  * existing bill rather than being a separate screen with its own rules.
  */
-export const BOMBuilder = ({ initialParentId }: { initialParentId?: string } = {}) => {
+/**
+ * Edits the bill of materials of ONE part. It is opened only from that part
+ * (View / Edit -> Edit Bill of Materials) and cannot be switched to another
+ * part, so nobody lands on a BOM by accident. Saving shows exactly what will
+ * change and asks to confirm.
+ */
+export const BOMBuilder = ({ partId: initialParentId, onClose }: { partId: string; onClose?: () => void }) => {
   const { parts, isLoading } = useParts();
   const { categories } = usePartCategories();
   const { data: lines = [] } = useBomLines();
@@ -51,7 +56,6 @@ export const BOMBuilder = ({ initialParentId }: { initialParentId?: string } = {
   useEffect(() => {
     if (initialParentId) setParentId(initialParentId);
   }, [initialParentId]);
-  const [parentOpen, setParentOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [filterCategory, setFilterCategory] = useState("all");
   const [filterType, setFilterType] = useState("all");
@@ -62,14 +66,9 @@ export const BOMBuilder = ({ initialParentId }: { initialParentId?: string } = {
   const [critical, setCritical] = useState<Record<string, boolean>>({});
   /** Bulk lines (solder, flux): on the BOM, issued to the line from stock, no QPS. */
   const [bulk, setBulk] = useState<Record<string, boolean>>({});
-  // Unit each quantity is typed in. Missing = the part's own (stock) unit.
-  // Saved quantities are always converted into the part's unit.
-  const [entryUnit, setEntryUnit] = useState<Record<string, string>>({});
-  const partById = useMemo(() => new Map(parts.map((p: any) => [p.id, p])), [parts]);
-  const stockQty = (id: string) => {
-    const part = partById.get(id) ?? {};
-    return toStockQty(Number(picked[id]), entryUnit[id] ?? (part.uom || "PCS"), part);
-  };
+  // A part has one unit (its consumed unit) and every BOM uses it.
+  const stockQty = (id: string) => Number(picked[id]);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   const parentPart = parts.find((p: any) => p.id === parentId);
 
@@ -121,7 +120,6 @@ export const BOMBuilder = ({ initialParentId }: { initialParentId?: string } = {
     setPicked(Object.fromEntries(Object.entries(existing).map(([k, v]) => [k, v.quantity])));
     setCritical(Object.fromEntries(Object.entries(existing).map(([k, v]) => [k, v.is_critical])));
     setBulk(Object.fromEntries(Object.entries(existing).map(([k, v]) => [k, v.bulk])));
-    setEntryUnit({});
     setOnlySelected(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [parentId, existingKey]);
@@ -177,10 +175,40 @@ export const BOMBuilder = ({ initialParentId }: { initialParentId?: string } = {
         Boolean(bulk[id]) !== Boolean(existing[id]?.bulk),
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [picked, critical, bulk, existing, entryUnit]);
+  }, [picked, critical, bulk, existing]);
+
+  const partOf = (id: string) => parts.find((p: any) => p.id === id) as any;
+  const fmtLine = (id: string, q: number | null, isBulk: boolean) =>
+    isBulk ? "bulk" : `${q} ${(partOf(id)?.uom || "PCS").toUpperCase()}`;
+  // Exactly what Save will do, line by line, for the confirmation.
+  const changes = useMemo(() => {
+    const added: string[] = [], removed: string[] = [], changed: string[] = [];
+    for (const id of Object.keys(picked)) {
+      const p = partOf(id); const code = p?.part_code ?? "?";
+      const now = fmtLine(id, stockQty(id), Boolean(bulk[id]));
+      const was = existing[id];
+      if (!was) { added.push(`${code} ${p?.name ?? ""} — ${now}${critical[id] ? ", critical" : ""}`); continue; }
+      const wasTxt = fmtLine(id, Number(was.quantity), Boolean(was.bulk));
+      const bits: string[] = [];
+      if (wasTxt !== now) bits.push(`${wasTxt} → ${now}`);
+      if (Boolean(was.is_critical) !== Boolean(critical[id])) bits.push(critical[id] ? "now critical" : "no longer critical");
+      if (bits.length) changed.push(`${code} ${p?.name ?? ""} — ${bits.join(", ")}`);
+    }
+    for (const id of Object.keys(existing)) {
+      if (picked[id] === undefined) { const p = partOf(id); removed.push(`${p?.part_code ?? "?"} ${p?.name ?? ""}`); }
+    }
+    return { added, removed, changed };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [picked, critical, bulk, existing, parts]);
+  const printedAdded = useMemo(() => {
+    if ((parentPart as any)?.source_type === "FINISHED_GOOD" || (parentPart as any)?.brand_relevant) return [];
+    return Object.keys(picked).filter((id) => !existing[id]).map(partOf)
+      .filter((p: any) => p && (p.branding_required || p.brand_relevant));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [picked, existing, parentPart, parts]);
 
   const handleSave = async () => {
-    if (!parentId) return toast.error("Choose the part this bill of materials belongs to");
+    if (!parentId) return;
 
     const bad = Object.entries(picked).filter(([id, q]) => !bulk[id] && !(Number(q) > 0));
     if (bad.length) {
@@ -192,30 +220,15 @@ export const BOMBuilder = ({ initialParentId }: { initialParentId?: string } = {
       return toast.error(`Quantity must be more than zero — check ${codes}`);
     }
 
-    // Adding a printed (per-brand) part to a common assembly makes the whole
-    // assembly per brand, and every product using it then needs that part
-    // printed for its own brand. Say so before it happens, not after.
-    if ((parentPart as any)?.source_type !== "FINISHED_GOOD" && !(parentPart as any)?.brand_relevant) {
-      const printed = Object.keys(picked)
-        .filter((id) => !existing[id])
-        .map((id) => parts.find((p: any) => p.id === id))
-        .filter((p: any) => p && (p.branding_required || p.brand_relevant));
-      if (printed.length) {
-        const ok = window.confirm(
-          `${printed.map((p: any) => p.part_code).join(", ")} ${printed.length === 1 ? "is" : "are"} printed per brand.\n\n` +
-          `Adding ${printed.length === 1 ? "it" : "them"} makes ${parentPart?.part_code} built per brand: every finished good that uses ` +
-          `${parentPart?.part_code} will need ${printed.length === 1 ? "this part" : "these parts"} printed for its own brand, and cannot be ` +
-          `scheduled until it is.\n\nContinue?`,
-        );
-        if (!ok) return;
-      }
-    }
+    setConfirmOpen(true);
+  };
 
+  const commitSave = async () => {
+    setConfirmOpen(false);
     await saveBom.mutateAsync({
       parent_part_id: parentId,
       lines: Object.entries(picked).map(([child_part_id, quantity]) => ({
         child_part_id,
-        // Always saved in the part's own unit, whatever unit it was typed in.
         quantity: bulk[child_part_id] ? null : stockQty(child_part_id),
         bulk: Boolean(bulk[child_part_id]),
         uom: parts.find((p: any) => p.id === child_part_id)?.uom || "PCS",
@@ -226,51 +239,19 @@ export const BOMBuilder = ({ initialParentId }: { initialParentId?: string } = {
 
   return (
     <div className="space-y-4">
-      <Card>
-        <CardContent className="space-y-4 pt-5">
-          <div className="space-y-2">
-            <Label>Which part is this bill of materials for?</Label>
-            <Popover open={parentOpen} onOpenChange={setParentOpen}>
-              <PopoverTrigger asChild>
-                <Button variant="outline" className="w-full justify-between md:w-[520px]">
-                  {parentPart
-                    ? `${parentPart.part_code} — ${parentPart.name}`
-                    : isLoading
-                      ? "Loading parts..."
-                      : "Select a sub-assembled or finished good..."}
-                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
-                <Command>
-                  <CommandInput placeholder="Search by code or name..." />
-                  <CommandList>
-                    <CommandEmpty>
-                      Nothing to choose yet — create a sub-assembled or finished good first.
-                    </CommandEmpty>
-                    <CommandGroup>
-                      {parentCandidates.map((p: any) => (
-                        <CommandItem
-                          key={p.id}
-                          value={`${p.part_code} ${p.name}`}
-                          onSelect={() => { setParentId(p.id); setParentOpen(false); }}
-                        >
-                          <span className="font-mono text-xs mr-2">{p.part_code}</span>
-                          {p.name}
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  </CommandList>
-                </Command>
-              </PopoverContent>
-            </Popover>
-            <p className="text-xs text-muted-foreground">
-              Only parts Grammy builds — sub-assemblies and finished goods. A purchased
-              part is bought as it is, so it has nothing to break down into.
-            </p>
+      <div className="flex flex-wrap items-center gap-3">
+        {onClose && (
+          <Button variant="outline" size="sm" onClick={onClose}>
+            <ArrowLeft className="h-4 w-4 mr-1" /> Back to parts
+          </Button>
+        )}
+        <div className="min-w-0">
+          <div className="text-xs uppercase tracking-wide text-muted-foreground">Bill of Materials</div>
+          <div className="font-medium truncate">
+            {parentPart ? <><span className="font-mono">{parentPart.part_code}</span> — {parentPart.name}</> : isLoading ? "Loading…" : "Part not found"}
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {parentId && (
         <Card>
@@ -414,40 +395,9 @@ export const BOMBuilder = ({ initialParentId }: { initialParentId?: string } = {
                                   setPicked((prev) => ({ ...prev, [p.id]: e.target.value }))
                                 }
                               />
-                              {(() => {
-                                // QPS is saved in the part's stock unit. It can be typed in a
-                                // related unit (MM/METER, GRAM/KG) or the part's purchase unit.
-                                const stock = (p.uom || "PCS").toUpperCase();
-                                const units = entryUnitsFor(p);
-                                const cur = entryUnit[p.id] ?? stock;
-                                if (units.length === 1) {
-                                  return <span className="w-14 shrink-0 text-xs text-muted-foreground">{stock}</span>;
-                                }
-                                return (
-                                  <select
-                                    aria-label={`Unit for ${p.part_code}`}
-                                    className="h-8 w-20 shrink-0 rounded-md border border-input bg-background px-1 text-xs"
-                                    value={cur}
-                                    disabled={!on || Boolean(bulk[p.id])}
-                                    onChange={(e) => {
-                                      const next = e.target.value;
-                                      const inStock = picked[p.id] !== undefined ? stockQty(p.id) : NaN;
-                                      setEntryUnit((prev) => ({ ...prev, [p.id]: next }));
-                                      if (Number.isFinite(inStock) && inStock > 0) {
-                                        setPicked((prev) => ({ ...prev, [p.id]: String(fromStockQty(inStock, next, p)) }));
-                                      }
-                                    }}
-                                  >
-                                    {units.map((u) => <option key={u.unit} value={u.unit}>{u.unit}</option>)}
-                                  </select>
-                                );
-                              })()}
+                              {/* One unit per part - its consumed unit - in every BOM. */}
+                              <span className="w-14 shrink-0 text-xs text-muted-foreground">{(p.uom || "PCS").toUpperCase()}</span>
                             </div>
-                            {on && !bulk[p.id] && entryUnit[p.id] && entryUnit[p.id] !== (p.uom || "PCS").toUpperCase() && Number(picked[p.id]) > 0 && (
-                              <div className="mt-0.5 text-[11px] text-muted-foreground">
-                                saved as {fmtQty(stockQty(p.id))} {(p.uom || "PCS").toUpperCase()}
-                              </div>
-                            )}
                           </TableCell>
                           <TableCell>
                             <Checkbox
@@ -481,6 +431,42 @@ export const BOMBuilder = ({ initialParentId }: { initialParentId?: string } = {
           </CardContent>
         </Card>
       )}
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent className="max-w-xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {needsApproval ? `Send the change to ${parentPart?.part_code} for approval?` : `Save the change to ${parentPart?.part_code}?`}
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3 text-sm text-foreground">
+                {[["Added", changes.added], ["Changed", changes.changed], ["Removed", changes.removed]].map(([label, list]) =>
+                  (list as string[]).length > 0 && (
+                    <div key={label as string}>
+                      <div className="font-medium">{label as string} ({(list as string[]).length})</div>
+                      <ul className="mt-1 max-h-40 overflow-y-auto list-disc pl-5 text-muted-foreground">
+                        {(list as string[]).map((t) => <li key={t}>{t}</li>)}
+                      </ul>
+                    </div>
+                  ))}
+                {printedAdded.length > 0 && (
+                  <p className="rounded-md border border-warning/40 bg-warning/10 p-2">
+                    {printedAdded.map((p: any) => p.part_code).join(", ")} {printedAdded.length === 1 ? "is" : "are"} printed per brand.
+                    Adding {printedAdded.length === 1 ? "it" : "them"} makes {parentPart?.part_code} built per brand: every finished good
+                    using it will need {printedAdded.length === 1 ? "this part" : "these parts"} printed for its own brand before it can be scheduled.
+                  </p>
+                )}
+                {needsApproval && <p className="text-muted-foreground">Management approves it before the BOM in use changes.</p>}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep editing</AlertDialogCancel>
+            <AlertDialogAction onClick={() => void commitSave()}>
+              {needsApproval ? "Send for approval" : "Save"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

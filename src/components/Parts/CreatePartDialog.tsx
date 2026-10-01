@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { PartUnitFields, unitColumns, unitProblem, unitValueFromPart, type UnitValue } from "@/components/Parts/PartUnitFields";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
@@ -25,7 +26,6 @@ import {
 } from "@/hooks/usePartCategories";
 import { useVendors } from "@/hooks/useVendors";
 
-const UNIT_OPTIONS = ["PCS", "MM", "METER", "GRAM", "KG", "LITER", "SET", "PACK", "ROLL", "SHEET", "BOX"];
 
 /**
  * One dialog, four forms.
@@ -70,7 +70,7 @@ export const CreatePartDialog = ({ open, onOpenChange }: Props) => {
   const [issuing, setIssuing] = useState(false);
 
   const [name, setName] = useState("");
-  const [uom, setUom] = useState("PCS");
+  const [units, setUnits] = useState<UnitValue>(unitValueFromPart(null));
   const [specification, setSpecification] = useState("");
 
   // Documents. Which two are asked for depends on where the part is inspected.
@@ -106,7 +106,7 @@ export const CreatePartDialog = ({ open, onOpenChange }: Props) => {
 
   const reset = () => {
     setTier(null); setCategoryPrefix(""); setPartCode("");
-    setName(""); setUom("PCS"); setSpecification("");
+    setName(""); setUnits(unitValueFromPart(null)); setSpecification("");
     setDocs({});
     setSourcingType("LOCAL"); setCurrency(""); setUnitPrice(""); setCbm("");
     setSupplierCountry(""); setSelectedVendors([]); setPrimaryVendor("");
@@ -176,13 +176,16 @@ export const CreatePartDialog = ({ open, onOpenChange }: Props) => {
     if (isFinished && !finishedCode) return toast.error("Choose the category, type the model code and choose the brand");
     if (!codeToSave.trim()) return toast.error("Enter a part code, or choose the category to have one issued");
 
+    const unitErr = unitProblem(units);
+    if (unitErr) return toast.error(unitErr);
+
     setSaving(true);
     try {
       await addPart.mutateAsync({
         name: name.trim(),
         part_code: codeToSave,
         category: categoryPrefix,
-        uom,
+        ...unitColumns(units),
         specification: specification.trim() || undefined,
         // The database reads the source type off the category, so it is not sent
         // from here at all. One writer per column.
@@ -397,15 +400,7 @@ export const CreatePartDialog = ({ open, onOpenChange }: Props) => {
                        placeholder={isPurchase ? "e.g. SCREW 4 X 9.5" : "e.g. Amplifier Board Assembly"} />
               </div>
 
-              <div className="space-y-2">
-                <Label>Unit of Measure</Label>
-                <Select value={uom} onValueChange={setUom}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {UNIT_OPTIONS.map((u) => <SelectItem key={u} value={u}>{u}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
+              <PartUnitFields idPrefix="new-unit" value={units} onChange={setUnits} />
 
               {isPurchase && (
                 <div className="space-y-2">
