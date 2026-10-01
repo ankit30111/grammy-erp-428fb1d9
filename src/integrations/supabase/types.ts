@@ -2223,254 +2223,6 @@ export type Database = {
           },
         ]
       }
-      npd_benchmarks: {
-        Row: {
-          attribute: string | null
-          competitor_brand: string | null
-          competitor_model: string | null
-          competitor_value: string | null
-          created_at: string
-          id: string
-          notes: string | null
-          our_value: string | null
-          project_id: string
-          updated_at: string
-        }
-        Insert: {
-          attribute?: string | null
-          competitor_brand?: string | null
-          competitor_model?: string | null
-          competitor_value?: string | null
-          created_at?: string
-          id?: string
-          notes?: string | null
-          our_value?: string | null
-          project_id: string
-          updated_at?: string
-        }
-        Update: {
-          attribute?: string | null
-          competitor_brand?: string | null
-          competitor_model?: string | null
-          competitor_value?: string | null
-          created_at?: string
-          id?: string
-          notes?: string | null
-          our_value?: string | null
-          project_id?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "npd_benchmarks_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "npd_projects"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      npd_bom_materials: {
-        Row: {
-          created_at: string
-          currency: string | null
-          description: string | null
-          id: string
-          notes: string | null
-          part_id: string | null
-          project_id: string
-          proposed_part_code: string | null
-          quantity: number
-          status: string
-          target_price: number | null
-          uom: string
-          updated_at: string
-          vendor_id: string | null
-        }
-        Insert: {
-          created_at?: string
-          currency?: string | null
-          description?: string | null
-          id?: string
-          notes?: string | null
-          part_id?: string | null
-          project_id: string
-          proposed_part_code?: string | null
-          quantity?: number
-          status?: string
-          target_price?: number | null
-          uom?: string
-          updated_at?: string
-          vendor_id?: string | null
-        }
-        Update: {
-          created_at?: string
-          currency?: string | null
-          description?: string | null
-          id?: string
-          notes?: string | null
-          part_id?: string | null
-          project_id?: string
-          proposed_part_code?: string | null
-          quantity?: number
-          status?: string
-          target_price?: number | null
-          uom?: string
-          updated_at?: string
-          vendor_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "npd_bom_materials_part_id_fkey"
-            columns: ["part_id"]
-            isOneToOne: false
-            referencedRelation: "parts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "npd_bom_materials_part_id_fkey"
-            columns: ["part_id"]
-            isOneToOne: false
-            referencedRelation: "store_receiving_variances"
-            referencedColumns: ["part_id"]
-          },
-          {
-            foreignKeyName: "npd_bom_materials_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "npd_projects"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "npd_bom_materials_vendor_id_fkey"
-            columns: ["vendor_id"]
-            isOneToOne: false
-            referencedRelation: "store_receiving_variances"
-            referencedColumns: ["vendor_id"]
-          },
-          {
-            foreignKeyName: "npd_bom_materials_vendor_id_fkey"
-            columns: ["vendor_id"]
-            isOneToOne: false
-            referencedRelation: "vendors"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      npd_projects: {
-        Row: {
-          created_at: string
-          created_by: string | null
-          customer_id: string | null
-          id: string
-          notes: string | null
-          owner_id: string | null
-          project_code: string
-          project_name: string
-          stage: Database["public"]["Enums"]["npd_stage"]
-          target_launch_date: string | null
-          target_part_id: string | null
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          created_by?: string | null
-          customer_id?: string | null
-          id?: string
-          notes?: string | null
-          owner_id?: string | null
-          project_code: string
-          project_name: string
-          stage?: Database["public"]["Enums"]["npd_stage"]
-          target_launch_date?: string | null
-          target_part_id?: string | null
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          created_by?: string | null
-          customer_id?: string | null
-          id?: string
-          notes?: string | null
-          owner_id?: string | null
-          project_code?: string
-          project_name?: string
-          stage?: Database["public"]["Enums"]["npd_stage"]
-          target_launch_date?: string | null
-          target_part_id?: string | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "npd_projects_customer_id_fkey"
-            columns: ["customer_id"]
-            isOneToOne: false
-            referencedRelation: "customers"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "npd_projects_target_part_id_fkey"
-            columns: ["target_part_id"]
-            isOneToOne: false
-            referencedRelation: "parts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "npd_projects_target_part_id_fkey"
-            columns: ["target_part_id"]
-            isOneToOne: false
-            referencedRelation: "store_receiving_variances"
-            referencedColumns: ["part_id"]
-          },
-        ]
-      }
-      npd_sample_tracking: {
-        Row: {
-          created_at: string
-          id: string
-          notes: string | null
-          outcome: string | null
-          project_id: string
-          quantity: number | null
-          received_on: string | null
-          requested_on: string | null
-          sample_round: number
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          notes?: string | null
-          outcome?: string | null
-          project_id: string
-          quantity?: number | null
-          received_on?: string | null
-          requested_on?: string | null
-          sample_round?: number
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          notes?: string | null
-          outcome?: string | null
-          project_id?: string
-          quantity?: number | null
-          received_on?: string | null
-          requested_on?: string | null
-          sample_round?: number
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "npd_sample_tracking_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "npd_projects"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       part_brands: {
         Row: {
           brand: string
@@ -2670,6 +2422,7 @@ export type Database = {
           oqc_checklist_url: string | null
           part_code: string
           plant_id: string | null
+          plm_product_id: string | null
           pqc_checklist_url: string | null
           purchase_factor: number
           purchase_uom: string | null
@@ -2710,6 +2463,7 @@ export type Database = {
           oqc_checklist_url?: string | null
           part_code: string
           plant_id?: string | null
+          plm_product_id?: string | null
           pqc_checklist_url?: string | null
           purchase_factor?: number
           purchase_uom?: string | null
@@ -2750,6 +2504,7 @@ export type Database = {
           oqc_checklist_url?: string | null
           part_code?: string
           plant_id?: string | null
+          plm_product_id?: string | null
           pqc_checklist_url?: string | null
           purchase_factor?: number
           purchase_uom?: string | null
@@ -2796,6 +2551,13 @@ export type Database = {
             columns: ["plant_id"]
             isOneToOne: false
             referencedRelation: "plants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "parts_plm_product_id_fkey"
+            columns: ["plm_product_id"]
+            isOneToOne: false
+            referencedRelation: "plm_products"
             referencedColumns: ["id"]
           },
         ]
@@ -3024,6 +2786,356 @@ export type Database = {
         }
         Relationships: []
       }
+      plm_deliverable_template: {
+        Row: {
+          key: string
+          label: string
+          sort: number
+          stage: number
+        }
+        Insert: {
+          key: string
+          label: string
+          sort: number
+          stage: number
+        }
+        Update: {
+          key?: string
+          label?: string
+          sort?: number
+          stage?: number
+        }
+        Relationships: []
+      }
+      plm_deliverables: {
+        Row: {
+          due_date: string | null
+          file_url: string | null
+          id: string
+          key: string
+          note: string | null
+          owner: string | null
+          product_id: string
+          status: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          due_date?: string | null
+          file_url?: string | null
+          id?: string
+          key: string
+          note?: string | null
+          owner?: string | null
+          product_id: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          due_date?: string | null
+          file_url?: string | null
+          id?: string
+          key?: string
+          note?: string | null
+          owner?: string | null
+          product_id?: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plm_deliverables_key_fkey"
+            columns: ["key"]
+            isOneToOne: false
+            referencedRelation: "plm_deliverable_template"
+            referencedColumns: ["key"]
+          },
+          {
+            foreignKeyName: "plm_deliverables_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "plm_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      plm_gates: {
+        Row: {
+          approved_by_name: string | null
+          file_url: string | null
+          gate: number
+          how: string
+          id: string
+          note: string | null
+          passed_at: string
+          passed_by: string | null
+          product_id: string
+        }
+        Insert: {
+          approved_by_name?: string | null
+          file_url?: string | null
+          gate: number
+          how: string
+          id?: string
+          note?: string | null
+          passed_at?: string
+          passed_by?: string | null
+          product_id: string
+        }
+        Update: {
+          approved_by_name?: string | null
+          file_url?: string | null
+          gate?: number
+          how?: string
+          id?: string
+          note?: string | null
+          passed_at?: string
+          passed_by?: string | null
+          product_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plm_gates_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "plm_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      plm_issues: {
+        Row: {
+          action: string | null
+          closed_on: string | null
+          complaint_id: string | null
+          created_at: string
+          created_by: string | null
+          description: string
+          id: string
+          issue_no: string
+          owner: string | null
+          product_id: string
+          raised_on: string
+          remarks: string | null
+          severity: string
+          source: string
+          stage: number
+          status: string
+          target_date: string | null
+          test_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          action?: string | null
+          closed_on?: string | null
+          complaint_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          description: string
+          id?: string
+          issue_no?: string
+          owner?: string | null
+          product_id: string
+          raised_on?: string
+          remarks?: string | null
+          severity?: string
+          source?: string
+          stage: number
+          status?: string
+          target_date?: string | null
+          test_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          action?: string | null
+          closed_on?: string | null
+          complaint_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          id?: string
+          issue_no?: string
+          owner?: string | null
+          product_id?: string
+          raised_on?: string
+          remarks?: string | null
+          severity?: string
+          source?: string
+          stage?: number
+          status?: string
+          target_date?: string | null
+          test_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plm_issues_complaint_id_fkey"
+            columns: ["complaint_id"]
+            isOneToOne: false
+            referencedRelation: "customer_complaints"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plm_issues_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "plm_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plm_issues_test_id_fkey"
+            columns: ["test_id"]
+            isOneToOne: false
+            referencedRelation: "plm_tests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      plm_products: {
+        Row: {
+          based_on_id: string | null
+          bis_letter_url: string | null
+          bis_status: string
+          business_model: string | null
+          category: string | null
+          client: string | null
+          created_at: string
+          created_by: string | null
+          customer_id: string | null
+          firmware_version: string | null
+          id: string
+          kind: string
+          name: string
+          notes: string | null
+          ownership: string
+          priority: string
+          product_code: string
+          stage: number
+          start_date: string | null
+          status: string
+          target_cost: number | null
+          target_launch: string | null
+          updated_at: string
+        }
+        Insert: {
+          based_on_id?: string | null
+          bis_letter_url?: string | null
+          bis_status?: string
+          business_model?: string | null
+          category?: string | null
+          client?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          firmware_version?: string | null
+          id?: string
+          kind?: string
+          name: string
+          notes?: string | null
+          ownership?: string
+          priority?: string
+          product_code: string
+          stage?: number
+          start_date?: string | null
+          status?: string
+          target_cost?: number | null
+          target_launch?: string | null
+          updated_at?: string
+        }
+        Update: {
+          based_on_id?: string | null
+          bis_letter_url?: string | null
+          bis_status?: string
+          business_model?: string | null
+          category?: string | null
+          client?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          firmware_version?: string | null
+          id?: string
+          kind?: string
+          name?: string
+          notes?: string | null
+          ownership?: string
+          priority?: string
+          product_code?: string
+          stage?: number
+          start_date?: string | null
+          status?: string
+          target_cost?: number | null
+          target_launch?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plm_products_based_on_id_fkey"
+            columns: ["based_on_id"]
+            isOneToOne: false
+            referencedRelation: "plm_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plm_products_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      plm_tests: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          note: string | null
+          phase: string
+          product_id: string
+          report_url: string | null
+          result: string
+          sort: number
+          tested_at: string | null
+          tested_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          note?: string | null
+          phase: string
+          product_id: string
+          report_url?: string | null
+          result?: string
+          sort?: number
+          tested_at?: string | null
+          tested_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          note?: string | null
+          phase?: string
+          product_id?: string
+          report_url?: string | null
+          result?: string
+          sort?: number
+          tested_at?: string | null
+          tested_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plm_tests_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "plm_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pqc_reports: {
         Row: {
           created_at: string
@@ -3216,6 +3328,7 @@ export type Database = {
           handed_over_at: string | null
           handed_over_quantity: number | null
           id: string
+          is_pilot: boolean
           parent_order_id: string | null
           part_id: string
           planned_date: string
@@ -3236,6 +3349,7 @@ export type Database = {
           handed_over_at?: string | null
           handed_over_quantity?: number | null
           id?: string
+          is_pilot?: boolean
           parent_order_id?: string | null
           part_id: string
           planned_date?: string
@@ -3256,6 +3370,7 @@ export type Database = {
           handed_over_at?: string | null
           handed_over_quantity?: number | null
           id?: string
+          is_pilot?: boolean
           parent_order_id?: string | null
           part_id?: string
           planned_date?: string
@@ -3319,6 +3434,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           id: string
+          is_pilot: boolean
           notes: string | null
           part_id: string
           plant_id: string
@@ -3333,6 +3449,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
+          is_pilot?: boolean
           notes?: string | null
           part_id: string
           plant_id: string
@@ -3347,6 +3464,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
+          is_pilot?: boolean
           notes?: string | null
           part_id?: string
           plant_id?: string
@@ -4740,6 +4858,7 @@ export type Database = {
       can_approve: { Args: never; Returns: boolean }
       can_edit_customers: { Args: never; Returns: boolean }
       can_edit_masters: { Args: never; Returns: boolean }
+      can_edit_plm: { Args: never; Returns: boolean }
       delete_part: { Args: { p_part_id: string }; Returns: Json }
       delete_production_schedule_cascade: {
         Args: { p_schedule_id: string }
@@ -4934,6 +5053,45 @@ export type Database = {
         }[]
       }
       part_usage: { Args: { p_part_id: string }; Returns: string[] }
+      plm_copy_bom: {
+        Args: { p_from_part: string; p_to_part: string }
+        Returns: Json
+      }
+      plm_gate_blockers: {
+        Args: { p_gate: number; p_product: string }
+        Returns: string[]
+      }
+      plm_link_part: {
+        Args: { p_link: boolean; p_part: string; p_product: string }
+        Returns: undefined
+      }
+      plm_metrics: { Args: { p_product: string }; Returns: Json }
+      plm_pass_gate: {
+        Args: {
+          p_approved_by?: string
+          p_file_url?: string
+          p_gate: number
+          p_note?: string
+          p_product: string
+        }
+        Returns: number
+      }
+      plm_refresh: { Args: { p_product: string }; Returns: number }
+      plm_refresh_all: { Args: never; Returns: number }
+      plm_release_override: {
+        Args: { p_product: string; p_reason: string }
+        Returns: number
+      }
+      plm_schedule_pilot: {
+        Args: {
+          p_date: string
+          p_line_id?: string
+          p_part_id: string
+          p_plant_id: string
+          p_quantity: number
+        }
+        Returns: Json
+      }
       post_stock_count: {
         Args: { p_lines: Json; p_plant_id: string; p_reference?: string }
         Returns: Json

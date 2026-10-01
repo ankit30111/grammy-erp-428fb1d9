@@ -45,9 +45,8 @@ import Approvals from "./pages/Approvals";
 import PurchaseDiscrepancies from "./pages/PurchaseDiscrepancies";
 import { AuthGuard } from "@/components/Auth/AuthGuard";
 import { ModuleGuard } from "@/components/Auth/ModuleGuard";
-import RnD from "./pages/RnD";
-import NPD from "./pages/rnd/NPD";
-import PreExisting from "./pages/rnd/PreExisting";
+import PLMDashboard from "./pages/rnd/PLMDashboard";
+import PLMProduct from "./pages/rnd/PLMProduct";
 
 const queryClient = new QueryClient();
 
@@ -273,17 +272,12 @@ function App() {
             {/* R&D Routes - now properly wrapped with AuthGuard */}
             <Route path="/rnd" element={
               <AuthGuard>
-                <RnD />
+                <PLMDashboard />
               </AuthGuard>
             } />
-            <Route path="/rnd/npd" element={
+            <Route path="/rnd/products/:code" element={
               <AuthGuard>
-                <NPD />
-              </AuthGuard>
-            } />
-            <Route path="/rnd/pre-existing" element={
-              <AuthGuard>
-                <PreExisting />
+                <PLMProduct />
               </AuthGuard>
             } />
             {/* 404 Route */}
