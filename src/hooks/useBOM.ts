@@ -84,7 +84,8 @@ export const useBomTree = (parentPartId?: string) => {
         part_code: line.child?.part_code ?? "",
         name: line.child?.name ?? "",
         category: line.child?.category ?? "",
-        uom: line.uom ?? line.child?.uom ?? "PCS",
+        // The part's own unit: BOM quantities are always in it.
+        uom: line.child?.uom ?? line.uom ?? "PCS",
         source_type: line.child?.source_type ?? "PURCHASED",
         quantity: Number(line.quantity) || 0,
         bulk: line.issue_mode === "BULK",

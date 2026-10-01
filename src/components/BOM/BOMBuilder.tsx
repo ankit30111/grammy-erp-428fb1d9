@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { entryUnitsFor, fmtQty, fromStockQty, toStockQty } from "@/lib/units";
 import { usePermissions } from "@/hooks/usePermissions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -61,6 +62,14 @@ export const BOMBuilder = ({ initialParentId }: { initialParentId?: string } = {
   const [critical, setCritical] = useState<Record<string, boolean>>({});
   /** Bulk lines (solder, flux): on the BOM, issued to the line from stock, no QPS. */
   const [bulk, setBulk] = useState<Record<string, boolean>>({});
+  // Unit each quantity is typed in. Missing = the part's own (stock) unit.
+  // Saved quantities are always converted into the part's unit.
+  const [entryUnit, setEntryUnit] = useState<Record<string, string>>({});
+  const partById = useMemo(() => new Map(parts.map((p: any) => [p.id, p])), [parts]);
+  const stockQty = (id: string) => {
+    const part = partById.get(id) ?? {};
+    return toStockQty(Number(picked[id]), entryUnit[id] ?? (part.uom || "PCS"), part);
+  };
 
   const parentPart = parts.find((p: any) => p.id === parentId);
 
@@ -112,6 +121,7 @@ export const BOMBuilder = ({ initialParentId }: { initialParentId?: string } = {
     setPicked(Object.fromEntries(Object.entries(existing).map(([k, v]) => [k, v.quantity])));
     setCritical(Object.fromEntries(Object.entries(existing).map(([k, v]) => [k, v.is_critical])));
     setBulk(Object.fromEntries(Object.entries(existing).map(([k, v]) => [k, v.bulk])));
+    setEntryUnit({});
     setOnlySelected(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [parentId, existingKey]);
@@ -162,11 +172,12 @@ export const BOMBuilder = ({ initialParentId }: { initialParentId?: string } = {
     if (before !== after) return true;
     return Object.keys(picked).some(
       (id) =>
-        Number(picked[id]) !== Number(existing[id]?.quantity ?? NaN) ||
+        stockQty(id) !== Number(existing[id]?.quantity ?? NaN) ||
         Boolean(critical[id]) !== Boolean(existing[id]?.is_critical) ||
         Boolean(bulk[id]) !== Boolean(existing[id]?.bulk),
     );
-  }, [picked, critical, bulk, existing]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [picked, critical, bulk, existing, entryUnit]);
 
   const handleSave = async () => {
     if (!parentId) return toast.error("Choose the part this bill of materials belongs to");
@@ -204,7 +215,8 @@ export const BOMBuilder = ({ initialParentId }: { initialParentId?: string } = {
       parent_part_id: parentId,
       lines: Object.entries(picked).map(([child_part_id, quantity]) => ({
         child_part_id,
-        quantity: bulk[child_part_id] ? null : Number(quantity),
+        // Always saved in the part's own unit, whatever unit it was typed in.
+        quantity: bulk[child_part_id] ? null : stockQty(child_part_id),
         bulk: Boolean(bulk[child_part_id]),
         uom: parts.find((p: any) => p.id === child_part_id)?.uom || "PCS",
         is_critical: Boolean(critical[child_part_id]),
@@ -402,9 +414,40 @@ export const BOMBuilder = ({ initialParentId }: { initialParentId?: string } = {
                                   setPicked((prev) => ({ ...prev, [p.id]: e.target.value }))
                                 }
                               />
-                              {/* QPS is in the part's stock unit: 198 against a part stocked in MM is 198 mm. */}
-                              <span className="w-10 shrink-0 text-xs text-muted-foreground">{p.uom || "PCS"}</span>
+                              {(() => {
+                                // QPS is saved in the part's stock unit. It can be typed in a
+                                // related unit (MM/METER, GRAM/KG) or the part's purchase unit.
+                                const stock = (p.uom || "PCS").toUpperCase();
+                                const units = entryUnitsFor(p);
+                                const cur = entryUnit[p.id] ?? stock;
+                                if (units.length === 1) {
+                                  return <span className="w-14 shrink-0 text-xs text-muted-foreground">{stock}</span>;
+                                }
+                                return (
+                                  <select
+                                    aria-label={`Unit for ${p.part_code}`}
+                                    className="h-8 w-20 shrink-0 rounded-md border border-input bg-background px-1 text-xs"
+                                    value={cur}
+                                    disabled={!on || Boolean(bulk[p.id])}
+                                    onChange={(e) => {
+                                      const next = e.target.value;
+                                      const inStock = picked[p.id] !== undefined ? stockQty(p.id) : NaN;
+                                      setEntryUnit((prev) => ({ ...prev, [p.id]: next }));
+                                      if (Number.isFinite(inStock) && inStock > 0) {
+                                        setPicked((prev) => ({ ...prev, [p.id]: String(fromStockQty(inStock, next, p)) }));
+                                      }
+                                    }}
+                                  >
+                                    {units.map((u) => <option key={u.unit} value={u.unit}>{u.unit}</option>)}
+                                  </select>
+                                );
+                              })()}
                             </div>
+                            {on && !bulk[p.id] && entryUnit[p.id] && entryUnit[p.id] !== (p.uom || "PCS").toUpperCase() && Number(picked[p.id]) > 0 && (
+                              <div className="mt-0.5 text-[11px] text-muted-foreground">
+                                saved as {fmtQty(stockQty(p.id))} {(p.uom || "PCS").toUpperCase()}
+                              </div>
+                            )}
                           </TableCell>
                           <TableCell>
                             <Checkbox

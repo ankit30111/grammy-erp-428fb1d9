@@ -10,12 +10,15 @@ import { RawMaterialDropdown } from './RawMaterialDropdown';
 import { useCreateGRN } from '@/hooks/useGRN';
 import { useToast } from '@/hooks/use-toast';
 import { useRawMaterials } from '@/hooks/useRawMaterials';
+import { entryUnitsFor, fmtQty, toStockQty } from '@/lib/units';
 
 interface NonPOGRNItem {
   id: string;
   part_id: string;
   expected_quantity: number;
   received_quantity: number;
+  /** Unit the bill is in: the part's stock unit, a related unit, or its purchase unit */
+  unit: string;
 }
 
 export const NonPOGRNForm = () => {
@@ -27,6 +30,7 @@ export const NonPOGRNForm = () => {
     part_id: '',
     expected_quantity: 0,
     received_quantity: 0,
+    unit: '',
   });
 
   const { mutate: createGRN, isPending } = useCreateGRN();
@@ -58,6 +62,7 @@ export const NonPOGRNForm = () => {
       part_id: newItem.part_id,
       expected_quantity: newItem.expected_quantity,
       received_quantity: newItem.received_quantity || newItem.expected_quantity,
+      unit: newItem.unit || defaultUnit(newItem.part_id),
     };
 
     setItems(prev => [...prev, item]);
@@ -65,6 +70,7 @@ export const NonPOGRNForm = () => {
       part_id: '',
       expected_quantity: 0,
       received_quantity: 0,
+      unit: '',
     });
   };
 
@@ -120,11 +126,19 @@ export const NonPOGRNForm = () => {
       vendor_id: vendorId,
       received_date: receivedDate,
       notes: `Invoice Number: ${invoiceNumber} (Non-PO GRN)`,
-      items: items.filter(item => item.received_quantity > 0).map(item => ({
-        part_id: item.part_id,
-        expected_quantity: item.expected_quantity,
-        received_quantity: item.received_quantity,
-      })),
+      // Stock is always posted in the part's own unit; what the bill said is kept too.
+      items: items.filter(item => item.received_quantity > 0).map(item => {
+        const part = getMaterialInfo(item.part_id) ?? {};
+        const stockUnit = ((part as any).uom || 'PCS').toUpperCase();
+        const inOther = item.unit && item.unit !== stockUnit;
+        return {
+          part_id: item.part_id,
+          expected_quantity: toStockQty(item.expected_quantity, item.unit, part as any),
+          received_quantity: toStockQty(item.received_quantity, item.unit, part as any),
+          received_uom: inOther ? item.unit : null,
+          received_in_uom: inOther ? item.received_quantity : null,
+        };
+      }),
     };
 
     console.log('Submitting Non-PO GRN data:', grnData);
@@ -140,6 +154,7 @@ export const NonPOGRNForm = () => {
           part_id: '',
           expected_quantity: 0,
           received_quantity: 0,
+          unit: '',
         });
       },
     });
@@ -147,6 +162,33 @@ export const NonPOGRNForm = () => {
 
   const getMaterialInfo = (materialId: string) => {
     return rawMaterials.find(m => m.id === materialId);
+  };
+  /** Bills usually come in the purchase unit when a part has one (KG, ROLL...). */
+  const defaultUnit = (materialId: string) => {
+    const units = entryUnitsFor((getMaterialInfo(materialId) ?? {}) as any);
+    const m: any = getMaterialInfo(materialId);
+    const pu = (m?.purchase_uom || '').toUpperCase();
+    return units.find(u => u.unit === pu)?.unit ?? units[0].unit;
+  };
+  const unitSelect = (materialId: string, value: string, onChange: (u: string) => void, id: string) => {
+    const units = entryUnitsFor((getMaterialInfo(materialId) ?? {}) as any);
+    return (
+      <select
+        id={id}
+        aria-label="Unit"
+        className="h-10 w-full rounded-md border border-input bg-background px-2 text-sm"
+        value={value || defaultUnit(materialId)}
+        disabled={!materialId}
+        onChange={(e) => onChange(e.target.value)}
+      >
+        {units.map(u => <option key={u.unit} value={u.unit}>{u.unit}{u.hint ? ` (${u.hint})` : ''}</option>)}
+      </select>
+    );
+  };
+  const intoStock = (item: NonPOGRNItem) => {
+    const part: any = getMaterialInfo(item.part_id) ?? {};
+    const stockUnit = (part.uom || 'PCS').toUpperCase();
+    return item.unit === stockUnit ? null : `${fmtQty(toStockQty(item.received_quantity, item.unit, part))} ${stockUnit} into stock`;
   };
 
   const selectedMaterialIds = items.map(item => item.part_id);
@@ -193,25 +235,29 @@ export const NonPOGRNForm = () => {
             <CardTitle className="text-lg">Add Material</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
               <div className="space-y-2">
                 <Label>Material *</Label>
                 <RawMaterialDropdown
                   value={newItem.part_id}
-                  onValueChange={(value) => setNewItem(prev => ({ ...prev, part_id: value }))}
+                  onValueChange={(value) => setNewItem(prev => ({ ...prev, part_id: value, unit: defaultUnit(value) }))}
                   excludeIds={selectedMaterialIds}
                   placeholder="Select material"
                 />
               </div>
               <div className="space-y-2">
+                <Label htmlFor="grn-new-unit">Unit (as on bill)</Label>
+                {unitSelect(newItem.part_id, newItem.unit, (u) => setNewItem(prev => ({ ...prev, unit: u })), 'grn-new-unit')}
+              </div>
+              <div className="space-y-2">
                 <Label>Expected Qty *</Label>
                 <Input
                   type="number"
-                  min="1"
+                  min="0" step="any"
                   value={newItem.expected_quantity || ''}
                   onChange={(e) => setNewItem(prev => ({ 
                     ...prev, 
-                    expected_quantity: parseInt(e.target.value) || 0 
+                    expected_quantity: parseFloat(e.target.value) || 0 
                   }))}
                   placeholder="0"
                 />
@@ -224,7 +270,7 @@ export const NonPOGRNForm = () => {
                   value={newItem.received_quantity || ''}
                   onChange={(e) => setNewItem(prev => ({ 
                     ...prev, 
-                    received_quantity: parseInt(e.target.value) || 0 
+                    received_quantity: parseFloat(e.target.value) || 0 
                   }))}
                   placeholder="Auto-fill from expected"
                 />
@@ -253,6 +299,7 @@ export const NonPOGRNForm = () => {
                     <TableHead>Material Name</TableHead>
                     <TableHead>Expected Qty</TableHead>
                     <TableHead>Received Qty</TableHead>
+                    <TableHead>Unit</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -266,9 +313,9 @@ export const NonPOGRNForm = () => {
                         <TableCell>
                           <Input
                             type="number"
-                            min="1"
+                            min="0" step="any"
                             value={item.expected_quantity}
-                            onChange={(e) => updateItemQuantity(item.id, 'expected_quantity', parseInt(e.target.value) || 0)}
+                            onChange={(e) => updateItemQuantity(item.id, 'expected_quantity', parseFloat(e.target.value) || 0)}
                             className="w-20"
                           />
                         </TableCell>
@@ -278,9 +325,15 @@ export const NonPOGRNForm = () => {
                             min="0"
                             max={item.expected_quantity}
                             value={item.received_quantity}
-                            onChange={(e) => updateItemQuantity(item.id, 'received_quantity', parseInt(e.target.value) || 0)}
-                            className="w-20"
+                            onChange={(e) => updateItemQuantity(item.id, 'received_quantity', parseFloat(e.target.value) || 0)}
+                            className="w-24"
                           />
+                        </TableCell>
+                        <TableCell>
+                          <div className="w-44">
+                            {unitSelect(item.part_id, item.unit, (u) => setItems(prev => prev.map(i => i.id === item.id ? { ...i, unit: u } : i)), `grn-unit-${item.id}`)}
+                          </div>
+                          {intoStock(item) && <div className="text-xs text-muted-foreground mt-1">{intoStock(item)}</div>}
                         </TableCell>
                         <TableCell>
                           <Button

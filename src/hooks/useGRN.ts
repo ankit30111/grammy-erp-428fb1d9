@@ -94,7 +94,10 @@ export const useCreateGRN = () => {
         grn_id: grnRecord.id,
         purchase_order_item_id: item.purchase_order_item_id ?? null,
         part_id: item.part_id,
+        // Always in the part's stock unit; the bill's own figure is kept alongside.
         received_quantity: item.received_quantity,
+        received_uom: item.received_uom ?? null,
+        received_in_uom: item.received_in_uom ?? null,
         iqc_outcome: 'PENDING',
       }));
 

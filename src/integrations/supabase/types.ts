@@ -1374,7 +1374,9 @@ export type Database = {
           notes: string | null
           part_id: string
           purchase_order_item_id: string | null
+          received_in_uom: number | null
           received_quantity: number
+          received_uom: string | null
           store_confirmed_at: string | null
           store_confirmed_by: string | null
           store_counted_quantity: number | null
@@ -1393,7 +1395,9 @@ export type Database = {
           notes?: string | null
           part_id: string
           purchase_order_item_id?: string | null
+          received_in_uom?: number | null
           received_quantity: number
+          received_uom?: string | null
           store_confirmed_at?: string | null
           store_confirmed_by?: string | null
           store_counted_quantity?: number | null
@@ -1412,7 +1416,9 @@ export type Database = {
           notes?: string | null
           part_id?: string
           purchase_order_item_id?: string | null
+          received_in_uom?: number | null
           received_quantity?: number
+          received_uom?: string | null
           store_confirmed_at?: string | null
           store_confirmed_by?: string | null
           store_counted_quantity?: number | null
@@ -5055,6 +5061,7 @@ export type Database = {
           status: string
         }[]
       }
+      unit_factor: { Args: { p_from: string; p_to: string }; Returns: number }
     }
     Enums: {
       capa_status: "OPEN" | "SUBMITTED" | "ACCEPTED" | "REJECTED" | "CLOSED"
