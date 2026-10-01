@@ -1,5 +1,6 @@
 
 import { ReactNode } from "react";
+import { ClockWarning } from "./ClockWarning";
 import { Sidebar } from "@/components/Navigation/Sidebar";
 import { Bell, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -71,6 +72,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           </div>
         </header>
 
+        <ClockWarning />
         <main className="flex-1 overflow-auto p-6 bg-background">{children}</main>
       </div>
     </div>

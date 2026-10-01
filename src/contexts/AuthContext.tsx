@@ -66,6 +66,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [permittedModules, setPermittedModules] = useState<Set<string>>(new Set());
   const [permittedPlants, setPermittedPlants] = useState<Set<string>>(new Set());
   const fetchingProfileRef = useRef(false);
+  /** User whose profile and permissions are loaded; a token refresh for them reloads nothing. */
+  const loadedUserRef = useRef<string | null>(null);
 
   const isAdmin = userProfile?.role === 'admin';
 
@@ -239,6 +241,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         if (event === 'SIGNED_OUT' || !nextSession) {
+          loadedUserRef.current = null;
           setSession(null);
           setUser(null);
           setUserProfile(null);
@@ -252,7 +255,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSession(nextSession);
         setUser(nextSession.user);
 
+        // A token refresh is the same user: profile and permissions have not
+        // changed, so do not reload them. Reloading on every refresh fired ~14
+        // requests per refresh, each of which could trigger another refresh -
+        // the loop that logged the store PC out.
+        if (event === 'TOKEN_REFRESHED' && loadedUserRef.current === nextSession.user?.id) {
+          return;
+        }
+
         if (nextSession.user) {
+          loadedUserRef.current = nextSession.user.id;
           // Defer to avoid blocking the auth callback
           setTimeout(() => {
             void fetchUserProfile(nextSession.user.id);
