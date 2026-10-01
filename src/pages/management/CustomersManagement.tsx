@@ -256,7 +256,10 @@ const CustomersManagement = () => {
     }
   };
 
-  const CustomerFormFields = () => (
+  // A plain function returning JSX, not a component: defined inside this page, a
+  // component would be a new type on every render, React would remount the
+  // inputs on each keystroke and the cursor would leave the field.
+  const customerFormFields = () => (
     <div className="space-y-4 max-h-96 overflow-y-auto">
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
@@ -431,7 +434,7 @@ const CustomersManagement = () => {
               <DialogHeader>
                 <DialogTitle>Add New Customer</DialogTitle>
               </DialogHeader>
-              <CustomerFormFields />
+              {customerFormFields()}
               <Button 
                 onClick={handleCreateCustomer} 
                 className="w-full"
@@ -455,7 +458,7 @@ const CustomersManagement = () => {
             <DialogHeader>
               <DialogTitle>Edit Customer</DialogTitle>
             </DialogHeader>
-            <CustomerFormFields />
+            {customerFormFields()}
             <Button 
               onClick={handleUpdateCustomer} 
               className="w-full"
