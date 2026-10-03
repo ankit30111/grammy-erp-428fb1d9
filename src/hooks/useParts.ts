@@ -133,6 +133,7 @@ export const useParts = () => {
           category: input.category,
           uom: input.uom || "PCS",
           purchase_uom: input.purchase_uom || null,
+          plm_product_id: (input as any).plm_product_id ?? null,
           purchase_factor: input.purchase_uom ? input.purchase_factor ?? 1 : 1,
           source_type: input.source_type || "PURCHASED",
           specification: input.specification || null,

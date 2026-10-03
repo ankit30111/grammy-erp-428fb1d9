@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
 import { PartUnitFields, unitColumns, unitProblem, unitValueFromPart, type UnitValue } from "@/components/Parts/PartUnitFields";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
@@ -50,9 +52,17 @@ const TIER_ICON: Record<PartTier, typeof ShoppingCart> = {
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /**
+   * Opened from an R&D product: the part is that product's finished good. Name,
+   * category and brand are filled in from the product, and the new code is
+   * linked to it. A variation can start its BOM from its base product's code.
+   */
+  forProduct?: { id: string; code: string; name: string; category: string | null; client: string | null;
+                 baseFgs?: { id: string; part_code: string }[] };
+  onCreated?: (part: any) => void;
 }
 
-export const CreatePartDialog = ({ open, onOpenChange }: Props) => {
+export const CreatePartDialog = ({ open, onOpenChange, forProduct, onCreated }: Props) => {
   const { addPart } = useParts();
   const { categories, freePrefixes, addCategory } = usePartCategories();
   const { vendors = [] } = useVendors();
@@ -93,6 +103,20 @@ export const CreatePartDialog = ({ open, onOpenChange }: Props) => {
 
   const [saving, setSaving] = useState(false);
 
+  // Every finished good belongs to an R&D product (it is created there, or chosen here).
+  const [plmProductId, setPlmProductId] = useState("");
+  const [copyBomFrom, setCopyBomFrom] = useState("");
+  const { data: plmProducts = [] } = useQuery({
+    queryKey: ["plm-products-for-parts"],
+    enabled: open,
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).from("plm_products")
+        .select("id, product_code, name, stage, status").neq("status", "DROPPED").order("product_code");
+      if (error) throw error;
+      return data as { id: string; product_code: string; name: string; stage: number }[];
+    },
+  });
+
   const tierMeta = PART_TIERS.find((t) => t.value === tier);
   const isPurchase = tier === "PURCHASE";
   const isFinished = tier === "FINISHED";
@@ -115,8 +139,17 @@ export const CreatePartDialog = ({ open, onOpenChange }: Props) => {
   };
 
   useEffect(() => {
-    if (!open) reset();
+    if (!open) { reset(); setPlmProductId(""); setCopyBomFrom(""); }
   }, [open]);
+
+  // From R&D: a finished good, filled in from the product.
+  useEffect(() => {
+    if (!open || !forProduct) return;
+    setTier("FINISHED");
+    setPlmProductId(forProduct.id);
+    setCopyBomFrom(forProduct.baseFgs?.[0]?.id ?? "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, forProduct?.id]);
 
   // Changing the kind invalidates the category, and the category is what the code
   // is issued against - so the code has to go with it rather than being carried
@@ -126,6 +159,17 @@ export const CreatePartDialog = ({ open, onOpenChange }: Props) => {
     setPartCode("");
     setModelCode("");
   }, [tier]);
+
+  // Runs after the reset above, so the product's values stay.
+  useEffect(() => {
+    if (!open || !forProduct || tier !== "FINISHED") return;
+    setName((n) => n || forProduct.name);
+    const cat = categories.find((c) => c.tier === "FINISHED" && c.name.toLowerCase() === (forProduct.category ?? "").toLowerCase());
+    if (cat) setCategoryPrefix((x) => x || cat.prefix);
+    const b = brands.find((x) => x.name.toLowerCase() === (forProduct.client ?? "").toLowerCase());
+    if (b) setBrand((x) => x || b.letter);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, tier, categories.length, brands.length]);
 
   // A finished good's code ends in its two-letter brand, so it cannot be issued until
   // both the category and the brand are chosen.
@@ -178,10 +222,14 @@ export const CreatePartDialog = ({ open, onOpenChange }: Props) => {
 
     const unitErr = unitProblem(units);
     if (unitErr) return toast.error(unitErr);
+    if (isFinished && !plmProductId) {
+      return toast.error("Choose the R&D product this finished good belongs to (create the product in R&D first)");
+    }
 
     setSaving(true);
     try {
-      await addPart.mutateAsync({
+      const part: any = await addPart.mutateAsync({
+        ...(isFinished ? { plm_product_id: plmProductId } : {}),
         name: name.trim(),
         part_code: codeToSave,
         category: categoryPrefix,
@@ -203,6 +251,12 @@ export const CreatePartDialog = ({ open, onOpenChange }: Props) => {
             }
           : docFilesToInput(tier, docs)),
       });
+      if (isFinished && part?.id && copyBomFrom) {
+        const { error } = await (supabase as any).rpc("plm_copy_bom", { p_from_part: copyBomFrom, p_to_part: part.id });
+        if (error) toast.error(`Code created, but the BOM was not copied: ${error.message}`);
+        else toast.success("BOM copied from the base product");
+      }
+      onCreated?.(part);
       onOpenChange(false);
     } catch {
       // addPart raises its own toast with the database's message.
@@ -303,6 +357,35 @@ export const CreatePartDialog = ({ open, onOpenChange }: Props) => {
                 />
               </div>
             </div>
+
+            {isFinished && (
+              <div className="space-y-2">
+                <Label htmlFor="cp-plm">R&amp;D product *</Label>
+                {forProduct ? (
+                  <p className="text-sm"><span className="font-mono">{forProduct.code}</span> — {forProduct.name}</p>
+                ) : (
+                  <select id="cp-plm" className="h-10 w-full rounded-md border border-input bg-background px-2 text-sm"
+                          value={plmProductId} onChange={(e) => setPlmProductId(e.target.value)}>
+                    <option value="">Which product is this the finished good of?</option>
+                    {plmProducts.map((p) => <option key={p.id} value={p.id}>{p.product_code} — {p.name} (stage {p.stage})</option>)}
+                  </select>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  Every finished good belongs to a product in R&amp;D. Its stage decides when it can be built: pilot builds at
+                  stage 5, normal vouchers from stage 6.
+                </p>
+                {forProduct?.baseFgs && forProduct.baseFgs.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-2 text-sm">
+                    <Label htmlFor="cp-copy">Start its BOM from</Label>
+                    <select id="cp-copy" className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+                            value={copyBomFrom} onChange={(e) => setCopyBomFrom(e.target.value)}>
+                      <option value="">No, start empty</option>
+                      {forProduct.baseFgs.map((b) => <option key={b.id} value={b.id}>{b.part_code} (base product)</option>)}
+                    </select>
+                  </div>
+                )}
+              </div>
+            )}
 
             {isFinished && (
               <div className="space-y-2">

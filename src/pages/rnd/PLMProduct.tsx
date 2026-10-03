@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { CreatePartDialog } from "@/components/Parts/CreatePartDialog";
 import { toast } from "sonner";
 import { Check, FileText, Lock, Paperclip, Plus, Trash2, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -206,7 +207,7 @@ function StageView({ stage, data, canEdit, canApprove, upload, plantId, m }: any
                                                      bad={stage === 5 && !["LETTER_RECEIVED", "NOT_REQUIRED"].includes(p.bis_status)} />}
           </div>
 
-          {stage === 2 && <FinishedGoods data={data} canEdit={canEdit} m={m} />}
+          {(stage === 1 || stage === 2) && <FinishedGoods data={data} canEdit={canEdit} m={m} />}
           {stage === 3 && <BisPanel data={data} canEdit={canEdit} upload={upload} m={m} />}
           {stage === 4 && (
             <div className="flex flex-wrap items-end gap-2">
@@ -353,14 +354,22 @@ function FinishedGoods({ data, canEdit, m }: any) {
   });
   const [copyFrom, setCopyFrom] = useState("");
   useEffect(() => { if (!copyFrom && baseFgs[0]) setCopyFrom(baseFgs[0].id); }, [baseFgs, copyFrom]);
+  const [creating, setCreating] = useState(false);
+  const qc = useQueryClient();
 
   return (
     <div className="space-y-2 rounded-md border p-3">
       <div className="font-medium text-sm">Finished-good codes of this product</div>
       <p className="text-xs text-muted-foreground">
-        Create the code in Parts → Finished Goods (one per brand), then link it here. The BOM is built on that code, and its
-        completeness drives gates 2 and 4.
+        One code per brand (JA-06C-PH). Create it here and it is linked to this product; its BOM is built on that code, and
+        its completeness drives gates 2 and 4.{p.kind === "VARIATION" ? " A variation can start its BOM from the base product's code." : ""}
       </p>
+      {canEdit && (
+        <Button size="sm" onClick={() => setCreating(true)}><Plus /> Create finished-good code</Button>
+      )}
+      <CreatePartDialog open={creating} onOpenChange={setCreating}
+        forProduct={{ id: p.id, code: p.product_code, name: p.name, category: p.category, client: p.client, baseFgs }}
+        onCreated={() => qc.invalidateQueries({ predicate: (q) => String(q.queryKey[0]).startsWith("plm") })} />
       {data.fgs.length === 0 && <p className="text-sm text-muted-foreground">None linked yet.</p>}
       {data.fgs.map((f: any) => (
         <div key={f.id} className="flex flex-wrap items-center gap-2 text-sm">
@@ -379,7 +388,7 @@ function FinishedGoods({ data, canEdit, m }: any) {
       {canEdit && (
         <div className="flex flex-wrap items-center gap-2 pt-1">
           <select aria-label="Finished good to link" className={cn(sel, "min-w-[260px]")} value={pick} onChange={(e) => setPick(e.target.value)}>
-            <option value="">Link a finished-good code…</option>
+            <option value="">Or link an existing code…</option>
             {free.map((f) => <option key={f.id} value={f.id}>{f.part_code} — {f.name}</option>)}
           </select>
           <Button variant="outline" size="sm" disabled={!pick} onClick={() => { m.linkPart.mutate({ product: p.id, part: pick, link: true }); setPick(""); }}>Link</Button>

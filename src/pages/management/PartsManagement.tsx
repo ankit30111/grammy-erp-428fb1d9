@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { PartProductLink } from "@/components/PLM/PartProductLink";
 import { PartUnitFields, unitColumns, unitProblem, unitValueFromPart, type UnitValue } from "@/components/Parts/PartUnitFields";
 import { format } from "date-fns";
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
@@ -752,6 +753,8 @@ const RawMaterialsManagement = () => {
                   <Label className="text-sm font-medium text-muted-foreground">Documents</Label>
                   <PartDocumentList tier={viewTier} part={viewMaterial} />
                 </div>
+
+                <PartProductLink part={viewMaterial} />
 
                 <PartBranding part={viewMaterial} allParts={rawMaterials} />
 
