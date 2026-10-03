@@ -42,7 +42,7 @@ const blank = {
  * tests on creation, and the BOM when its finished-good code is linked.
  */
 export function NewProductDialog({ open, onOpenChange, products, onCreated }: {
-  open: boolean; onOpenChange: (o: boolean) => void; products: PlmProduct[]; onCreated?: (code: string) => void;
+  open: boolean; onOpenChange: (o: boolean) => void; products: PlmProduct[]; onCreated?: (code: string, variation: boolean) => void;
 }) {
   const [f, setF] = useState({ ...blank });
   const { createProduct, copyTests } = usePlmMutations();
@@ -74,7 +74,7 @@ export function NewProductDialog({ open, onOpenChange, products, onCreated }: {
       await copyTests.mutateAsync({ from: f.based_on_id, to: created.id }).catch(() => undefined);
     }
     onOpenChange(false);
-    if (created?.product_code) onCreated?.(created.product_code);
+    if (created?.product_code) onCreated?.(created.product_code, f.kind === "VARIATION");
   };
 
   return (
@@ -99,8 +99,8 @@ export function NewProductDialog({ open, onOpenChange, products, onCreated }: {
               {base && (
                 <>
                   <p className="text-xs text-muted-foreground">
-                    Category and target cost come from {base.product_code}. When this product's finished-good code is linked,
-                    its BOM can be copied from {base.product_code}'s finished good and changed from there.
+                    Category and target cost come from {base.product_code}. After you create it, {base.product_code}'s BOM opens
+                    line by line: keep what stays, mark what changes for this product.
                   </p>
                   <label className="flex items-center gap-2 text-sm cursor-pointer">
                     <Checkbox checked={f.copyTests} onCheckedChange={(c) => set({ copyTests: Boolean(c) })} />

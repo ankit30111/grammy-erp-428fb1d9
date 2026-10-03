@@ -2793,6 +2793,130 @@ export type Database = {
         }
         Relationships: []
       }
+      plm_bom_lines: {
+        Row: {
+          approval_at: string | null
+          approval_done: boolean
+          bulk: boolean
+          change_type: string
+          created_at: string
+          description: string | null
+          design_at: string | null
+          design_done: boolean
+          id: string
+          is_critical: boolean
+          part_id: string | null
+          product_id: string
+          quantity: number | null
+          quoted_price: number | null
+          release_at: string | null
+          release_done: boolean
+          remarks: string | null
+          replaces_part_id: string | null
+          sample_at: string | null
+          sample_done: boolean
+          sort: number
+          updated_at: string
+          updated_by: string | null
+          vendor_note: string | null
+        }
+        Insert: {
+          approval_at?: string | null
+          approval_done?: boolean
+          bulk?: boolean
+          change_type?: string
+          created_at?: string
+          description?: string | null
+          design_at?: string | null
+          design_done?: boolean
+          id?: string
+          is_critical?: boolean
+          part_id?: string | null
+          product_id: string
+          quantity?: number | null
+          quoted_price?: number | null
+          release_at?: string | null
+          release_done?: boolean
+          remarks?: string | null
+          replaces_part_id?: string | null
+          sample_at?: string | null
+          sample_done?: boolean
+          sort?: number
+          updated_at?: string
+          updated_by?: string | null
+          vendor_note?: string | null
+        }
+        Update: {
+          approval_at?: string | null
+          approval_done?: boolean
+          bulk?: boolean
+          change_type?: string
+          created_at?: string
+          description?: string | null
+          design_at?: string | null
+          design_done?: boolean
+          id?: string
+          is_critical?: boolean
+          part_id?: string | null
+          product_id?: string
+          quantity?: number | null
+          quoted_price?: number | null
+          release_at?: string | null
+          release_done?: boolean
+          remarks?: string | null
+          replaces_part_id?: string | null
+          sample_at?: string | null
+          sample_done?: boolean
+          sort?: number
+          updated_at?: string
+          updated_by?: string | null
+          vendor_note?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plm_bom_lines_part_id_fkey"
+            columns: ["part_id"]
+            isOneToOne: false
+            referencedRelation: "parts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plm_bom_lines_part_id_fkey"
+            columns: ["part_id"]
+            isOneToOne: false
+            referencedRelation: "store_receiving_variances"
+            referencedColumns: ["part_id"]
+          },
+          {
+            foreignKeyName: "plm_bom_lines_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "plm_catch_up"
+            referencedColumns: ["product_id"]
+          },
+          {
+            foreignKeyName: "plm_bom_lines_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "plm_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plm_bom_lines_replaces_part_id_fkey"
+            columns: ["replaces_part_id"]
+            isOneToOne: false
+            referencedRelation: "parts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plm_bom_lines_replaces_part_id_fkey"
+            columns: ["replaces_part_id"]
+            isOneToOne: false
+            referencedRelation: "store_receiving_variances"
+            referencedColumns: ["part_id"]
+          },
+        ]
+      }
       plm_deliverable_template: {
         Row: {
           key: string
@@ -2929,6 +3053,7 @@ export type Database = {
       plm_issues: {
         Row: {
           action: string | null
+          bom_line_id: string | null
           closed_on: string | null
           complaint_id: string | null
           created_at: string
@@ -2950,6 +3075,7 @@ export type Database = {
         }
         Insert: {
           action?: string | null
+          bom_line_id?: string | null
           closed_on?: string | null
           complaint_id?: string | null
           created_at?: string
@@ -2971,6 +3097,7 @@ export type Database = {
         }
         Update: {
           action?: string | null
+          bom_line_id?: string | null
           closed_on?: string | null
           complaint_id?: string | null
           created_at?: string
@@ -2991,6 +3118,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "plm_issues_bom_line_id_fkey"
+            columns: ["bom_line_id"]
+            isOneToOne: false
+            referencedRelation: "plm_bom_lines"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "plm_issues_complaint_id_fkey"
             columns: ["complaint_id"]
@@ -3026,6 +3160,8 @@ export type Database = {
           based_on_id: string | null
           bis_letter_url: string | null
           bis_status: string
+          bom_changed_at: string | null
+          bom_published_at: string | null
           business_model: string | null
           category: string | null
           client: string | null
@@ -3051,6 +3187,8 @@ export type Database = {
           based_on_id?: string | null
           bis_letter_url?: string | null
           bis_status?: string
+          bom_changed_at?: string | null
+          bom_published_at?: string | null
           business_model?: string | null
           category?: string | null
           client?: string | null
@@ -3076,6 +3214,8 @@ export type Database = {
           based_on_id?: string | null
           bis_letter_url?: string | null
           bis_status?: string
+          bom_changed_at?: string | null
+          bom_published_at?: string | null
           business_model?: string | null
           category?: string | null
           client?: string | null
@@ -3123,6 +3263,7 @@ export type Database = {
       }
       plm_tests: {
         Row: {
+          bom_line_id: string | null
           created_at: string
           id: string
           name: string
@@ -3136,6 +3277,7 @@ export type Database = {
           tested_by: string | null
         }
         Insert: {
+          bom_line_id?: string | null
           created_at?: string
           id?: string
           name: string
@@ -3149,6 +3291,7 @@ export type Database = {
           tested_by?: string | null
         }
         Update: {
+          bom_line_id?: string | null
           created_at?: string
           id?: string
           name?: string
@@ -3162,6 +3305,13 @@ export type Database = {
           tested_by?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "plm_tests_bom_line_id_fkey"
+            columns: ["bom_line_id"]
+            isOneToOne: false
+            referencedRelation: "plm_bom_lines"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "plm_tests_product_id_fkey"
             columns: ["product_id"]
@@ -5107,6 +5257,11 @@ export type Database = {
         }[]
       }
       part_usage: { Args: { p_part_id: string }; Returns: string[] }
+      plm_bom_from_base: {
+        Args: { p_actions: Json; p_product: string }
+        Returns: number
+      }
+      plm_bom_from_production: { Args: { p_product: string }; Returns: number }
       plm_copy_bom: {
         Args: { p_from_part: string; p_to_part: string }
         Returns: Json
@@ -5130,6 +5285,7 @@ export type Database = {
         }
         Returns: number
       }
+      plm_publish_bom: { Args: { p_product: string }; Returns: Json }
       plm_refresh: { Args: { p_product: string }; Returns: number }
       plm_refresh_all: { Args: never; Returns: number }
       plm_release_override: {

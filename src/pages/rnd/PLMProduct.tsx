@@ -24,6 +24,7 @@ import { usePlantId } from "@/hooks/usePlantId";
 import { PLM_CATEGORIES, useClientNames } from "@/components/PLM/NewProductDialog";
 import { priorityVariant, stageLabel } from "./PLMDashboard";
 import { cn } from "@/lib/utils";
+import { BaseBomPicker, ProductBom } from "@/components/PLM/ProductBom";
 
 const sel = "h-9 rounded-md border border-input bg-background px-2 text-sm";
 const HOW: Record<string, string> = {
@@ -148,6 +149,7 @@ const PLMProduct = () => {
         <TabBar
           tabs={[
             { id: "stages", label: "Stages" },
+            { id: "bom", label: `BOM ${mx.dev_bom?.pct ?? 0}%` },
             { id: "tests", label: "Tests", count: data.tests.length },
             { id: "issues", label: "Issues", count: data.issues.filter((i: any) => i.status === "OPEN").length },
             { id: "details", label: "Details" },
@@ -159,6 +161,7 @@ const PLMProduct = () => {
           <StageView key={stage} stage={stage} data={data} canEdit={canEdit} canApprove={canApprove} upload={upload}
                      plantId={plantId} m={m} />
         )}
+        {tab === "bom" && <BomTab data={data} canEdit={canEdit} m={m} />}
         {tab === "tests" && <TestsView data={data} canEdit={canEdit} upload={upload} m={m} products={products} />}
         {tab === "issues" && <IssuesView data={data} canEdit={canEdit} m={m} />}
         {tab === "details" && <DetailsView data={data} canEdit={canEdit} m={m} products={products} />}
@@ -198,15 +201,23 @@ function StageView({ stage, data, canEdit, canApprove, upload, plantId, m }: any
         <CardContent className="space-y-4">
           {/* What the ERP measures for this stage */}
           <div className="flex flex-wrap gap-2">
-            {(stage === 1 || stage === 5 || stage === 6) && cost.map((c) => (
+            {stage === 1 && (
+              <Metric label="Material cost (BOM)" value={`₹${Number(mx.dev_bom?.cost ?? 0).toLocaleString("en-IN")}`}
+                      hint={[p.target_cost != null && `target ₹${Number(p.target_cost).toLocaleString("en-IN")}`, mx.dev_bom?.unpriced > 0 && `${mx.dev_bom.unpriced} without price`].filter(Boolean).join(" · ")}
+                      bad={p.target_cost != null && (mx.dev_bom?.cost ?? 0) > p.target_cost} />
+            )}
+            {(stage === 5 || stage === 6) && cost.map((c) => (
               <Metric key={c.part_id} label={`Material cost ${c.part_code}`} value={`₹${Number(c.cost).toLocaleString("en-IN")}`}
                       hint={[p.target_cost != null && `target ₹${Number(p.target_cost).toLocaleString("en-IN")}`, c.unpriced > 0 && `${c.unpriced} line(s) without price`, c.foreign > 0 && `${c.foreign} in foreign currency, not added`].filter(Boolean).join(" · ")}
                       bad={p.target_cost != null && c.cost > p.target_cost} />
             ))}
             {(stage === 2 || stage === 4) && (
-              <Metric label="BOM complete" value={`${mx.bom_pct}%`} hint={`${mx.bom_done} of ${mx.bom_lines} lines`} bad={mx.bom_pct <= (stage === 2 ? 70 : 95)} />
+              <Metric label="BOM progress" value={`${mx.bom_pct}%`} hint={`${mx.dev_bom?.release ?? 0} of ${mx.dev_bom?.lines ?? 0} parts released`} bad={mx.bom_pct <= (stage === 2 ? 70 : 95)} />
             )}
+            {stage === 4 && <Metric label="Part data in Parts" value={`${mx.master_pct}%`} hint="code approved, vendor, price, spec" />}
             {stage === 4 && <Metric label="Spec sheets" value={`${mx.spec_pct}%`} hint="of purchased lines" />}
+            {stage === 5 && <Metric label="BOM published" value={p.bom_published_at && (!p.bom_changed_at || p.bom_published_at >= p.bom_changed_at) ? "Yes" : "No"}
+                                    hint={p.bom_published_at ? `last ${fmtDate(p.bom_published_at)}` : "not yet"} bad={!p.bom_published_at || (p.bom_changed_at && p.bom_published_at < p.bom_changed_at)} />}
             {stage === 3 && <Metric label="EVT tests passed" value={`${mx.evt_pass}/${mx.evt_total}`} bad={mx.evt_pass < mx.evt_total} />}
             {stage === 4 && <Metric label="SVT tests passed" value={`${mx.svt_pass}/${mx.svt_total}`} bad={mx.svt_not_passed > 0} />}
             {(stage === 3 || stage === 4 || stage === 5) && <Metric label="Open issues" value={String(mx.open_issues)} bad={mx.open_issues > 0} />}
@@ -228,6 +239,15 @@ function StageView({ stage, data, canEdit, canApprove, upload, plantId, m }: any
           {stage === 5 && <PilotPanel data={data} canEdit={canEdit} plantId={plantId} m={m} />}
           {(stage === 3 || stage === 4) && (stage === 3 ? evt : svt).length === 0 && (
             <p className="text-sm text-muted-foreground">No {stage === 3 ? "EVT" : "SVT"} tests yet. Add them on the Tests tab.</p>
+          )}
+
+          {stage < 6 && data.bom.length > 0 && (
+            <div className="rounded-md border p-3">
+              <ProductBom data={data} canEdit={canEdit} m={m} focus title="BOM at this stage" />
+            </div>
+          )}
+          {stage < 6 && data.bom.length === 0 && (
+            <p className="text-sm text-muted-foreground">No BOM yet. Start it on the BOM tab.</p>
           )}
 
           {/* Checklist */}
@@ -685,4 +705,72 @@ function DetailsView({ data, canEdit, m, products }: any) {
   );
 }
 
+/* ---------------------------------------------------------------- BOM */
+
+function BomTab({ data, canEdit, m }: any) {
+  const { product: p, metrics: mx } = data;
+  const dev = mx.dev_bom ?? {};
+  const { data: baseLines = [] } = useQuery({
+    queryKey: ["plm-base-bom", p.based_on_id],
+    enabled: !!p.based_on_id && data.bom.length === 0,
+    queryFn: async () => {
+      const { data: rows, error } = await (supabase as any).from("plm_bom_lines")
+        .select("*, part:parts!plm_bom_lines_part_id_fkey ( id, part_code, name, uom, unit_price, currency, category, approval_status ), replaces:parts!plm_bom_lines_replaces_part_id_fkey ( part_code, name )")
+        .eq("product_id", p.based_on_id).order("sort");
+      if (error) throw error;
+      return rows ?? [];
+    },
+  });
+  const published = p.bom_published_at && (!p.bom_changed_at || p.bom_published_at >= p.bom_changed_at);
+  const canPublish = canEdit && p.stage >= 5 && data.fgs.length > 0 && dev.lines > 0 && !dev.no_code;
+
+  if (data.bom.length === 0) {
+    return (
+      <Card>
+        <CardHeader className="pb-2"><CardTitle>Start the BOM</CardTitle></CardHeader>
+        <CardContent className="space-y-4">
+          {p.kind === "VARIATION" && data.base && baseLines.length > 0 && canEdit && (
+            <BaseBomPicker baseLines={baseLines} baseCode={data.base.product_code} busy={m.bomFromBase.isPending}
+                           onSubmit={(actions) => m.bomFromBase.mutate({ product: p.id, actions })} />
+          )}
+          {p.kind === "VARIATION" && data.base && baseLines.length === 0 && (
+            <p className="text-sm text-muted-foreground">{data.base.product_code} has no BOM yet, so there is nothing to start from.</p>
+          )}
+          {data.fgs.length > 0 && canEdit && (
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="outline" onClick={() => m.bomFromProduction.mutate(p.id)}>Start from {data.fgs.map((f: any) => f.part_code).join(", ")}'s BOM</Button>
+              <span className="text-sm text-muted-foreground">Every line comes in as carry-over (released).</span>
+            </div>
+          )}
+          <ProductBom data={data} canEdit={canEdit} m={m} title="Or add the parts one by one" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardContent className="pt-5 space-y-4">
+        <div className="flex flex-wrap items-start gap-4">
+          <Metric label="BOM progress" value={`${dev.pct}%`} hint="Design, Sample, Approval, Release: 25% each" />
+          <Metric label="Material cost" value={`₹${Number(dev.cost ?? 0).toLocaleString("en-IN")}`}
+                  hint={[p.target_cost != null && `target ₹${Number(p.target_cost).toLocaleString("en-IN")}`, dev.unpriced > 0 && `${dev.unpriced} without price`].filter(Boolean).join(" · ")}
+                  bad={p.target_cost != null && dev.cost > p.target_cost} />
+          <div className="rounded-md border p-3 min-w-[240px] space-y-1">
+            <div className="text-xs text-muted-foreground">Production BOM</div>
+            <div className="text-sm">{p.bom_published_at ? `Published ${fmtDate(p.bom_published_at)}${published ? "" : " · changed since"}` : "Not published"}</div>
+            <div className="text-xs text-muted-foreground">Published automatically when gate 4 passes, then with Publish after any change.</div>
+            {canEdit && p.stage >= 5 && (
+              <Button size="sm" disabled={!canPublish || published} onClick={() => m.publishBom.mutate(p.id)}>Publish to production</Button>
+            )}
+            {canEdit && p.stage >= 5 && dev.no_code > 0 && <div className="text-xs text-warning">{dev.no_code} line(s) still need a part code.</div>}
+          </div>
+        </div>
+        <ProductBom data={data} canEdit={canEdit} m={m} />
+      </CardContent>
+    </Card>
+  );
+}
+
 export default PLMProduct;
+

@@ -36,8 +36,27 @@ export interface PlmProduct {
   created_at: string;
 }
 
+export const BOM_STEPS = [
+  ["design_done", "Design"], ["sample_done", "Sample"], ["approval_done", "Approval"], ["release_done", "Release"],
+] as const;
+
+export interface PlmBomLine {
+  id: string; product_id: string; part_id: string | null; description: string | null;
+  quantity: number | null; bulk: boolean; is_critical: boolean;
+  change_type: "NEW" | "CARRY_OVER" | "CHANGED"; replaces_part_id: string | null;
+  design_done: boolean; sample_done: boolean; approval_done: boolean; release_done: boolean;
+  vendor_note: string | null; quoted_price: number | null; remarks: string | null; sort: number;
+  part: { id: string; part_code: string; name: string; uom: string | null; unit_price: number | null; currency: string | null; category: string; approval_status: string } | null;
+  replaces: { part_code: string; name: string } | null;
+}
+
+export const linePct = (l: PlmBomLine) =>
+  (Number(l.design_done) + Number(l.sample_done) + Number(l.approval_done) + Number(l.release_done)) * 25;
+
 export interface PlmMetrics {
-  fg_count: number; bom_lines: number; bom_done: number; bom_pct: number; spec_pct: number;
+  fg_count: number; master_lines: number; master_done: number; master_pct: number; bom_pct: number; spec_pct: number;
+  dev_bom: { lines: number; pct: number; design: number; sample: number; approval: number; release: number;
+             no_code: number; no_qty: number; cost: number; unpriced: number };
   cost: { part_id: string; part_code: string; cost: number; unpriced: number; foreign: number }[];
   evt_total: number; evt_pass: number; svt_total: number; svt_pass: number; svt_not_passed: number;
   open_issues: number;
@@ -62,14 +81,22 @@ export const usePlmProducts = () =>
     queryKey: keys.list,
     queryFn: async () => {
       await db.rpc("plm_refresh_all");
-      const [p, d, i, f, c] = await Promise.all([
+      const [p, d, i, f, c, b] = await Promise.all([
         db.from("plm_products").select("*").order("product_code"),
         db.from("plm_deliverables").select("product_id, status, plm_deliverable_template(stage)"),
         db.from("plm_issues").select("id, issue_no, product_id, stage, description, severity, owner, target_date, status, raised_on"),
         db.from("parts").select("id, part_code, plm_product_id").not("plm_product_id", "is", null),
         db.from("plm_catch_up").select("*"),
+        db.from("plm_bom_lines").select("product_id, design_done, sample_done, approval_done, release_done"),
       ]);
-      for (const r of [p, d, i, f, c]) if (r.error) throw r.error;
+      for (const r of [p, d, i, f, c, b]) if (r.error) throw r.error;
+      const bomSum = new Map<string, { n: number; s: number }>();
+      for (const l of b.data ?? []) {
+        const x = bomSum.get(l.product_id) ?? { n: 0, s: 0 };
+        x.n++; x.s += linePct(l as any);
+        bomSum.set(l.product_id, x);
+      }
+      const bomPct = new Map([...bomSum].map(([k, x]) => [k, Math.round((x.s / x.n) * 10) / 10]));
       const progress = new Map<string, Record<number, { total: number; done: number }>>();
       for (const row of d.data ?? []) {
         const s = row.plm_deliverable_template?.stage;
@@ -85,6 +112,7 @@ export const usePlmProducts = () =>
         issues: (i.data ?? []) as any[],
         fgs: (f.data ?? []) as { id: string; part_code: string; plm_product_id: string }[],
         /** Built in production before their R&D release: R&D to complete. */
+        bomPct,
         catchUp: (c.data ?? []) as { product_id: string; product_code: string; stage: number; vouchers: string; part_codes: string }[],
       };
     },
@@ -100,7 +128,7 @@ export const usePlmProduct = (code?: string) =>
       if (error) throw error;
       if (!product) return null;
       await db.rpc("plm_refresh", { p_product: product.id });
-      const [fresh, del, gates, tests, issues, fgs, metrics, base, variations, catchUp] = await Promise.all([
+      const [fresh, del, gates, tests, issues, fgs, metrics, base, variations, catchUp, bom] = await Promise.all([
         db.from("plm_products").select("*").eq("id", product.id).single(),
         db.from("plm_deliverables").select("*, plm_deliverable_template(stage, label, sort)").eq("product_id", product.id),
         db.from("plm_gates").select("*").eq("product_id", product.id).order("gate"),
@@ -113,7 +141,10 @@ export const usePlmProduct = (code?: string) =>
           : Promise.resolve({ data: null }),
         db.from("plm_products").select("id, product_code, name, client, stage").eq("based_on_id", product.id).order("product_code"),
         db.from("plm_catch_up").select("*").eq("product_id", product.id).maybeSingle(),
+        db.from("plm_bom_lines").select("*, part:parts!plm_bom_lines_part_id_fkey ( id, part_code, name, uom, unit_price, currency, category, approval_status ), replaces:parts!plm_bom_lines_replaces_part_id_fkey ( part_code, name )")
+          .eq("product_id", product.id).order("sort").order("created_at"),
       ]);
+      if (bom.error) throw bom.error;
       for (const r of [fresh, del, gates, tests, issues, fgs, metrics]) if (r.error) throw r.error;
       const blockers: Record<number, string[]> = {};
       const stage = fresh.data.stage as number;
@@ -133,6 +164,7 @@ export const usePlmProduct = (code?: string) =>
         base: base.data as { id: string; product_code: string; name: string } | null,
         variations: variations.data ?? [],
         catchUp: catchUp.data as { vouchers: string; part_codes: string } | null,
+        bom: (bom.data ?? []) as PlmBomLine[],
         blockers,
       };
     },
@@ -180,7 +212,7 @@ export const usePlmMutations = () => {
     copyBom: wrap((a: { from: string; to: string }) => db.rpc("plm_copy_bom", { p_from_part: a.from, p_to_part: a.to }), "BOM copied"),
     addTest: wrap((t: { product_id: string; phase: string; name: string; sort?: number }) => db.from("plm_tests").insert(t)),
     copyTests: wrap(async (a: { from: string; to: string }) => {
-      const { data, error } = await db.from("plm_tests").select("phase, name, sort").eq("product_id", a.from);
+      const { data, error } = await db.from("plm_tests").select("phase, name, sort").eq("product_id", a.from).in("phase", ["EVT", "SVT"]);
       if (error) throw error;
       if (!data?.length) throw new Error("That product has no tests to copy");
       return db.from("plm_tests").insert(data.map((t: any) => ({ ...t, product_id: a.to })));
@@ -190,6 +222,12 @@ export const usePlmMutations = () => {
     deleteTest: wrap((id: string) => db.from("plm_tests").delete().eq("id", id)),
     addIssue: wrap((i: any) => db.from("plm_issues").insert(i), "Issue raised"),
     updateIssue: wrap(({ id, ...patch }: any) => db.from("plm_issues").update(patch).eq("id", id)),
+    addBomLine: wrap((l: Partial<PlmBomLine> & { product_id: string }) => db.from("plm_bom_lines").insert(l)),
+    updateBomLine: wrap(({ id, ...patch }: Partial<PlmBomLine> & { id: string }) => db.from("plm_bom_lines").update(patch).eq("id", id)),
+    deleteBomLine: wrap((id: string) => db.from("plm_bom_lines").delete().eq("id", id)),
+    bomFromProduction: wrap((product: string) => db.rpc("plm_bom_from_production", { p_product: product }), "BOM started from the finished good"),
+    bomFromBase: wrap((a: { product: string; actions: any[] }) => db.rpc("plm_bom_from_base", { p_product: a.product, p_actions: a.actions }), "BOM created from the base product"),
+    publishBom: wrap((product: string) => db.rpc("plm_publish_bom", { p_product: product }), "BOM published to production"),
     schedulePilot: wrap((a: { plant: string; part: string; qty: number; date: string }) =>
       db.rpc("plm_schedule_pilot", { p_plant_id: a.plant, p_part_id: a.part, p_quantity: a.qty, p_date: a.date }), "Pilot voucher created"),
   };

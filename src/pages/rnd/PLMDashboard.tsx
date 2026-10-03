@@ -98,14 +98,15 @@ const PLMDashboard = () => {
                       <TableHead>Client</TableHead>
                       <TableHead>Stage</TableHead>
                       <TableHead className="text-right">This stage</TableHead>
+                      <TableHead className="text-right">BOM</TableHead>
                       <TableHead className="text-right">Open issues</TableHead>
                       <TableHead>Priority</TableHead>
                       <TableHead>Target launch</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {isLoading ? <TableSkeleton columns={7} rows={5} /> : shown.length === 0 ? (
-                      <TableEmpty columns={7} message="No products here" hint={canEdit ? "Add one with New product." : undefined} />
+                    {isLoading ? <TableSkeleton columns={8} rows={5} /> : shown.length === 0 ? (
+                      <TableEmpty columns={8} message="No products here" hint={canEdit ? "Add one with New product." : undefined} />
                     ) : shown.map((p) => {
                       const pr = data?.progress.get(p.id)?.[p.stage];
                       const base = p.based_on_id ? byCode.get(p.based_on_id) : null;
@@ -124,6 +125,7 @@ const PLMDashboard = () => {
                           <TableCell>{p.client ?? <span className="text-muted-foreground">Grammy</span>}</TableCell>
                           <TableCell className="whitespace-nowrap">{stageLabel(p.stage)}</TableCell>
                           <TableCell className="text-right tabular-nums">{pr && pr.total ? `${Math.round((100 * pr.done) / pr.total)}%` : "—"}</TableCell>
+                          <TableCell className="text-right tabular-nums">{data?.bomPct.has(p.id) ? `${data.bomPct.get(p.id)}%` : "—"}</TableCell>
                           <TableCell className="text-right tabular-nums">{issuesBy.get(p.id) ? <span className="text-destructive font-medium">{issuesBy.get(p.id)}</span> : "—"}</TableCell>
                           <TableCell><Badge variant={priorityVariant(p.priority)}>{p.priority.toLowerCase()}</Badge></TableCell>
                           <TableCell className="whitespace-nowrap">{p.target_launch ?? "—"}</TableCell>
@@ -194,7 +196,7 @@ const PLMDashboard = () => {
         )}
       </div>
       <NewProductDialog open={open} onOpenChange={setOpen} products={products}
-        onCreated={(code) => navigate(`/rnd/products/${encodeURIComponent(code)}`)} />
+        onCreated={(code, variation) => navigate(`/rnd/products/${encodeURIComponent(code)}${variation ? "?tab=bom" : ""}`)} />
     </DashboardLayout>
   );
 };
