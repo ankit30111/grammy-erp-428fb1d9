@@ -2557,6 +2557,13 @@ export type Database = {
             foreignKeyName: "parts_plm_product_id_fkey"
             columns: ["plm_product_id"]
             isOneToOne: false
+            referencedRelation: "plm_catch_up"
+            referencedColumns: ["product_id"]
+          },
+          {
+            foreignKeyName: "parts_plm_product_id_fkey"
+            columns: ["plm_product_id"]
+            isOneToOne: false
             referencedRelation: "plm_products"
             referencedColumns: ["id"]
           },
@@ -2856,6 +2863,13 @@ export type Database = {
             foreignKeyName: "plm_deliverables_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
+            referencedRelation: "plm_catch_up"
+            referencedColumns: ["product_id"]
+          },
+          {
+            foreignKeyName: "plm_deliverables_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
             referencedRelation: "plm_products"
             referencedColumns: ["id"]
           },
@@ -2896,6 +2910,13 @@ export type Database = {
           product_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "plm_gates_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "plm_catch_up"
+            referencedColumns: ["product_id"]
+          },
           {
             foreignKeyName: "plm_gates_product_id_fkey"
             columns: ["product_id"]
@@ -2976,6 +2997,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "customer_complaints"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plm_issues_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "plm_catch_up"
+            referencedColumns: ["product_id"]
           },
           {
             foreignKeyName: "plm_issues_product_id_fkey"
@@ -3074,6 +3102,13 @@ export type Database = {
             foreignKeyName: "plm_products_based_on_id_fkey"
             columns: ["based_on_id"]
             isOneToOne: false
+            referencedRelation: "plm_catch_up"
+            referencedColumns: ["product_id"]
+          },
+          {
+            foreignKeyName: "plm_products_based_on_id_fkey"
+            columns: ["based_on_id"]
+            isOneToOne: false
             referencedRelation: "plm_products"
             referencedColumns: ["id"]
           },
@@ -3127,6 +3162,13 @@ export type Database = {
           tested_by?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "plm_tests_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "plm_catch_up"
+            referencedColumns: ["product_id"]
+          },
           {
             foreignKeyName: "plm_tests_product_id_fkey"
             columns: ["product_id"]
@@ -4762,6 +4804,18 @@ export type Database = {
       free_part_prefixes: {
         Row: {
           prefix: string | null
+        }
+        Relationships: []
+      }
+      plm_catch_up: {
+        Row: {
+          name: string | null
+          open_vouchers: number | null
+          part_codes: string | null
+          product_code: string | null
+          product_id: string | null
+          stage: number | null
+          vouchers: string | null
         }
         Relationships: []
       }

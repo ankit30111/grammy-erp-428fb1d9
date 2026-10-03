@@ -114,6 +114,13 @@ const PLMProduct = () => {
           {data.fgs.length > 0 && <span className="text-muted-foreground">Codes: <span className="font-mono">{data.fgs.map((f: any) => f.part_code).join(", ")}</span></span>}
         </div>
 
+        {data.catchUp && (
+          <p className="rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-sm">
+            Already in production ({data.catchUp.vouchers}) while R&amp;D is at stage {p.stage}. Production is not held up;
+            please complete this product's checklists, tests and gates.
+          </p>
+        )}
+
         {/* Stage stepper */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
           {STAGES.map((s) => {

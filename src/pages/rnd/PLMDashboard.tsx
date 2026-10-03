@@ -71,7 +71,8 @@ const PLMDashboard = () => {
         </div>
 
         <TabBar
-          tabs={[{ id: "pipeline", label: "Products", count: shown.length }, { id: "issues", label: "Open issues", count: openIssues.length }]}
+          tabs={[{ id: "pipeline", label: "Products", count: shown.length }, { id: "issues", label: "Open issues", count: openIssues.length },
+                 { id: "catchup", label: "Built before release", count: data?.catchUp.length ?? 0 }]}
           value={tab} onChange={setTab}
         />
 
@@ -113,6 +114,9 @@ const PLMDashboard = () => {
                           <TableCell>
                             <div className="font-mono font-medium">{p.product_code}</div>
                             <div className="text-sm">{p.name}</div>
+                            {data?.catchUp.some((c) => c.product_id === p.id) && (
+                              <Badge variant="warning" className="mt-1">in production · R&amp;D to complete</Badge>
+                            )}
                             {p.kind === "VARIATION" && (
                               <div className="text-xs text-muted-foreground">Variation{base ? ` of ${base.product_code}` : ""}</div>
                             )}
@@ -129,6 +133,30 @@ const PLMDashboard = () => {
                   </TableBody>
                 </Table>
               </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {tab === "catchup" && (
+          <Card>
+            <CardContent className="pt-5 space-y-3 overflow-x-auto">
+              <p className="text-sm text-muted-foreground">
+                These products are already being built while R&amp;D has not finished their stages. Production is not held up;
+                R&amp;D should complete the checklists, tests and gates of each.
+              </p>
+              <Table>
+                <TableHeader><TableRow><TableHead>Product</TableHead><TableHead>Stage</TableHead><TableHead>Codes</TableHead><TableHead>Vouchers</TableHead></TableRow></TableHeader>
+                <TableBody>
+                  {(data?.catchUp ?? []).length === 0 ? <TableEmpty columns={4} message="Nothing is being built ahead of R&D" /> : data!.catchUp.map((c) => (
+                    <TableRow key={c.product_id} className="cursor-pointer" onClick={() => navigate(`/rnd/products/${encodeURIComponent(c.product_code)}`)}>
+                      <TableCell className="font-mono font-medium">{c.product_code}</TableCell>
+                      <TableCell className="whitespace-nowrap">{stageLabel(c.stage)}</TableCell>
+                      <TableCell className="font-mono">{c.part_codes}</TableCell>
+                      <TableCell className="font-mono">{c.vouchers}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </CardContent>
           </Card>
         )}

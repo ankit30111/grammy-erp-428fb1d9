@@ -62,13 +62,14 @@ export const usePlmProducts = () =>
     queryKey: keys.list,
     queryFn: async () => {
       await db.rpc("plm_refresh_all");
-      const [p, d, i, f] = await Promise.all([
+      const [p, d, i, f, c] = await Promise.all([
         db.from("plm_products").select("*").order("product_code"),
         db.from("plm_deliverables").select("product_id, status, plm_deliverable_template(stage)"),
         db.from("plm_issues").select("id, issue_no, product_id, stage, description, severity, owner, target_date, status, raised_on"),
         db.from("parts").select("id, part_code, plm_product_id").not("plm_product_id", "is", null),
+        db.from("plm_catch_up").select("*"),
       ]);
-      for (const r of [p, d, i, f]) if (r.error) throw r.error;
+      for (const r of [p, d, i, f, c]) if (r.error) throw r.error;
       const progress = new Map<string, Record<number, { total: number; done: number }>>();
       for (const row of d.data ?? []) {
         const s = row.plm_deliverable_template?.stage;
@@ -83,6 +84,8 @@ export const usePlmProducts = () =>
         progress,
         issues: (i.data ?? []) as any[],
         fgs: (f.data ?? []) as { id: string; part_code: string; plm_product_id: string }[],
+        /** Built in production before their R&D release: R&D to complete. */
+        catchUp: (c.data ?? []) as { product_id: string; product_code: string; stage: number; vouchers: string; part_codes: string }[],
       };
     },
   });
@@ -97,7 +100,7 @@ export const usePlmProduct = (code?: string) =>
       if (error) throw error;
       if (!product) return null;
       await db.rpc("plm_refresh", { p_product: product.id });
-      const [fresh, del, gates, tests, issues, fgs, metrics, base, variations] = await Promise.all([
+      const [fresh, del, gates, tests, issues, fgs, metrics, base, variations, catchUp] = await Promise.all([
         db.from("plm_products").select("*").eq("id", product.id).single(),
         db.from("plm_deliverables").select("*, plm_deliverable_template(stage, label, sort)").eq("product_id", product.id),
         db.from("plm_gates").select("*").eq("product_id", product.id).order("gate"),
@@ -109,6 +112,7 @@ export const usePlmProduct = (code?: string) =>
           ? db.from("plm_products").select("id, product_code, name").eq("id", product.based_on_id).maybeSingle()
           : Promise.resolve({ data: null }),
         db.from("plm_products").select("id, product_code, name, client, stage").eq("based_on_id", product.id).order("product_code"),
+        db.from("plm_catch_up").select("*").eq("product_id", product.id).maybeSingle(),
       ]);
       for (const r of [fresh, del, gates, tests, issues, fgs, metrics]) if (r.error) throw r.error;
       const blockers: Record<number, string[]> = {};
@@ -128,6 +132,7 @@ export const usePlmProduct = (code?: string) =>
         metrics: metrics.data as PlmMetrics,
         base: base.data as { id: string; product_code: string; name: string } | null,
         variations: variations.data ?? [],
+        catchUp: catchUp.data as { vouchers: string; part_codes: string } | null,
         blockers,
       };
     },

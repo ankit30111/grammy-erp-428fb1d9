@@ -222,14 +222,11 @@ export const CreatePartDialog = ({ open, onOpenChange, forProduct, onCreated }: 
 
     const unitErr = unitProblem(units);
     if (unitErr) return toast.error(unitErr);
-    if (isFinished && !plmProductId) {
-      return toast.error("Choose the R&D product this finished good belongs to (create the product in R&D first)");
-    }
 
     setSaving(true);
     try {
       const part: any = await addPart.mutateAsync({
-        ...(isFinished ? { plm_product_id: plmProductId } : {}),
+        ...(isFinished && plmProductId ? { plm_product_id: plmProductId } : {}),
         name: name.trim(),
         part_code: codeToSave,
         category: categoryPrefix,
@@ -360,19 +357,19 @@ export const CreatePartDialog = ({ open, onOpenChange, forProduct, onCreated }: 
 
             {isFinished && (
               <div className="space-y-2">
-                <Label htmlFor="cp-plm">R&amp;D product *</Label>
+                <Label htmlFor="cp-plm">R&amp;D product (optional)</Label>
                 {forProduct ? (
                   <p className="text-sm"><span className="font-mono">{forProduct.code}</span> — {forProduct.name}</p>
                 ) : (
                   <select id="cp-plm" className="h-10 w-full rounded-md border border-input bg-background px-2 text-sm"
                           value={plmProductId} onChange={(e) => setPlmProductId(e.target.value)}>
-                    <option value="">Which product is this the finished good of?</option>
+                    <option value="">Not tracked in R&amp;D yet</option>
                     {plmProducts.map((p) => <option key={p.id} value={p.id}>{p.product_code} — {p.name} (stage {p.stage})</option>)}
                   </select>
                 )}
                 <p className="text-xs text-muted-foreground">
-                  Every finished good belongs to a product in R&amp;D. Its stage decides when it can be built: pilot builds at
-                  stage 5, normal vouchers from stage 6.
+                  Links this code to its product in R&amp;D, so R&amp;D can track it. It does not stop production; it can be
+                  linked later from the product's page.
                 </p>
                 {forProduct?.baseFgs && forProduct.baseFgs.length > 0 && (
                   <div className="flex flex-wrap items-center gap-2 text-sm">
