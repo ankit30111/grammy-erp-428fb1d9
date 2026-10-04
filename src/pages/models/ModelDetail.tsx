@@ -33,33 +33,12 @@ const ModelDetail = () => {
   const { canEditMasters, canApprove } = usePermissions();
   const canEdit = canEditMasters || canApprove;
   const m = useModelMutations();
-  const [editing, setEditing] = useState<ModelVersion | null>(null);
-  const [ecn, setEcn] = useState<null | "ECN" | "MAJOR">(null);
-  const [addBrand, setAddBrand] = useState(false);
   const [renaming, setRenaming] = useState(false);
   const [name, setName] = useState("");
 
   if (isLoading) return <DashboardLayout><p className="text-muted-foreground">Loading…</p></DashboardLayout>;
   if (!data) return <DashboardLayout><p>No model {code}. <Link className="underline" to="/models">All models</Link></p></DashboardLayout>;
-
-  const { model, versions, brands, bom, parts } = data;
-  const rel = latestReleased(versions);
-  const draft = versions.find((v) => v.status === "DRAFT");
-
-  if (editing) {
-    const live = versions.find((v) => v.id === editing.id) ?? editing;
-    return (
-      <DashboardLayout>
-        <BOMBuilder partId={model.id} onClose={() => setEditing(null)}
-          draft={{
-            title: `${model.part_code} v${live.version} (draft)`,
-            lines: live.lines,
-            saving: m.saveVersion.isPending,
-            onSave: (lines) => m.saveVersion.mutateAsync({ id: live.id, lines }),
-          }} />
-      </DashboardLayout>
-    );
-  }
+  const { model } = data;
 
   return (
     <DashboardLayout>
@@ -70,11 +49,64 @@ const ModelDetail = () => {
           <Button variant="outline" size="sm" onClick={() => { setName(model.name); setRenaming(true); }}><Pencil /> Rename</Button>
         )}
       />
+      <ModelWorkspace code={model.part_code} />
+      <Dialog open={renaming} onOpenChange={setRenaming}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>Rename {model.part_code}</DialogTitle></DialogHeader>
+          <Input aria-label="Model name" value={name} onChange={(e) => setName(e.target.value)} />
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setRenaming(false)}>Cancel</Button>
+            <Button disabled={!name.trim()} onClick={async () => { await m.rename.mutateAsync({ id: model.id, name: name.trim() }); setRenaming(false); }}>Save</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </DashboardLayout>
+  );
+};
+
+/**
+ * A model's versions (ECNs) and brand codes. The same block is on the Models
+ * page and on the model's R&D product page, so R&D runs version control from
+ * its own screen and both show one source.
+ */
+export function ModelWorkspace({ code, fromRnd }: { code: string; fromRnd?: boolean }) {
+  const { data, isLoading } = useModel(code);
+  const { canEditMasters, canApprove } = usePermissions();
+  const canEdit = canEditMasters || canApprove;
+  const m = useModelMutations();
+  const [editing, setEditing] = useState<ModelVersion | null>(null);
+  const [ecn, setEcn] = useState<null | "ECN" | "MAJOR">(null);
+  const [addBrand, setAddBrand] = useState(false);
+
+  if (isLoading) return <p className="text-muted-foreground">Loading…</p>;
+  if (!data) return <p className="text-sm text-muted-foreground">No model {code}.</p>;
+
+  const { model, versions, brands, bom, parts } = data;
+  const rel = latestReleased(versions);
+  const draft = versions.find((v) => v.status === "DRAFT");
+
+  if (editing) {
+    const live = versions.find((v) => v.id === editing.id) ?? editing;
+    return (
+      <BOMBuilder partId={model.id} onClose={() => setEditing(null)}
+        draft={{
+          title: `${model.part_code} v${live.version} (draft)`,
+          lines: live.lines,
+          saving: m.saveVersion.isPending,
+          onSave: (lines) => m.saveVersion.mutateAsync({ id: live.id, lines }),
+        }} />
+    );
+  }
+
+  return (
+    <>
       <div className="space-y-4">
         <div className="flex flex-wrap gap-2 text-sm text-muted-foreground">
           <span>{rel ? <>Released <span className="font-medium text-foreground">v{rel.version}</span></> : "No version released yet"}</span>
           {draft && <span>· In draft: <span className="font-medium text-foreground">v{draft.version}</span>{draft.ecn_no ? ` (${draft.ecn_no})` : ""}</span>}
-          {model.plm && <span>· R&amp;D <Link className="font-mono underline-offset-2 hover:underline" to={`/rnd/products/${encodeURIComponent(model.plm.product_code)}`}>{model.plm.product_code}</Link></span>}
+          {fromRnd
+            ? <span>· Model <Link className="font-mono underline-offset-2 hover:underline" to={`/models/${encodeURIComponent(model.part_code)}`}>{model.part_code}</Link></span>
+            : model.plm && <span>· R&amp;D <Link className="font-mono underline-offset-2 hover:underline" to={`/rnd/products/${encodeURIComponent(model.plm.product_code)}`}>{model.plm.product_code}</Link></span>}
         </div>
 
         <Card>
@@ -115,19 +147,9 @@ const ModelDetail = () => {
       <AddBrandDialog open={addBrand} onOpenChange={setAddBrand} modelCode={model.part_code} modelName={model.name}
         taken={brands.map((b) => b.brand)} version={rel?.version ?? versions[versions.length - 1]?.version}
         onSubmit={async (brand, nm) => { await m.addBrand.mutateAsync({ model: model.id, brand, name: nm }); setAddBrand(false); }} />
-      <Dialog open={renaming} onOpenChange={setRenaming}>
-        <DialogContent className="max-w-md">
-          <DialogHeader><DialogTitle>Rename {model.part_code}</DialogTitle></DialogHeader>
-          <Input aria-label="Model name" value={name} onChange={(e) => setName(e.target.value)} />
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setRenaming(false)}>Cancel</Button>
-            <Button disabled={!name.trim()} onClick={async () => { await m.rename.mutateAsync({ id: model.id, name: name.trim() }); setRenaming(false); }}>Save</Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-    </DashboardLayout>
+    </>
   );
-};
+}
 
 function Versions({ versions, brands, parts, canEdit, canApprove, m, onEdit }: {
   versions: ModelVersion[]; brands: BrandRow[]; parts: Map<string, PartLite>; canEdit: boolean; canApprove: boolean;

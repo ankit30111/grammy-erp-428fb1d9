@@ -24,6 +24,7 @@ import { PLM_CATEGORIES, useClientNames } from "@/components/PLM/NewProductDialo
 import { priorityVariant, stageLabel } from "./PLMDashboard";
 import { cn } from "@/lib/utils";
 import { BaseBomPicker, ProductBom } from "@/components/PLM/ProductBom";
+import { ModelWorkspace } from "@/pages/models/ModelDetail";
 
 const sel = "h-9 rounded-md border border-input bg-background px-2 text-sm";
 const HOW: Record<string, string> = {
@@ -161,6 +162,7 @@ const PLMProduct = () => {
           tabs={[
             { id: "stages", label: "Stages" },
             { id: "bom", label: `BOM ${mx.dev_bom?.pct ?? 0}%` },
+            ...(data.model ? [{ id: "versions", label: "Versions & brands" }] : []),
             { id: "tests", label: "Tests", count: data.tests.length },
             { id: "issues", label: "Issues", count: data.issues.filter((i: any) => i.status === "OPEN").length },
             { id: "details", label: "Details" },
@@ -173,6 +175,7 @@ const PLMProduct = () => {
                      plantId={plantId} m={m} />
         )}
         {tab === "bom" && <BomTab data={data} canEdit={canEdit} m={m} />}
+        {tab === "versions" && data.model && <ModelWorkspace code={data.model.part_code} fromRnd />}
         {tab === "tests" && <TestsView data={data} canEdit={canEdit} upload={upload} m={m} products={products} />}
         {tab === "issues" && <IssuesView data={data} canEdit={canEdit} m={m} />}
         {tab === "details" && <DetailsView data={data} canEdit={canEdit} m={m} products={products} />}
@@ -392,15 +395,14 @@ function FinishedGoods({ data, canEdit, m }: any) {
     <div className="space-y-2 rounded-md border p-3">
       <div className="font-medium text-sm">Model and brand codes</div>
       <p className="text-xs text-muted-foreground">
-        This product is linked to its model only. Brand codes, their BOMs and vouchers live in the ERP (Models page) and are
-        shown here read-only; nothing done in R&amp;D changes them.
+        Every model has its R&amp;D product, made together whichever side creates it. Versions (ECNs) and brand codes are run
+        from the Versions &amp; brands tab; production BOMs change only when Management releases a version and moves a brand onto it.
       </p>
       {data.model ? (
         <div className="flex flex-wrap items-center gap-2 text-sm">
           <span>Model</span>
           <Link className="font-mono font-medium underline-offset-2 hover:underline" to={`/models/${encodeURIComponent(data.model.part_code)}`}>{data.model.part_code}</Link>
           <span className="text-muted-foreground">{data.model.name}</span>
-          {canEdit && <Button variant="ghost" size="sm" onClick={() => m.linkPart.mutate({ product: p.id, part: data.model.id, link: false })}>Unlink</Button>}
         </div>
       ) : <p className="text-sm text-muted-foreground">No model linked yet.</p>}
       {data.fgs.length > 0 && (
