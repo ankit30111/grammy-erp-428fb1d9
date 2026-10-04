@@ -300,7 +300,10 @@ function UserAccessEditor({
 
   useEffect(() => {
     if (!deptsLoading) {
-      setSelectedDeptIds(new Set(userDepts.map((d: any) => d.department_id)));
+      const ids = new Set<string>(userDepts.map((d: any) => d.department_id));
+      const adminId = departments.find((d: any) => d.name === "Admin")?.id;
+      if (adminId) (user.role === "admin" ? ids.add(adminId) : ids.delete(adminId));
+      setSelectedDeptIds(ids);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deptsLoading, userDepts]);
@@ -312,10 +315,24 @@ function UserAccessEditor({
       return n;
     });
   };
+  // The Admin tick and the Role are one switch: changing either changes both,
+  // so the screen never saves an Admin tick with a User role or the reverse.
+  const adminDeptId = departments.find((d: any) => d.name === "Admin")?.id as string | undefined;
   const toggleDept = (id: string) => {
+    const on = !selectedDeptIds.has(id);
     setSelectedDeptIds((s) => {
       const n = new Set(s);
-      n.has(id) ? n.delete(id) : n.add(id);
+      on ? n.add(id) : n.delete(id);
+      return n;
+    });
+    if (id === adminDeptId) setRole(on ? "admin" : "user");
+  };
+  const changeRole = (r: string) => {
+    setRole(r);
+    if (!adminDeptId) return;
+    setSelectedDeptIds((s) => {
+      const n = new Set(s);
+      r === "admin" ? n.add(adminDeptId) : n.delete(adminDeptId);
       return n;
     });
   };
@@ -324,18 +341,19 @@ function UserAccessEditor({
     mutationFn: async () => {
       const plantIds = Array.from(selectedPlantIds);
       const deptIds = Array.from(selectedDeptIds);
-      const [acct, p, d] = await Promise.all([
-        supabase
-          .from("user_accounts")
-          .update({
-            full_name: fullName,
-            role,
-            is_active: isActive,
-          })
-          .eq("id", user.id),
-        supabase.rpc("set_user_plants", { p_user_id: user.id, p_plant_ids: plantIds }),
-        supabase.rpc("set_user_departments", { p_user_id: user.id, p_department_ids: deptIds }),
-      ]);
+      // One after the other: departments first (the Admin tick sets the role in
+      // the database), then the account with the same role.
+      const d = await supabase.rpc("set_user_departments", { p_user_id: user.id, p_department_ids: deptIds });
+      if (d.error) throw d.error;
+      const p = await supabase.rpc("set_user_plants", { p_user_id: user.id, p_plant_ids: plantIds });
+      const acct = await supabase
+        .from("user_accounts")
+        .update({
+          full_name: fullName,
+          role,
+          is_active: isActive,
+        })
+        .eq("id", user.id);
       if (acct.error) throw acct.error;
       if (p.error) throw p.error;
       if (d.error) throw d.error;
@@ -477,7 +495,7 @@ function UserAccessEditor({
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="ac-role">Role</Label>
-              <Select value={role} onValueChange={setRole}>
+              <Select value={role} onValueChange={changeRole}>
                 <SelectTrigger id="ac-role">
                   <SelectValue />
                 </SelectTrigger>
