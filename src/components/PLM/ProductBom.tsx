@@ -89,7 +89,7 @@ export function ProductBom({ data, canEdit, m, focus = false, title }: {
           <span className="text-sm font-semibold tabular-nums">{dev?.pct ?? 0}%</span>
         </div>
         <span className="text-sm text-muted-foreground tabular-nums">
-          {dev?.lines ?? 0} lines · design {dev?.design ?? 0} · sample {dev?.sample ?? 0} · approval {dev?.approval ?? 0} · released {dev?.release ?? 0}
+          {dev?.lines ?? 0} lines · closed: design {dev?.design ?? 0} · sample {dev?.sample ?? 0} · approval {dev?.approval ?? 0} · release {dev?.release ?? 0}
           {dev?.no_code ? ` · ${dev.no_code} without part code` : ""}
         </span>
         <label className="ml-auto flex items-center gap-2 text-sm cursor-pointer">
@@ -104,7 +104,7 @@ export function ProductBom({ data, canEdit, m, focus = false, title }: {
               <TableHead className="w-6" />
               <TableHead>Part</TableHead>
               <TableHead className="text-right">QPS</TableHead>
-              {BOM_STEPS.map(([, l]) => <TableHead key={l} className="text-center w-20">{l}</TableHead>)}
+              {BOM_STEPS.map(([, l]) => <TableHead key={l} className="text-center w-[84px]">{l}</TableHead>)}
               <TableHead className="text-right w-16">Done</TableHead>
               <TableHead className="text-right">Tests</TableHead>
               {canEdit && <TableHead className="w-10" />}
@@ -146,12 +146,21 @@ export function ProductBom({ data, canEdit, m, focus = false, title }: {
                       ) : <span className="tabular-nums">{l.bulk ? "bulk" : l.quantity}</span>}
                       <div className="text-[11px] text-muted-foreground">{l.part?.uom ?? ""}</div>
                     </TableCell>
-                    {BOM_STEPS.map(([k, label]) => (
-                      <TableCell key={k} className="text-center">
-                        <Checkbox aria-label={`${label} done`} checked={(l as any)[k]} disabled={!canEdit}
-                                  onCheckedChange={(c) => m.updateBomLine.mutate({ id: l.id, [k]: Boolean(c) })} />
-                      </TableCell>
-                    ))}
+                    {BOM_STEPS.map(([k, label]) => {
+                      const v = (l as any)[k] as string;
+                      return (
+                        <TableCell key={k} className="text-center px-1">
+                          <select aria-label={`${label} status`} disabled={!canEdit} value={v}
+                                  className={cn("h-8 w-[76px] rounded-md border px-1 text-xs font-medium",
+                                    v === "CLOSED" && "border-success/40 bg-success/10 text-success",
+                                    v === "WIP" && "border-warning/40 bg-warning/10 text-warning",
+                                    v === "OPEN" && "border-input bg-background text-muted-foreground")}
+                                  onChange={(e) => m.updateBomLine.mutate({ id: l.id, [k]: e.target.value })}>
+                            <option value="OPEN">Open</option><option value="WIP">WIP</option><option value="CLOSED">Closed</option>
+                          </select>
+                        </TableCell>
+                      );
+                    })}
                     <TableCell className={cn("text-right tabular-nums font-medium", pct === 100 && "text-success")}>{pct}%</TableCell>
                     <TableCell className="text-right tabular-nums text-sm">
                       {tests.length ? <span className={cn(tests.some((t) => t.result === "FAIL") && "text-destructive")}>
@@ -222,7 +231,7 @@ function LineDetails({ line: l, tests, canEdit, m, parts, productId }: any) {
       </div>
       <div className="space-y-2">
         <div className="text-sm font-medium">Part tests</div>
-        <p className="text-xs text-muted-foreground">Approval can be ticked only when every test of this part has passed. A failed test opens an issue and takes the approval back.</p>
+        <p className="text-xs text-muted-foreground">Approval can close only when every test of this part has passed. A failed test opens an issue and puts Approval back to WIP.</p>
         {tests.length === 0 && <p className="text-sm text-muted-foreground">No tests on this part.</p>}
         {tests.map((t: any) => (
           <div key={t.id} className="flex flex-wrap items-center gap-2">

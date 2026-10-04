@@ -752,7 +752,7 @@ function BomTab({ data, canEdit, m }: any) {
     <Card>
       <CardContent className="pt-5 space-y-4">
         <div className="flex flex-wrap items-start gap-4">
-          <Metric label="BOM progress" value={`${dev.pct}%`} hint="Design, Sample, Approval, Release: 25% each" />
+          <Metric label="BOM progress" value={`${dev.pct}%`} hint="Design, Sample, Approval, Release: 25% each when Closed" />
           <Metric label="Material cost" value={`₹${Number(dev.cost ?? 0).toLocaleString("en-IN")}`}
                   hint={[p.target_cost != null && `target ₹${Number(p.target_cost).toLocaleString("en-IN")}`, dev.unpriced > 0 && `${dev.unpriced} without price`].filter(Boolean).join(" · ")}
                   bad={p.target_cost != null && dev.cost > p.target_cost} />

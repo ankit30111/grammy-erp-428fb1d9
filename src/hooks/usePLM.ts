@@ -37,13 +37,15 @@ export interface PlmProduct {
 }
 
 export const BOM_STEPS = [
-  ["design_done", "Design"], ["sample_done", "Sample"], ["approval_done", "Approval"], ["release_done", "Release"],
+  ["design_status", "Design"], ["sample_status", "Sample"], ["approval_status", "Approval"], ["release_status", "Release"],
 ] as const;
+export type StepStatus = "OPEN" | "WIP" | "CLOSED";
 
 export interface PlmBomLine {
   id: string; product_id: string; part_id: string | null; description: string | null;
   quantity: number | null; bulk: boolean; is_critical: boolean;
   change_type: "NEW" | "CARRY_OVER" | "CHANGED"; replaces_part_id: string | null;
+  design_status: StepStatus; sample_status: StepStatus; approval_status: StepStatus; release_status: StepStatus;
   design_done: boolean; sample_done: boolean; approval_done: boolean; release_done: boolean;
   vendor_note: string | null; quoted_price: number | null; remarks: string | null; sort: number;
   part: { id: string; part_code: string; name: string; uom: string | null; unit_price: number | null; currency: string | null; category: string; approval_status: string } | null;

@@ -2796,13 +2796,15 @@ export type Database = {
       plm_bom_lines: {
         Row: {
           approval_at: string | null
-          approval_done: boolean
+          approval_done: boolean | null
+          approval_status: string
           bulk: boolean
           change_type: string
           created_at: string
           description: string | null
           design_at: string | null
-          design_done: boolean
+          design_done: boolean | null
+          design_status: string
           id: string
           is_critical: boolean
           part_id: string | null
@@ -2810,11 +2812,13 @@ export type Database = {
           quantity: number | null
           quoted_price: number | null
           release_at: string | null
-          release_done: boolean
+          release_done: boolean | null
+          release_status: string
           remarks: string | null
           replaces_part_id: string | null
           sample_at: string | null
-          sample_done: boolean
+          sample_done: boolean | null
+          sample_status: string
           sort: number
           updated_at: string
           updated_by: string | null
@@ -2822,13 +2826,15 @@ export type Database = {
         }
         Insert: {
           approval_at?: string | null
-          approval_done?: boolean
+          approval_done?: boolean | null
+          approval_status?: string
           bulk?: boolean
           change_type?: string
           created_at?: string
           description?: string | null
           design_at?: string | null
-          design_done?: boolean
+          design_done?: boolean | null
+          design_status?: string
           id?: string
           is_critical?: boolean
           part_id?: string | null
@@ -2836,11 +2842,13 @@ export type Database = {
           quantity?: number | null
           quoted_price?: number | null
           release_at?: string | null
-          release_done?: boolean
+          release_done?: boolean | null
+          release_status?: string
           remarks?: string | null
           replaces_part_id?: string | null
           sample_at?: string | null
-          sample_done?: boolean
+          sample_done?: boolean | null
+          sample_status?: string
           sort?: number
           updated_at?: string
           updated_by?: string | null
@@ -2848,13 +2856,15 @@ export type Database = {
         }
         Update: {
           approval_at?: string | null
-          approval_done?: boolean
+          approval_done?: boolean | null
+          approval_status?: string
           bulk?: boolean
           change_type?: string
           created_at?: string
           description?: string | null
           design_at?: string | null
-          design_done?: boolean
+          design_done?: boolean | null
+          design_status?: string
           id?: string
           is_critical?: boolean
           part_id?: string | null
@@ -2862,11 +2872,13 @@ export type Database = {
           quantity?: number | null
           quoted_price?: number | null
           release_at?: string | null
-          release_done?: boolean
+          release_done?: boolean | null
+          release_status?: string
           remarks?: string | null
           replaces_part_id?: string | null
           sample_at?: string | null
-          sample_done?: boolean
+          sample_done?: boolean | null
+          sample_status?: string
           sort?: number
           updated_at?: string
           updated_by?: string | null
