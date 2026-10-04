@@ -58,6 +58,7 @@ const InventoryDiagnostics = () => {
       const { data: part, error: partError } = await supabase
         .from("parts")
         .select("id, part_code, name, uom")
+        .neq("source_type", "MODEL")
         .eq("part_code", partCode!)
         .maybeSingle();
       if (partError) throw partError;

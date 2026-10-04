@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { useState, useRef } from "react";
 import { PartProductLink } from "@/components/PLM/PartProductLink";
 import { PartUnitFields, unitColumns, unitProblem, unitValueFromPart, type UnitValue } from "@/components/Parts/PartUnitFields";
@@ -750,6 +751,17 @@ const RawMaterialsManagement = () => {
                   <Label className="text-sm font-medium text-muted-foreground">Documents</Label>
                   <PartDocumentList tier={viewTier} part={viewMaterial} />
                 </div>
+
+                {viewMaterial.model_id && (
+                  <div className="text-sm">
+                    <span className="text-muted-foreground">Model </span>
+                    <Link className="font-mono underline-offset-2 hover:underline"
+                          to={`/models/${encodeURIComponent(String(viewMaterial.part_code).replace(/-[A-Z]{2}$/, ""))}`}>
+                      {String(viewMaterial.part_code).replace(/-[A-Z]{2}$/, "")}
+                    </Link>
+                    <span className="text-muted-foreground"> · built on v{viewMaterial.model_version ?? "?"}</span>
+                  </div>
+                )}
 
                 <PartProductLink part={viewMaterial} />
 

@@ -47,6 +47,8 @@ import { AuthGuard } from "@/components/Auth/AuthGuard";
 import { ModuleGuard } from "@/components/Auth/ModuleGuard";
 import PLMDashboard from "./pages/rnd/PLMDashboard";
 import PLMProduct from "./pages/rnd/PLMProduct";
+import Models from "./pages/models/Models";
+import ModelDetail from "./pages/models/ModelDetail";
 
 const queryClient = new QueryClient();
 
@@ -278,6 +280,16 @@ function App() {
             <Route path="/rnd/products/:code" element={
               <AuthGuard>
                 <PLMProduct />
+              </AuthGuard>
+            } />
+            <Route path="/models" element={
+              <AuthGuard>
+                <Models />
+              </AuthGuard>
+            } />
+            <Route path="/models/:code" element={
+              <AuthGuard>
+                <ModelDetail />
               </AuthGuard>
             } />
             {/* 404 Route */}

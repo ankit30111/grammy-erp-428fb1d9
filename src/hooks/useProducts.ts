@@ -9,6 +9,7 @@ export const useFinishedGoodParts = () => {
       const { data, error } = await supabase
         .from("parts")
         .select("id, part_code, name, category, uom, source_type, is_active")
+        .neq("source_type", "MODEL")
         .eq("source_type", "FINISHED_GOOD")
         .eq("is_active", true)
         .order("part_code");

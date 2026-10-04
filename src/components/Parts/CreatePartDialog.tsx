@@ -117,6 +117,17 @@ export const CreatePartDialog = ({ open, onOpenChange, forProduct, onCreated }: 
     },
   });
 
+  const { data: models = [] } = useQuery({
+    queryKey: ["models-for-parts"],
+    enabled: open,
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).from("parts").select("id, part_code, name, category")
+        .eq("source_type", "MODEL").eq("is_active", true).order("part_code");
+      if (error) throw error;
+      return data as { id: string; part_code: string; name: string; category: string }[];
+    },
+  });
+
   const tierMeta = PART_TIERS.find((t) => t.value === tier);
   const isPurchase = tier === "PURCHASE";
   const isFinished = tier === "FINISHED";
@@ -168,6 +179,9 @@ export const CreatePartDialog = ({ open, onOpenChange, forProduct, onCreated }: 
     if (cat) setCategoryPrefix((x) => x || cat.prefix);
     const b = brands.find((x) => x.name.toLowerCase() === (forProduct.client ?? "").toLowerCase());
     if (b) setBrand((x) => x || b.letter);
+    // The R&D product ID is the model number (JA-016).
+    const mm = /^([A-Z]{2})-([A-Z0-9]+)$/.exec(forProduct.code);
+    if (mm && (!cat || cat.prefix === mm[1])) { setCategoryPrefix((x) => x || mm[1]); setModelCode((x) => x || mm[2]); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, tier, categories.length, brands.length]);
 
@@ -252,6 +266,10 @@ export const CreatePartDialog = ({ open, onOpenChange, forProduct, onCreated }: 
         const { error } = await (supabase as any).rpc("plm_copy_bom", { p_from_part: copyBomFrom, p_to_part: part.id });
         if (error) toast.error(`Code created, but the BOM was not copied: ${error.message}`);
         else toast.success("BOM copied from the base product");
+      } else if (isFinished && part?.id) {
+        // Built on its model's version: start the BOM from the model's lines.
+        const { data: r } = await (supabase as any).rpc("model_fill_brand", { p_brand: part.id });
+        if (r && r.applied === false && !r.empty) toast.info("Its BOM from the model is waiting in Approvals");
       }
       onCreated?.(part);
       onOpenChange(false);
@@ -386,9 +404,19 @@ export const CreatePartDialog = ({ open, onOpenChange, forProduct, onCreated }: 
 
             {isFinished && (
               <div className="space-y-2">
-                <Label>Model Code *</Label>
-                <Input className="w-40 font-mono" placeholder="e.g. 06C" value={modelCode}
+                <Label htmlFor="cp-model">Model *</Label>
+                <Input id="cp-model" className="w-40 font-mono" placeholder="e.g. 006" list="cp-model-list" value={modelCode}
                        onChange={(e) => setModelCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))} />
+                <datalist id="cp-model-list">
+                  {models.filter((m) => m.category === categoryPrefix).map((m) => (
+                    <option key={m.id} value={m.part_code.slice(categoryPrefix.length + 1)}>{m.part_code} — {m.name}</option>
+                  ))}
+                </datalist>
+                <p className="text-xs text-muted-foreground">
+                  {models.some((m) => m.part_code === `${categoryPrefix}-${modelCode}`)
+                    ? `Brand code on model ${categoryPrefix}-${modelCode}: its BOM starts from the model's version.`
+                    : "Pick a model. A new number creates the model too; new models are best started on the Models page, which gives the next number."}
+                </p>
               </div>
             )}
 

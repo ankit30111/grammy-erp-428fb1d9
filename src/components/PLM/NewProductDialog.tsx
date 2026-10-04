@@ -9,6 +9,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { type PlmProduct, usePlmMutations } from "@/hooks/usePLM";
+import { usePartCategories } from "@/hooks/usePartCategories";
+import { useNextModelCode } from "@/hooks/useModels";
 
 const sel = "h-10 w-full rounded-md border border-input bg-background px-2 text-sm";
 export const PLM_CATEGORIES = ["Party Speaker", "Soundbar", "Microphone", "Bluetooth Speaker", "PCB"];
@@ -50,6 +52,14 @@ export function NewProductDialog({ open, onOpenChange, products, onCreated }: {
   useEffect(() => { if (open) setF({ ...blank }); }, [open]);
   const set = (patch: Partial<typeof blank>) => setF((x) => ({ ...x, ...patch }));
   const base = products.find((p) => p.id === f.based_on_id);
+  // The product ID is the model number: category, then the next number of that
+  // category (JA-016). It becomes the model in parts; brands go on it later.
+  const { categories } = usePartCategories();
+  const catPrefix = categories.find((c) => c.tier === "FINISHED" && c.name.toLowerCase() === f.category.trim().toLowerCase())?.prefix;
+  const { data: nextCode } = useNextModelCode(open ? catPrefix : undefined);
+  const [autoCode, setAutoCode] = useState(true);
+  useEffect(() => { if (open) setAutoCode(true); }, [open]);
+  useEffect(() => { if (autoCode && nextCode) setF((x) => ({ ...x, product_code: nextCode })); }, [nextCode, autoCode]);
 
   const pickBase = (id: string) => {
     const b = products.find((p) => p.id === id);
@@ -111,8 +121,17 @@ export function NewProductDialog({ open, onOpenChange, products, onCreated }: {
             </div>
           )}
           <div className="space-y-2">
-            <Label htmlFor="plm-code">Product ID</Label>
-            <Input id="plm-code" placeholder="e.g. J6C" value={f.product_code} onChange={(e) => set({ product_code: e.target.value.toUpperCase() })} />
+            <Label htmlFor="plm-cat">Category</Label>
+            <Input id="plm-cat" list="plm-cat-list" value={f.category} onChange={(e) => set({ category: e.target.value })} />
+            <datalist id="plm-cat-list">{[...new Set([...categories.filter((c) => c.tier === "FINISHED").map((c) => c.name), ...PLM_CATEGORIES])].map((n) => <option key={n} value={n} />)}</datalist>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="plm-code">Product ID (model number)</Label>
+            <Input id="plm-code" placeholder={catPrefix ? `${catPrefix}-…` : "Choose the category first"} value={f.product_code}
+              onChange={(e) => { setAutoCode(false); set({ product_code: e.target.value.toUpperCase() }); }} />
+            <p className="text-xs text-muted-foreground">
+              {catPrefix ? "Given in order per category. Type over it only for a derived model like JA-06C." : "Party speakers, soundbars and mics get their number from the category."}
+            </p>
           </div>
           <div className="space-y-2">
             <Label htmlFor="plm-name">Product name</Label>
@@ -122,11 +141,6 @@ export function NewProductDialog({ open, onOpenChange, products, onCreated }: {
             <Label htmlFor="plm-client">Client (blank = Grammy's own)</Label>
             <Input id="plm-client" list="plm-client-list" value={f.client} onChange={(e) => set({ client: e.target.value })} />
             <datalist id="plm-client-list">{names.map((n) => <option key={n} value={n} />)}</datalist>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="plm-cat">Category</Label>
-            <Input id="plm-cat" list="plm-cat-list" value={f.category} onChange={(e) => set({ category: e.target.value })} />
-            <datalist id="plm-cat-list">{PLM_CATEGORIES.map((n) => <option key={n} value={n} />)}</datalist>
           </div>
           <div className="space-y-2">
             <Label htmlFor="plm-own">Design owned by</Label>

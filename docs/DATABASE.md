@@ -44,7 +44,8 @@ When a screen looks wrong, open **Management → System Check** (`system_health_
 | `part_categories` | Part-code prefix registry (P, E, SA, JA...) and the tier each belongs to. | — |
 | `part_specifications` | Versioned specification / IQC documents of a part. | parts |
 | `part_vendors` | Approved vendor for a part (one may be primary). | parts, vendors |
-| `parts` | Every part code: purchased parts, sub-assemblies, finished goods and brand versions (branded_from). | brands, plants |
+| `model_versions` | A model's master BOM per version: 1.0, 1.1 by ECN (ecn_no, reason), 2.0 for a redesign. Draft until Management releases it. Lines are base parts. | parts (model) |
+| `parts` | Every part code: purchased parts, sub-assemblies, finished goods (brand codes, JA-006-PH, with model_id + model_version), models (source_type MODEL, JA-006) and brand versions (branded_from). | brands, plants, parts (model) |
 | `released_part_codes` | Codes freed by deleting unused parts, handed out again by next_part_code. | — |
 | `vendor_contacts` | Extra contact people at a vendor. | vendors |
 | `vendors` | Supplier master. Bank and PAN readable only via get_vendor_finance. | — |

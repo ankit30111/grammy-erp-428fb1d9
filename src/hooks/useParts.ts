@@ -6,7 +6,8 @@ export type PartSourceType =
   | "PURCHASED"
   | "ASSEMBLED_STOCKED"
   | "ASSEMBLED_INLINE"
-  | "FINISHED_GOOD";
+  | "FINISHED_GOOD"
+  | "MODEL";
 
 // The names Grammy uses, not the enum's. ASSEMBLED_INLINE and ASSEMBLED_STOCKED
 // are the ledger's words for "never stocked" and "stocked and reissued"; on the
@@ -16,6 +17,7 @@ export const PART_SOURCE_TYPES: { value: PartSourceType; label: string }[] = [
   { value: "ASSEMBLED_INLINE", label: "Sub-assembly (in-line)" },
   { value: "ASSEMBLED_STOCKED", label: "Sub-assembly" },
   { value: "FINISHED_GOOD", label: "Finished Good" },
+  { value: "MODEL", label: "Model" },
 ];
 
 export interface PartInput {
@@ -95,6 +97,8 @@ export const useParts = () => {
         .select(
           `*, part_vendors ( id, is_primary, vendor_id, vendors ( id, name, vendor_code ) )`,
         )
+        // Models (JA-006) are product identities, kept on the Models page - not parts.
+        .neq("source_type", "MODEL")
         .order("part_code");
       if (error) throw error;
       return data || [];

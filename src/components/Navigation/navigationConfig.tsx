@@ -1,5 +1,5 @@
 
-import { Home, Plus, Wrench, Calendar, Package, BarChart2, Layers, ClipboardCheck, DollarSign, Users, FileText, UserPlus, Building2, MessageSquare, CheckSquare, Lightbulb, Container, ShieldCheck } from "lucide-react";
+import { Home, Plus, Wrench, Calendar, Package, BarChart2, Layers, ClipboardCheck, DollarSign, Users, FileText, UserPlus, Building2, MessageSquare, CheckSquare, Lightbulb, Container, ShieldCheck, Boxes } from "lucide-react";
 
 interface NavigationSubItem {
   to: string;
@@ -47,6 +47,7 @@ export const navigationItems: NavigationItem[] = [
 // the pages hide the buttons for everyone else. Plants and users stay admin-only.
 export const managementItems: NavigationItem[] = [
   { to: "/management/parts", icon: <Layers size={18} />, label: "Parts" },
+  { to: "/models", icon: <Boxes size={18} />, label: "Models" },
   { to: "/management/customers", icon: <UserPlus size={18} />, label: "Customers" },
   { to: "/vendors", icon: <Building2 size={18} />, label: "Vendors" },
   { to: "/management/plants", icon: <Building2 size={18} />, label: "Plants", adminOnly: true },

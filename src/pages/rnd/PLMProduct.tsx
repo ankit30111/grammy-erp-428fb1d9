@@ -112,6 +112,11 @@ const PLMProduct = () => {
               ))}
             </span>
           )}
+          {data.model && (
+            <span className="text-muted-foreground">
+              Model <Link className="font-mono underline-offset-2 hover:underline" to={`/models/${encodeURIComponent(data.model.part_code)}`}>{data.model.part_code}</Link>
+            </span>
+          )}
           {data.fgs.length > 0 && <span className="text-muted-foreground">Codes: <span className="font-mono">{data.fgs.map((f: any) => f.part_code).join(", ")}</span></span>}
         </div>
 
@@ -387,6 +392,12 @@ function FinishedGoods({ data, canEdit, m }: any) {
   return (
     <div className="space-y-2 rounded-md border p-3">
       <div className="font-medium text-sm">Finished-good codes of this product</div>
+      {data.model && (
+        <p className="text-sm">
+          Model <Link className="font-mono underline-offset-2 hover:underline" to={`/models/${encodeURIComponent(data.model.part_code)}`}>{data.model.part_code}</Link>:
+          its BOM per version and its brands are on the Models page. Publishing R&amp;D's BOM writes the model's draft version.
+        </p>
+      )}
       <p className="text-xs text-muted-foreground">
         One code per brand (JA-06C-PH). Create it here and it is linked to this product; its BOM is built on that code, and
         its completeness drives gates 2 and 4.{p.kind === "VARIATION" ? " A variation can start its BOM from the base product's code." : ""}
@@ -722,7 +733,7 @@ function BomTab({ data, canEdit, m }: any) {
     },
   });
   const published = p.bom_published_at && (!p.bom_changed_at || p.bom_published_at >= p.bom_changed_at);
-  const canPublish = canEdit && p.stage >= 5 && data.fgs.length > 0 && dev.lines > 0 && !dev.no_code;
+  const canPublish = canEdit && p.stage >= 5 && (data.model || data.fgs.length > 0) && dev.lines > 0 && !dev.no_code;
 
   if (data.bom.length === 0) {
     return (

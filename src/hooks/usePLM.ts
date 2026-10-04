@@ -87,7 +87,7 @@ export const usePlmProducts = () =>
         db.from("plm_products").select("*").order("product_code"),
         db.from("plm_deliverables").select("product_id, status, plm_deliverable_template(stage)"),
         db.from("plm_issues").select("id, issue_no, product_id, stage, description, severity, owner, target_date, status, raised_on"),
-        db.from("parts").select("id, part_code, plm_product_id").not("plm_product_id", "is", null),
+        db.from("parts").select("id, part_code, plm_product_id").not("plm_product_id", "is", null).neq("source_type", "MODEL"),
         db.from("plm_catch_up").select("*"),
         db.from("plm_bom_lines").select("product_id, design_done, sample_done, approval_done, release_done"),
       ]);
@@ -136,7 +136,7 @@ export const usePlmProduct = (code?: string) =>
         db.from("plm_gates").select("*").eq("product_id", product.id).order("gate"),
         db.from("plm_tests").select("*").eq("product_id", product.id).order("phase").order("sort").order("created_at"),
         db.from("plm_issues").select("*").eq("product_id", product.id).order("issue_no"),
-        db.from("parts").select("id, part_code, name, brand").eq("plm_product_id", product.id).order("part_code"),
+        db.from("parts").select("id, part_code, name, brand, source_type").eq("plm_product_id", product.id).order("part_code"),
         db.rpc("plm_metrics", { p_product: product.id }),
         product.based_on_id
           ? db.from("plm_products").select("id, product_code, name").eq("id", product.based_on_id).maybeSingle()
@@ -161,7 +161,10 @@ export const usePlmProduct = (code?: string) =>
         gates: gates.data ?? [],
         tests: tests.data ?? [],
         issues: issues.data ?? [],
-        fgs: fgs.data ?? [],
+        /** Brand codes (JA-06C-PH) of this product. */
+        fgs: (fgs.data ?? []).filter((f: any) => f.source_type !== "MODEL"),
+        /** Its model (JA-06C): the identity; the BOM per version lives on the Models page. */
+        model: ((fgs.data ?? []).find((f: any) => f.source_type === "MODEL") ?? null) as { id: string; part_code: string; name: string } | null,
         metrics: metrics.data as PlmMetrics,
         base: base.data as { id: string; product_code: string; name: string } | null,
         variations: variations.data ?? [],

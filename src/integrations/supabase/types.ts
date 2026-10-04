@@ -2223,6 +2223,85 @@ export type Database = {
           },
         ]
       }
+      model_versions: {
+        Row: {
+          based_on: string | null
+          created_at: string
+          created_by: string | null
+          ecn_no: string | null
+          id: string
+          kind: string
+          lines: Json
+          major: number
+          minor: number
+          model_id: string
+          reason: string | null
+          released_at: string | null
+          released_by: string | null
+          status: string
+          updated_at: string
+          version: string | null
+        }
+        Insert: {
+          based_on?: string | null
+          created_at?: string
+          created_by?: string | null
+          ecn_no?: string | null
+          id?: string
+          kind: string
+          lines?: Json
+          major: number
+          minor: number
+          model_id: string
+          reason?: string | null
+          released_at?: string | null
+          released_by?: string | null
+          status?: string
+          updated_at?: string
+          version?: string | null
+        }
+        Update: {
+          based_on?: string | null
+          created_at?: string
+          created_by?: string | null
+          ecn_no?: string | null
+          id?: string
+          kind?: string
+          lines?: Json
+          major?: number
+          minor?: number
+          model_id?: string
+          reason?: string | null
+          released_at?: string | null
+          released_by?: string | null
+          status?: string
+          updated_at?: string
+          version?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "model_versions_based_on_fkey"
+            columns: ["based_on"]
+            isOneToOne: false
+            referencedRelation: "model_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "model_versions_model_id_fkey"
+            columns: ["model_id"]
+            isOneToOne: false
+            referencedRelation: "parts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "model_versions_model_id_fkey"
+            columns: ["model_id"]
+            isOneToOne: false
+            referencedRelation: "store_receiving_variances"
+            referencedColumns: ["part_id"]
+          },
+        ]
+      }
       part_brands: {
         Row: {
           brand: string
@@ -2418,6 +2497,8 @@ export type Database = {
           is_active: boolean
           last_price_update: string | null
           made_in_house: boolean
+          model_id: string | null
+          model_version: string | null
           name: string
           oqc_checklist_url: string | null
           part_code: string
@@ -2459,6 +2540,8 @@ export type Database = {
           is_active?: boolean
           last_price_update?: string | null
           made_in_house?: boolean
+          model_id?: string | null
+          model_version?: string | null
           name: string
           oqc_checklist_url?: string | null
           part_code: string
@@ -2500,6 +2583,8 @@ export type Database = {
           is_active?: boolean
           last_price_update?: string | null
           made_in_house?: boolean
+          model_id?: string | null
+          model_version?: string | null
           name?: string
           oqc_checklist_url?: string | null
           part_code?: string
@@ -2542,6 +2627,20 @@ export type Database = {
           {
             foreignKeyName: "parts_branded_from_fkey"
             columns: ["branded_from"]
+            isOneToOne: false
+            referencedRelation: "store_receiving_variances"
+            referencedColumns: ["part_id"]
+          },
+          {
+            foreignKeyName: "parts_model_id_fkey"
+            columns: ["model_id"]
+            isOneToOne: false
+            referencedRelation: "parts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "parts_model_id_fkey"
+            columns: ["model_id"]
             isOneToOne: false
             referencedRelation: "store_receiving_variances"
             referencedColumns: ["part_id"]
@@ -3533,6 +3632,7 @@ export type Database = {
           handed_over_quantity: number | null
           id: string
           is_pilot: boolean
+          model_version: string | null
           parent_order_id: string | null
           part_id: string
           planned_date: string
@@ -3554,6 +3654,7 @@ export type Database = {
           handed_over_quantity?: number | null
           id?: string
           is_pilot?: boolean
+          model_version?: string | null
           parent_order_id?: string | null
           part_id: string
           planned_date?: string
@@ -3575,6 +3676,7 @@ export type Database = {
           handed_over_quantity?: number | null
           id?: string
           is_pilot?: boolean
+          model_version?: string | null
           parent_order_id?: string | null
           part_id?: string
           planned_date?: string
@@ -5243,6 +5345,44 @@ export type Database = {
         }
         Returns: string
       }
+      model_add_brand: {
+        Args: { p_brand: string; p_model: string; p_name: string }
+        Returns: Json
+      }
+      model_brand_lines: {
+        Args: { p_brand: string; p_target: string }
+        Returns: Json
+      }
+      model_clean_lines: {
+        Args: { p_lines: Json; p_model: string }
+        Returns: Json
+      }
+      model_create: {
+        Args: {
+          p_category: string
+          p_code: string
+          p_copy_from?: string
+          p_name: string
+          p_plm_product?: string
+        }
+        Returns: string
+      }
+      model_fill_brand: { Args: { p_brand: string }; Returns: Json }
+      model_move_brand: {
+        Args: { p_brand: string; p_version: string }
+        Returns: Json
+      }
+      model_next_code: { Args: { p_category: string }; Returns: string }
+      model_raise_ecn: {
+        Args: { p_major?: boolean; p_model: string; p_reason: string }
+        Returns: string
+      }
+      model_version_discard: { Args: { p_version: string }; Returns: undefined }
+      model_version_release: { Args: { p_version: string }; Returns: undefined }
+      model_version_save: {
+        Args: { p_lines: Json; p_version: string }
+        Returns: Json
+      }
       my_permissions: { Args: never; Returns: Json }
       next_doc_number: {
         Args: { _prefix: string; _seq: unknown }
@@ -5489,6 +5629,7 @@ export type Database = {
         | "ASSEMBLED_STOCKED"
         | "ASSEMBLED_INLINE"
         | "FINISHED_GOOD"
+        | "MODEL"
       performance_rating:
         | "excellent"
         | "good"
@@ -5698,6 +5839,7 @@ export const Constants = {
         "ASSEMBLED_STOCKED",
         "ASSEMBLED_INLINE",
         "FINISHED_GOOD",
+        "MODEL",
       ],
       performance_rating: [
         "excellent",
@@ -5738,3 +5880,4 @@ export const Constants = {
     },
   },
 } as const
+

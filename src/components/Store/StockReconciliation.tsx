@@ -105,6 +105,7 @@ const StockReconciliation = () => {
       const { data, error } = await (supabase as any)
         .from("parts")
         .select("id, part_code, name, category, uom, purchase_uom, purchase_factor, source_type")
+        .neq("source_type", "MODEL")
         .eq("is_active", true)
         .neq("source_type", "FINISHED_GOOD")
         .order("part_code")

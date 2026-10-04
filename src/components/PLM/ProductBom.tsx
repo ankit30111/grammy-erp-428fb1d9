@@ -26,7 +26,7 @@ export const usePickParts = () =>
       for (let from = 0; ; from += 1000) {
         const { data, error } = await (supabase as any).from("parts")
           .select("id, part_code, name, uom, category, branding_required, brand_relevant")
-          .eq("is_active", true).neq("source_type", "FINISHED_GOOD").is("branded_from", null)
+          .eq("is_active", true).not("source_type", "in", "(FINISHED_GOOD,MODEL)").is("branded_from", null)
           .order("part_code").range(from, from + 999);
         if (error) throw error;
         out.push(...(data ?? []));

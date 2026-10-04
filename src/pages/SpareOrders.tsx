@@ -92,6 +92,7 @@ const SpareOrders = () => {
     const { data, error } = await supabase
       .from('parts')
       .select('id, part_code, name, category')
+      .neq('source_type', 'MODEL')
       .eq('is_active', true)
       .order('name');
     

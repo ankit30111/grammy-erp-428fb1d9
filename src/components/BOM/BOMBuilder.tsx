@@ -43,7 +43,19 @@ const MADE_HERE = ["ASSEMBLED_INLINE", "ASSEMBLED_STOCKED", "FINISHED_GOOD"];
  * part, so nobody lands on a BOM by accident. Saving shows exactly what will
  * change and asks to confirm.
  */
-export const BOMBuilder = ({ partId: initialParentId, onClose }: { partId: string; onClose?: () => void }) => {
+/**
+ * The same page edits a model version's draft BOM (Models page): pass `draft`.
+ * Its lines are base parts - a brand's printed version is swapped in on the
+ * brand code - and it is saved by the caller, not into bom.
+ */
+export interface BomDraft {
+  title: string;
+  lines: { child_part_id: string; quantity: number | null; bulk: boolean; is_critical: boolean }[];
+  onSave: (lines: { child_part_id: string; quantity: number | null; bulk: boolean; is_critical: boolean }[]) => Promise<unknown>;
+  saving?: boolean;
+}
+
+export const BOMBuilder = ({ partId: initialParentId, onClose, draft }: { partId: string; onClose?: () => void; draft?: BomDraft }) => {
   const { parts, isLoading } = useParts();
   const { categories } = usePartCategories();
   const { data: lines = [] } = useBomLines();
@@ -80,13 +92,17 @@ export const BOMBuilder = ({ partId: initialParentId, onClose }: { partId: strin
 
   // What the bill is now, as the page's starting state. Keyed by child part so a
   // part unticked and ticked again is the same line, not a new one.
-  const pendingRequest = requests.find((q) => q.parent_part_id === parentId && q.status === "PENDING");
-  const rejectedRequest = !pendingRequest
+  const pendingRequest = draft ? undefined : requests.find((q) => q.parent_part_id === parentId && q.status === "PENDING");
+  const rejectedRequest = !pendingRequest && !draft
     ? requests.find((q) => q.parent_part_id === parentId && q.status === "REJECTED")
     : undefined;
 
   const existing = useMemo(() => {
     const map: Record<string, { quantity: string; is_critical: boolean; bulk: boolean }> = {};
+    if (draft) {
+      for (const l of draft.lines) map[l.child_part_id] = { quantity: l.bulk ? "" : String(l.quantity ?? 0), is_critical: l.is_critical, bulk: l.bulk };
+      return map;
+    }
     // R&D reopening a part carries on from the change they already sent, not
     // from the live BOM - otherwise saving again would quietly undo it.
     if (needsApproval && pendingRequest) {
@@ -109,7 +125,8 @@ export const BOMBuilder = ({ partId: initialParentId, onClose }: { partId: strin
       }
     }
     return map;
-  }, [lines, parentId, needsApproval, pendingRequest]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lines, parentId, needsApproval, pendingRequest, draft?.lines]);
 
   // Reset the ticks only when the part changes or the saved BOM itself changes.
   // This used to run on every refetch of the BOM lines - which React Query does
@@ -136,6 +153,8 @@ export const BOMBuilder = ({ partId: initialParentId, onClose }: { partId: strin
         // A part cannot be inside itself, and the database refuses it anyway -
         // better to not offer it than to explain the refusal afterwards.
         if (p.id === parentId) return false;
+        // A model holds base parts only: no brand versions, no finished goods.
+        if (draft && (p.branded_from || p.source_type === "FINISHED_GOOD")) return false;
         // A deactivated part is not offered - unless it is already on this BOM,
         // so it can be seen and taken off.
         if (p.is_active === false && picked[p.id] === undefined) return false;
@@ -201,7 +220,7 @@ export const BOMBuilder = ({ partId: initialParentId, onClose }: { partId: strin
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [picked, critical, bulk, existing, parts]);
   const printedAdded = useMemo(() => {
-    if ((parentPart as any)?.source_type === "FINISHED_GOOD" || (parentPart as any)?.brand_relevant) return [];
+    if (draft || (parentPart as any)?.source_type === "FINISHED_GOOD" || (parentPart as any)?.brand_relevant) return [];
     return Object.keys(picked).filter((id) => !existing[id]).map(partOf)
       .filter((p: any) => p && (p.branding_required || p.brand_relevant));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -225,6 +244,15 @@ export const BOMBuilder = ({ partId: initialParentId, onClose }: { partId: strin
 
   const commitSave = async () => {
     setConfirmOpen(false);
+    if (draft) {
+      await draft.onSave(Object.keys(picked).map((child_part_id) => ({
+        child_part_id,
+        quantity: bulk[child_part_id] ? null : stockQty(child_part_id),
+        bulk: Boolean(bulk[child_part_id]),
+        is_critical: Boolean(critical[child_part_id]),
+      })));
+      return;
+    }
     await saveBom.mutateAsync({
       parent_part_id: parentId,
       lines: Object.entries(picked).map(([child_part_id, quantity]) => ({
@@ -242,13 +270,13 @@ export const BOMBuilder = ({ partId: initialParentId, onClose }: { partId: strin
       <div className="flex flex-wrap items-center gap-3">
         {onClose && (
           <Button variant="outline" size="sm" onClick={onClose}>
-            <ArrowLeft className="h-4 w-4 mr-1" /> Back to parts
+            <ArrowLeft className="h-4 w-4 mr-1" /> {draft ? "Back" : "Back to parts"}
           </Button>
         )}
         <div className="min-w-0">
           <div className="text-xs uppercase tracking-wide text-muted-foreground">Bill of Materials</div>
           <div className="font-medium truncate">
-            {parentPart ? <><span className="font-mono">{parentPart.part_code}</span> — {parentPart.name}</> : isLoading ? "Loading…" : "Part not found"}
+            {draft ? draft.title : parentPart ? <><span className="font-mono">{parentPart.part_code}</span> — {parentPart.name}</> : isLoading ? "Loading…" : "Part not found"}
           </div>
         </div>
       </div>
@@ -258,7 +286,7 @@ export const BOMBuilder = ({ partId: initialParentId, onClose }: { partId: strin
           <CardHeader className="pb-3">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <CardTitle className="text-base">
-                What goes into {parentPart?.part_code}
+                What goes into {draft ? draft.title : parentPart?.part_code}
                 <span className="ml-2 text-sm font-normal text-muted-foreground">
                   {selectedCount} part{selectedCount === 1 ? "" : "s"} selected
                 </span>
@@ -276,10 +304,10 @@ export const BOMBuilder = ({ partId: initialParentId, onClose }: { partId: strin
               <div className="flex items-center gap-2">
                 {dirty && <Badge variant="secondary">Unsaved changes</Badge>}
                 {canEditMasters && (
-                  <Button onClick={handleSave} disabled={!dirty || saveBom.isPending}>
-                    {saveBom.isPending
+                  <Button onClick={handleSave} disabled={!dirty || saveBom.isPending || Boolean(draft?.saving)}>
+                    {saveBom.isPending || draft?.saving
                       ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Saving…</>
-                      : <><Save className="h-4 w-4 mr-2" />{needsApproval ? "Send for Approval" : "Save Bill of Materials"}</>}
+                      : <><Save className="h-4 w-4 mr-2" />{draft ? "Save draft" : needsApproval ? "Send for Approval" : "Save Bill of Materials"}</>}
                   </Button>
                 )}
               </div>
@@ -359,7 +387,7 @@ export const BOMBuilder = ({ partId: initialParentId, onClose }: { partId: strin
                   {candidates.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                        {onlySelected
+                        {isLoading ? "Loading parts…" : onlySelected
                           ? "Nothing selected yet."
                           : "No parts match this search or filter."}
                       </TableCell>
@@ -425,7 +453,7 @@ export const BOMBuilder = ({ partId: initialParentId, onClose }: { partId: strin
               </Table>
             </div>
             <p className="text-xs text-muted-foreground">
-              QPS is the quantity of that part in one set of {parentPart?.part_code}. Unticking a part removes it from
+              QPS is the quantity of that part in one set of {draft ? draft.title : parentPart?.part_code}. Unticking a part removes it from
               the bill when you save.
             </p>
           </CardContent>
@@ -435,7 +463,7 @@ export const BOMBuilder = ({ partId: initialParentId, onClose }: { partId: strin
         <AlertDialogContent className="max-w-xl">
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {needsApproval ? `Send the change to ${parentPart?.part_code} for approval?` : `Save the change to ${parentPart?.part_code}?`}
+              {draft ? `Save the draft of ${draft.title}?` : needsApproval ? `Send the change to ${parentPart?.part_code} for approval?` : `Save the change to ${parentPart?.part_code}?`}
             </AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-3 text-sm text-foreground">
@@ -455,14 +483,15 @@ export const BOMBuilder = ({ partId: initialParentId, onClose }: { partId: strin
                     using it will need {printedAdded.length === 1 ? "this part" : "these parts"} printed for its own brand before it can be scheduled.
                   </p>
                 )}
-                {needsApproval && <p className="text-muted-foreground">Management approves it before the BOM in use changes.</p>}
+                {needsApproval && !draft && <p className="text-muted-foreground">Management approves it before the BOM in use changes.</p>}
+                {draft && <p className="text-muted-foreground">Nothing in production changes: brands move to this version only when it is released and Management moves them.</p>}
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Keep editing</AlertDialogCancel>
             <AlertDialogAction onClick={() => void commitSave()}>
-              {needsApproval ? "Send for approval" : "Save"}
+              {needsApproval && !draft ? "Send for approval" : "Save"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

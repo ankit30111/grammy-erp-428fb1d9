@@ -54,6 +54,7 @@ export const ManualPOCreationDialog = () => {
       const { data, error } = await supabase
         .from('parts')
         .select('*')
+        .neq('source_type', 'MODEL')
         .order('part_code');
       
       if (error) throw error;
