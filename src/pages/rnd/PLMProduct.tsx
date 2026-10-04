@@ -23,7 +23,12 @@ import { usePlantId } from "@/hooks/usePlantId";
 import { PLM_CATEGORIES, useClientNames } from "@/components/PLM/NewProductDialog";
 import { priorityVariant, stageLabel } from "./PLMDashboard";
 import { cn } from "@/lib/utils";
-import { BaseBomPicker, ProductBom } from "@/components/PLM/ProductBom";
+import { BaseBomPicker } from "@/components/PLM/ProductBom";
+import { VersionTree } from "@/components/Engineering/VersionTree";
+import { type IVersion, useEcnVersions, useEngineeringMutations } from "@/hooks/useEngineering";
+import { useBrands } from "@/hooks/usePartCategories";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ModelWorkspace } from "@/pages/models/ModelDetail";
 
 const sel = "h-9 rounded-md border border-input bg-background px-2 text-sm";
@@ -255,9 +260,10 @@ function StageView({ stage, data, canEdit, canApprove, upload, plantId, m }: any
             <p className="text-sm text-muted-foreground">No {stage === 3 ? "EVT" : "SVT"} tests yet. Add them on the Tests tab.</p>
           )}
 
-          {stage < 6 && data.bom.length > 0 && (
-            <div className="rounded-md border p-3">
-              <ProductBom data={data} canEdit={canEdit} m={m} focus title="BOM at this stage" />
+          {stage < 6 && data.bom.length > 0 && data.working && (
+            <div className="rounded-md border p-3 space-y-2">
+              <div className="font-medium">BOM at this stage: parts not released yet</div>
+              <VersionTree rootId={data.working.id} canEdit={canEdit} onlyOpen tests={data.tests} testM={m} productId={p.id} />
             </div>
           )}
           {stage < 6 && data.bom.length === 0 && (
@@ -693,106 +699,220 @@ function DetailsView({ data, canEdit, m, products }: any) {
 
 /* ---------------------------------------------------------------- BOM */
 
-function BomTab({ data, canEdit: canEditDev, m }: any) {
-  const [, setParams] = useSearchParams();
-  // In mass production the model's released version is the master: the R&D BOM
-  // follows it, and a change is an ECN (Versions & brands), not an edit here.
-  const inProduction = data.product.stage === 6 && !!data.model;
-  const canEdit = canEditDev && !inProduction;
+/**
+ * R&D's BOM: the model's working version as a tree (the open draft, else the
+ * released version). A first version is built here and released by Management;
+ * after that every change is an ECN, raised here, edited here, released by
+ * Management, who also chooses which brand codes move to it.
+ */
+function BomTab({ data, canEdit, m }: any) {
   const { product: p, metrics: mx } = data;
   const dev = mx.dev_bom ?? {};
+  const wv: IVersion | null = data.working;
+  const { canApprove } = usePermissions();
+  const em = useEngineeringMutations();
+  const { brands } = useBrands();
+  const [raising, setRaising] = useState(false);
+  const [releasing, setReleasing] = useState(false);
+  const [editEcn, setEditEcn] = useState(false);
+  const brandOptions = brands.map((b) => ({ letter: b.letter, name: b.name }));
   const { data: baseLines = [] } = useQuery({
     queryKey: ["plm-base-bom", p.based_on_id, p.based_on_part_id],
-    enabled: !!(p.based_on_id || p.based_on_part_id) && data.bom.length === 0,
+    enabled: !!(p.based_on_id || p.based_on_part_id) && data.bom.length === 0 && wv?.status === "DRAFT",
     queryFn: async () => {
+      const db = supabase as any;
       if (p.based_on_part_id) {
-        // An ERP model's master BOM, or a brand code's production BOM - read only.
-        const { data: lines, error: le } = await (supabase as any).rpc("plm_part_base_lines", { p_part: p.based_on_part_id });
+        // An ERP model's BOM, or a brand code's production BOM - read only.
+        const { data: lines, error: le } = await db.rpc("plm_part_base_lines", { p_part: p.based_on_part_id });
         if (le) throw le;
         const ids = (lines ?? []).map((l: any) => l.part_id);
-        const { data: ps, error: pe } = ids.length
-          ? await (supabase as any).from("parts").select("id, part_code, name, uom, unit_price, currency, category, approval_status").in("id", ids)
-          : { data: [], error: null };
+        const { data: ps, error: pe } = ids.length ? await db.from("parts").select("id, part_code, name").in("id", ids) : { data: [], error: null };
         if (pe) throw pe;
         const byId = new Map((ps ?? []).map((x: any) => [x.id, x]));
         return (lines ?? []).map((l: any) => ({ id: l.part_id, part_id: l.part_id, quantity: l.quantity, bulk: l.bulk,
-            is_critical: l.is_critical, description: null, part: byId.get(l.part_id) ?? null }))
+            description: null, part: byId.get(l.part_id) ?? null }))
           .sort((a: any, b: any) => String(a.part?.part_code).localeCompare(String(b.part?.part_code)));
       }
-      const { data: rows, error } = await (supabase as any).from("plm_bom_lines")
-        .select("*, part:parts!plm_bom_lines_part_id_fkey ( id, part_code, name, uom, unit_price, currency, category, approval_status ), replaces:parts!plm_bom_lines_replaces_part_id_fkey ( part_code, name )")
-        .eq("product_id", p.based_on_id).order("sort");
+      // Another R&D product: the top level of its working version.
+      const { data: vid } = await db.rpc("plm_working_version", { p_product: p.based_on_id });
+      if (!vid) return [];
+      const { data: rows, error } = await db.from("version_lines")
+        .select("id, part_id, description, quantity, bulk, part:parts!version_lines_part_id_fkey ( part_code, name )")
+        .eq("version_id", vid).order("sort");
       if (error) throw error;
       return rows ?? [];
     },
   });
-  const published = p.bom_published_at && (!p.bom_changed_at || p.bom_published_at >= p.bom_changed_at);
-  const canPublish = canEdit && p.stage >= 5 && (data.model || data.fgs.length > 0) && dev.lines > 0 && !dev.no_code;
 
-  if (data.bom.length === 0) {
-    return (
-      <Card>
-        <CardHeader className="pb-2"><CardTitle>Start the BOM</CardTitle></CardHeader>
-        <CardContent className="space-y-4">
-          {p.kind === "VARIATION" && data.base && baseLines.length > 0 && canEdit && (
-            <BaseBomPicker baseLines={baseLines} baseCode={data.base.product_code} busy={m.bomFromBase.isPending}
-                           onSubmit={(actions) => m.bomFromBase.mutate({ product: p.id, actions })} />
-          )}
-          {p.kind === "VARIATION" && data.base && baseLines.length === 0 && (
-            <p className="text-sm text-muted-foreground">{data.base.product_code} has no BOM yet, so there is nothing to start from.</p>
-          )}
-          {data.fgs.length > 0 && canEdit && (
-            <div className="flex flex-wrap items-center gap-2">
-              <Button variant="outline" onClick={() => m.bomFromProduction.mutate(p.id)}>Start from {data.fgs.map((f: any) => f.part_code).join(", ")}'s BOM</Button>
-              <span className="text-sm text-muted-foreground">Every line comes in as carry-over (released).</span>
-            </div>
-          )}
-          <ProductBom data={data} canEdit={canEdit} m={m} title="Or add the parts one by one" />
-        </CardContent>
-      </Card>
-    );
+  if (!data.model || !wv) {
+    return <Card><CardContent className="pt-5 text-sm text-muted-foreground">This product has no model version yet.</CardContent></Card>;
   }
-
-  if (inProduction) {
-    return (
-      <Card>
-        <CardContent className="pt-5 space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border bg-muted/40 p-3">
-            <p className="text-sm">
-              {data.model.part_code} is in mass production. This is its BOM from the model's version; it follows each version
-              Management releases. To change it, raise an ECN.
-            </p>
-            {canEditDev && (
-              <Button size="sm" onClick={() => setParams((x) => { x.set("tab", "versions"); return x; })}>Raise ECN / edit version</Button>
-            )}
-          </div>
-          <ProductBom data={data} canEdit={false} m={m} />
-        </CardContent>
-      </Card>
-    );
-  }
+  const isDraft = wv.status === "DRAFT";
+  const empty = isDraft && data.bom.length === 0;
 
   return (
     <Card>
       <CardContent className="pt-5 space-y-4">
+        <div className="flex flex-wrap items-start justify-between gap-3 rounded-md border bg-muted/40 p-3">
+          <div className="space-y-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-mono font-semibold">{data.model.part_code} v{wv.version}</span>
+              {isDraft ? <Badge variant="warning">draft</Badge> : <Badge variant="secondary">released</Badge>}
+              {wv.ecn && <span className="font-mono text-sm">{wv.ecn.ecn_no}</span>}
+            </div>
+            <p className="text-sm">
+              {wv.ecn ? <>{wv.ecn.title}{wv.ecn.reason ? <span className="text-muted-foreground"> · {wv.ecn.reason}</span> : null}</>
+                : isDraft ? "First version: build the BOM here. Management releases it (gate 5, or Release below)."
+                : `Released ${fmtDate(wv.released_at)}. To change it, raise an ECN.`}
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {!isDraft && canEdit && <Button size="sm" onClick={() => setRaising(true)}>Raise ECN</Button>}
+            {wv.ecn && isDraft && canEdit && <Button size="sm" variant="outline" onClick={() => setEditEcn(true)}>Edit ECN</Button>}
+            {wv.ecn && isDraft && canEdit && (
+              <Button size="sm" variant="ghost" disabled={em.cancelEcn.isPending}
+                      onClick={() => window.confirm(`Cancel ${wv.ecn!.ecn_no}? Its drafts are discarded.`) && em.cancelEcn.mutate(wv.ecn!.id)}>Cancel ECN</Button>
+            )}
+            {isDraft && canApprove && !empty && <Button size="sm" onClick={() => setReleasing(true)}>Release{wv.ecn ? ` ${wv.ecn.ecn_no}` : ` v${wv.version}`}…</Button>}
+          </div>
+        </div>
+
         <div className="flex flex-wrap items-start gap-4">
-          <Metric label="BOM progress" value={`${dev.pct}%`} hint="Design, Sample, Approval, Release: 25% each when Closed" />
+          <Metric label="BOM progress" value={`${dev.pct ?? 0}%`} hint="Design, Sample, Approval, Release: 25% each when Closed" />
           <Metric label="Material cost" value={`₹${Number(dev.cost ?? 0).toLocaleString("en-IN")}`}
                   hint={[p.target_cost != null && `target ₹${Number(p.target_cost).toLocaleString("en-IN")}`, dev.unpriced > 0 && `${dev.unpriced} without price`].filter(Boolean).join(" · ")}
                   bad={p.target_cost != null && dev.cost > p.target_cost} />
-          <div className="rounded-md border p-3 min-w-[240px] space-y-1">
-            <div className="text-xs text-muted-foreground">Model {data.model?.part_code ?? ""} v1.0</div>
-            <div className="text-sm">{p.bom_published_at ? `Published ${fmtDate(p.bom_published_at)}${published ? "" : " · changed since"}` : "Not published"}</div>
-            <div className="text-xs text-muted-foreground">Written into the model's v1.0 draft when gate 4 passes, then with Publish. Production uses it once Management releases v1.0.</div>
-            {canEdit && p.stage >= 5 && (
-              <Button size="sm" disabled={!canPublish || published} onClick={() => m.publishBom.mutate(p.id)}>Publish to v1.0 draft</Button>
-            )}
-            {canEdit && p.stage >= 5 && dev.no_code > 0 && <div className="text-xs text-warning">{dev.no_code} line(s) still need a part code.</div>}
+          {dev.no_code > 0 && <Metric label="Lines without a part code" value={String(dev.no_code)} bad />}
+        </div>
+
+        {empty && p.kind === "VARIATION" && data.base && baseLines.length > 0 && canEdit && (
+          <div className="rounded-md border p-3">
+            <BaseBomPicker baseLines={baseLines} baseCode={data.base.product_code} busy={m.bomFromBase.isPending}
+                           onSubmit={(actions) => m.bomFromBase.mutate({ product: p.id, actions })} />
+            <p className="mt-2 text-xs text-muted-foreground">Or add the parts one by one below.</p>
+          </div>
+        )}
+
+        <VersionTree rootId={wv.id} canEdit={canEdit} tests={data.tests} testM={m} productId={p.id} brandOptions={brandOptions} />
+      </CardContent>
+      {raising && <RaiseEcnDialog itemId={data.model.id} code={data.model.part_code} version={wv.version} onClose={() => setRaising(false)} em={em} />}
+      {editEcn && wv.ecn && <EditEcnDialog ecn={wv.ecn} onClose={() => setEditEcn(false)} em={em} />}
+      {releasing && <ReleaseDialog version={wv} modelId={data.model.id} onClose={() => setReleasing(false)} em={em} />}
+    </Card>
+  );
+}
+
+function RaiseEcnDialog({ itemId, code, version, onClose, em }: any) {
+  const [title, setTitle] = useState("");
+  const [reason, setReason] = useState("");
+  const [major, setMajor] = useState(false);
+  const [maj, min] = String(version).split(".").map(Number);
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader><DialogTitle>Raise an ECN on {code}</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Opens {major ? `v${maj + 1}.0` : `v${maj}.${min + 1}`} as a draft copy of v{version}. Change it on this tab, including
+            inside sub-assemblies; Management releases it and chooses which brand codes move.
+          </p>
+          <div className="space-y-1"><Label htmlFor="ecn-t">What changes</Label>
+            <Input id="ecn-t" placeholder="e.g. Tweeter screw 5x9.5 to 5x12" value={title} onChange={(e) => setTitle(e.target.value)} /></div>
+          <div className="space-y-1"><Label htmlFor="ecn-r">Why</Label>
+            <Textarea id="ecn-r" rows={2} placeholder="e.g. Service reports loose tweeter" value={reason} onChange={(e) => setReason(e.target.value)} /></div>
+          <label className="flex items-center gap-2 text-sm cursor-pointer">
+            <Checkbox checked={major} onCheckedChange={(c) => setMajor(Boolean(c))} /> Major redesign (v{maj + 1}.0)
+          </label>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={onClose}>Cancel</Button>
+            <Button disabled={!title.trim() || em.raiseEcn.isPending}
+                    onClick={async () => { await em.raiseEcn.mutateAsync({ item: itemId, title: title.trim(), reason: reason.trim(), major }); onClose(); }}>
+              Raise ECN
+            </Button>
           </div>
         </div>
-        <ProductBom data={data} canEdit={canEdit} m={m} />
-      </CardContent>
-    </Card>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function EditEcnDialog({ ecn, onClose, em }: any) {
+  const [title, setTitle] = useState(ecn.title);
+  const [reason, setReason] = useState(ecn.reason ?? "");
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader><DialogTitle>{ecn.ecn_no}</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          <div className="space-y-1"><Label htmlFor="ecn-et">What changes</Label><Input id="ecn-et" value={title} onChange={(e) => setTitle(e.target.value)} /></div>
+          <div className="space-y-1"><Label htmlFor="ecn-er">Why</Label><Textarea id="ecn-er" rows={2} value={reason} onChange={(e) => setReason(e.target.value)} /></div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={onClose}>Cancel</Button>
+            <Button disabled={!title.trim()} onClick={async () => { await em.updateEcn.mutateAsync({ ecn: ecn.id, title, reason }); onClose(); }}>Save</Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/** Management releases: every draft of the ECN at once, and ticks the brand codes that move to it. */
+function ReleaseDialog({ version, modelId, onClose, em }: { version: IVersion; modelId: string; onClose: () => void; em: any }) {
+  const { data: ecnVersions = [] } = useEcnVersions(version.ecn_id);
+  const set: IVersion[] = version.ecn_id ? ecnVersions : [version];
+  const modelIds = [...new Set([modelId, ...set.filter((v) => v.item?.source_type === "MODEL").map((v) => v.item_id)])];
+  const { data: brandCodes = [] } = useQuery({
+    queryKey: ["eng-release-brands", modelIds.join(",")],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).from("parts").select("id, part_code, model_id, model_version").in("model_id", modelIds).eq("is_active", true).order("part_code");
+      if (error) throw error;
+      return (data ?? []) as { id: string; part_code: string; model_id: string; model_version: string | null }[];
+    },
+  });
+  const [ticked, setTicked] = useState<Record<string, boolean>>({});
+  useEffect(() => { setTicked(Object.fromEntries(brandCodes.map((b) => [b.id, true]))); }, [brandCodes.length]);
+  const subs = set.filter((v) => v.item?.source_type !== "MODEL");
+  const go = async () => {
+    const brands = brandCodes.filter((b) => ticked[b.id]).map((b) => b.id);
+    if (version.ecn_id) await em.releaseEcn.mutateAsync({ ecn: version.ecn_id, brands });
+    else await em.releaseVersion.mutateAsync({ version: version.id, brands });
+    onClose();
+  };
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-xl">
+        <DialogHeader><DialogTitle>Release {version.ecn ? version.ecn.ecn_no : `${version.item?.part_code} v${version.version}`}</DialogTitle></DialogHeader>
+        <div className="space-y-3 text-sm">
+          <div>
+            <div className="font-medium">Released together</div>
+            <ul className="mt-1 list-disc pl-5">
+              {set.map((v) => <li key={v.id}><span className="font-mono">{v.item?.part_code} v{v.version}</span> <span className="text-muted-foreground">{v.note}</span></li>)}
+            </ul>
+          </div>
+          {subs.length > 0 && (
+            <p className="rounded-md border border-warning/40 bg-warning/10 p-2">
+              {subs.map((v) => v.item?.part_code).join(", ")} {subs.length === 1 ? "changes" : "change"} in production at once, for every product that uses {subs.length === 1 ? "it" : "them"}.
+            </p>
+          )}
+          <div>
+            <div className="font-medium">Brand codes built on the new version from now</div>
+            {brandCodes.length === 0 && <p className="text-muted-foreground">No brand codes yet.</p>}
+            {brandCodes.map((b) => (
+              <label key={b.id} className="flex items-center gap-2 py-0.5 cursor-pointer">
+                <Checkbox checked={!!ticked[b.id]} onCheckedChange={(c) => setTicked((t) => ({ ...t, [b.id]: Boolean(c) }))} />
+                <span className="font-mono">{b.part_code}</span>
+                <span className="text-muted-foreground">now on v{b.model_version ?? "?"}</span>
+              </label>
+            ))}
+            <p className="mt-1 text-xs text-muted-foreground">An unticked brand stays on its version; it can be moved later from Versions &amp; brands.</p>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={onClose}>Cancel</Button>
+            <Button disabled={em.releaseEcn.isPending || em.releaseVersion.isPending} onClick={go}>Release</Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 

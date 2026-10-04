@@ -225,6 +225,75 @@ export type Database = {
           },
         ]
       }
+      bom_brand_lines: {
+        Row: {
+          brand: string
+          child_part_id: string
+          created_at: string
+          id: string
+          is_critical: boolean
+          issue_mode: string
+          parent_part_id: string
+          quantity: number | null
+        }
+        Insert: {
+          brand: string
+          child_part_id: string
+          created_at?: string
+          id?: string
+          is_critical?: boolean
+          issue_mode?: string
+          parent_part_id: string
+          quantity?: number | null
+        }
+        Update: {
+          brand?: string
+          child_part_id?: string
+          created_at?: string
+          id?: string
+          is_critical?: boolean
+          issue_mode?: string
+          parent_part_id?: string
+          quantity?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bom_brand_lines_brand_fkey"
+            columns: ["brand"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["letter"]
+          },
+          {
+            foreignKeyName: "bom_brand_lines_child_part_id_fkey"
+            columns: ["child_part_id"]
+            isOneToOne: false
+            referencedRelation: "parts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bom_brand_lines_child_part_id_fkey"
+            columns: ["child_part_id"]
+            isOneToOne: false
+            referencedRelation: "store_receiving_variances"
+            referencedColumns: ["part_id"]
+          },
+          {
+            foreignKeyName: "bom_brand_lines_parent_part_id_fkey"
+            columns: ["parent_part_id"]
+            isOneToOne: false
+            referencedRelation: "parts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bom_brand_lines_parent_part_id_fkey"
+            columns: ["parent_part_id"]
+            isOneToOne: false
+            referencedRelation: "store_receiving_variances"
+            referencedColumns: ["part_id"]
+          },
+        ]
+      }
       bom_change_requests: {
         Row: {
           id: string
@@ -1018,6 +1087,42 @@ export type Database = {
         }
         Relationships: []
       }
+      ecns: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          ecn_no: string
+          id: string
+          reason: string | null
+          released_at: string | null
+          released_by: string | null
+          status: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          ecn_no?: string
+          id?: string
+          reason?: string | null
+          released_at?: string | null
+          released_by?: string | null
+          status?: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          ecn_no?: string
+          id?: string
+          reason?: string | null
+          released_at?: string | null
+          released_by?: string | null
+          status?: string
+          title?: string
+        }
+        Relationships: []
+      }
       employee_skills: {
         Row: {
           acquired_date: string | null
@@ -1707,6 +1812,89 @@ export type Database = {
           },
         ]
       }
+      item_versions: {
+        Row: {
+          based_on: string | null
+          created_at: string
+          created_by: string | null
+          ecn_id: string | null
+          id: string
+          item_id: string
+          kind: string
+          major: number
+          minor: number
+          note: string | null
+          released_at: string | null
+          released_by: string | null
+          status: string
+          updated_at: string
+          version: string | null
+        }
+        Insert: {
+          based_on?: string | null
+          created_at?: string
+          created_by?: string | null
+          ecn_id?: string | null
+          id?: string
+          item_id: string
+          kind: string
+          major: number
+          minor: number
+          note?: string | null
+          released_at?: string | null
+          released_by?: string | null
+          status?: string
+          updated_at?: string
+          version?: string | null
+        }
+        Update: {
+          based_on?: string | null
+          created_at?: string
+          created_by?: string | null
+          ecn_id?: string | null
+          id?: string
+          item_id?: string
+          kind?: string
+          major?: number
+          minor?: number
+          note?: string | null
+          released_at?: string | null
+          released_by?: string | null
+          status?: string
+          updated_at?: string
+          version?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "item_versions_ecn_id_fkey"
+            columns: ["ecn_id"]
+            isOneToOne: false
+            referencedRelation: "ecns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "model_versions_based_on_fkey"
+            columns: ["based_on"]
+            isOneToOne: false
+            referencedRelation: "item_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "model_versions_model_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "parts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "model_versions_model_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "store_receiving_variances"
+            referencedColumns: ["part_id"]
+          },
+        ]
+      }
       kit_feedback: {
         Row: {
           created_at: string
@@ -2223,85 +2411,6 @@ export type Database = {
           },
         ]
       }
-      model_versions: {
-        Row: {
-          based_on: string | null
-          created_at: string
-          created_by: string | null
-          ecn_no: string | null
-          id: string
-          kind: string
-          lines: Json
-          major: number
-          minor: number
-          model_id: string
-          reason: string | null
-          released_at: string | null
-          released_by: string | null
-          status: string
-          updated_at: string
-          version: string | null
-        }
-        Insert: {
-          based_on?: string | null
-          created_at?: string
-          created_by?: string | null
-          ecn_no?: string | null
-          id?: string
-          kind: string
-          lines?: Json
-          major: number
-          minor: number
-          model_id: string
-          reason?: string | null
-          released_at?: string | null
-          released_by?: string | null
-          status?: string
-          updated_at?: string
-          version?: string | null
-        }
-        Update: {
-          based_on?: string | null
-          created_at?: string
-          created_by?: string | null
-          ecn_no?: string | null
-          id?: string
-          kind?: string
-          lines?: Json
-          major?: number
-          minor?: number
-          model_id?: string
-          reason?: string | null
-          released_at?: string | null
-          released_by?: string | null
-          status?: string
-          updated_at?: string
-          version?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "model_versions_based_on_fkey"
-            columns: ["based_on"]
-            isOneToOne: false
-            referencedRelation: "model_versions"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "model_versions_model_id_fkey"
-            columns: ["model_id"]
-            isOneToOne: false
-            referencedRelation: "parts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "model_versions_model_id_fkey"
-            columns: ["model_id"]
-            isOneToOne: false
-            referencedRelation: "store_receiving_variances"
-            referencedColumns: ["part_id"]
-          },
-        ]
-      }
       part_brands: {
         Row: {
           brand: string
@@ -2656,6 +2765,13 @@ export type Database = {
             foreignKeyName: "parts_plm_product_id_fkey"
             columns: ["plm_product_id"]
             isOneToOne: false
+            referencedRelation: "plm_bom_progress"
+            referencedColumns: ["product_id"]
+          },
+          {
+            foreignKeyName: "parts_plm_product_id_fkey"
+            columns: ["plm_product_id"]
+            isOneToOne: false
             referencedRelation: "plm_catch_up"
             referencedColumns: ["product_id"]
           },
@@ -2892,142 +3008,6 @@ export type Database = {
         }
         Relationships: []
       }
-      plm_bom_lines: {
-        Row: {
-          approval_at: string | null
-          approval_done: boolean | null
-          approval_status: string
-          bulk: boolean
-          change_type: string
-          created_at: string
-          description: string | null
-          design_at: string | null
-          design_done: boolean | null
-          design_status: string
-          id: string
-          is_critical: boolean
-          part_id: string | null
-          product_id: string
-          quantity: number | null
-          quoted_price: number | null
-          release_at: string | null
-          release_done: boolean | null
-          release_status: string
-          remarks: string | null
-          replaces_part_id: string | null
-          sample_at: string | null
-          sample_done: boolean | null
-          sample_status: string
-          sort: number
-          updated_at: string
-          updated_by: string | null
-          vendor_note: string | null
-        }
-        Insert: {
-          approval_at?: string | null
-          approval_done?: boolean | null
-          approval_status?: string
-          bulk?: boolean
-          change_type?: string
-          created_at?: string
-          description?: string | null
-          design_at?: string | null
-          design_done?: boolean | null
-          design_status?: string
-          id?: string
-          is_critical?: boolean
-          part_id?: string | null
-          product_id: string
-          quantity?: number | null
-          quoted_price?: number | null
-          release_at?: string | null
-          release_done?: boolean | null
-          release_status?: string
-          remarks?: string | null
-          replaces_part_id?: string | null
-          sample_at?: string | null
-          sample_done?: boolean | null
-          sample_status?: string
-          sort?: number
-          updated_at?: string
-          updated_by?: string | null
-          vendor_note?: string | null
-        }
-        Update: {
-          approval_at?: string | null
-          approval_done?: boolean | null
-          approval_status?: string
-          bulk?: boolean
-          change_type?: string
-          created_at?: string
-          description?: string | null
-          design_at?: string | null
-          design_done?: boolean | null
-          design_status?: string
-          id?: string
-          is_critical?: boolean
-          part_id?: string | null
-          product_id?: string
-          quantity?: number | null
-          quoted_price?: number | null
-          release_at?: string | null
-          release_done?: boolean | null
-          release_status?: string
-          remarks?: string | null
-          replaces_part_id?: string | null
-          sample_at?: string | null
-          sample_done?: boolean | null
-          sample_status?: string
-          sort?: number
-          updated_at?: string
-          updated_by?: string | null
-          vendor_note?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "plm_bom_lines_part_id_fkey"
-            columns: ["part_id"]
-            isOneToOne: false
-            referencedRelation: "parts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "plm_bom_lines_part_id_fkey"
-            columns: ["part_id"]
-            isOneToOne: false
-            referencedRelation: "store_receiving_variances"
-            referencedColumns: ["part_id"]
-          },
-          {
-            foreignKeyName: "plm_bom_lines_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "plm_catch_up"
-            referencedColumns: ["product_id"]
-          },
-          {
-            foreignKeyName: "plm_bom_lines_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "plm_products"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "plm_bom_lines_replaces_part_id_fkey"
-            columns: ["replaces_part_id"]
-            isOneToOne: false
-            referencedRelation: "parts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "plm_bom_lines_replaces_part_id_fkey"
-            columns: ["replaces_part_id"]
-            isOneToOne: false
-            referencedRelation: "store_receiving_variances"
-            referencedColumns: ["part_id"]
-          },
-        ]
-      }
       plm_deliverable_template: {
         Row: {
           key: string
@@ -3098,6 +3078,13 @@ export type Database = {
             foreignKeyName: "plm_deliverables_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
+            referencedRelation: "plm_bom_progress"
+            referencedColumns: ["product_id"]
+          },
+          {
+            foreignKeyName: "plm_deliverables_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
             referencedRelation: "plm_catch_up"
             referencedColumns: ["product_id"]
           },
@@ -3145,6 +3132,13 @@ export type Database = {
           product_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "plm_gates_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "plm_bom_progress"
+            referencedColumns: ["product_id"]
+          },
           {
             foreignKeyName: "plm_gates_product_id_fkey"
             columns: ["product_id"]
@@ -3233,7 +3227,7 @@ export type Database = {
             foreignKeyName: "plm_issues_bom_line_id_fkey"
             columns: ["bom_line_id"]
             isOneToOne: false
-            referencedRelation: "plm_bom_lines"
+            referencedRelation: "version_lines"
             referencedColumns: ["id"]
           },
           {
@@ -3242,6 +3236,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "customer_complaints"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plm_issues_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "plm_bom_progress"
+            referencedColumns: ["product_id"]
           },
           {
             foreignKeyName: "plm_issues_product_id_fkey"
@@ -3356,6 +3357,13 @@ export type Database = {
             foreignKeyName: "plm_products_based_on_id_fkey"
             columns: ["based_on_id"]
             isOneToOne: false
+            referencedRelation: "plm_bom_progress"
+            referencedColumns: ["product_id"]
+          },
+          {
+            foreignKeyName: "plm_products_based_on_id_fkey"
+            columns: ["based_on_id"]
+            isOneToOne: false
             referencedRelation: "plm_catch_up"
             referencedColumns: ["product_id"]
           },
@@ -3437,8 +3445,15 @@ export type Database = {
             foreignKeyName: "plm_tests_bom_line_id_fkey"
             columns: ["bom_line_id"]
             isOneToOne: false
-            referencedRelation: "plm_bom_lines"
+            referencedRelation: "version_lines"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plm_tests_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "plm_bom_progress"
+            referencedColumns: ["product_id"]
           },
           {
             foreignKeyName: "plm_tests_product_id_fkey"
@@ -5080,11 +5095,161 @@ export type Database = {
         }
         Relationships: []
       }
+      version_lines: {
+        Row: {
+          approval_at: string | null
+          approval_done: boolean | null
+          approval_status: string
+          brands: string[] | null
+          bulk: boolean
+          change_type: string
+          child_version_id: string | null
+          created_at: string
+          description: string | null
+          design_at: string | null
+          design_done: boolean | null
+          design_status: string
+          id: string
+          is_critical: boolean
+          part_id: string | null
+          quantity: number | null
+          quoted_price: number | null
+          release_at: string | null
+          release_done: boolean | null
+          release_status: string
+          remarks: string | null
+          replaces_part_id: string | null
+          sample_at: string | null
+          sample_done: boolean | null
+          sample_status: string
+          sort: number
+          updated_at: string
+          updated_by: string | null
+          vendor_note: string | null
+          version_id: string
+        }
+        Insert: {
+          approval_at?: string | null
+          approval_done?: boolean | null
+          approval_status?: string
+          brands?: string[] | null
+          bulk?: boolean
+          change_type?: string
+          child_version_id?: string | null
+          created_at?: string
+          description?: string | null
+          design_at?: string | null
+          design_done?: boolean | null
+          design_status?: string
+          id?: string
+          is_critical?: boolean
+          part_id?: string | null
+          quantity?: number | null
+          quoted_price?: number | null
+          release_at?: string | null
+          release_done?: boolean | null
+          release_status?: string
+          remarks?: string | null
+          replaces_part_id?: string | null
+          sample_at?: string | null
+          sample_done?: boolean | null
+          sample_status?: string
+          sort?: number
+          updated_at?: string
+          updated_by?: string | null
+          vendor_note?: string | null
+          version_id: string
+        }
+        Update: {
+          approval_at?: string | null
+          approval_done?: boolean | null
+          approval_status?: string
+          brands?: string[] | null
+          bulk?: boolean
+          change_type?: string
+          child_version_id?: string | null
+          created_at?: string
+          description?: string | null
+          design_at?: string | null
+          design_done?: boolean | null
+          design_status?: string
+          id?: string
+          is_critical?: boolean
+          part_id?: string | null
+          quantity?: number | null
+          quoted_price?: number | null
+          release_at?: string | null
+          release_done?: boolean | null
+          release_status?: string
+          remarks?: string | null
+          replaces_part_id?: string | null
+          sample_at?: string | null
+          sample_done?: boolean | null
+          sample_status?: string
+          sort?: number
+          updated_at?: string
+          updated_by?: string | null
+          vendor_note?: string | null
+          version_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "version_lines_child_version_id_fkey"
+            columns: ["child_version_id"]
+            isOneToOne: false
+            referencedRelation: "item_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "version_lines_part_id_fkey"
+            columns: ["part_id"]
+            isOneToOne: false
+            referencedRelation: "parts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "version_lines_part_id_fkey"
+            columns: ["part_id"]
+            isOneToOne: false
+            referencedRelation: "store_receiving_variances"
+            referencedColumns: ["part_id"]
+          },
+          {
+            foreignKeyName: "version_lines_replaces_part_id_fkey"
+            columns: ["replaces_part_id"]
+            isOneToOne: false
+            referencedRelation: "parts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "version_lines_replaces_part_id_fkey"
+            columns: ["replaces_part_id"]
+            isOneToOne: false
+            referencedRelation: "store_receiving_variances"
+            referencedColumns: ["part_id"]
+          },
+          {
+            foreignKeyName: "version_lines_version_id_fkey"
+            columns: ["version_id"]
+            isOneToOne: false
+            referencedRelation: "item_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       free_part_prefixes: {
         Row: {
           prefix: string | null
+        }
+        Relationships: []
+      }
+      plm_bom_progress: {
+        Row: {
+          lines: number | null
+          pct: number | null
+          product_id: string | null
         }
         Relationships: []
       }
@@ -5190,6 +5355,10 @@ export type Database = {
       }
       auth_user_in_department: { Args: { dept_name: string }; Returns: boolean }
       auth_user_in_plant: { Args: { p_plant_id: string }; Returns: boolean }
+      brand_apply_version: {
+        Args: { p_brand: string; p_partial?: boolean; p_version: string }
+        Returns: undefined
+      }
       can_approve: { Args: never; Returns: boolean }
       can_edit_customers: { Args: never; Returns: boolean }
       can_edit_masters: { Args: never; Returns: boolean }
@@ -5198,6 +5367,52 @@ export type Database = {
       delete_production_schedule_cascade: {
         Args: { p_schedule_id: string }
         Returns: undefined
+      }
+      ecn_bump_users: {
+        Args: {
+          p_depth?: number
+          p_ecn: string
+          p_item: string
+          p_new_version: string
+        }
+        Returns: undefined
+      }
+      ecn_cancel: { Args: { p_ecn: string }; Returns: undefined }
+      ecn_change_subassembly: {
+        Args: { p_line: string; p_scope: string }
+        Returns: Json
+      }
+      ecn_item_draft: {
+        Args: { p_ecn: string; p_item: string; p_major?: boolean }
+        Returns: string
+      }
+      ecn_raise: {
+        Args: {
+          p_item: string
+          p_major?: boolean
+          p_reason?: string
+          p_title: string
+        }
+        Returns: string
+      }
+      ecn_release: {
+        Args: { p_brands?: string[]; p_ecn: string }
+        Returns: Json
+      }
+      ecn_update: {
+        Args: { p_ecn: string; p_reason: string; p_title: string }
+        Returns: undefined
+      }
+      ecn_where_used: {
+        Args: { p_item: string }
+        Returns: {
+          depth: number
+          item_id: string
+          name: string
+          part_code: string
+          source_type: string
+          version: string
+        }[]
       }
       generate_temp_part_code: {
         Args: { part_category?: string }
@@ -5297,6 +5512,15 @@ export type Database = {
         }
         Returns: Json
       }
+      item_apply_production: {
+        Args: { p_item: string; p_version: string }
+        Returns: undefined
+      }
+      item_latest_released: { Args: { p_item: string }; Returns: string }
+      item_version_for: {
+        Args: { p_ecn: string; p_item: string }
+        Returns: string
+      }
       linked_cover: {
         Args: { p_order_id: string; p_part_id: string }
         Returns: number
@@ -5366,14 +5590,6 @@ export type Database = {
         Args: { p_brand: string; p_model: string; p_name: string }
         Returns: Json
       }
-      model_brand_lines: {
-        Args: { p_brand: string; p_target: string }
-        Returns: Json
-      }
-      model_clean_lines: {
-        Args: { p_lines: Json; p_model: string }
-        Returns: Json
-      }
       model_create: {
         Args: {
           p_category: string
@@ -5390,20 +5606,6 @@ export type Database = {
         Returns: Json
       }
       model_next_code: { Args: { p_category: string }; Returns: string }
-      model_raise_ecn: {
-        Args: { p_major?: boolean; p_model: string; p_reason: string }
-        Returns: string
-      }
-      model_version_discard: { Args: { p_version: string }; Returns: undefined }
-      model_version_reason: {
-        Args: { p_reason: string; p_version: string }
-        Returns: undefined
-      }
-      model_version_release: { Args: { p_version: string }; Returns: undefined }
-      model_version_save: {
-        Args: { p_lines: Json; p_version: string }
-        Returns: Json
-      }
       my_permissions: { Args: never; Returns: Json }
       next_doc_number: {
         Args: { _prefix: string; _seq: unknown }
@@ -5434,7 +5636,6 @@ export type Database = {
         Args: { p_actions: Json; p_product: string }
         Returns: number
       }
-      plm_bom_from_production: { Args: { p_product: string }; Returns: number }
       plm_copy_bom: {
         Args: { p_from_part: string; p_to_part: string }
         Returns: Json
@@ -5468,9 +5669,12 @@ export type Database = {
         Returns: number
       }
       plm_product_codes: { Args: { p_product: string }; Returns: string[] }
-      plm_publish_bom: { Args: { p_product: string }; Returns: Json }
       plm_refresh: { Args: { p_product: string }; Returns: number }
       plm_refresh_all: { Args: never; Returns: number }
+      plm_release_first_version: {
+        Args: { p_product: string }
+        Returns: undefined
+      }
       plm_release_override: {
         Args: { p_product: string; p_reason: string }
         Returns: number
@@ -5485,6 +5689,48 @@ export type Database = {
         }
         Returns: Json
       }
+      plm_working_lines: {
+        Args: { p_product: string }
+        Returns: {
+          approval_at: string | null
+          approval_done: boolean | null
+          approval_status: string
+          brands: string[] | null
+          bulk: boolean
+          change_type: string
+          child_version_id: string | null
+          created_at: string
+          description: string | null
+          design_at: string | null
+          design_done: boolean | null
+          design_status: string
+          id: string
+          is_critical: boolean
+          part_id: string | null
+          quantity: number | null
+          quoted_price: number | null
+          release_at: string | null
+          release_done: boolean | null
+          release_status: string
+          remarks: string | null
+          replaces_part_id: string | null
+          sample_at: string | null
+          sample_done: boolean | null
+          sample_status: string
+          sort: number
+          updated_at: string
+          updated_by: string | null
+          vendor_note: string | null
+          version_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "version_lines"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      plm_working_version: { Args: { p_product: string }; Returns: string }
       post_stock_count: {
         Args: { p_lines: Json; p_plant_id: string; p_reference?: string }
         Returns: Json
@@ -5613,6 +5859,18 @@ export type Database = {
         }[]
       }
       unit_factor: { Args: { p_from: string; p_to: string }; Returns: number }
+      version_copy_lines: {
+        Args: { p_from: string; p_to: string }
+        Returns: number
+      }
+      version_release: {
+        Args: { p_brands?: string[]; p_version: string }
+        Returns: Json
+      }
+      versions_release: {
+        Args: { p_brands: string[]; p_set: string[] }
+        Returns: Json
+      }
     }
     Enums: {
       capa_status: "OPEN" | "SUBMITTED" | "ACCEPTED" | "REJECTED" | "CLOSED"

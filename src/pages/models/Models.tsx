@@ -75,7 +75,7 @@ const Models = () => {
                 {isLoading ? <TableSkeleton columns={5} rows={4} /> : rows.length === 0 ? (
                   <TableEmpty columns={5} message="No models here" />
                 ) : rows.map((m) => {
-                  const versions = (data!.versions.filter((v) => v.model_id === m.id)).sort(byVersion);
+                  const versions = (data!.versions.filter((v) => v.item_id === m.id)).sort(byVersion);
                   const rel = latestReleased(versions);
                   const draft = versions.find((v) => v.status === "DRAFT");
                   const brands = data!.brands.filter((b) => b.model_id === m.id);
@@ -88,7 +88,7 @@ const Models = () => {
                       </TableCell>
                       <TableCell className="whitespace-nowrap">{rel ? `v${rel.version}` : <span className="text-muted-foreground">not yet</span>}</TableCell>
                       <TableCell className="whitespace-nowrap">
-                        {draft ? <Badge variant="secondary">{draft.ecn_no ? `${draft.ecn_no} · ` : ""}v{draft.version}</Badge> : "—"}
+                        {draft ? <Badge variant="secondary">{draft.ecn ? `${draft.ecn.ecn_no} · ` : ""}v{draft.version}</Badge> : "—"}
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-1">
@@ -132,8 +132,8 @@ export function NewModelDialog({ open, onOpenChange, onCreated }: {
   const { data: next } = useNextModelCode(cat || undefined);
   useEffect(() => { if (open) { setCat(""); setCode(""); setName(""); setCopyFrom(""); } }, [open]);
   useEffect(() => { if (next) setCode(next); }, [next]);
-  const sources = (data?.versions ?? []).filter((v) => v.lines.length > 0)
-    .map((v) => ({ v, m: data!.models.find((m) => m.id === v.model_id) }))
+  const sources = (data?.versions ?? []).filter((v) => v.lines > 0)
+    .map((v) => ({ v, m: data!.models.find((m) => m.id === v.item_id) }))
     .filter((x) => x.m).sort((a, b) => a.m!.part_code.localeCompare(b.m!.part_code) || byVersion(a.v, b.v));
 
   const submit = async () => {

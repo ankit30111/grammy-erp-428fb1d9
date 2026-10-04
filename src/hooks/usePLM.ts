@@ -36,24 +36,8 @@ export interface PlmProduct {
   created_at: string;
 }
 
-export const BOM_STEPS = [
-  ["design_status", "Design"], ["sample_status", "Sample"], ["approval_status", "Approval"], ["release_status", "Release"],
-] as const;
-export type StepStatus = "OPEN" | "WIP" | "CLOSED";
-
-export interface PlmBomLine {
-  id: string; product_id: string; part_id: string | null; description: string | null;
-  quantity: number | null; bulk: boolean; is_critical: boolean;
-  change_type: "NEW" | "CARRY_OVER" | "CHANGED"; replaces_part_id: string | null;
-  design_status: StepStatus; sample_status: StepStatus; approval_status: StepStatus; release_status: StepStatus;
-  design_done: boolean; sample_done: boolean; approval_done: boolean; release_done: boolean;
-  vendor_note: string | null; quoted_price: number | null; remarks: string | null; sort: number;
-  part: { id: string; part_code: string; name: string; uom: string | null; unit_price: number | null; currency: string | null; category: string; approval_status: string } | null;
-  replaces: { part_code: string; name: string } | null;
-}
-
-export const linePct = (l: PlmBomLine) =>
-  (Number(l.design_done) + Number(l.sample_done) + Number(l.approval_done) + Number(l.release_done)) * 25;
+export { BOM_STEPS, linePct } from "@/hooks/useEngineering";
+export type { StepStatus } from "@/hooks/useEngineering";
 
 export interface PlmMetrics {
   fg_count: number; master_lines: number; master_done: number; master_pct: number; bom_pct: number; spec_pct: number;
@@ -89,16 +73,10 @@ export const usePlmProducts = () =>
         db.from("plm_issues").select("id, issue_no, product_id, stage, description, severity, owner, target_date, status, raised_on"),
         db.from("parts").select("id, part_code, plm_product_id").not("plm_product_id", "is", null).neq("source_type", "MODEL"),
         db.from("plm_catch_up").select("*"),
-        db.from("plm_bom_lines").select("product_id, design_done, sample_done, approval_done, release_done"),
+        db.from("plm_bom_progress").select("product_id, lines, pct"),
       ]);
       for (const r of [p, d, i, f, c, b]) if (r.error) throw r.error;
-      const bomSum = new Map<string, { n: number; s: number }>();
-      for (const l of b.data ?? []) {
-        const x = bomSum.get(l.product_id) ?? { n: 0, s: 0 };
-        x.n++; x.s += linePct(l as any);
-        bomSum.set(l.product_id, x);
-      }
-      const bomPct = new Map([...bomSum].map(([k, x]) => [k, Math.round((x.s / x.n) * 10) / 10]));
+      const bomPct = new Map<string, number>((b.data ?? []).filter((x: any) => x.lines > 0).map((x: any) => [x.product_id, Number(x.pct)]));
       const progress = new Map<string, Record<number, { total: number; done: number }>>();
       for (const row of d.data ?? []) {
         const s = row.plm_deliverable_template?.stage;
@@ -146,8 +124,8 @@ export const usePlmProduct = (code?: string) =>
             : Promise.resolve({ data: null }),
         db.from("plm_products").select("id, product_code, name, client, stage").eq("based_on_id", product.id).order("product_code"),
         db.from("plm_catch_up").select("*").eq("product_id", product.id).maybeSingle(),
-        db.from("plm_bom_lines").select("*, part:parts!plm_bom_lines_part_id_fkey ( id, part_code, name, uom, unit_price, currency, category, approval_status ), replaces:parts!plm_bom_lines_replaces_part_id_fkey ( part_code, name )")
-          .eq("product_id", product.id).order("sort").order("created_at"),
+        // R&D's BOM is the model's working version: the open draft, else the released one.
+        db.rpc("plm_working_version", { p_product: product.id }),
       ]);
       if (bom.error) throw bom.error;
       for (const r of [fresh, del, gates, tests, issues, fgs, metrics]) if (r.error) throw r.error;
@@ -155,6 +133,11 @@ export const usePlmProduct = (code?: string) =>
       const { data: brandCodes = [] } = model
         ? await db.from("parts").select("id, part_code, name, brand, model_version").eq("model_id", model.id).eq("is_active", true).order("part_code")
         : { data: [] };
+      const working = bom.data
+        ? (await db.from("item_versions").select("id, item_id, version, major, minor, kind, status, ecn_id, note, based_on, created_at, released_at, item:parts!item_versions_item_id_fkey ( id, part_code, name, source_type ), ecn:ecns ( id, ecn_no, title, reason, status )")
+            .eq("id", bom.data).maybeSingle()).data
+        : null;
+      const { data: workingLines = [] } = working ? await db.rpc("plm_working_lines", { p_product: product.id }) : { data: [] };
       const blockers: Record<number, string[]> = {};
       const stage = fresh.data.stage as number;
       if (stage < 6) {
@@ -177,7 +160,9 @@ export const usePlmProduct = (code?: string) =>
         base: base.data ? { ...base.data, erp: !!product.based_on_part_id } as { id: string; product_code: string; name: string; erp: boolean; source_type?: string } : null,
         variations: variations.data ?? [],
         catchUp: catchUp.data as { vouchers: string; part_codes: string } | null,
-        bom: (bom.data ?? []) as PlmBomLine[],
+        /** The version R&D is working on (draft or released), and every line it is developing. */
+        working: working as import("@/hooks/useEngineering").IVersion | null,
+        bom: (workingLines ?? []) as { id: string; part_id: string | null; release_done: boolean }[],
         blockers,
       };
     },
@@ -222,8 +207,7 @@ export const usePlmMutations = () => {
       db.rpc("plm_release_override", { p_product: a.product, p_reason: a.reason }), "Released to mass production"),
     linkPart: wrap((a: { product: string; part: string; link: boolean }) =>
       db.rpc("plm_link_part", { p_product: a.product, p_part: a.part, p_link: a.link })),
-    copyBom: wrap((a: { from: string; to: string }) => db.rpc("plm_copy_bom", { p_from_part: a.from, p_to_part: a.to }), "BOM copied"),
-    addTest: wrap((t: { product_id: string; phase: string; name: string; sort?: number }) => db.from("plm_tests").insert(t)),
+    addTest: wrap((t: { product_id: string; phase: string; name: string; sort?: number; bom_line_id?: string }) => db.from("plm_tests").insert(t)),
     copyTests: wrap(async (a: { from: string; to: string }) => {
       const { data, error } = await db.from("plm_tests").select("phase, name, sort").eq("product_id", a.from).in("phase", ["EVT", "SVT"]);
       if (error) throw error;
@@ -235,12 +219,7 @@ export const usePlmMutations = () => {
     deleteTest: wrap((id: string) => db.from("plm_tests").delete().eq("id", id)),
     addIssue: wrap((i: any) => db.from("plm_issues").insert(i), "Issue raised"),
     updateIssue: wrap(({ id, ...patch }: any) => db.from("plm_issues").update(patch).eq("id", id)),
-    addBomLine: wrap((l: Partial<PlmBomLine> & { product_id: string }) => db.from("plm_bom_lines").insert(l)),
-    updateBomLine: wrap(({ id, ...patch }: Partial<PlmBomLine> & { id: string }) => db.from("plm_bom_lines").update(patch).eq("id", id)),
-    deleteBomLine: wrap((id: string) => db.from("plm_bom_lines").delete().eq("id", id)),
-    bomFromProduction: wrap((product: string) => db.rpc("plm_bom_from_production", { p_product: product }), "BOM started from the finished good"),
     bomFromBase: wrap((a: { product: string; actions: any[] }) => db.rpc("plm_bom_from_base", { p_product: a.product, p_actions: a.actions }), "BOM created from the base product"),
-    publishBom: wrap((product: string) => db.rpc("plm_publish_bom", { p_product: product }), "BOM published to production"),
     schedulePilot: wrap((a: { plant: string; part: string; qty: number; date: string }) =>
       db.rpc("plm_schedule_pilot", { p_plant_id: a.plant, p_part_id: a.part, p_quantity: a.qty, p_date: a.date }), "Pilot voucher created"),
   };

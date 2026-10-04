@@ -1,3 +1,5 @@
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useMemo, useState } from "react";
 import { usePermissions } from "@/hooks/usePermissions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -83,6 +85,20 @@ export const BOMBuilder = ({ partId: initialParentId, onClose, draft }: { partId
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   const parentPart = parts.find((p: any) => p.id === parentId);
+  // Brand codes and sub-assemblies under R&D's version control: this BOM is
+  // written from the released version, so a change belongs in an ECN.
+  const { data: engVersion } = useQuery({
+    queryKey: ["eng-production-of", parentId],
+    enabled: !!parentId && !draft,
+    queryFn: async () => {
+      const p: any = parts.find((x: any) => x.id === parentId);
+      const item = p?.source_type === "FINISHED_GOOD" ? p?.model_id : parentId;
+      if (!item) return null;
+      const { data } = await (supabase as any).from("item_versions").select("version, item:parts!item_versions_item_id_fkey ( part_code, plm:plm_products!parts_plm_product_id_fkey ( product_code ) )")
+        .eq("item_id", item).eq("status", "RELEASED").order("major", { ascending: false }).order("minor", { ascending: false }).limit(1).maybeSingle();
+      return data as { version: string; item: { part_code: string; plm: { product_code: string } | null } } | null;
+    },
+  });
 
   const parentCandidates = useMemo(
     // Brand versions are not offered: their BOM follows the base part's.
@@ -312,6 +328,13 @@ export const BOMBuilder = ({ partId: initialParentId, onClose, draft }: { partId
                 )}
               </div>
             </div>
+            {engVersion && (
+              <p className="mt-3 rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-sm">
+                This BOM is built from R&amp;D's {engVersion.item.part_code} v{engVersion.version}. Change it there with an ECN
+                {engVersion.item.plm ? <> (R&amp;D product {engVersion.item.plm.product_code}, BOM tab)</> : null}: a change saved here is
+                replaced the next time a version is released onto it.
+              </p>
+            )}
             {pendingRequest && (
               <p className="mt-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200">
                 {needsApproval
