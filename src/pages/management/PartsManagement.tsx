@@ -1,6 +1,5 @@
 import { Link } from "react-router-dom";
 import { useState, useRef } from "react";
-import { PartProductLink } from "@/components/PLM/PartProductLink";
 import { PartUnitFields, unitColumns, unitProblem, unitValueFromPart, type UnitValue } from "@/components/Parts/PartUnitFields";
 import { format } from "date-fns";
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
@@ -763,7 +762,6 @@ const RawMaterialsManagement = () => {
                   </div>
                 )}
 
-                <PartProductLink part={viewMaterial} />
 
                 <PartBranding part={viewMaterial} allParts={rawMaterials} />
 

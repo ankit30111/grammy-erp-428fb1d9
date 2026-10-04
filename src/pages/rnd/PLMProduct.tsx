@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { CreatePartDialog } from "@/components/Parts/CreatePartDialog";
+import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Check, FileText, Lock, Paperclip, Plus, Trash2, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -363,78 +362,59 @@ function GateCard({ stage, p, gate, blockers, canEdit, canApprove, upload, m }: 
   );
 }
 
+/**
+ * R&D is linked to the live ERP by one reference only: this product points at
+ * its model (JA-006). Brand codes, their BOMs and vouchers belong to the ERP and
+ * are only read here - nothing on this page changes them.
+ */
 function FinishedGoods({ data, canEdit, m }: any) {
   const { product: p } = data;
   const [pick, setPick] = useState("");
-  const { data: fgs = [] } = useQuery({
-    queryKey: ["plm-fg-candidates"],
+  const { data: models = [] } = useQuery({
+    queryKey: ["plm-model-candidates"],
     queryFn: async () => {
-      const { data, error } = await (supabase as any).from("parts").select("id, part_code, name, plm_product_id")
-        .eq("source_type", "FINISHED_GOOD").eq("is_active", true).order("part_code");
+      const { data, error } = await (supabase as any).from("parts")
+        .select("id, part_code, name, plm_product_id, plm:plm_products!parts_plm_product_id_fkey ( product_code )")
+        .eq("source_type", "MODEL").eq("is_active", true).order("part_code");
       if (error) throw error;
       return data as any[];
     },
   });
-  const free = fgs.filter((f) => !f.plm_product_id);
-  const { data: baseFgs = [] } = useQuery({
-    queryKey: ["plm-base-fgs", p.based_on_id],
-    enabled: !!p.based_on_id,
-    queryFn: async () => {
-      const { data } = await (supabase as any).from("parts").select("id, part_code").eq("plm_product_id", p.based_on_id).order("part_code");
-      return (data ?? []) as any[];
-    },
-  });
-  const [copyFrom, setCopyFrom] = useState("");
-  useEffect(() => { if (!copyFrom && baseFgs[0]) setCopyFrom(baseFgs[0].id); }, [baseFgs, copyFrom]);
-  const [creating, setCreating] = useState(false);
-  const qc = useQueryClient();
 
   return (
     <div className="space-y-2 rounded-md border p-3">
-      <div className="font-medium text-sm">Finished-good codes of this product</div>
-      {data.model && (
-        <p className="text-sm">
-          Model <Link className="font-mono underline-offset-2 hover:underline" to={`/models/${encodeURIComponent(data.model.part_code)}`}>{data.model.part_code}</Link>:
-          its BOM per version and its brands are on the Models page. Publishing R&amp;D's BOM writes the model's draft version.
-        </p>
-      )}
+      <div className="font-medium text-sm">Model and brand codes</div>
       <p className="text-xs text-muted-foreground">
-        One code per brand (JA-06C-PH). Create it here and it is linked to this product; its BOM is built on that code, and
-        its completeness drives gates 2 and 4.{p.kind === "VARIATION" ? " A variation can start its BOM from the base product's code." : ""}
+        This product is linked to its model only. Brand codes, their BOMs and vouchers live in the ERP (Models page) and are
+        shown here read-only; nothing done in R&amp;D changes them.
       </p>
-      {canEdit && (
-        <Button size="sm" onClick={() => setCreating(true)}><Plus /> Create finished-good code</Button>
-      )}
-      <CreatePartDialog open={creating} onOpenChange={setCreating}
-        forProduct={{ id: p.id, code: p.product_code, name: p.name, category: p.category, client: p.client, baseFgs }}
-        onCreated={() => qc.invalidateQueries({ predicate: (q) => String(q.queryKey[0]).startsWith("plm") })} />
-      {data.fgs.length === 0 && <p className="text-sm text-muted-foreground">None linked yet.</p>}
-      {data.fgs.map((f: any) => (
-        <div key={f.id} className="flex flex-wrap items-center gap-2 text-sm">
-          <span className="font-mono">{f.part_code}</span><span>{f.name}</span>
-          {canEdit && <Button variant="ghost" size="sm" onClick={() => m.linkPart.mutate({ product: p.id, part: f.id, link: false })}>Unlink</Button>}
-          {canEdit && p.kind === "VARIATION" && baseFgs.length > 0 && (
-            <span className="flex items-center gap-1">
-              <select aria-label="Copy BOM from" className={sel} value={copyFrom} onChange={(e) => setCopyFrom(e.target.value)}>
-                {baseFgs.map((b) => <option key={b.id} value={b.id}>{b.part_code}</option>)}
-              </select>
-              <Button variant="outline" size="sm" onClick={() => m.copyBom.mutate({ from: copyFrom, to: f.id })}>Copy BOM from base</Button>
-            </span>
-          )}
+      {data.model ? (
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <span>Model</span>
+          <Link className="font-mono font-medium underline-offset-2 hover:underline" to={`/models/${encodeURIComponent(data.model.part_code)}`}>{data.model.part_code}</Link>
+          <span className="text-muted-foreground">{data.model.name}</span>
+          {canEdit && <Button variant="ghost" size="sm" onClick={() => m.linkPart.mutate({ product: p.id, part: data.model.id, link: false })}>Unlink</Button>}
         </div>
-      ))}
-      {canEdit && (
+      ) : <p className="text-sm text-muted-foreground">No model linked yet.</p>}
+      {data.fgs.length > 0 && (
+        <div className="text-sm">
+          <span className="text-muted-foreground">Brand codes on it: </span>
+          <span className="font-mono">{data.fgs.map((f: any) => `${f.part_code}${f.model_version ? ` (v${f.model_version})` : ""}`).join(", ")}</span>
+        </div>
+      )}
+      {canEdit && !data.model && (
         <div className="flex flex-wrap items-center gap-2 pt-1">
-          <select aria-label="Finished good to link" className={cn(sel, "min-w-[260px]")} value={pick} onChange={(e) => setPick(e.target.value)}>
-            <option value="">Or link an existing code…</option>
-            {free.map((f) => <option key={f.id} value={f.id}>{f.part_code} — {f.name}</option>)}
+          <select aria-label="Model to link" className={cn(sel, "min-w-[300px]")} value={pick} onChange={(e) => setPick(e.target.value)}>
+            <option value="">Link a model…</option>
+            {models.map((x) => (
+              <option key={x.id} value={x.id} disabled={!!x.plm_product_id && x.plm_product_id !== p.id}>
+                {x.part_code} — {x.name}{x.plm && x.plm_product_id !== p.id ? ` (linked to ${x.plm.product_code})` : ""}
+              </option>
+            ))}
           </select>
           <Button variant="outline" size="sm" disabled={!pick} onClick={() => { m.linkPart.mutate({ product: p.id, part: pick, link: true }); setPick(""); }}>Link</Button>
-          <Link className="text-sm underline-offset-2 hover:underline text-muted-foreground" to="/management/parts?tab=FINISHED">Open Finished Goods</Link>
+          <Link className="text-sm underline-offset-2 hover:underline text-muted-foreground" to="/models">Open Models</Link>
         </div>
-      )}
-      {p.kind === "VARIATION" && baseFgs.length === 0 && p.based_on_id && (
-        <p className="text-xs text-muted-foreground">The base product has no finished-good code linked, so there is no BOM to copy.</p>
       )}
     </div>
   );
@@ -471,10 +451,6 @@ function PilotPanel({ data, canEdit, plantId, m }: any) {
   return (
     <div className="space-y-2 rounded-md border p-3">
       <div className="font-medium text-sm">Pilot build (PP voucher)</div>
-      <p className="text-xs text-muted-foreground">
-        A pilot voucher runs the real flow: store kit, line, hourly output, PQC and OQC. It needs no projection and is
-        allowed only while the product is at stage 5.
-      </p>
       {mx.pilot_vouchers.length > 0 && (
         <Table>
           <TableHeader><TableRow><TableHead>Voucher</TableHead><TableHead>Code</TableHead><TableHead className="text-right">Qty</TableHead>
@@ -490,19 +466,9 @@ function PilotPanel({ data, canEdit, plantId, m }: any) {
           </TableBody>
         </Table>
       )}
-      {canEdit && p.stage === 5 && (
-        data.fgs.length === 0 ? <p className="text-sm text-muted-foreground">Link a finished-good code first (stage 2).</p> : (
-          <div className="flex flex-wrap items-end gap-2">
-            <select aria-label="Finished good" className={sel} value={part} onChange={(e) => setPart(e.target.value)}>
-              {data.fgs.map((f: any) => <option key={f.id} value={f.id}>{f.part_code}</option>)}
-            </select>
-            <Input type="number" min="1" className="w-28" placeholder="Qty" value={qty} onChange={(e) => setQty(e.target.value)} />
-            <Input type="date" className="w-40" value={date} onChange={(e) => setDate(e.target.value)} />
-            <Button disabled={!part || !(Number(qty) > 0) || !plantId}
-                    onClick={() => m.schedulePilot.mutate({ plant: plantId, part, qty: Number(qty), date })}>Create pilot voucher</Button>
-          </div>
-        )
-      )}
+      <p className="text-sm text-muted-foreground">
+        Pilot vouchers from R&amp;D are switched off while R&amp;D is a trial. Schedule a pilot from Planning as a normal voucher.
+      </p>
     </div>
   );
 }

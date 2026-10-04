@@ -106,16 +106,6 @@ export const CreatePartDialog = ({ open, onOpenChange, forProduct, onCreated }: 
   // Every finished good belongs to an R&D product (it is created there, or chosen here).
   const [plmProductId, setPlmProductId] = useState("");
   const [copyBomFrom, setCopyBomFrom] = useState("");
-  const { data: plmProducts = [] } = useQuery({
-    queryKey: ["plm-products-for-parts"],
-    enabled: open,
-    queryFn: async () => {
-      const { data, error } = await (supabase as any).from("plm_products")
-        .select("id, product_code, name, stage, status").neq("status", "DROPPED").order("product_code");
-      if (error) throw error;
-      return data as { id: string; product_code: string; name: string; stage: number }[];
-    },
-  });
 
   const { data: models = [] } = useQuery({
     queryKey: ["models-for-parts"],
@@ -240,7 +230,6 @@ export const CreatePartDialog = ({ open, onOpenChange, forProduct, onCreated }: 
     setSaving(true);
     try {
       const part: any = await addPart.mutateAsync({
-        ...(isFinished && plmProductId ? { plm_product_id: plmProductId } : {}),
         name: name.trim(),
         part_code: codeToSave,
         category: categoryPrefix,
@@ -372,35 +361,6 @@ export const CreatePartDialog = ({ open, onOpenChange, forProduct, onCreated }: 
                 />
               </div>
             </div>
-
-            {isFinished && (
-              <div className="space-y-2">
-                <Label htmlFor="cp-plm">R&amp;D product (optional)</Label>
-                {forProduct ? (
-                  <p className="text-sm"><span className="font-mono">{forProduct.code}</span> — {forProduct.name}</p>
-                ) : (
-                  <select id="cp-plm" className="h-10 w-full rounded-md border border-input bg-background px-2 text-sm"
-                          value={plmProductId} onChange={(e) => setPlmProductId(e.target.value)}>
-                    <option value="">Not tracked in R&amp;D yet</option>
-                    {plmProducts.map((p) => <option key={p.id} value={p.id}>{p.product_code} — {p.name} (stage {p.stage})</option>)}
-                  </select>
-                )}
-                <p className="text-xs text-muted-foreground">
-                  Links this code to its product in R&amp;D, so R&amp;D can track it. It does not stop production; it can be
-                  linked later from the product's page.
-                </p>
-                {forProduct?.baseFgs && forProduct.baseFgs.length > 0 && (
-                  <div className="flex flex-wrap items-center gap-2 text-sm">
-                    <Label htmlFor="cp-copy">Start its BOM from</Label>
-                    <select id="cp-copy" className="h-9 rounded-md border border-input bg-background px-2 text-sm"
-                            value={copyBomFrom} onChange={(e) => setCopyBomFrom(e.target.value)}>
-                      <option value="">No, start empty</option>
-                      {forProduct.baseFgs.map((b) => <option key={b.id} value={b.id}>{b.part_code} (base product)</option>)}
-                    </select>
-                  </div>
-                )}
-              </div>
-            )}
 
             {isFinished && (
               <div className="space-y-2">

@@ -139,17 +139,6 @@ export const ScheduleProductionForm = ({ projections, preset }: Props) => {
     ? brandIssues.filter((i) => i.part_id === projection.part_id && i.kind === "GAP") : [];
   const perBrandLines = rows.filter((r) => r.pos.perBrand);
 
-  // R&D: a finished good whose product has not been released yet is still
-  // scheduled (catch-up), but R&D is reminded to complete it.
-  const { data: rd } = useQuery({
-    queryKey: ["plm-stage-of-part", projection?.part_id],
-    enabled: kind === "FG" && !!projection?.part_id,
-    queryFn: async () => {
-      const { data } = await (supabase as any).from("parts")
-        .select("plm_products:plm_product_id ( product_code, stage )").eq("id", projection!.part_id).maybeSingle();
-      return (data?.plm_products ?? null) as { product_code: string; stage: number } | null;
-    },
-  });
 
   // Sub-assembly: open finished-good vouchers that use it, to build it for.
   const usedInIds = sub?.usedIn.map((u) => u.id) ?? [];
@@ -316,12 +305,6 @@ export const ScheduleProductionForm = ({ projections, preset }: Props) => {
           </div>
         )}
 
-        {rd && rd.stage < 6 && (
-          <p className="text-sm text-warning">
-            R&amp;D product {rd.product_code} is at stage {rd.stage} of 6. It can be scheduled; R&amp;D will see it listed as built before release
-            and should complete its stages.
-          </p>
-        )}
         {gaps.map((g) => (
           <p key={g.id} className="flex items-start gap-1.5 text-sm text-destructive">
             <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" /> {g.message}

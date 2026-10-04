@@ -148,6 +148,10 @@ export const usePlmProduct = (code?: string) =>
       ]);
       if (bom.error) throw bom.error;
       for (const r of [fresh, del, gates, tests, issues, fgs, metrics]) if (r.error) throw r.error;
+      const model = ((fgs.data ?? []).find((f: any) => f.source_type === "MODEL") ?? null) as { id: string; part_code: string; name: string } | null;
+      const { data: brandCodes = [] } = model
+        ? await db.from("parts").select("id, part_code, name, brand, model_version").eq("model_id", model.id).eq("is_active", true).order("part_code")
+        : { data: [] };
       const blockers: Record<number, string[]> = {};
       const stage = fresh.data.stage as number;
       if (stage < 6) {
@@ -161,10 +165,10 @@ export const usePlmProduct = (code?: string) =>
         gates: gates.data ?? [],
         tests: tests.data ?? [],
         issues: issues.data ?? [],
-        /** Brand codes (JA-06C-PH) of this product. */
-        fgs: (fgs.data ?? []).filter((f: any) => f.source_type !== "MODEL"),
-        /** Its model (JA-06C): the identity; the BOM per version lives on the Models page. */
-        model: ((fgs.data ?? []).find((f: any) => f.source_type === "MODEL") ?? null) as { id: string; part_code: string; name: string } | null,
+        /** Brand codes (JA-06C-PH) of its model - read-only here. */
+        fgs: brandCodes,
+        /** Its model (JA-06C): the one link between R&D and the ERP. */
+        model,
         metrics: metrics.data as PlmMetrics,
         base: base.data as { id: string; product_code: string; name: string } | null,
         variations: variations.data ?? [],
