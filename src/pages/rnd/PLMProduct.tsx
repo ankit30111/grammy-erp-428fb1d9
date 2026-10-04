@@ -693,7 +693,12 @@ function DetailsView({ data, canEdit, m, products }: any) {
 
 /* ---------------------------------------------------------------- BOM */
 
-function BomTab({ data, canEdit, m }: any) {
+function BomTab({ data, canEdit: canEditDev, m }: any) {
+  const [, setParams] = useSearchParams();
+  // In mass production the model's released version is the master: the R&D BOM
+  // follows it, and a change is an ECN (Versions & brands), not an edit here.
+  const inProduction = data.product.stage === 6 && !!data.model;
+  const canEdit = canEditDev && !inProduction;
   const { product: p, metrics: mx } = data;
   const dev = mx.dev_bom ?? {};
   const { data: baseLines = [] } = useQuery({
@@ -748,6 +753,25 @@ function BomTab({ data, canEdit, m }: any) {
     );
   }
 
+  if (inProduction) {
+    return (
+      <Card>
+        <CardContent className="pt-5 space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border bg-muted/40 p-3">
+            <p className="text-sm">
+              {data.model.part_code} is in mass production. This is its BOM from the model's version; it follows each version
+              Management releases. To change it, raise an ECN.
+            </p>
+            {canEditDev && (
+              <Button size="sm" onClick={() => setParams((x) => { x.set("tab", "versions"); return x; })}>Raise ECN / edit version</Button>
+            )}
+          </div>
+          <ProductBom data={data} canEdit={false} m={m} />
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card>
       <CardContent className="pt-5 space-y-4">
@@ -757,11 +781,11 @@ function BomTab({ data, canEdit, m }: any) {
                   hint={[p.target_cost != null && `target ₹${Number(p.target_cost).toLocaleString("en-IN")}`, dev.unpriced > 0 && `${dev.unpriced} without price`].filter(Boolean).join(" · ")}
                   bad={p.target_cost != null && dev.cost > p.target_cost} />
           <div className="rounded-md border p-3 min-w-[240px] space-y-1">
-            <div className="text-xs text-muted-foreground">Production BOM</div>
+            <div className="text-xs text-muted-foreground">Model {data.model?.part_code ?? ""} v1.0</div>
             <div className="text-sm">{p.bom_published_at ? `Published ${fmtDate(p.bom_published_at)}${published ? "" : " · changed since"}` : "Not published"}</div>
-            <div className="text-xs text-muted-foreground">Published automatically when gate 4 passes, then with Publish after any change.</div>
+            <div className="text-xs text-muted-foreground">Written into the model's v1.0 draft when gate 4 passes, then with Publish. Production uses it once Management releases v1.0.</div>
             {canEdit && p.stage >= 5 && (
-              <Button size="sm" disabled={!canPublish || published} onClick={() => m.publishBom.mutate(p.id)}>Publish to production</Button>
+              <Button size="sm" disabled={!canPublish || published} onClick={() => m.publishBom.mutate(p.id)}>Publish to v1.0 draft</Button>
             )}
             {canEdit && p.stage >= 5 && dev.no_code > 0 && <div className="text-xs text-warning">{dev.no_code} line(s) still need a part code.</div>}
           </div>
