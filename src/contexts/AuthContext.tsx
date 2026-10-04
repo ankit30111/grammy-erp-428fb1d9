@@ -287,6 +287,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [fetchUserProfile, fetchPermittedModules, fetchPermittedPlants]);
 
+  // Rights changed by an admin (role, departments) reach an open session when
+  // the person comes back to the tab - at most once a minute - instead of only
+  // after signing in again.
+  const lastRightsCheckRef = useRef(0);
+  useEffect(() => {
+    const onVisible = () => {
+      const uid = loadedUserRef.current;
+      if (document.visibilityState !== 'visible' || !uid) return;
+      if (Date.now() - lastRightsCheckRef.current < 60_000) return;
+      lastRightsCheckRef.current = Date.now();
+      void fetchUserProfile(uid);
+      void fetchPermittedModules();
+      void fetchPermittedPlants();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [fetchUserProfile, fetchPermittedModules, fetchPermittedPlants]);
+
   const value: AuthContextType = {
     user,
     session,
