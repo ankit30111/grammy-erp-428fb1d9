@@ -33,7 +33,7 @@ export const useClientNames = (products: PlmProduct[]) => {
 };
 
 const blank = {
-  kind: "NEW_MODEL", based_on_id: "", product_code: "", name: "", category: "", client: "", ownership: "GRAMMY",
+  kind: "NEW_MODEL", based_on_id: "", based_on_part_id: "", product_code: "", name: "", category: "", client: "", ownership: "GRAMMY",
   business_model: "ODM", priority: "MEDIUM", start_date: new Date().toISOString().slice(0, 10), target_launch: "",
   target_cost: "", notes: "", copyTests: true,
 };
@@ -52,6 +52,19 @@ export function NewProductDialog({ open, onOpenChange, products, onCreated }: {
   useEffect(() => { if (open) setF({ ...blank }); }, [open]);
   const set = (patch: Partial<typeof blank>) => setF((x) => ({ ...x, ...patch }));
   const base = products.find((p) => p.id === f.based_on_id);
+  // What the ERP already makes: models (master BOM) and brand codes (full BOM).
+  const { data: erpProducts = [] } = useQuery({
+    queryKey: ["plm-erp-base-products"],
+    enabled: open,
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).from("parts")
+        .select("id, part_code, name, category, source_type, model_id")
+        .in("source_type", ["MODEL", "FINISHED_GOOD"]).eq("is_active", true).order("part_code");
+      if (error) throw error;
+      return (data ?? []) as { id: string; part_code: string; name: string; category: string; source_type: string; model_id: string | null }[];
+    },
+  });
+  const erpBase = erpProducts.find((p) => p.id === f.based_on_part_id);
   // The product ID is the model number: category, then the next number of that
   // category (JA-016). It becomes the model in parts; brands go on it later.
   const { categories } = usePartCategories();
@@ -61,26 +74,34 @@ export function NewProductDialog({ open, onOpenChange, products, onCreated }: {
   useEffect(() => { if (open) setAutoCode(true); }, [open]);
   useEffect(() => { if (autoCode && nextCode) setF((x) => ({ ...x, product_code: nextCode })); }, [nextCode, autoCode]);
 
-  const pickBase = (id: string) => {
+  const pickBase = (value: string) => {
+    const [src, id = ""] = value.split(":");
+    if (src === "part") {
+      const e = erpProducts.find((p) => p.id === id);
+      const cat = categories.find((c) => c.prefix === e?.category)?.name;
+      set({ based_on_part_id: id, based_on_id: "", ...(e ? { category: cat ?? f.category, name: f.name || e.name } : {}) });
+      return;
+    }
     const b = products.find((p) => p.id === id);
-    set({ based_on_id: id, ...(b ? { category: b.category ?? "", target_cost: b.target_cost != null ? String(b.target_cost) : "",
+    set({ based_on_id: id, based_on_part_id: "", ...(b ? { category: b.category ?? "", target_cost: b.target_cost != null ? String(b.target_cost) : "",
       business_model: b.business_model ?? "ODM", name: f.name || b.name } : {}) });
   };
 
   const submit = async () => {
     if (!f.product_code.trim() || !f.name.trim()) return toast.error("Enter the product ID and name");
-    if (f.kind === "VARIATION" && !f.based_on_id) return toast.error("Choose the product this variation is based on");
+    if (f.kind === "VARIATION" && !f.based_on_id && !f.based_on_part_id) return toast.error("Choose the product this variation is based on");
     if (products.some((p) => p.product_code === f.product_code.trim().toUpperCase())) return toast.error(`${f.product_code.toUpperCase()} already exists`);
     const client = f.client.trim();
     const created = await createProduct.mutateAsync({
       product_code: f.product_code.trim(), name: f.name.trim(), kind: f.kind as any,
-      based_on_id: f.kind === "VARIATION" ? f.based_on_id : null, category: f.category || null,
+      based_on_id: f.kind === "VARIATION" && f.based_on_id ? f.based_on_id : null,
+      based_on_part_id: f.kind === "VARIATION" && f.based_on_part_id ? f.based_on_part_id : null, category: f.category || null,
       client: client || null, customer_id: customers.find((c) => c.name === client)?.id ?? null,
       ownership: f.ownership as any, business_model: f.business_model as any, priority: f.priority as any,
       start_date: f.start_date || null, target_launch: f.target_launch || null,
       target_cost: f.target_cost ? Number(f.target_cost) : null, notes: f.notes || null,
     });
-    if (f.kind === "VARIATION" && f.copyTests && created?.id) {
+    if (f.kind === "VARIATION" && f.based_on_id && f.copyTests && created?.id) {
       await copyTests.mutateAsync({ from: f.based_on_id, to: created.id }).catch(() => undefined);
     }
     onOpenChange(false);
@@ -102,10 +123,35 @@ export function NewProductDialog({ open, onOpenChange, products, onCreated }: {
           {f.kind === "VARIATION" && (
             <div className="sm:col-span-2 space-y-2 rounded-md border bg-muted/40 p-3">
               <Label htmlFor="plm-base">Based on</Label>
-              <select id="plm-base" className={sel} value={f.based_on_id} onChange={(e) => pickBase(e.target.value)}>
+              <select id="plm-base" className={sel}
+                      value={f.based_on_part_id ? `part:${f.based_on_part_id}` : f.based_on_id ? `plm:${f.based_on_id}` : ""}
+                      onChange={(e) => pickBase(e.target.value)}>
                 <option value="">Choose the earlier product…</option>
-                {products.map((p) => <option key={p.id} value={p.id}>{p.product_code} — {p.name}{p.client ? ` (${p.client})` : ""}</option>)}
+                {erpProducts.length > 0 && (
+                  <optgroup label="In production (ERP) - model = master BOM, brand code = full BOM">
+                    {erpProducts.filter((x) => x.source_type === "MODEL").flatMap((m) => [
+                      <option key={m.id} value={`part:${m.id}`}>{m.part_code} — {m.name} (model)</option>,
+                      ...erpProducts.filter((b) => b.model_id === m.id).map((b) => (
+                        <option key={b.id} value={`part:${b.id}`}>{"\u00a0\u00a0\u00a0"}{b.part_code} — {b.name}</option>
+                      )),
+                    ])}
+                    {erpProducts.filter((b) => b.source_type === "FINISHED_GOOD" && !b.model_id).map((b) => (
+                      <option key={b.id} value={`part:${b.id}`}>{b.part_code} — {b.name}</option>
+                    ))}
+                  </optgroup>
+                )}
+                {products.length > 0 && (
+                  <optgroup label="R&D projects">
+                    {products.map((p) => <option key={p.id} value={`plm:${p.id}`}>{p.product_code} — {p.name}{p.client ? ` (${p.client})` : ""}</option>)}
+                  </optgroup>
+                )}
               </select>
+              {erpBase && (
+                <p className="text-xs text-muted-foreground">
+                  After you create it, {erpBase.part_code}'s {erpBase.source_type === "MODEL" ? "master BOM" : "BOM (packaging included)"} opens
+                  line by line: keep what stays, mark what changes. It is only read; {erpBase.part_code} itself does not change.
+                </p>
+              )}
               {base && (
                 <>
                   <p className="text-xs text-muted-foreground">

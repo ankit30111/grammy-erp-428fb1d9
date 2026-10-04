@@ -27,7 +27,7 @@ export const DELIVERABLE_STATES = [["OPEN", "Open"], ["WIP", "WIP"], ["CLOSED", 
 
 export interface PlmProduct {
   id: string; product_code: string; name: string; category: string | null;
-  kind: "NEW_MODEL" | "VARIATION"; based_on_id: string | null;
+  kind: "NEW_MODEL" | "VARIATION"; based_on_id: string | null; based_on_part_id?: string | null;
   ownership: "GRAMMY" | "CLIENT"; client: string | null; customer_id: string | null;
   business_model: "ODM" | "OEM" | null; priority: "HIGH" | "MEDIUM" | "LOW";
   start_date: string | null; target_launch: string | null; target_cost: number | null;
@@ -138,9 +138,12 @@ export const usePlmProduct = (code?: string) =>
         db.from("plm_issues").select("*").eq("product_id", product.id).order("issue_no"),
         db.from("parts").select("id, part_code, name, brand, source_type").eq("plm_product_id", product.id).order("part_code"),
         db.rpc("plm_metrics", { p_product: product.id }),
-        product.based_on_id
-          ? db.from("plm_products").select("id, product_code, name").eq("id", product.based_on_id).maybeSingle()
-          : Promise.resolve({ data: null }),
+        product.based_on_part_id
+          // Started from what the ERP makes (a model or a brand code): read only.
+          ? db.from("parts").select("id, product_code:part_code, name, source_type").eq("id", product.based_on_part_id).maybeSingle()
+          : product.based_on_id
+            ? db.from("plm_products").select("id, product_code, name").eq("id", product.based_on_id).maybeSingle()
+            : Promise.resolve({ data: null }),
         db.from("plm_products").select("id, product_code, name, client, stage").eq("based_on_id", product.id).order("product_code"),
         db.from("plm_catch_up").select("*").eq("product_id", product.id).maybeSingle(),
         db.from("plm_bom_lines").select("*, part:parts!plm_bom_lines_part_id_fkey ( id, part_code, name, uom, unit_price, currency, category, approval_status ), replaces:parts!plm_bom_lines_replaces_part_id_fkey ( part_code, name )")
@@ -170,7 +173,8 @@ export const usePlmProduct = (code?: string) =>
         /** Its model (JA-06C): the one link between R&D and the ERP. */
         model,
         metrics: metrics.data as PlmMetrics,
-        base: base.data as { id: string; product_code: string; name: string } | null,
+        /** What a variation started from: an R&D product, or (erp) an ERP model / brand code. */
+        base: base.data ? { ...base.data, erp: !!product.based_on_part_id } as { id: string; product_code: string; name: string; erp: boolean; source_type?: string } : null,
         variations: variations.data ?? [],
         catchUp: catchUp.data as { vouchers: string; part_codes: string } | null,
         bom: (bom.data ?? []) as PlmBomLine[],

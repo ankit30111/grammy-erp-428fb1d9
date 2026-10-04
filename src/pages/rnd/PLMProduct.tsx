@@ -101,7 +101,14 @@ const PLMProduct = () => {
           {p.status !== "ACTIVE" && <Badge variant="secondary">{p.status === "ON_HOLD" ? "on hold" : "dropped"}</Badge>}
           {p.kind === "VARIATION" && (
             <span className="text-muted-foreground">
-              Variation of {data.base ? <Link className="font-mono underline-offset-2 hover:underline" to={`/rnd/products/${encodeURIComponent(data.base.product_code)}`}>{data.base.product_code}</Link> : "— (set the base product under Details)"}
+              Variation of {data.base ? (
+                <Link className="font-mono underline-offset-2 hover:underline"
+                      to={data.base.erp
+                        ? `/models/${encodeURIComponent(data.base.source_type === "MODEL" ? data.base.product_code : data.base.product_code.replace(/-[A-Z]{2}$/, ""))}`
+                        : `/rnd/products/${encodeURIComponent(data.base.product_code)}`}>
+                  {data.base.product_code}
+                </Link>
+              ) : "— (set the base product under Details)"}
             </span>
           )}
           {data.variations.length > 0 && (
@@ -688,9 +695,23 @@ function BomTab({ data, canEdit, m }: any) {
   const { product: p, metrics: mx } = data;
   const dev = mx.dev_bom ?? {};
   const { data: baseLines = [] } = useQuery({
-    queryKey: ["plm-base-bom", p.based_on_id],
-    enabled: !!p.based_on_id && data.bom.length === 0,
+    queryKey: ["plm-base-bom", p.based_on_id, p.based_on_part_id],
+    enabled: !!(p.based_on_id || p.based_on_part_id) && data.bom.length === 0,
     queryFn: async () => {
+      if (p.based_on_part_id) {
+        // An ERP model's master BOM, or a brand code's production BOM - read only.
+        const { data: lines, error: le } = await (supabase as any).rpc("plm_part_base_lines", { p_part: p.based_on_part_id });
+        if (le) throw le;
+        const ids = (lines ?? []).map((l: any) => l.part_id);
+        const { data: ps, error: pe } = ids.length
+          ? await (supabase as any).from("parts").select("id, part_code, name, uom, unit_price, currency, category, approval_status").in("id", ids)
+          : { data: [], error: null };
+        if (pe) throw pe;
+        const byId = new Map((ps ?? []).map((x: any) => [x.id, x]));
+        return (lines ?? []).map((l: any) => ({ id: l.part_id, part_id: l.part_id, quantity: l.quantity, bulk: l.bulk,
+            is_critical: l.is_critical, description: null, part: byId.get(l.part_id) ?? null }))
+          .sort((a: any, b: any) => String(a.part?.part_code).localeCompare(String(b.part?.part_code)));
+      }
       const { data: rows, error } = await (supabase as any).from("plm_bom_lines")
         .select("*, part:parts!plm_bom_lines_part_id_fkey ( id, part_code, name, uom, unit_price, currency, category, approval_status ), replaces:parts!plm_bom_lines_replaces_part_id_fkey ( part_code, name )")
         .eq("product_id", p.based_on_id).order("sort");

@@ -3269,6 +3269,7 @@ export type Database = {
       plm_products: {
         Row: {
           based_on_id: string | null
+          based_on_part_id: string | null
           bis_letter_url: string | null
           bis_status: string
           bom_changed_at: string | null
@@ -3296,6 +3297,7 @@ export type Database = {
         }
         Insert: {
           based_on_id?: string | null
+          based_on_part_id?: string | null
           bis_letter_url?: string | null
           bis_status?: string
           bom_changed_at?: string | null
@@ -3323,6 +3325,7 @@ export type Database = {
         }
         Update: {
           based_on_id?: string | null
+          based_on_part_id?: string | null
           bis_letter_url?: string | null
           bis_status?: string
           bom_changed_at?: string | null
@@ -3362,6 +3365,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "plm_products"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plm_products_based_on_part_id_fkey"
+            columns: ["based_on_part_id"]
+            isOneToOne: false
+            referencedRelation: "parts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plm_products_based_on_part_id_fkey"
+            columns: ["based_on_part_id"]
+            isOneToOne: false
+            referencedRelation: "store_receiving_variances"
+            referencedColumns: ["part_id"]
           },
           {
             foreignKeyName: "plm_products_customer_id_fkey"
@@ -5378,6 +5395,10 @@ export type Database = {
         Returns: string
       }
       model_version_discard: { Args: { p_version: string }; Returns: undefined }
+      model_version_reason: {
+        Args: { p_reason: string; p_version: string }
+        Returns: undefined
+      }
       model_version_release: { Args: { p_version: string }; Returns: undefined }
       model_version_save: {
         Args: { p_lines: Json; p_version: string }
@@ -5427,6 +5448,15 @@ export type Database = {
         Returns: undefined
       }
       plm_metrics: { Args: { p_product: string }; Returns: Json }
+      plm_part_base_lines: {
+        Args: { p_part: string }
+        Returns: {
+          bulk: boolean
+          is_critical: boolean
+          part_id: string
+          quantity: number
+        }[]
+      }
       plm_pass_gate: {
         Args: {
           p_approved_by?: string
@@ -5437,6 +5467,7 @@ export type Database = {
         }
         Returns: number
       }
+      plm_product_codes: { Args: { p_product: string }; Returns: string[] }
       plm_publish_bom: { Args: { p_product: string }; Returns: Json }
       plm_refresh: { Args: { p_product: string }; Returns: number }
       plm_refresh_all: { Args: never; Returns: number }
