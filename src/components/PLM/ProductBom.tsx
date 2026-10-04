@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { TableEmpty } from "@/components/ui/table-state";
 import { BOM_STEPS, type PlmBomLine, linePct } from "@/hooks/usePLM";
 import { cn } from "@/lib/utils";
+import { InsideToggle, SubAssemblyRows, useHasInside } from "@/components/BOM/SubAssemblyRows";
 
 const sel = "h-8 rounded-md border border-input bg-background px-2 text-sm";
 const CHANGE_LABEL: Record<string, string> = { NEW: "new", CARRY_OVER: "carry-over", CHANGED: "changed" };
@@ -77,6 +78,10 @@ export function ProductBom({ data, canEdit, m, focus = false, title }: {
   const shown = onlyOpen ? lines.filter((l) => !l.release_done) : lines;
   const { data: parts = [] } = usePickParts();
   const dev = data.metrics.dev_bom;
+  // Sub-assemblies open to show their parts: they are part of the product too.
+  const inside = useHasInside();
+  const [openInside, setOpenInside] = useState<Record<string, boolean>>({});
+  const subCount = lines.filter((l) => l.part_id && (inside.get(l.part_id)?.length ?? 0) > 0).length;
 
   return (
     <div className="space-y-3">
@@ -92,6 +97,16 @@ export function ProductBom({ data, canEdit, m, focus = false, title }: {
           {dev?.lines ?? 0} lines · closed: design {dev?.design ?? 0} · sample {dev?.sample ?? 0} · approval {dev?.approval ?? 0} · release {dev?.release ?? 0}
           {dev?.no_code ? ` · ${dev.no_code} without part code` : ""}
         </span>
+        {subCount > 0 && (
+          <button type="button" className="text-sm font-medium text-primary hover:underline"
+                  onClick={() => {
+                    const all = lines.filter((l) => l.part_id && (inside.get(l.part_id)?.length ?? 0) > 0);
+                    const anyClosed = all.some((l) => !openInside[l.id]);
+                    setOpenInside(Object.fromEntries(all.map((l) => [l.id, anyClosed])));
+                  }}>
+            {lines.some((l) => openInside[l.id]) ? "Close" : "Open"} all {subCount} sub-assemblies
+          </button>
+        )}
         <label className="ml-auto flex items-center gap-2 text-sm cursor-pointer">
           <Checkbox checked={onlyOpen} onCheckedChange={(c) => setOnlyOpen(Boolean(c))} /> Only parts not released
         </label>
@@ -126,7 +141,13 @@ export function ProductBom({ data, canEdit, m, focus = false, title }: {
                     </TableCell>
                     <TableCell className="min-w-[240px]">
                       {l.part ? (
-                        <div><span className="font-mono text-sm">{l.part.part_code}</span> {l.part.name}</div>
+                        <div>
+                          <span className="font-mono text-sm">{l.part.part_code}</span> {l.part.name}
+                          {l.part_id && (
+                            <div><InsideToggle partId={l.part_id} inside={inside} open={!!openInside[l.id]}
+                                               onToggle={() => setOpenInside((o) => ({ ...o, [l.id]: !o[l.id] }))} /></div>
+                          )}
+                        </div>
                       ) : (
                         <div className="italic">{l.description} <span className="not-italic text-xs text-warning">· no part code yet</span></div>
                       )}
@@ -173,6 +194,10 @@ export function ProductBom({ data, canEdit, m, focus = false, title }: {
                       </TableCell>
                     )}
                   </TableRow>
+                  {l.part_id && openInside[l.id] && (
+                    <SubAssemblyRows partId={l.part_id} perProduct={l.bulk ? null : Number(l.quantity ?? 0)} inside={inside}
+                                     lead={1} rest={canEdit ? 7 : 6} />
+                  )}
                   {open === l.id && (
                     <TableRow>
                       <TableCell />

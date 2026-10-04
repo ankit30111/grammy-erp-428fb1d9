@@ -21,6 +21,7 @@ import {
   brandMovePreview, compareBrand, diffVersions, latestReleased, useModel, useModelMutations, versionCmp,
 } from "@/hooks/useModels";
 import { cn } from "@/lib/utils";
+import { InsideToggle, SubAssemblyRows, useHasInside } from "@/components/BOM/SubAssemblyRows";
 
 const sel = "h-9 rounded-md border border-input bg-background px-2 text-sm";
 const qtyText = (l?: { quantity: number | null; bulk?: boolean } | null, uom?: string | null) =>
@@ -235,6 +236,8 @@ function VersionLines({ v, prev, parts }: { v: ModelVersion; prev?: ModelVersion
   const added = new Set((d?.added ?? []).map((l) => l.child_part_id));
   const p = (id: string) => parts.get(id);
   const sorted = [...v.lines].sort((a, b) => (p(a.child_part_id)?.part_code ?? "").localeCompare(p(b.child_part_id)?.part_code ?? ""));
+  const inside = useHasInside();
+  const [openIn, setOpenIn] = useState<Record<string, boolean>>({});
   return (
     <div className="space-y-2">
       {d && (
@@ -253,15 +256,24 @@ function VersionLines({ v, prev, parts }: { v: ModelVersion; prev?: ModelVersion
                 const part = p(l.child_part_id);
                 const was = changed.get(l.child_part_id);
                 return (
-                  <TableRow key={l.child_part_id} className={cn(added.has(l.child_part_id) && "bg-emerald-50 dark:bg-emerald-950/30", was && "bg-amber-50 dark:bg-amber-950/30")}>
-                    <TableCell className="font-mono text-xs">{part?.part_code ?? "?"}</TableCell>
-                    <TableCell className="text-sm">{part?.name}{l.is_critical && <Badge variant="outline" className="ml-2">critical</Badge>}</TableCell>
+                  <Fragment key={l.child_part_id}>
+                  <TableRow className={cn(added.has(l.child_part_id) && "bg-emerald-50 dark:bg-emerald-950/30", was && "bg-amber-50 dark:bg-amber-950/30")}>
+                    <TableCell className="font-mono text-xs align-top">{part?.part_code ?? "?"}</TableCell>
+                    <TableCell className="text-sm">
+                      {part?.name}{l.is_critical && <Badge variant="outline" className="ml-2">critical</Badge>}
+                      <div><InsideToggle partId={l.child_part_id} inside={inside} open={!!openIn[l.child_part_id]}
+                                         onToggle={() => setOpenIn((o) => ({ ...o, [l.child_part_id]: !o[l.child_part_id] }))} /></div>
+                    </TableCell>
                     <TableCell className="text-right tabular-nums whitespace-nowrap">
                       {was && <span className="text-muted-foreground line-through mr-2">{qtyText(was, part?.uom)}</span>}
                       {qtyText(l, part?.uom)}
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground">{added.has(l.child_part_id) ? "added" : was ? "changed" : ""}</TableCell>
                   </TableRow>
+                  {openIn[l.child_part_id] && (
+                    <SubAssemblyRows partId={l.child_part_id} perProduct={l.bulk ? null : Number(l.quantity ?? 0)} inside={inside} partSpan={2} rest={1} />
+                  )}
+                  </Fragment>
                 );
               })}
               {(d?.removed ?? []).map((l) => (
@@ -288,6 +300,8 @@ function Brands({ brands, versions, bom, parts, canApprove, m }: {
 }) {
   const [open, setOpen] = useState<string | null>(null);
   const [moving, setMoving] = useState<BrandRow | null>(null);
+  const inside = useHasInside();
+  const [openIn, setOpenIn] = useState<Record<string, boolean>>({});
   const rel = latestReleased(versions);
   if (brands.length === 0) return <p className="text-sm text-muted-foreground">No brand codes on this model yet.</p>;
   return (
@@ -345,14 +359,24 @@ function Brands({ brands, versions, bom, parts, canApprove, m }: {
                           <TableBody>
                             {c.rows.map((r) => {
                               const part = parts.get(r.brandChild ?? r.key);
+                              const pid = r.brandChild ?? r.key;
+                              const k = `${b.id}-${pid}`;
+                              const brandQty = r.brandChild ? (r.brandBulk ? null : Number(r.brandQty ?? 0)) : (r.model?.bulk ? null : Number(r.model?.quantity ?? 0));
                               return (
-                                <TableRow key={r.key} className={cn(r.status === "QTY" && "bg-amber-50 dark:bg-amber-950/30", r.status === "MISSING" && "bg-red-50 dark:bg-red-950/30")}>
-                                  <TableCell className="font-mono text-xs">{part?.part_code}</TableCell>
-                                  <TableCell className="text-sm">{part?.name}</TableCell>
+                                <Fragment key={r.key}>
+                                <TableRow className={cn(r.status === "QTY" && "bg-amber-50 dark:bg-amber-950/30", r.status === "MISSING" && "bg-red-50 dark:bg-red-950/30")}>
+                                  <TableCell className="font-mono text-xs align-top">{part?.part_code}</TableCell>
+                                  <TableCell className="text-sm">
+                                    {part?.name}
+                                    <div><InsideToggle partId={pid} inside={inside} open={!!openIn[k]}
+                                                       onToggle={() => setOpenIn((o) => ({ ...o, [k]: !o[k] }))} /></div>
+                                  </TableCell>
                                   <TableCell className="text-right tabular-nums whitespace-nowrap">{qtyText(r.model, part?.uom)}</TableCell>
                                   <TableCell className="text-right tabular-nums whitespace-nowrap">{r.brandChild ? qtyText({ quantity: r.brandQty ?? null, bulk: r.brandBulk }, part?.uom) : "—"}</TableCell>
                                   <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{STATUS_LABEL[r.status]}</TableCell>
                                 </TableRow>
+                                {openIn[k] && <SubAssemblyRows partId={pid} perProduct={brandQty} inside={inside} partSpan={2} rest={2} />}
+                                </Fragment>
                               );
                             })}
                           </TableBody>
