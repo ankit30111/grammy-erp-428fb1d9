@@ -50,21 +50,50 @@ export const PartBomView = ({ partId }: { partId: string }) => {
   );
 };
 
-/** Every part whose bill of materials includes this one. */
+/**
+ * Used In, worked out from the production BOMs (never typed):
+ *   goes into   the parts whose BOM lists this one directly (sub-assembly or finished good)
+ *   used in     the finished goods at the end of every chain
+ */
 export const PartWhereUsed = ({ partId }: { partId: string }) => {
   const { data: lines = [] } = useBomLines();
-  const parents = (lines as any[])
-    .filter((l) => l.child_part_id === partId)
+  const all = lines as any[];
+  const direct = all.filter((l) => l.child_part_id === partId)
     .sort((a, b) => (a.parent?.part_code ?? "").localeCompare(b.parent?.part_code ?? ""));
-  if (!parents.length) return <p className="text-sm text-muted-foreground">Not a line in any saved BOM yet.</p>;
+  if (!direct.length) return <p className="text-sm text-muted-foreground">Not in any BOM yet.</p>;
+
+  // Walk up through sub-assemblies to the finished goods.
+  const fgs = new Map<string, any>();
+  const seen = new Set<string>();
+  const up = (id: string, depth: number) => {
+    if (seen.has(id) || depth > 10) return;
+    seen.add(id);
+    for (const l of all.filter((x) => x.child_part_id === id)) {
+      if (l.parent?.source_type === "FINISHED_GOOD") fgs.set(l.parent.id, l.parent);
+      else up(l.parent_part_id, depth + 1);
+    }
+  };
+  up(partId, 0);
+  const chip = (code: string, name: string, extra?: string) => (
+    <span key={code} className="rounded border px-2 py-1 text-sm">
+      <span className="font-mono">{code}</span> {name}{extra && <span className="text-muted-foreground"> · {extra}</span>}
+    </span>
+  );
+  const viaSub = direct.some((l) => l.parent?.source_type !== "FINISHED_GOOD");
   return (
-    <div className="flex flex-wrap gap-2">
-      {parents.map((l) => (
-        <span key={l.id} className="rounded border px-2 py-1 text-sm">
-          <span className="font-mono">{l.parent?.part_code}</span> {l.parent?.name}
-          <span className="text-muted-foreground"> · QPS {Number(l.quantity)}</span>
-        </span>
-      ))}
+    <div className="space-y-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-xs text-muted-foreground w-24">Goes into</span>
+        {direct.map((l) => chip(l.parent?.part_code ?? "?", l.parent?.name ?? "",
+          `${l.parent?.source_type === "FINISHED_GOOD" ? "finished good" : "sub-assembly"}, QPS ${l.issue_mode === "BULK" ? "bulk" : Number(l.quantity)}`))}
+      </div>
+      {viaSub && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs text-muted-foreground w-24">Finished goods</span>
+          {fgs.size ? [...fgs.values()].sort((a, b) => a.part_code.localeCompare(b.part_code)).map((f) => chip(f.part_code, f.name))
+            : <span className="text-sm text-muted-foreground">none yet</span>}
+        </div>
+      )}
     </div>
   );
 };

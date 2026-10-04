@@ -123,6 +123,7 @@ const RawMaterialsManagement = () => {
     p?.made_in_house ? "SUB_ASSEMBLED" : ((partTier(p?.category) ?? "PURCHASE") as PartTier);
   const editTier = tierOfPart({ category: newMaterial.category, made_in_house: newMaterial.made_in_house });
   const editIsPurchase = editTier === "PURCHASE";
+  const editIsFinishedTier = editTier === "FINISHED";
   const editIsPurchaseLetter = partTier(newMaterial.category) === "PURCHASE";
   const viewTier = tierOfPart(viewMaterial);
   const [editDocs, setEditDocs] = useState<DocFiles>({});
@@ -687,10 +688,6 @@ const RawMaterialsManagement = () => {
                     <Label className="text-sm font-medium text-muted-foreground">Unit</Label>
                     <p>{(viewMaterial as any).uom || "N/A"}</p>
                   </div>
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium text-muted-foreground">Used In</Label>
-                    <p>{(viewMaterial as any).used_in_reference || "-"}</p>
-                  </div>
                   {(viewMaterial as any).remarks && (
                     <div className="space-y-2 col-span-2">
                       <Label className="text-sm font-medium text-muted-foreground">Remarks</Label>
@@ -772,12 +769,14 @@ const RawMaterialsManagement = () => {
                   </div>
                 )}
 
-                {/* Which saved BOMs this part is a line in. A finished good is the top
-                    of its BOM and goes into nothing, so it is not shown there. */}
+                {/* Used In comes from the BOMs. A finished good goes into nothing. */}
                 {viewTier !== "FINISHED" && (
                   <div className="space-y-2">
-                    <Label className="text-sm font-medium text-muted-foreground">Goes into</Label>
+                    <Label className="text-sm font-medium text-muted-foreground">Used In</Label>
                     <PartWhereUsed partId={viewMaterial.id} />
+                    {(viewMaterial as any).used_in_reference && (
+                      <p className="text-xs text-muted-foreground">Earlier typed note: {(viewMaterial as any).used_in_reference}</p>
+                    )}
                   </div>
                 )}
 
@@ -1079,15 +1078,20 @@ const RawMaterialsManagement = () => {
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="edit-used-in">Used In</Label>
-                <Input
-                  id="edit-used-in"
-                  value={newMaterial.used_in}
-                  onChange={(e) => setNewMaterial({...newMaterial, used_in: e.target.value})}
-                  placeholder="e.g. 9080, F6, JM1082"
-                />
-              </div>
+              {!editIsFinishedTier && selectedMaterial && (
+                <div className="space-y-2 sm:col-span-2">
+                  <Label>Used In</Label>
+                  <p className="text-xs text-muted-foreground">Filled in from the BOMs: add the part to a BOM and it shows here.</p>
+                  <PartWhereUsed partId={selectedMaterial.id} />
+                  {newMaterial.used_in && (
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      Earlier typed note: {newMaterial.used_in}
+                      <Button type="button" variant="ghost" size="sm" className="h-6 px-2"
+                              onClick={() => setNewMaterial({ ...newMaterial, used_in: "" })}>Clear</Button>
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div className="space-y-2">
                 <Label htmlFor="edit-remarks">Remarks</Label>
