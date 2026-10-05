@@ -44,6 +44,10 @@ export interface PartInput {
   pqcChecklistFile?: File;
   /** A finished good is also checked before it ships. */
   oqcChecklistFile?: File;
+  /** Photo of the part (optional), shown with its documents and at IQC. */
+  imageFile?: File;
+  /** Clear the photo on file. */
+  removeImage?: boolean;
   changesDescription?: string;
   /** Models the part goes into, as the team writes them. */
   used_in_reference?: string;
@@ -128,6 +132,7 @@ export const useParts = () => {
       const oqcChecklistUrl = input.oqcChecklistFile
         ? await uploadDoc("oqc_checklists", input.oqcChecklistFile)
         : null;
+      const imageUrl = input.imageFile ? await uploadDoc("images", input.imageFile) : null;
 
       const { data: part, error } = await supabase
         .from("parts")
@@ -152,6 +157,7 @@ export const useParts = () => {
           cir_sheet_url: cirSheetUrl,
           pqc_checklist_url: pqcChecklistUrl,
           oqc_checklist_url: oqcChecklistUrl,
+          image_url: imageUrl,
         })
         .select()
         .single();
@@ -207,6 +213,7 @@ export const useParts = () => {
       const oqcChecklistUrl = input.oqcChecklistFile
         ? await uploadDoc("oqc_checklists", input.oqcChecklistFile, input.id)
         : null;
+      const imageUrl = input.imageFile ? await uploadDoc("images", input.imageFile, input.id) : null;
 
       const updateData: Record<string, any> = {
         name: input.name,
@@ -233,6 +240,8 @@ export const useParts = () => {
       if (cirSheetUrl) updateData.cir_sheet_url = cirSheetUrl;
       if (pqcChecklistUrl) updateData.pqc_checklist_url = pqcChecklistUrl;
       if (oqcChecklistUrl) updateData.oqc_checklist_url = oqcChecklistUrl;
+      if (imageUrl) updateData.image_url = imageUrl;
+      else if (input.removeImage) updateData.image_url = null;
 
       const { error } = await supabase.from("parts").update(updateData).eq("id", input.id);
       if (error) throw error;

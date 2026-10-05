@@ -50,7 +50,7 @@ const IQC = () => {
           purchase_orders(po_number),
           grn_items!inner(
             *,
-            parts!inner(name, part_code)
+            parts!inner(name, part_code, specification_sheet_url, iqc_checklist_url, image_url)
           )
         `)
         .order('created_at', { ascending: false });

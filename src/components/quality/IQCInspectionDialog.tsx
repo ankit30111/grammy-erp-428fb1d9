@@ -12,6 +12,7 @@ import { useIQCInspection } from "@/hooks/useIQCInspection";
 import { useCAPATracking, CAPAImplementationCheck } from "@/hooks/useCAPATracking";
 import CAPAImplementationSection from "./CAPAImplementationSection";
 import { SignedStorageLink } from "@/components/ui/signed-storage-link";
+import { PartPhoto } from "@/components/Parts/PartDocuments";
 import { useState } from "react";
 import { IQC_OUTCOME, type IqcVerdict } from "@/constants/iqcOutcome";
 
@@ -187,7 +188,8 @@ const IQCInspectionDialog = ({ grn, isOpen, onClose }: IQCInspectionDialogProps)
                 <div key={item.id} className="border rounded-md mb-4 overflow-hidden">
                   <div className="bg-muted p-4 border-b">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-3">
+                        <PartPhoto path={item.parts?.image_url} size={56} label={item.parts?.part_code} />
                         <span className="font-mono font-medium">
                           {item.parts?.part_code}
                         </span>

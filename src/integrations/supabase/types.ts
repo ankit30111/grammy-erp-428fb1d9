@@ -1866,6 +1866,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "item_versions_based_on_fkey"
+            columns: ["based_on"]
+            isOneToOne: false
+            referencedRelation: "item_versions"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "item_versions_ecn_id_fkey"
             columns: ["ecn_id"]
             isOneToOne: false
@@ -1873,21 +1880,14 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "model_versions_based_on_fkey"
-            columns: ["based_on"]
-            isOneToOne: false
-            referencedRelation: "item_versions"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "model_versions_model_id_fkey"
+            foreignKeyName: "item_versions_item_id_fkey"
             columns: ["item_id"]
             isOneToOne: false
             referencedRelation: "parts"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "model_versions_model_id_fkey"
+            foreignKeyName: "item_versions_item_id_fkey"
             columns: ["item_id"]
             isOneToOne: false
             referencedRelation: "store_receiving_variances"
@@ -2602,6 +2602,7 @@ export type Database = {
           created_by: string | null
           currency: string | null
           id: string
+          image_url: string | null
           iqc_checklist_url: string | null
           is_active: boolean
           last_price_update: string | null
@@ -2645,6 +2646,7 @@ export type Database = {
           created_by?: string | null
           currency?: string | null
           id?: string
+          image_url?: string | null
           iqc_checklist_url?: string | null
           is_active?: boolean
           last_price_update?: string | null
@@ -2688,6 +2690,7 @@ export type Database = {
           created_by?: string | null
           currency?: string | null
           id?: string
+          image_url?: string | null
           iqc_checklist_url?: string | null
           is_active?: boolean
           last_price_update?: string | null
@@ -6169,4 +6172,3 @@ export const Constants = {
     },
   },
 } as const
-
