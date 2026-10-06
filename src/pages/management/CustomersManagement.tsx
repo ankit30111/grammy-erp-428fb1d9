@@ -15,16 +15,19 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useCustomerForm } from "@/hooks/useCustomerForm";
+import { CustomerBrandPicker } from "@/components/Customers/CustomerBrandPicker";
+import { useBrands } from "@/hooks/usePartCategories";
 
 interface Customer {
   id: string;
   customer_code: string;
   name: string;
-  brand_name?: string;
-  contact_person_name?: string;
-  email: string;
-  contact_number: string;
-  address: string;
+  brand_name?: string | null;
+  customer_brands?: { brand: string }[];
+  contact_person_name?: string | null;
+  email: string | null;
+  contact_number: string | null;
+  address: string | null;
   gst_number?: string;
   bank_account_number?: string;
   ifsc_code?: string;
@@ -54,6 +57,8 @@ const CustomersManagement = () => {
   const [isAddingWarehouse, setIsAddingWarehouse] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const { toast } = useToast();
+  const { brands } = useBrands();
+  const brandName = (letter: string) => brands.find((b) => b.letter === letter)?.name ?? letter;
 
   // Use the new customer form hook
   const {
@@ -93,9 +98,10 @@ const CustomersManagement = () => {
     const { data, error } = await supabase
       .from('customers')
       .select(
-        'id, customer_code, name, brand_name, contact_person_name, email, contact_number, address, gst_number, is_active, created_at, updated_at, created_by'
+        'id, customer_code, name, brand_name, contact_person_name, email, contact_number, address, gst_number, is_active, created_at, updated_at, created_by, customer_brands ( brand )'
       )
-      .order('name');
+      // CUST001, CUST002 ... in the order they were created.
+      .order('customer_code');
 
     if (error) {
       console.error('Error fetching customers:', error);
@@ -220,11 +226,11 @@ const CustomersManagement = () => {
     // Pre-fill safe fields immediately so the dialog renders without delay.
     setFormData({
       name: customer.name,
-      brand_name: customer.brand_name || "",
-      contact_person_name: customer.contact_person_name || "",
-      email: customer.email,
-      contact_number: customer.contact_number,
-      address: customer.address,
+      brands: (customer.customer_brands ?? []).map((b) => b.brand),
+      contact_person_name: customer.contact_person_name ?? "",
+      email: customer.email ?? "",
+      contact_number: customer.contact_number ?? "",
+      address: customer.address ?? "",
       gst_number: customer.gst_number || "",
       bank_account_number: "",
       ifsc_code: "",
@@ -252,6 +258,7 @@ const CustomersManagement = () => {
         ...prev,
         bank_account_number: finance.bank_account_number || "",
         ifsc_code: finance.ifsc_code || "",
+        financeLoaded: true,
       }));
     }
   };
@@ -275,16 +282,9 @@ const CustomersManagement = () => {
             <p className="text-sm text-destructive">{validationErrors.name}</p>
           )}
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="brand_name">Brand Name</Label>
-          <Input
-            id="brand_name"
-            value={formData.brand_name}
-            onChange={(e) => updateFormField('brand_name', e.target.value)}
-            placeholder="Enter brand name"
-          />
-        </div>
       </div>
+
+      <CustomerBrandPicker value={formData.brands} onChange={(b) => updateFormField('brands', b)} canAdd={canEditCustomers} />
 
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
@@ -492,8 +492,14 @@ const CustomersManagement = () => {
                       <TableCell>
                         <div>
                           <div className="font-medium">{customer.name}</div>
-                          {customer.brand_name && (
-                            <div className="text-sm text-muted-foreground">{customer.brand_name}</div>
+                          {(customer.customer_brands ?? []).length > 0 && (
+                            <div className="mt-1 flex flex-wrap gap-1">
+                              {(customer.customer_brands ?? []).map(({ brand }) => (
+                                <span key={brand} className="inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-xs text-muted-foreground">
+                                  {brandName(brand)}<span className="font-mono opacity-70">{brand}</span>
+                                </span>
+                              ))}
+                            </div>
                           )}
                         </div>
                       </TableCell>

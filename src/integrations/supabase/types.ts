@@ -620,6 +620,42 @@ export type Database = {
           },
         ]
       }
+      customer_brands: {
+        Row: {
+          brand: string
+          created_at: string
+          created_by: string | null
+          customer_id: string
+        }
+        Insert: {
+          brand: string
+          created_at?: string
+          created_by?: string | null
+          customer_id: string
+        }
+        Update: {
+          brand?: string
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_brands_brand_fkey"
+            columns: ["brand"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["letter"]
+          },
+          {
+            foreignKeyName: "customer_brands_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customer_complaint_parts: {
         Row: {
           analysis: string | null
@@ -5366,6 +5402,14 @@ export type Database = {
       can_edit_customers: { Args: never; Returns: boolean }
       can_edit_masters: { Args: never; Returns: boolean }
       can_edit_plm: { Args: never; Returns: boolean }
+      customer_brand_names_refresh: {
+        Args: { p_customer: string }
+        Returns: undefined
+      }
+      customer_set_brands: {
+        Args: { p_brands: string[]; p_customer: string }
+        Returns: string[]
+      }
       delete_part: { Args: { p_part_id: string }; Returns: Json }
       delete_production_schedule_cascade: {
         Args: { p_schedule_id: string }

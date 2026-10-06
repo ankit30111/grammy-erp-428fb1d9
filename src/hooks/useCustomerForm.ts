@@ -4,7 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 
 interface CustomerFormData {
   name: string;
-  brand_name: string;
+  /** Brand letters from the brands master (PH, AI ...). */
+  brands: string[];
   contact_person_name: string;
   email: string;
   contact_number: string;
@@ -15,11 +16,13 @@ interface CustomerFormData {
   gst_certificate: File | null;
   msme_certificate: File | null;
   brand_authorization: File | null;
+  /** Bank details were fetched for editing (admin only). */
+  financeLoaded?: boolean;
 }
 
 const initialFormData: CustomerFormData = {
   name: "",
-  brand_name: "",
+  brands: [],
   contact_person_name: "",
   email: "",
   contact_number: "",
@@ -32,6 +35,14 @@ const initialFormData: CustomerFormData = {
   brand_authorization: null
 };
 
+/** Trimmed text; a field the database left empty arrives as null. */
+const t = (v: string | null | undefined) => (v ?? "").trim();
+
+const setBrands = async (customerId: string, brands: string[]) => {
+  const { error } = await supabase.rpc("customer_set_brands" as any, { p_customer: customerId, p_brands: brands });
+  if (error) throw error;
+};
+
 export const useCustomerForm = () => {
   const [formData, setFormData] = useState<CustomerFormData>(initialFormData);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -41,18 +52,18 @@ export const useCustomerForm = () => {
     const errors: Record<string, string> = {};
 
     // Only require Customer Name and GST Number
-    if (!formData.name.trim()) {
+    if (!t(formData.name)) {
       errors.name = "Customer name is required";
     }
 
-    if (!formData.gst_number.trim()) {
+    if (!t(formData.gst_number)) {
       errors.gst_number = "GST number is required";
-    } else if (!/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(formData.gst_number.trim())) {
+    } else if (!/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(t(formData.gst_number).toUpperCase())) {
       errors.gst_number = "Invalid GST number format";
     }
 
     // Email validation (only if provided)
-    if (formData.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
+    if (t(formData.email) && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(t(formData.email))) {
       errors.email = "Invalid email format";
     }
 
@@ -97,15 +108,12 @@ export const useCustomerForm = () => {
   };
 
   const handleSubmit = async () => {
-    console.log("Debug: Starting customer form submission");
     
     if (isSubmitting) {
-      console.log("Debug: Form already submitting, ignoring duplicate request");
       return { success: false, error: "Form is already being submitted" };
     }
 
     if (!validateForm()) {
-      console.log("Debug: Form validation failed:", validationErrors);
       toast.error("Please fix the validation errors before submitting");
       return { success: false, error: "Validation failed" };
     }
@@ -113,20 +121,18 @@ export const useCustomerForm = () => {
     setIsSubmitting(true);
 
     try {
-      console.log("Debug: Form validation passed, preparing customer data");
 
       const customerCode = await generateCustomerCode();
       const customerData: any = {
         customer_code: customerCode,
-        name: formData.name.trim(),
-        brand_name: formData.brand_name.trim() || null,
-        contact_person_name: formData.contact_person_name.trim() || null,
-        email: formData.email.trim() || null,
-        contact_number: formData.contact_number.trim() || null,
-        address: formData.address.trim() || null,
-        gst_number: formData.gst_number.trim(),
-        bank_account_number: formData.bank_account_number.trim() || null,
-        ifsc_code: formData.ifsc_code.trim() || null
+        name: t(formData.name),
+        contact_person_name: t(formData.contact_person_name) || null,
+        email: t(formData.email) || null,
+        contact_number: t(formData.contact_number) || null,
+        address: t(formData.address) || null,
+        gst_number: t(formData.gst_number).toUpperCase(),
+        bank_account_number: t(formData.bank_account_number) || null,
+        ifsc_code: t(formData.ifsc_code).toUpperCase() || null
       };
 
       // Upload files if provided
@@ -145,15 +151,16 @@ export const useCustomerForm = () => {
         customerData.brand_authorization_url = await uploadFile(formData.brand_authorization, 'customer-documents', brandPath);
       }
 
-      console.log("Debug: Submitting customer data:", { ...customerData, gst_certificate_url: customerData.gst_certificate_url ? 'uploaded' : 'none' });
 
-      const { error } = await supabase
+      const { data: created, error } = await supabase
         .from('customers')
-        .insert([customerData]);
+        .insert([customerData])
+        .select('id')
+        .single();
 
       if (error) throw error;
+      if (formData.brands.length) await setBrands(created.id, formData.brands);
 
-      console.log("Debug: Customer created successfully");
       
       // Reset form on success
       setFormData(initialFormData);
@@ -177,15 +184,12 @@ export const useCustomerForm = () => {
   };
 
   const handleUpdate = async (customerId: string) => {
-    console.log("Debug: Starting customer update for ID:", customerId);
     
     if (isSubmitting) {
-      console.log("Debug: Form already submitting, ignoring duplicate request");
       return { success: false, error: "Form is already being submitted" };
     }
 
     if (!validateForm()) {
-      console.log("Debug: Form validation failed:", validationErrors);
       toast.error("Please fix the validation errors before submitting");
       return { success: false, error: "Validation failed" };
     }
@@ -193,25 +197,29 @@ export const useCustomerForm = () => {
     setIsSubmitting(true);
 
     try {
-      console.log("Debug: Form validation passed, preparing customer data for update");
 
       const customerData: any = {
-        name: formData.name.trim(),
-        brand_name: formData.brand_name.trim() || null,
-        contact_person_name: formData.contact_person_name.trim() || null,
-        email: formData.email.trim() || null,
-        contact_number: formData.contact_number.trim() || null,
-        address: formData.address.trim() || null,
-        gst_number: formData.gst_number.trim(),
-        bank_account_number: formData.bank_account_number.trim() || null,
-        ifsc_code: formData.ifsc_code.trim() || null
+        name: t(formData.name),
+        contact_person_name: t(formData.contact_person_name) || null,
+        email: t(formData.email) || null,
+        contact_number: t(formData.contact_number) || null,
+        address: t(formData.address) || null,
+        gst_number: t(formData.gst_number).toUpperCase(),
+        bank_account_number: t(formData.bank_account_number) || null,
+        ifsc_code: t(formData.ifsc_code).toUpperCase() || null
       };
 
       // Upload new files if provided (would need customer_code for path)
       // This would require fetching the customer first to get the customer_code
       // For now, keeping it simple and not handling file updates
 
-      console.log("Debug: Updating customer data:", customerData);
+
+      // Bank details are only sent when they were loaded (admin); a blank
+      // field from someone who cannot see them must not wipe them.
+      if (!formData.financeLoaded) {
+        delete customerData.bank_account_number;
+        delete customerData.ifsc_code;
+      }
 
       const { error } = await supabase
         .from('customers')
@@ -219,8 +227,8 @@ export const useCustomerForm = () => {
         .eq('id', customerId);
 
       if (error) throw error;
+      await setBrands(customerId, formData.brands);
 
-      console.log("Debug: Customer updated successfully");
       toast.success("Customer updated successfully");
       
       return { success: true };
