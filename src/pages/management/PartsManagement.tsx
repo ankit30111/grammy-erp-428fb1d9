@@ -39,6 +39,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TabBar } from "@/components/shell/TabBar";
 import { BOMBuilder } from "@/components/BOM/BOMBuilder";
 import { CreatePartDialog } from "@/components/Parts/CreatePartDialog";
+import { usePartCodeExport } from "@/hooks/usePartCodeExport";
 import { usePartCategories, PART_TIERS, tierLabel, type PartTier } from "@/hooks/usePartCategories";
 import { useRawMaterials } from "@/hooks/useRawMaterials";
 import { type PartSourceType } from "@/hooks/useParts";
@@ -65,6 +66,7 @@ const RawMaterialsManagement = () => {
   // part, and the bill of materials beside them. The tab IS the type filter, so
   // the separate "All Types" dropdown goes.
   const [activeTab, setActiveTab] = useState<string>("PURCHASE");
+  const { exportTier, busy: exportBusy } = usePartCodeExport();
   const filterSourceType = activeTab;
   // Sourcing, price and vendors only mean something for bought parts.
   const isPurchaseTab = activeTab === "PURCHASE";
@@ -425,6 +427,11 @@ const RawMaterialsManagement = () => {
                 no answer to. CreatePartDialog asks what kind of part it is first
                 and then shows only that kind's fields, and the code comes from
                 the registry rather than being typed. */}
+            <Button variant="outline" disabled={!!exportBusy} onClick={() => exportTier(activeTab as PartTier)}
+                    title="Download this list in the offline Part Code Master format">
+              {exportBusy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+              {exportBusy ? "Building Excel…" : "Export to Excel"}
+            </Button>
             {canEditMasters && (
               <Button onClick={() => setIsAddDialogOpen(true)}>
                 <Plus className="mr-2 h-4 w-4" />
