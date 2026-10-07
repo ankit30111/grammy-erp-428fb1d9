@@ -70,7 +70,7 @@ const ProductionStatusSummary = ({
   const assemblySections = lineAssignments.map((assignment) => ({
     key: assignment.id,
     name: assignment.part_id
-      ? assignment.parts?.name ?? assignment.parts?.part_code ?? 'Sub Assembly'
+      ? assignment.parts?.name ?? assignment.parts?.part_code ?? 'Sub-assembly'
       : productionOrder.parts?.name ?? 'Main Assembly',
     line: assignment.production_lines?.name,
   }));

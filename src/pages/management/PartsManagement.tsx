@@ -401,9 +401,9 @@ const RawMaterialsManagement = () => {
           because a finished good is only finished once it has one. */}
       <TabBar
         tabs={[
-          { id: "PURCHASE", label: "Purchase Parts" },
-          { id: "SUB_ASSEMBLED", label: "Sub-assemblies" },
-          { id: "FINISHED", label: "Finished Goods" },
+          { id: "PURCHASE", label: "Purchase Part" },
+          { id: "SUB_ASSEMBLED", label: "Sub-assembly" },
+          { id: "FINISHED", label: "Finished Good" },
         ]}
         value={activeTab}
         onChange={(t) => { setBomParentId(undefined); setActiveTab(t); }}

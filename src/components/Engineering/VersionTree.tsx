@@ -209,7 +209,7 @@ export function VersionTree({ rootId, canEdit, onlyOpen = false, tests = [], tes
                     const anyClosed = Object.keys(all).some((k) => !open[k]);
                     setOpen(anyClosed ? all : {});
                   }}>
-            Open / close all {nSub} sub-assemblies
+            Open / close every sub-assembly ({nSub})
           </button>
         </div>
       )}

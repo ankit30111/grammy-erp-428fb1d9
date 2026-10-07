@@ -814,7 +814,7 @@ function RaiseEcnDialog({ itemId, code, version, onClose, em }: any) {
         <div className="space-y-3">
           <p className="text-sm text-muted-foreground">
             Opens {major ? `v${maj + 1}.0` : `v${maj}.${min + 1}`} as a draft copy of v{version}. Change it on this tab, including
-            inside sub-assemblies; Management releases it and chooses which brand codes move.
+            inside any sub-assembly; Management releases it and chooses which brand codes move.
           </p>
           <div className="space-y-1"><Label htmlFor="ecn-t">What changes</Label>
             <Input id="ecn-t" placeholder="e.g. Tweeter screw 5x9.5 to 5x12" value={title} onChange={(e) => setTitle(e.target.value)} /></div>

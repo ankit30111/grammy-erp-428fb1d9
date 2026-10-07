@@ -15,9 +15,9 @@ export interface ProductionLineEntry {
 
 const TYPE_LABEL: Record<LineTypeKey, string> = {
   LINE: "Main Assembly",
-  SUB_ASSEMBLY: "Sub Assembly",
+  SUB_ASSEMBLY: "Sub-assembly",
   line: "Main Assembly",
-  sub_assembly: "Sub Assembly",
+  sub_assembly: "Sub-assembly",
   cell: "Cell",
 };
 

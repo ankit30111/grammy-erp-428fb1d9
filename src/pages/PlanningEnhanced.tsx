@@ -162,8 +162,8 @@ const PlanningEnhanced: React.FC = () => {
                 onChange={setVoucherType}
                 options={[
                   { id: "all", label: "All", count: vouchers.length },
-                  { id: "FG", label: "Finished goods", count: vouchers.filter((v) => v.kind === "FG").length },
-                  { id: "SA", label: "Sub-assemblies", count: vouchers.filter((v) => v.kind === "SA").length },
+                  { id: "FG", label: "Finished Good", count: vouchers.filter((v) => v.kind === "FG").length },
+                  { id: "SA", label: "Sub-assembly", count: vouchers.filter((v) => v.kind === "SA").length },
                 ]}
               />
               {voucherRows.length === 0 ? (

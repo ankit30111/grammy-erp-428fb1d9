@@ -326,7 +326,7 @@ export function VoucherMaterials({
         Available is physical stock in the main store. Held is reserved by other
         production vouchers — this voucher's own hold is excluded. Free is what this
         voucher can draw on. Balance is Free minus what the store has to supply:
-        sub-assemblies built for this voucher come to the line directly and are not
+        a sub-assembly built for this voucher comes to the line directly and is not
         drawn from the store.
       </p>
     </div>

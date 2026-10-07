@@ -193,12 +193,12 @@ const ProductionDetailsDialog = ({ open, onOpenChange, productionOrder }: Produc
             </Card>
           )}
 
-          {/* Sub Assembly */}
+          {/* Sub-assembly */}
           {getCategoryItems(subAssemblyCategories).length > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg flex items-center justify-between">
-                  Sub Assembly
+                  Sub-assembly
                   {getStatusIcon(getBOMCategoryStatus('Wire'))}
                 </CardTitle>
               </CardHeader>

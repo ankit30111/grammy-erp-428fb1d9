@@ -18,8 +18,8 @@ const ProductionMainDashboard = () => {
   const lineData = [
     { line: 'Line 1', output: 450, target: 500 },
     { line: 'Line 2', output: 380, target: 400 },
-    { line: 'Sub Assembly 1', output: 220, target: 250 },
-    { line: 'Sub Assembly 2', output: 180, target: 200 }
+    { line: 'Sub-assembly 1', output: 220, target: 250 },
+    { line: 'Sub-assembly 2', output: 180, target: 200 }
   ];
 
   return (

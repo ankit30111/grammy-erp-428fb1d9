@@ -64,7 +64,7 @@ export const generateProductionVoucherPDF = (data: ProductionVoucherData): PDFGe
     // removed. The equivalent now lives on parts.source_type.
     const sourceType = material.sourceType || 'PURCHASED';
     const displayType = sourceType === 'ASSEMBLED_INLINE' ? 'In-line Assembly'
-                      : sourceType === 'ASSEMBLED_STOCKED' ? 'Sub Assembly'
+                      : sourceType === 'ASSEMBLED_STOCKED' ? 'Sub-assembly'
                       : 'Purchased';
     
     if (!acc[displayType]) {

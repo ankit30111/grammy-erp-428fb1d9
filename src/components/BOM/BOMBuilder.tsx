@@ -371,7 +371,7 @@ export const BOMBuilder = ({ partId: initialParentId, onClose, draft }: { partId
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex flex-wrap items-center gap-2" role="group" aria-label="What to list">
-              {([["all", "All parts"], ["PURCHASE", "Purchase parts"], ["SUB_ASSEMBLED", `Sub-assemblies (${subCount})`]] as const).map(([v, label]) => (
+              {([["all", "All parts"], ["PURCHASE", "Purchase Part"], ["SUB_ASSEMBLED", `Sub-assembly (${subCount})`]] as const).map(([v, label]) => (
                 <Button key={v} type="button" size="sm" variant={filterType === v ? "default" : "outline"}
                         aria-pressed={filterType === v} onClick={() => setFilterType(v)}>
                   {label}
@@ -379,7 +379,7 @@ export const BOMBuilder = ({ partId: initialParentId, onClose, draft }: { partId
               ))}
               {!draft && isSub(parentPart ?? {}) && (
                 <span className="text-xs text-muted-foreground">
-                  A sub-assembly can be built from purchase parts and from other sub-assemblies.
+                  A sub-assembly can be built from purchase parts and from another sub-assembly.
                 </span>
               )}
             </div>

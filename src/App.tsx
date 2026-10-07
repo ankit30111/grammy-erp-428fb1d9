@@ -1,3 +1,4 @@
+import { IdleSignOut } from "@/components/Auth/IdleSignOut";
 import { useState } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -62,6 +63,7 @@ function App() {
           <Toaster />
           <Sonner />
           <BrowserRouter>
+            <IdleSignOut />
           <Routes>
             {/* Login page - no authentication required */}
             <Route path="/" element={<Auth />} />

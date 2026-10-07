@@ -415,7 +415,7 @@ const ProductionLineManager = ({ productionOrderId }: ProductionLineManagerProps
       </Card>
 
       {renderAssemblySection("Main Assembly", "main_assembly", materialsByType.main_assembly)}
-      {renderAssemblySection("Sub Assembly", "sub_assembly", materialsByType.sub_assembly)}
+      {renderAssemblySection("Sub-assembly", "sub_assembly", materialsByType.sub_assembly)}
       {renderAssemblySection("Accessory", "accessory", materialsByType.accessory)}
 
       <div className="flex justify-end">

@@ -46,7 +46,7 @@ const MonthlyKitLog = () => {
         return 'Sent Fully';
       case 'PARTIAL KIT SENT':
       case 'ACCESSORY COMPONENTS SENT':
-      case 'SUB ASSEMBLY COMPONENTS SENT':
+      case 'SUB ASSEMBLY COMPONENTS SENT': // terms-ok: old stored status
       case 'MAIN ASSEMBLY COMPONENTS SENT':
         return 'Sent Partially';
       default:

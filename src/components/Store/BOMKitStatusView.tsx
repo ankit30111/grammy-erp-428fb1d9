@@ -66,7 +66,7 @@ const BOMKitStatusView = ({
   };
 
   const handleSendComponent = (bomType: string) => {
-    const componentName = bomType === 'sub_assembly' ? 'Sub Assembly' : 
+    const componentName = bomType === 'sub_assembly' ? 'Sub-assembly' : 
                          bomType === 'accessory' ? 'Accessory' : 'Main Assembly';
     onComponentSent(componentName);
   };
@@ -192,7 +192,7 @@ const BOMKitStatusView = ({
             </div>
           </div>
 
-          {renderBOMSection("Sub Assembly", groupedBOM.sub_assembly, "sub_assembly")}
+          {renderBOMSection("Sub-assembly", groupedBOM.sub_assembly, "sub_assembly")}
           {renderBOMSection("Accessories", groupedBOM.accessory, "accessory")}
           {renderBOMSection("Main Assembly", groupedBOM.main_assembly, "main_assembly")}
         </div>

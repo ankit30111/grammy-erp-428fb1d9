@@ -27,7 +27,7 @@ const VoucherKitManagement = ({
       case 'Not Ready': return 'destructive';
       case 'COMPLETE KIT SENT': return 'default';
       case 'ACCESSORY COMPONENTS SENT': return 'warning';
-      case 'SUB ASSEMBLY COMPONENTS SENT': return 'warning';
+      case 'SUB ASSEMBLY COMPONENTS SENT': return 'warning'; // terms-ok: old stored status
       case 'MAIN ASSEMBLY COMPONENTS SENT': return 'warning';
       case 'PARTIAL KIT SENT': return 'warning';
       default: return 'secondary';

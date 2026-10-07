@@ -44,7 +44,7 @@ const MonthlyKitTracker = () => {
     const status = kitPrep.status;
     if (status === "COMPLETE KIT SENT") return "Sent Fully";
     if (status?.includes("PARTIAL") || status?.includes("ACCESSORY") || 
-        status?.includes("SUB ASSEMBLY") || status?.includes("MAIN ASSEMBLY")) {
+        status?.includes("SUB ASSEMBLY") || status?.includes("MAIN ASSEMBLY")) { // terms-ok: old stored status
       return "Sent Partially";
     }
     return "Scheduled";

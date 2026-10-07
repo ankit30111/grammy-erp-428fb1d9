@@ -60,7 +60,7 @@ const emptyForm: FormState = {
 
 const TYPE_LABEL: Record<LineType, string> = {
   LINE: "Line",
-  SUB_ASSEMBLY: "Sub-Assembly",
+  SUB_ASSEMBLY: "Sub-assembly",
 };
 
 export function PlantLinesDialog({
@@ -156,7 +156,7 @@ export function PlantLinesDialog({
             Production Lines{plantName ? ` — ${plantName}` : ""}
           </DialogTitle>
           <DialogDescription>
-            Lines, sub-assemblies, and cells on this plant's production floor.
+            Assembly lines, sub-assembly lines and cells on this plant's production floor.
           </DialogDescription>
         </DialogHeader>
 
@@ -292,7 +292,7 @@ function LineFormDialog({
         <DialogHeader>
           <DialogTitle>{mode === "add" ? "Add line / sub-assembly" : "Edit"}</DialogTitle>
           <DialogDescription>
-            Cells, sub-assemblies, or full assembly lines on the production floor.
+            A cell, a sub-assembly line or a full assembly line on the production floor.
           </DialogDescription>
         </DialogHeader>
 
@@ -320,7 +320,7 @@ function LineFormDialog({
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="LINE">Line</SelectItem>
-                  <SelectItem value="SUB_ASSEMBLY">Sub-Assembly</SelectItem>
+                  <SelectItem value="SUB_ASSEMBLY">Sub-assembly</SelectItem>
                 </SelectContent>
               </Select>
             </div>
