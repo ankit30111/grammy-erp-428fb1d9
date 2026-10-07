@@ -189,7 +189,7 @@ const IQCInspectionDialog = ({ grn, isOpen, onClose }: IQCInspectionDialogProps)
                   <div className="bg-muted p-4 border-b">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <PartPhoto path={item.parts?.image_url} size={56} label={item.parts?.part_code} />
+                        <PartPhoto path={item.parts?.image_url} size={96} label={item.parts?.part_code} name={item.parts?.name} />
                         <span className="font-mono font-medium">
                           {item.parts?.part_code}
                         </span>

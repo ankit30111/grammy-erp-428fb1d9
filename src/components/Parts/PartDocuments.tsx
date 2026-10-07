@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Download, ExternalLink, ImageOff, Trash2 } from "lucide-react";
+import { Download, ExternalLink, ImageOff, Maximize2, Trash2 } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -105,9 +106,9 @@ function PartPhotoInput({ files, onChange, current }: {
       </Label>
       <div className="flex items-center gap-3">
         {preview ? (
-          <img src={preview} alt="Selected part photo" className="h-16 w-16 rounded-md border object-cover" />
+          <img src={preview} alt="Selected part photo" className="aspect-[4/3] w-24 rounded-md border bg-muted object-contain" />
         ) : showCurrent ? (
-          <PartPhoto path={current} size={64} />
+          <PartPhoto path={current} size={96} />
         ) : null}
         <div className="flex-1 space-y-1.5">
           <Input id="part-photo" type="file" accept="image/*"
@@ -129,36 +130,91 @@ function PartPhotoInput({ files, onChange, current }: {
   );
 }
 
-/** A part's photo as a thumbnail; click opens it full size. Renders a quiet placeholder when there is none. */
-export function PartPhoto({ path, size = 64, label, className }: {
-  path?: string | null; size?: number; label?: string | null; className?: string;
+/** Every part photo is shown in this one frame shape, the whole image fitted inside (never cropped). */
+export const PHOTO_RATIO = "aspect-[4/3]";
+
+/**
+ * The photo full size, on this page: a dialog over the current one. Esc or the
+ * close button goes back to where you were.
+ */
+export function PartPhotoViewer({ path, open, onOpenChange, code, name }: {
+  path?: string | null; open: boolean; onOpenChange: (o: boolean) => void; code?: string | null; name?: string | null;
 }) {
+  const { data: url } = useSignedStorageUrl(BUCKET, open ? path ?? null : null);
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="w-[min(94vw,1100px)] max-w-none gap-3 p-4 sm:p-6">
+        <DialogHeader>
+          <DialogTitle className="font-mono">{code ?? "Part photo"}</DialogTitle>
+          <DialogDescription>{name ? `${name} · ` : ""}Press Esc to go back.</DialogDescription>
+        </DialogHeader>
+        <div className={cn(PHOTO_RATIO, "w-full overflow-hidden rounded-md border bg-muted max-h-[75vh]")}>
+          {url
+            ? <img src={url} alt={code ? `Photo of ${code}` : "Part photo"} className="h-full w-full object-contain" />
+            : <div className="flex h-full items-center justify-center text-sm text-muted-foreground">Loading…</div>}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/** A part's photo as a small 4:3 thumbnail; click opens it full size on this page. */
+export function PartPhoto({ path, size = 64, label, name, className }: {
+  path?: string | null; size?: number; label?: string | null; name?: string | null; className?: string;
+}) {
+  const [viewing, setViewing] = useState(false);
   const { data: url } = useSignedStorageUrl(BUCKET, path ?? null);
-  const box = { width: size, height: size };
+  const box = { width: size };
   if (!path) {
     return (
-      <div style={box} title="No photo" className={cn("flex shrink-0 items-center justify-center rounded-md border border-dashed text-muted-foreground", className)}>
+      <div style={box} title="No photo" className={cn(PHOTO_RATIO, "flex shrink-0 items-center justify-center rounded-md border border-dashed text-muted-foreground", className)}>
         <ImageOff className="h-4 w-4" />
       </div>
     );
   }
   return (
-    <button type="button" onClick={() => open(path)} title="Open photo" style={box}
-            className={cn("shrink-0 overflow-hidden rounded-md border bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", className)}>
-      {url && <img src={url} alt={label ? `Photo of ${label}` : "Part photo"} className="h-full w-full object-cover" />}
-    </button>
+    <>
+      <button type="button" onClick={() => setViewing(true)} title="Open photo" style={box}
+              className={cn(PHOTO_RATIO, "shrink-0 overflow-hidden rounded-md border bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", className)}>
+        {url && <img src={url} alt={label ? `Photo of ${label}` : "Part photo"} className="h-full w-full object-contain" />}
+      </button>
+      <PartPhotoViewer path={path} open={viewing} onOpenChange={setViewing} code={label} name={name} />
+    </>
+  );
+}
+
+/** The large photo at the top of a part's page: fills its column at 4:3; click to see it full size. */
+export function PartPhotoPanel({ path, code, name, className }: {
+  path?: string | null; code?: string | null; name?: string | null; className?: string;
+}) {
+  const [viewing, setViewing] = useState(false);
+  const { data: url } = useSignedStorageUrl(BUCKET, path ?? null);
+  if (!path) {
+    return (
+      <div className={cn(PHOTO_RATIO, "flex w-full flex-col items-center justify-center gap-2 rounded-lg border border-dashed text-muted-foreground", className)}>
+        <ImageOff className="h-8 w-8" />
+        <span className="text-sm">No photo yet</span>
+        <span className="text-xs">Add one with Edit</span>
+      </div>
+    );
+  }
+  return (
+    <>
+      <button type="button" onClick={() => setViewing(true)} aria-label={`Open the photo of ${code ?? "this part"}`}
+              className={cn(PHOTO_RATIO, "group relative w-full overflow-hidden rounded-lg border bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", className)}>
+        {url && <img src={url} alt={code ? `Photo of ${code}` : "Part photo"} className="h-full w-full object-contain" />}
+        <span className="absolute bottom-2 right-2 inline-flex items-center gap-1 rounded-md bg-background/90 px-2 py-1 text-xs font-medium shadow-sm opacity-90 group-hover:opacity-100">
+          <Maximize2 className="h-3.5 w-3.5" /> Click to enlarge
+        </span>
+      </button>
+      <PartPhotoViewer path={path} open={viewing} onOpenChange={setViewing} code={code} name={name} />
+    </>
   );
 }
 
 /** The documents this kind of part needs, each opened from here or marked missing. */
 export const PartDocumentList = ({ tier, part }: { tier: PartTier; part: Record<string, any> }) => (
   <div className="divide-y rounded-md border">
-    <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
-      <span className="text-sm">Part photo</span>
-      <div className="flex items-center gap-2">
-        <PartPhoto path={part.image_url} size={72} label={part.part_code} />
-      </div>
-    </div>
     {DOCS_FOR_TIER[tier].map((k) => {
       const path: string | null = part[PART_DOCS[k].column];
       return (

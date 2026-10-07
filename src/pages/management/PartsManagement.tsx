@@ -49,7 +49,7 @@ import { PartBomView, PartWhereUsed } from "@/components/BOM/PartBomView";
 import { PartBranding, BrandIssuesBanner } from "@/components/Parts/PartBranding";
 import { usePermissions } from "@/hooks/usePermissions";
 import { ApprovalBadge } from "@/components/Approvals/ApprovalBadge";
-import { PartDocumentInputs, PartDocumentList, docFilesToInput, type DocFiles } from "@/components/Parts/PartDocuments";
+import { PartDocumentInputs, PartDocumentList, PartPhotoPanel, docFilesToInput, type DocFiles } from "@/components/Parts/PartDocuments";
 
 
 // The categories are no longer a list in this file. They live in
@@ -659,7 +659,7 @@ const RawMaterialsManagement = () => {
 
         {/* View Material Dialog */}
         <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-5xl max-h-[92vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>View Part: {viewMaterial?.part_code}</DialogTitle>
             </DialogHeader>
@@ -675,25 +675,34 @@ const RawMaterialsManagement = () => {
                     Rejected: {(viewMaterial as any).rejection_reason}. Edit and save it to send it again.
                   </p>
                 )}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium text-muted-foreground">Part Name</Label>
-                    <p className="font-medium">{viewMaterial.name}</p>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium text-muted-foreground">Category</Label>
-                    <p>{categoryName(viewMaterial.category)}</p>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium text-muted-foreground">Unit</Label>
-                    <p>{(viewMaterial as any).uom || "N/A"}</p>
-                  </div>
-                  {(viewMaterial as any).remarks && (
-                    <div className="space-y-2 col-span-2">
-                      <Label className="text-sm font-medium text-muted-foreground">Remarks</Label>
-                      <p>{(viewMaterial as any).remarks}</p>
+                <div className="grid gap-6 md:grid-cols-[minmax(0,5fr)_minmax(0,4fr)] md:items-start">
+                  <PartPhotoPanel path={(viewMaterial as any).image_url} code={viewMaterial.part_code} name={viewMaterial.name} />
+                  <div className="grid gap-4 min-w-0">
+                    <div className="space-y-1">
+                      <Label className="text-sm font-medium text-muted-foreground">Part Code</Label>
+                      <p className="font-mono text-xl font-semibold">{viewMaterial.part_code}</p>
                     </div>
-                  )}
+                    <div className="space-y-1">
+                      <Label className="text-sm font-medium text-muted-foreground">Part Name</Label>
+                      <p className="text-lg font-medium break-words">{viewMaterial.name}</p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <Label className="text-sm font-medium text-muted-foreground">Category</Label>
+                        <p>{categoryName(viewMaterial.category)}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-sm font-medium text-muted-foreground">Unit</Label>
+                        <p>{(viewMaterial as any).uom || "N/A"}</p>
+                      </div>
+                    </div>
+                    {(viewMaterial as any).remarks && (
+                      <div className="space-y-1">
+                        <Label className="text-sm font-medium text-muted-foreground">Remarks</Label>
+                        <p className="break-words">{(viewMaterial as any).remarks}</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {viewTier === "PURCHASE" && (
