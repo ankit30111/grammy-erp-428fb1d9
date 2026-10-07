@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 const sel = "h-8 rounded-md border border-input bg-background px-2 text-sm";
 const CHANGE_LABEL: Record<string, string> = { NEW: "new", CARRY_OVER: "carry-over", CHANGED: "changed" };
 
-export type PickPart = { id: string; part_code: string; name: string; uom: string | null; category: string; branding_required?: boolean; brand_relevant?: boolean };
+export type PickPart = { id: string; part_code: string; name: string; uom: string | null; category: string; source_type?: string; branding_required?: boolean; brand_relevant?: boolean };
 
 /** Every part that can go into a BOM (not finished goods, not brand versions), for pickers. */
 export const usePickParts = () =>
@@ -24,7 +24,7 @@ export const usePickParts = () =>
       const out: PickPart[] = [];
       for (let from = 0; ; from += 1000) {
         const { data, error } = await (supabase as any).from("parts")
-          .select("id, part_code, name, uom, category, branding_required, brand_relevant")
+          .select("id, part_code, name, uom, category, source_type, branding_required, brand_relevant")
           .eq("is_active", true).not("source_type", "in", "(FINISHED_GOOD,MODEL)").is("branded_from", null)
           .order("part_code").range(from, from + 999);
         if (error) throw error;
@@ -50,7 +50,7 @@ export function PartPicker({ parts, value, onPick, placeholder, id }: {
              }} />
       <datalist id={`${id}-list`}>
         {text.length >= 1 && parts.filter((p) => `${p.part_code} ${p.name}`.toLowerCase().includes(text.toLowerCase().split(" — ")[0]))
-          .slice(0, 60).map((p) => <option key={p.id} value={`${p.part_code} — ${p.name}`} />)}
+          .slice(0, 60).map((p) => <option key={p.id} value={`${p.part_code} — ${p.name}`} label={p.source_type?.startsWith("ASSEMBLED") ? "sub-assembly" : undefined} />)}
       </datalist>
     </>
   );

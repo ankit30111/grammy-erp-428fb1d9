@@ -431,7 +431,14 @@ const RawMaterialsManagement = () => {
                 Create New Part Code
               </Button>
             )}
-            <CreatePartDialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen} />
+            <CreatePartDialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}
+              onCreated={(part: any) => {
+                // A new sub-assembly goes straight on to what it is built from.
+                if (part?.id && ["ASSEMBLED_STOCKED", "ASSEMBLED_INLINE"].includes(part.source_type)) {
+                  setIsAddDialogOpen(false);
+                  openBomFor(part.id);
+                }
+              }} />
           </div>
         </div>
 

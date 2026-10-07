@@ -588,8 +588,9 @@ export const CreatePartDialog = ({ open, onOpenChange, forProduct, onCreated }: 
                   <PartDocumentInputs tier={tier} files={docs} onChange={setDocs} />
                   <div className="sm:col-span-2 rounded-lg border bg-muted/30 p-3 text-sm text-muted-foreground">
                     Built here and stocked: it can be made ahead of a plan, issued a few at a time,
-                    and returned to the store. Add its bill of materials on the Bill of Materials tab
-                    once it is saved.
+                    and returned to the store.{tier === "SUB_ASSEMBLED"
+                      ? " When you create it, its bill of materials opens next: add purchase parts and other sub-assemblies."
+                      : " Add its bill of materials from the part once it is saved."}
                   </div>
                 </>
               )}

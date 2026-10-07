@@ -162,6 +162,26 @@ export const BOMBuilder = ({ partId: initialParentId, onClose, draft }: { partId
   const tierOf = (prefix?: string | null) =>
     categories.find((c) => c.prefix === prefix)?.tier ?? "PURCHASE";
 
+  // Parts that already contain this one, at any depth: putting one of them
+  // inside it would make a loop (the database refuses it too).
+  const containsParent = useMemo(() => {
+    const out = new Set<string>();
+    if (!parentId) return out;
+    const todo = [parentId];
+    while (todo.length) {
+      const id = todo.pop()!;
+      for (const l of lines as any[]) {
+        if (l.child_part_id === id && l.is_active !== false && !out.has(l.parent_part_id)) {
+          out.add(l.parent_part_id); todo.push(l.parent_part_id);
+        }
+      }
+    }
+    return out;
+  }, [lines, parentId]);
+  const isSub = (p: any) => tierOf(p.category) === "SUB_ASSEMBLED";
+  const subCount = useMemo(() => parts.filter((p: any) => p.id !== parentId && p.is_active !== false && isSub(p)
+    && !p.branded_from && !containsParent.has(p.id)).length, [parts, parentId, containsParent, categories]);
+
   const candidates = useMemo(() => {
     const q = search.trim().toLowerCase();
     return parts
@@ -169,6 +189,7 @@ export const BOMBuilder = ({ partId: initialParentId, onClose, draft }: { partId
         // A part cannot be inside itself, and the database refuses it anyway -
         // better to not offer it than to explain the refusal afterwards.
         if (p.id === parentId) return false;
+        if (containsParent.has(p.id) && picked[p.id] === undefined) return false;
         // A model holds base parts only: no brand versions, no finished goods.
         if (draft && (p.branded_from || p.source_type === "FINISHED_GOOD")) return false;
         // A deactivated part is not offered - unless it is already on this BOM,
@@ -184,7 +205,7 @@ export const BOMBuilder = ({ partId: initialParentId, onClose, draft }: { partId
         );
       })
       .sort((a: any, b: any) => (a.part_code || "").localeCompare(b.part_code || ""));
-  }, [parts, parentId, search, filterCategory, filterType, onlySelected, picked, categories]);
+  }, [parts, parentId, search, filterCategory, filterType, onlySelected, picked, categories, containsParent]);
 
   const toggle = (partId: string, on: boolean) => {
     setPicked((prev) => {
@@ -349,6 +370,19 @@ export const BOMBuilder = ({ partId: initialParentId, onClose, draft }: { partId
             )}
           </CardHeader>
           <CardContent className="space-y-3">
+            <div className="flex flex-wrap items-center gap-2" role="group" aria-label="What to list">
+              {([["all", "All parts"], ["PURCHASE", "Purchase parts"], ["SUB_ASSEMBLED", `Sub-assemblies (${subCount})`]] as const).map(([v, label]) => (
+                <Button key={v} type="button" size="sm" variant={filterType === v ? "default" : "outline"}
+                        aria-pressed={filterType === v} onClick={() => setFilterType(v)}>
+                  {label}
+                </Button>
+              ))}
+              {!draft && isSub(parentPart ?? {}) && (
+                <span className="text-xs text-muted-foreground">
+                  A sub-assembly can be built from purchase parts and from other sub-assemblies.
+                </span>
+              )}
+            </div>
             <div className="flex flex-col md:flex-row gap-3">
               <div className="relative flex-1">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -369,17 +403,6 @@ export const BOMBuilder = ({ partId: initialParentId, onClose, draft }: { partId
                     <SelectItem key={c.prefix} value={c.prefix}>
                       {c.name} ({c.prefix})
                     </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select value={filterType} onValueChange={setFilterType}>
-                <SelectTrigger className="w-full md:w-[200px]">
-                  <SelectValue placeholder="All Types" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Types</SelectItem>
-                  {PART_TIERS.map((t) => (
-                    <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
