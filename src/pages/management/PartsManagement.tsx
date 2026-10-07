@@ -49,7 +49,7 @@ import { PartBomView, PartWhereUsed } from "@/components/BOM/PartBomView";
 import { PartBranding, BrandIssuesBanner } from "@/components/Parts/PartBranding";
 import { usePermissions } from "@/hooks/usePermissions";
 import { ApprovalBadge } from "@/components/Approvals/ApprovalBadge";
-import { PartDocumentInputs, PartDocumentList, PartPhotoPanel, docFilesToInput, type DocFiles } from "@/components/Parts/PartDocuments";
+import { PartDocButtons, PartDocumentInputs, PartPhotoPanel, docFilesToInput, type DocFiles } from "@/components/Parts/PartDocuments";
 
 
 // The categories are no longer a list in this file. They live in
@@ -675,8 +675,8 @@ const RawMaterialsManagement = () => {
                     Rejected: {(viewMaterial as any).rejection_reason}. Edit and save it to send it again.
                   </p>
                 )}
-                <div className="grid gap-6 md:grid-cols-[minmax(0,5fr)_minmax(0,4fr)] md:items-start">
-                  <PartPhotoPanel path={(viewMaterial as any).image_url} code={viewMaterial.part_code} name={viewMaterial.name} />
+                <div className="grid gap-6 md:grid-cols-[minmax(0,4fr)_minmax(0,5fr)] md:items-start">
+                  {/* Left: what the part is */}
                   <div className="grid gap-4 min-w-0">
                     <div className="space-y-1">
                       <Label className="text-sm font-medium text-muted-foreground">Part Code</Label>
@@ -695,82 +695,88 @@ const RawMaterialsManagement = () => {
                         <Label className="text-sm font-medium text-muted-foreground">Unit</Label>
                         <p>{(viewMaterial as any).uom || "N/A"}</p>
                       </div>
+                      {viewTier === "PURCHASE" && viewMaterial.unit_price != null && (
+                        <div className="space-y-1">
+                          <Label className="text-sm font-medium text-muted-foreground">Unit Price</Label>
+                          <p className="font-medium">{viewMaterial.currency ?? ""} {viewMaterial.unit_price}</p>
+                        </div>
+                      )}
+                      {viewTier === "PURCHASE" && viewMaterial.last_price_update && (
+                        <div className="space-y-1">
+                          <Label className="text-sm font-medium text-muted-foreground">Last Price Update</Label>
+                          <p>{format(new Date(viewMaterial.last_price_update), 'PPP')}</p>
+                        </div>
+                      )}
+                      {viewTier === "PURCHASE" && viewMaterial.sourcing_type === 'IMPORTED' && viewMaterial.cbm_per_unit && (
+                        <div className="space-y-1">
+                          <Label className="text-sm font-medium text-muted-foreground">CBM per Unit</Label>
+                          <p>{viewMaterial.cbm_per_unit} m³</p>
+                        </div>
+                      )}
                     </div>
+                    {viewMaterial.specification && (
+                      <div className="space-y-1">
+                        <Label className="text-sm font-medium text-muted-foreground">Specification</Label>
+                        <p className="text-sm bg-muted p-3 rounded break-words">{viewMaterial.specification}</p>
+                      </div>
+                    )}
                     {(viewMaterial as any).remarks && (
                       <div className="space-y-1">
                         <Label className="text-sm font-medium text-muted-foreground">Remarks</Label>
                         <p className="break-words">{(viewMaterial as any).remarks}</p>
                       </div>
                     )}
+                    {viewMaterial.model_id && (
+                      <div className="text-sm">
+                        <span className="text-muted-foreground">Model </span>
+                        <Link className="font-mono underline-offset-2 hover:underline"
+                              to={`/models/${encodeURIComponent(String(viewMaterial.part_code).replace(/-[A-Z]{2}$/, ""))}`}>
+                          {String(viewMaterial.part_code).replace(/-[A-Z]{2}$/, "")}
+                        </Link>
+                        <span className="text-muted-foreground"> · built on v{viewMaterial.model_version ?? "?"}</span>
+                      </div>
+                    )}
                   </div>
-                </div>
 
-                {viewTier === "PURCHASE" && (
-                <div className="border-t pt-4 space-y-4">
-                  <h4 className="text-sm font-semibold text-foreground">Sourcing Information</h4>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label className="text-sm font-medium text-muted-foreground">Sourcing Type</Label>
-                      <div className="flex items-center gap-2">
-                        <StatusBadge 
-                          status={viewMaterial.sourcing_type === 'IMPORTED' ? 'pending' : 'approved'}
-                          withDot={false}
-                        >
-                          {viewMaterial.sourcing_type || 'Not specified'}
-                        </StatusBadge>
+                  {/* Right: the photo, then where it comes from and its documents */}
+                  <div className="grid gap-4 min-w-0">
+                    <PartPhotoPanel path={(viewMaterial as any).image_url} code={viewMaterial.part_code} name={viewMaterial.name} />
+                    <div className="rounded-lg border divide-y">
+                      {viewTier === "PURCHASE" ? (
+                        <div className="space-y-3 p-4">
+                          <div className="flex flex-wrap items-baseline justify-between gap-2">
+                            <h4 className="text-base font-semibold tracking-wide uppercase">
+                              {viewMaterial.sourcing_type === 'IMPORTED' ? 'Imported' : viewMaterial.sourcing_type === 'LOCAL' ? 'Local' : 'Sourcing not set'}
+                              {viewMaterial.sourcing_type === 'IMPORTED' && viewMaterial.supplier_country && (
+                                <span className="font-normal normal-case text-muted-foreground"> · {viewMaterial.supplier_country}</span>
+                              )}
+                            </h4>
+                            <span className="text-xs text-muted-foreground">Sourcing</span>
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label className="text-sm font-medium text-muted-foreground">Vendors</Label>
+                            <div className="flex flex-wrap gap-2">
+                              {!viewMaterial.part_vendors?.length && <span className="text-sm text-muted-foreground">No vendor assigned</span>}
+                              {viewMaterial.part_vendors?.map((rv: any) => (
+                                <Badge key={rv.id} variant={rv.is_primary ? "default" : "secondary"}>
+                                  {rv.vendors.vendor_code} · {rv.vendors.name}{rv.is_primary && " (Primary)"}
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="p-4">
+                          <h4 className="text-base font-semibold tracking-wide uppercase">Made at Grammy</h4>
+                        </div>
+                      )}
+                      <div className="space-y-1.5 p-4">
+                        <Label className="text-sm font-medium text-muted-foreground">Documents</Label>
+                        <PartDocButtons tier={viewTier} part={viewMaterial} />
                       </div>
                     </div>
-                    {viewMaterial.sourcing_type === 'IMPORTED' && viewMaterial.supplier_country && (
-                      <div className="space-y-2">
-                        <Label className="text-sm font-medium text-muted-foreground">Supplier Country</Label>
-                        <p>{viewMaterial.supplier_country}</p>
-                      </div>
-                    )}
-                    {viewMaterial.unit_price && viewMaterial.currency && (
-                      <div className="space-y-2">
-                        <Label className="text-sm font-medium text-muted-foreground">Unit Price</Label>
-                        <p className="font-medium">{viewMaterial.currency} {viewMaterial.unit_price}</p>
-                      </div>
-                    )}
-                    {viewMaterial.sourcing_type === 'IMPORTED' && viewMaterial.cbm_per_unit && (
-                      <div className="space-y-2">
-                        <Label className="text-sm font-medium text-muted-foreground">CBM per Unit</Label>
-                        <p>{viewMaterial.cbm_per_unit} m³</p>
-                      </div>
-                    )}
-                    {viewMaterial.last_price_update && (
-                      <div className="space-y-2">
-                        <Label className="text-sm font-medium text-muted-foreground">Last Price Update</Label>
-                        <p>{format(new Date(viewMaterial.last_price_update), 'PPP')}</p>
-                      </div>
-                    )}
                   </div>
                 </div>
-                )}
-
-                {viewMaterial.specification && (
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium text-muted-foreground">Specification</Label>
-                    <p className="text-sm bg-muted p-3 rounded">{viewMaterial.specification}</p>
-                  </div>
-                )}
-
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium text-muted-foreground">Documents</Label>
-                  <PartDocumentList tier={viewTier} part={viewMaterial} />
-                </div>
-
-                {viewMaterial.model_id && (
-                  <div className="text-sm">
-                    <span className="text-muted-foreground">Model </span>
-                    <Link className="font-mono underline-offset-2 hover:underline"
-                          to={`/models/${encodeURIComponent(String(viewMaterial.part_code).replace(/-[A-Z]{2}$/, ""))}`}>
-                      {String(viewMaterial.part_code).replace(/-[A-Z]{2}$/, "")}
-                    </Link>
-                    <span className="text-muted-foreground"> · built on v{viewMaterial.model_version ?? "?"}</span>
-                  </div>
-                )}
-
 
                 <PartBranding part={viewMaterial} allParts={rawMaterials} />
 
@@ -799,23 +805,6 @@ const RawMaterialsManagement = () => {
                   </div>
                 )}
 
-                {viewTier === "PURCHASE" && (
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium text-muted-foreground">Vendors</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {!viewMaterial.part_vendors?.length && <span className="text-sm text-muted-foreground">No vendors assigned</span>}
-                    {viewMaterial.part_vendors?.map((rv: any) => (
-                      <Badge 
-                        key={rv.id} 
-                        variant={rv.is_primary ? "default" : "secondary"}
-                      >
-                        {rv.vendors.vendor_code} - {rv.vendors.name}
-                        {rv.is_primary && " (Primary)"}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-                )}
               </div>
             )}
             <DialogFooter>

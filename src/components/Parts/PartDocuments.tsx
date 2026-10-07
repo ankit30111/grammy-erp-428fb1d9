@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Download, ExternalLink, ImageOff, Maximize2, Trash2 } from "lucide-react";
+import { Download, ExternalLink, FileText, ImageOff, Maximize2, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -236,3 +236,79 @@ export const PartDocumentList = ({ tier, part }: { tier: PartTier; part: Record<
     })}
   </div>
 );
+
+/** A part document (PDF) shown on this page in a dialog. Esc goes back. */
+export function PartDocViewer({ path, open, onOpenChange, title, fileName }: {
+  path?: string | null; open: boolean; onOpenChange: (o: boolean) => void; title: string; fileName: string;
+}) {
+  // Loaded as a file and shown from memory, so the browser always displays it
+  // in the page instead of downloading it or refusing to frame another site.
+  const [url, setUrl] = useState<string | null>(null);
+  const [isError, setIsError] = useState(false);
+  useEffect(() => {
+    if (!open || !path) return;
+    let objectUrl: string | null = null; let live = true;
+    setUrl(null); setIsError(false);
+    supabase.storage.from(BUCKET).download(path).then(({ data, error }) => {
+      if (!live) return;
+      if (error || !data) { setIsError(true); return; }
+      objectUrl = URL.createObjectURL(new Blob([data], { type: data.type || "application/pdf" }));
+      setUrl(objectUrl);
+    });
+    return () => { live = false; if (objectUrl) URL.revokeObjectURL(objectUrl); };
+  }, [open, path]);
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="flex h-[90vh] w-[min(94vw,1100px)] max-w-none flex-col gap-3 p-4 sm:p-6">
+        <DialogHeader className="pr-8">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="min-w-0">
+              <DialogTitle>{title}</DialogTitle>
+              <DialogDescription>Press Esc to go back.</DialogDescription>
+            </div>
+            {path && (
+              <Button variant="outline" size="sm" onClick={() => download(path, fileName)}>
+                <Download /> Download
+              </Button>
+            )}
+          </div>
+        </DialogHeader>
+        <div className="min-h-0 flex-1 overflow-hidden rounded-md border bg-muted">
+          {url ? <iframe src={url} title={title} className="h-full w-full" />
+            : <div className="flex h-full items-center justify-center text-sm text-muted-foreground">{isError ? "Could not open the document" : "Loading…"}</div>}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/** The documents this kind of part needs, as compact buttons; each opens on this page. Missing ones say so. */
+export function PartDocButtons({ tier, part }: { tier: PartTier; part: Record<string, any> }) {
+  const [openKey, setOpenKey] = useState<PartDocKey | null>(null);
+  const keys = DOCS_FOR_TIER[tier];
+  const SHORT: Record<PartDocKey, string> = { spec: "Spec Sheet", iqc: "IQC Checklist", cir: "CIR Sheet", pqc: "PQC Checklist", oqc: "OQC Checklist" };
+  return (
+    <>
+      <div className="flex flex-wrap gap-2">
+        {keys.map((k) => {
+          const path: string | null = part[PART_DOCS[k].column];
+          return path ? (
+            <Button key={k} type="button" variant="outline" size="sm" onClick={() => setOpenKey(k)}>
+              <FileText /> {SHORT[k]}
+            </Button>
+          ) : (
+            <span key={k} title={`${PART_DOCS[k].label} not uploaded`}
+                  className="inline-flex h-9 items-center gap-1.5 rounded-md border border-dashed px-3 text-sm text-muted-foreground">
+              <FileText className="h-4 w-4" /> {SHORT[k]} <span className="text-destructive">missing</span>
+            </span>
+          );
+        })}
+      </div>
+      {openKey && (
+        <PartDocViewer path={part[PART_DOCS[openKey].column]} open={!!openKey} onOpenChange={(o) => !o && setOpenKey(null)}
+                       title={`${part.part_code} · ${PART_DOCS[openKey].label}`}
+                       fileName={`${part.part_code} ${PART_DOCS[openKey].label}.pdf`} />
+      )}
+    </>
+  );
+}
