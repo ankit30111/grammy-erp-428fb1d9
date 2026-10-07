@@ -660,8 +660,11 @@ const RawMaterialsManagement = () => {
         {/* View Material Dialog */}
         <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
           <DialogContent className="max-w-5xl max-h-[92vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>View Part: {viewMaterial?.part_code}</DialogTitle>
+            <DialogHeader className="pr-8">
+              <DialogTitle className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                <span className="font-mono text-2xl font-semibold">{viewMaterial?.part_code}</span>
+                <span className="text-lg font-medium break-words">{viewMaterial?.name}</span>
+              </DialogTitle>
             </DialogHeader>
             {viewMaterial && (
               <div className="grid gap-6 py-4">
@@ -678,14 +681,6 @@ const RawMaterialsManagement = () => {
                 <div className="grid gap-6 md:grid-cols-[minmax(0,4fr)_minmax(0,5fr)] md:items-start">
                   {/* Left: what the part is, where it comes from, its branding */}
                   <div className="grid gap-4 min-w-0">
-                    <div className="space-y-1">
-                      <Label className="text-sm font-medium text-muted-foreground">Part Code</Label>
-                      <p className="font-mono text-xl font-semibold">{viewMaterial.part_code}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-sm font-medium text-muted-foreground">Part Name</Label>
-                      <p className="text-lg font-medium break-words">{viewMaterial.name}</p>
-                    </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1">
                         <Label className="text-sm font-medium text-muted-foreground">Category</Label>
@@ -803,11 +798,6 @@ const RawMaterialsManagement = () => {
 
               </div>
             )}
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsViewDialogOpen(false)}>
-                Close
-              </Button>
-            </DialogFooter>
           </DialogContent>
         </Dialog>
 
