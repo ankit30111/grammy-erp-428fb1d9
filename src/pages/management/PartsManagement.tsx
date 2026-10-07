@@ -45,7 +45,7 @@ import { type PartSourceType } from "@/hooks/useParts";
 import { useVendors } from "@/hooks/useVendors";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { PartBomView, PartWhereUsed } from "@/components/BOM/PartBomView";
+import { PartBomView, PartUsedInTables, PartWhereUsed } from "@/components/BOM/PartBomView";
 import { PartBranding, BrandIssuesBanner } from "@/components/Parts/PartBranding";
 import { usePermissions } from "@/hooks/usePermissions";
 import { ApprovalBadge } from "@/components/Approvals/ApprovalBadge";
@@ -676,7 +676,7 @@ const RawMaterialsManagement = () => {
                   </p>
                 )}
                 <div className="grid gap-6 md:grid-cols-[minmax(0,4fr)_minmax(0,5fr)] md:items-start">
-                  {/* Left: what the part is */}
+                  {/* Left: what the part is, where it comes from, its branding */}
                   <div className="grid gap-4 min-w-0">
                     <div className="space-y-1">
                       <Label className="text-sm font-medium text-muted-foreground">Part Code</Label>
@@ -736,40 +736,43 @@ const RawMaterialsManagement = () => {
                         <span className="text-muted-foreground"> · built on v{viewMaterial.model_version ?? "?"}</span>
                       </div>
                     )}
+                    <div className="rounded-lg border">
+                        {viewTier === "PURCHASE" ? (
+                          <div className="space-y-3 p-4">
+                            <div className="flex flex-wrap items-baseline justify-between gap-2">
+                              <h4 className="text-base font-semibold tracking-wide uppercase">
+                                {viewMaterial.sourcing_type === 'IMPORTED' ? 'Imported' : viewMaterial.sourcing_type === 'LOCAL' ? 'Local' : 'Sourcing not set'}
+                                {viewMaterial.sourcing_type === 'IMPORTED' && viewMaterial.supplier_country && (
+                                  <span className="font-normal normal-case text-muted-foreground"> · {viewMaterial.supplier_country}</span>
+                                )}
+                              </h4>
+                              <span className="text-xs text-muted-foreground">Sourcing</span>
+                            </div>
+                            <div className="space-y-1.5">
+                              <Label className="text-sm font-medium text-muted-foreground">Vendors</Label>
+                              <div className="flex flex-wrap gap-2">
+                                {!viewMaterial.part_vendors?.length && <span className="text-sm text-muted-foreground">No vendor assigned</span>}
+                                {viewMaterial.part_vendors?.map((rv: any) => (
+                                  <Badge key={rv.id} variant={rv.is_primary ? "default" : "secondary"}>
+                                    {rv.vendors.vendor_code} · {rv.vendors.name}{rv.is_primary && " (Primary)"}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="p-4">
+                            <h4 className="text-base font-semibold tracking-wide uppercase">Made at Grammy</h4>
+                          </div>
+                        )}
+                    </div>
+                    <PartBranding part={viewMaterial} allParts={rawMaterials} />
                   </div>
 
-                  {/* Right: the photo, then where it comes from and its documents */}
+                  {/* Right: the photo and the documents */}
                   <div className="grid gap-4 min-w-0">
                     <PartPhotoPanel path={(viewMaterial as any).image_url} code={viewMaterial.part_code} name={viewMaterial.name} />
                     <div className="rounded-lg border divide-y">
-                      {viewTier === "PURCHASE" ? (
-                        <div className="space-y-3 p-4">
-                          <div className="flex flex-wrap items-baseline justify-between gap-2">
-                            <h4 className="text-base font-semibold tracking-wide uppercase">
-                              {viewMaterial.sourcing_type === 'IMPORTED' ? 'Imported' : viewMaterial.sourcing_type === 'LOCAL' ? 'Local' : 'Sourcing not set'}
-                              {viewMaterial.sourcing_type === 'IMPORTED' && viewMaterial.supplier_country && (
-                                <span className="font-normal normal-case text-muted-foreground"> · {viewMaterial.supplier_country}</span>
-                              )}
-                            </h4>
-                            <span className="text-xs text-muted-foreground">Sourcing</span>
-                          </div>
-                          <div className="space-y-1.5">
-                            <Label className="text-sm font-medium text-muted-foreground">Vendors</Label>
-                            <div className="flex flex-wrap gap-2">
-                              {!viewMaterial.part_vendors?.length && <span className="text-sm text-muted-foreground">No vendor assigned</span>}
-                              {viewMaterial.part_vendors?.map((rv: any) => (
-                                <Badge key={rv.id} variant={rv.is_primary ? "default" : "secondary"}>
-                                  {rv.vendors.vendor_code} · {rv.vendors.name}{rv.is_primary && " (Primary)"}
-                                </Badge>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="p-4">
-                          <h4 className="text-base font-semibold tracking-wide uppercase">Made at Grammy</h4>
-                        </div>
-                      )}
                       <div className="space-y-1.5 p-4">
                         <Label className="text-sm font-medium text-muted-foreground">Documents</Label>
                         <PartDocButtons tier={viewTier} part={viewMaterial} />
@@ -778,7 +781,6 @@ const RawMaterialsManagement = () => {
                   </div>
                 </div>
 
-                <PartBranding part={viewMaterial} allParts={rawMaterials} />
 
                 {viewTier !== "PURCHASE" && (
                   <div className="space-y-2">
@@ -796,13 +798,7 @@ const RawMaterialsManagement = () => {
 
                 {/* Used In comes from the BOMs. A finished good goes into nothing. */}
                 {viewTier !== "FINISHED" && (
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium text-muted-foreground">Used In</Label>
-                    <PartWhereUsed partId={viewMaterial.id} />
-                    {(viewMaterial as any).used_in_reference && (
-                      <p className="text-xs text-muted-foreground">Earlier typed note: {(viewMaterial as any).used_in_reference}</p>
-                    )}
-                  </div>
+                  <PartUsedInTables partId={viewMaterial.id} note={(viewMaterial as any).used_in_reference} />
                 )}
 
               </div>
