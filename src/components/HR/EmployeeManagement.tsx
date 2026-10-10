@@ -12,9 +12,14 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { Plus, Edit } from "lucide-react";
 
+/** Today in India, as YYYY-MM-DD (leaving dates are compared with it). */
+const todayIso = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+const fmtDate = (iso: string) => iso.split('-').reverse().join('-');
+
 export function EmployeeManagement() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<any>(null);
+  const [view, setView] = useState<'working' | 'left' | 'all'>('working');
   const { isAdmin } = useAuth();
   const [formData, setFormData] = useState({
     employee_code: "",
@@ -36,6 +41,9 @@ export function EmployeeManagement() {
     city: "",
     state: "",
     pincode: "",
+    hire_date: "",
+    leaving_date: "",
+    leaving_reason: "",
   });
   
   const { toast } = useToast();
@@ -44,7 +52,9 @@ export function EmployeeManagement() {
   const { data: employees, isLoading } = useQuery({
     queryKey: ['employees'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // Leaving dates that have come since the last run make those people inactive.
+      await (supabase as any).rpc('employees_apply_leaving');
+      const { data, error } = await (supabase as any)
         .from('employees')
         .select(`
           id,
@@ -59,6 +69,9 @@ export function EmployeeManagement() {
           state,
           pincode,
           status,
+          hire_date,
+          leaving_date,
+          leaving_reason,
           created_at
         `)
         .order('created_at', { ascending: false });
@@ -70,7 +83,7 @@ export function EmployeeManagement() {
 
   const createEmployeeMutation = useMutation({
     mutationFn: async (data: any) => {
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('employees')
         .insert([{
           employee_code: data.employee_code,
@@ -92,6 +105,9 @@ export function EmployeeManagement() {
           city: data.city || null,
           state: data.state || null,
           pincode: data.pincode || null,
+          ...(data.hire_date ? { hire_date: data.hire_date } : {}),
+          leaving_date: data.leaving_date || null,
+          leaving_reason: data.leaving_date ? data.leaving_reason || null : null,
         }]);
       
       if (error) throw error;
@@ -131,7 +147,10 @@ export function EmployeeManagement() {
           city: data.city || null,
           state: data.state || null,
           pincode: data.pincode || null,
-        })
+          ...(data.hire_date ? { hire_date: data.hire_date } : {}),
+          leaving_date: data.leaving_date || null,
+          leaving_reason: data.leaving_date ? data.leaving_reason || null : null,
+        } as any)
         .eq('id', id);
       
       if (error) throw error;
@@ -169,6 +188,9 @@ export function EmployeeManagement() {
       city: "",
       state: "",
       pincode: "",
+      hire_date: "",
+      leaving_date: "",
+      leaving_reason: "",
     });
   };
 
@@ -201,8 +223,11 @@ export function EmployeeManagement() {
     setFormData({
       employee_code: employee.employee_code,
       first_name: employee.first_name,
-      last_name: employee.last_name,
-      email: employee.email,
+      last_name: employee.last_name ?? "",
+      email: employee.email ?? "",
+      hire_date: employee.hire_date ?? "",
+      leaving_date: employee.leaving_date ?? "",
+      leaving_reason: employee.leaving_reason ?? "",
       phone_number: sensitive.phone_number || "",
       date_of_birth: sensitive.date_of_birth || "",
       position: employee.position,
@@ -334,6 +359,42 @@ export function EmployeeManagement() {
                 </div>
                 
                 <div>
+                  <Label htmlFor="hire_date">Joining Date</Label>
+                  <Input
+                    id="hire_date"
+                    type="date"
+                    value={formData.hire_date}
+                    onChange={(e) => handleInputChange('hire_date', e.target.value)}
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="leaving_date">Leaving Date</Label>
+                  <Input
+                    id="leaving_date"
+                    type="date"
+                    min={formData.hire_date || undefined}
+                    value={formData.leaving_date}
+                    onChange={(e) => handleInputChange('leaving_date', e.target.value)}
+                  />
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    From this date the employee is inactive and their ERP login is switched off.
+                  </p>
+                </div>
+
+                {formData.leaving_date && (
+                  <div>
+                    <Label htmlFor="leaving_reason">Reason for Leaving</Label>
+                    <Input
+                      id="leaving_reason"
+                      placeholder="Resigned, contract ended…"
+                      value={formData.leaving_reason}
+                      onChange={(e) => handleInputChange('leaving_reason', e.target.value)}
+                    />
+                  </div>
+                )}
+
+                <div>
                   <Label htmlFor="salary">Salary</Label>
                   <Input
                     id="salary"
@@ -462,8 +523,18 @@ export function EmployeeManagement() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Employees</CardTitle>
-          <CardDescription>Manage employee information and details</CardDescription>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <CardTitle>Employees</CardTitle>
+              <CardDescription>Manage employee information and details</CardDescription>
+            </div>
+            <div className="flex rounded-md border p-0.5 text-sm">
+              {([['working', 'Working'], ['left', 'Left'], ['all', 'All']] as const).map(([k, l]) => (
+                <button key={k} type="button" onClick={() => setView(k)}
+                        className={`rounded px-3 py-1 ${view === k ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`}>{l}</button>
+              ))}
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -482,17 +553,22 @@ export function EmployeeManagement() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {employees?.map((employee) => (
+                {employees?.filter((e: any) => view === 'all' || (view === 'left') === !!(e.leaving_date && e.status !== 'active' && e.status !== 'on_leave' && e.leaving_date <= todayIso())).map((employee: any) => (
                   <TableRow key={employee.id}>
                     <TableCell>{employee.employee_code}</TableCell>
-                    <TableCell>{`${employee.first_name} ${employee.last_name}`}</TableCell>
+                    <TableCell>{[employee.first_name, employee.last_name].filter(Boolean).join(' ')}</TableCell>
                     <TableCell>{employee.email}</TableCell>
                     <TableCell>{employee.position}</TableCell>
                     <TableCell>{employee.department}</TableCell>
                     <TableCell>
                       <Badge variant={employee.status === 'active' ? 'default' : 'secondary'}>
-                        {employee.status}
+                        {employee.status.replace('_', ' ')}
                       </Badge>
+                      {employee.leaving_date && (
+                        <div className="mt-1 text-xs text-muted-foreground" title={employee.leaving_reason ?? undefined}>
+                          {employee.leaving_date <= todayIso() ? 'Left' : 'Leaving'} {fmtDate(employee.leaving_date)}
+                        </div>
+                      )}
                     </TableCell>
                     <TableCell>
                       <Button

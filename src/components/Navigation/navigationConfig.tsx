@@ -1,5 +1,5 @@
 
-import { Home, Plus, Wrench, Calendar, Package, BarChart2, Layers, ClipboardCheck, DollarSign, Users, FileText, UserPlus, Building2, MessageSquare, CheckSquare, Lightbulb, Container, ShieldCheck, Boxes } from "lucide-react";
+import { Home, Plus, Wrench, Calendar, Package, BarChart2, Layers, ClipboardCheck, DollarSign, Users, FileText, UserPlus, Building2, MessageSquare, CheckSquare, Lightbulb, Container, ShieldCheck, Boxes, FileSpreadsheet } from "lucide-react";
 
 interface NavigationSubItem {
   to: string;
@@ -50,6 +50,7 @@ export const managementItems: NavigationItem[] = [
   { to: "/models", icon: <Boxes size={18} />, label: "Models" },
   { to: "/management/customers", icon: <UserPlus size={18} />, label: "Customers" },
   { to: "/vendors", icon: <Building2 size={18} />, label: "Vendors" },
+  { to: "/management/import-export", icon: <FileSpreadsheet size={18} />, label: "Import / Export" },
   { to: "/management/plants", icon: <Building2 size={18} />, label: "Plants", adminOnly: true },
   { to: "/management/hr", icon: <Users size={18} />, label: "Human Resources", module: "hr" },
   { to: "/management/access-control", icon: <ShieldCheck size={18} />, label: "Users & Access", adminOnly: true },

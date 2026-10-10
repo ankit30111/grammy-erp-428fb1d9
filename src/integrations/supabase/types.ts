@@ -1271,6 +1271,8 @@ export type Database = {
           id: string
           ifsc_code: string | null
           last_name: string | null
+          leaving_date: string | null
+          leaving_reason: string | null
           pan_number: string | null
           phone_number: string
           pincode: string | null
@@ -1298,6 +1300,8 @@ export type Database = {
           id?: string
           ifsc_code?: string | null
           last_name?: string | null
+          leaving_date?: string | null
+          leaving_reason?: string | null
           pan_number?: string | null
           phone_number: string
           pincode?: string | null
@@ -1325,6 +1329,8 @@ export type Database = {
           id?: string
           ifsc_code?: string | null
           last_name?: string | null
+          leaving_date?: string | null
+          leaving_reason?: string | null
           pan_number?: string | null
           phone_number?: string
           pincode?: string | null
@@ -3046,6 +3052,98 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      plm_crs: {
+        Row: {
+          crs_type: string
+          product_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          crs_type: string
+          product_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          crs_type?: string
+          product_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plm_crs_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: true
+            referencedRelation: "plm_bom_progress"
+            referencedColumns: ["product_id"]
+          },
+          {
+            foreignKeyName: "plm_crs_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: true
+            referencedRelation: "plm_catch_up"
+            referencedColumns: ["product_id"]
+          },
+          {
+            foreignKeyName: "plm_crs_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: true
+            referencedRelation: "plm_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      plm_crs_values: {
+        Row: {
+          field_id: string
+          product_id: string
+          remarks: string | null
+          updated_at: string
+          updated_by: string | null
+          value: string | null
+        }
+        Insert: {
+          field_id: string
+          product_id: string
+          remarks?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          value?: string | null
+        }
+        Update: {
+          field_id?: string
+          product_id?: string
+          remarks?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          value?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plm_crs_values_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "plm_bom_progress"
+            referencedColumns: ["product_id"]
+          },
+          {
+            foreignKeyName: "plm_crs_values_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "plm_catch_up"
+            referencedColumns: ["product_id"]
+          },
+          {
+            foreignKeyName: "plm_crs_values_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "plm_products"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       plm_deliverable_template: {
         Row: {
@@ -5398,6 +5496,10 @@ export type Database = {
         Args: { p_brand: string; p_partial?: boolean; p_version: string }
         Returns: undefined
       }
+      brand_rename_code: {
+        Args: { p_new: string; p_old: string }
+        Returns: Json
+      }
       can_approve: { Args: never; Returns: boolean }
       can_edit_customers: { Args: never; Returns: boolean }
       can_edit_masters: { Args: never; Returns: boolean }
@@ -5461,6 +5563,7 @@ export type Database = {
           version: string
         }[]
       }
+      employees_apply_leaving: { Args: never; Returns: number }
       generate_temp_part_code: {
         Args: { part_category?: string }
         Returns: string
@@ -5559,6 +5662,7 @@ export type Database = {
         }
         Returns: Json
       }
+      ist_today: { Args: never; Returns: string }
       item_apply_production: {
         Args: { p_item: string; p_version: string }
         Returns: undefined
@@ -5890,6 +5994,7 @@ export type Database = {
         Args: { p_plant_ids: string[]; p_user_id: string }
         Returns: undefined
       }
+      standard_terms: { Args: { p: string }; Returns: string }
       sync_brand_variants: { Args: never; Returns: Json }
       sync_voucher_holds: {
         Args: { p_production_order_id: string }

@@ -34,6 +34,7 @@ import Settings from "./pages/Settings";
 import PlantsManagement from "./pages/management/PlantsManagement";
 import AccessControl from "./pages/management/AccessControl";
 import SystemCheck from "./pages/management/SystemCheck";
+import DataImportExport from "./pages/management/DataImportExport";
 import NotFound from "./pages/NotFound";
 import PPCDashboard from "@/pages/dashboards/PPCDashboard";
 import SerialNumberManagement from "./pages/SerialNumberManagement";
@@ -239,6 +240,12 @@ function App() {
             <Route path="/management/access-control" element={
               <AuthGuard>
                 <AccessControl />
+              </AuthGuard>
+            } />
+
+            <Route path="/management/import-export" element={
+              <AuthGuard>
+                <DataImportExport />
               </AuthGuard>
             } />
 

@@ -30,6 +30,7 @@ import { useBrands } from "@/hooks/usePartCategories";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ModelWorkspace } from "@/pages/models/ModelDetail";
+import { CrsTab } from "@/components/PLM/CrsTab";
 
 const sel = "h-9 rounded-md border border-input bg-background px-2 text-sm";
 const HOW: Record<string, string> = {
@@ -170,6 +171,7 @@ const PLMProduct = () => {
             ...(data.model ? [{ id: "versions", label: "Versions & brands" }] : []),
             { id: "tests", label: "Tests", count: data.tests.length },
             { id: "issues", label: "Issues", count: data.issues.filter((i: any) => i.status === "OPEN").length },
+            { id: "crs", label: "CRS" },
             { id: "details", label: "Details" },
           ]}
           value={tab} onChange={(t) => setParams((x) => { x.set("tab", t); return x; })} syncToUrl={false}
@@ -183,6 +185,7 @@ const PLMProduct = () => {
         {tab === "versions" && data.model && <ModelWorkspace code={data.model.part_code} fromRnd />}
         {tab === "tests" && <TestsView data={data} canEdit={canEdit} upload={upload} m={m} products={products} />}
         {tab === "issues" && <IssuesView data={data} canEdit={canEdit} m={m} />}
+        {tab === "crs" && <CrsTab data={data} canEdit={canEdit} />}
         {tab === "details" && <DetailsView data={data} canEdit={canEdit} m={m} products={products} />}
       </div>
     </DashboardLayout>
