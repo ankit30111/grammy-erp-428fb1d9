@@ -550,6 +550,132 @@ export type Database = {
           },
         ]
       }
+      complaint_receipt_items: {
+        Row: {
+          created_at: string
+          faulty_part_id: string | null
+          id: string
+          part_id: string
+          quantity: number
+          receipt_id: string
+          serial_numbers: string | null
+          symptom: string | null
+        }
+        Insert: {
+          created_at?: string
+          faulty_part_id?: string | null
+          id?: string
+          part_id: string
+          quantity: number
+          receipt_id: string
+          serial_numbers?: string | null
+          symptom?: string | null
+        }
+        Update: {
+          created_at?: string
+          faulty_part_id?: string | null
+          id?: string
+          part_id?: string
+          quantity?: number
+          receipt_id?: string
+          serial_numbers?: string | null
+          symptom?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "complaint_receipt_items_faulty_part_id_fkey"
+            columns: ["faulty_part_id"]
+            isOneToOne: false
+            referencedRelation: "parts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "complaint_receipt_items_faulty_part_id_fkey"
+            columns: ["faulty_part_id"]
+            isOneToOne: false
+            referencedRelation: "store_receiving_variances"
+            referencedColumns: ["part_id"]
+          },
+          {
+            foreignKeyName: "complaint_receipt_items_part_id_fkey"
+            columns: ["part_id"]
+            isOneToOne: false
+            referencedRelation: "parts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "complaint_receipt_items_part_id_fkey"
+            columns: ["part_id"]
+            isOneToOne: false
+            referencedRelation: "store_receiving_variances"
+            referencedColumns: ["part_id"]
+          },
+          {
+            foreignKeyName: "complaint_receipt_items_receipt_id_fkey"
+            columns: ["receipt_id"]
+            isOneToOne: false
+            referencedRelation: "complaint_receipts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      complaint_receipts: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          customer_id: string
+          customer_reference: string | null
+          id: string
+          notes: string | null
+          plant_id: string | null
+          purchase_date: string | null
+          receipt_date: string
+          receipt_number: string
+          receipt_type: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          customer_id: string
+          customer_reference?: string | null
+          id?: string
+          notes?: string | null
+          plant_id?: string | null
+          purchase_date?: string | null
+          receipt_date?: string
+          receipt_number?: string
+          receipt_type?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string
+          customer_reference?: string | null
+          id?: string
+          notes?: string | null
+          plant_id?: string | null
+          purchase_date?: string | null
+          receipt_date?: string
+          receipt_number?: string
+          receipt_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "complaint_receipts_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "complaint_receipts_plant_id_fkey"
+            columns: ["plant_id"]
+            isOneToOne: false
+            referencedRelation: "plants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       container_materials: {
         Row: {
           brand: string | null
@@ -658,42 +784,82 @@ export type Database = {
       }
       customer_complaint_parts: {
         Row: {
+          analysed_at: string | null
+          analysed_by: string | null
           analysis: string | null
+          capa_id: string | null
+          capa_path: string | null
+          closed_at: string | null
+          closed_by: string | null
           complaint_id: string
           created_at: string
           id: string
           part_id: string
+          problem: string | null
           quantity: number
+          rca_path: string | null
+          root_cause: string | null
+          sent_at: string
+          sent_by: string | null
           status: string
           updated_at: string
           vendor_id: string | null
           verdict: Database["public"]["Enums"]["rejection_verdict"] | null
         }
         Insert: {
+          analysed_at?: string | null
+          analysed_by?: string | null
           analysis?: string | null
+          capa_id?: string | null
+          capa_path?: string | null
+          closed_at?: string | null
+          closed_by?: string | null
           complaint_id: string
           created_at?: string
           id?: string
           part_id: string
+          problem?: string | null
           quantity: number
+          rca_path?: string | null
+          root_cause?: string | null
+          sent_at?: string
+          sent_by?: string | null
           status?: string
           updated_at?: string
           vendor_id?: string | null
           verdict?: Database["public"]["Enums"]["rejection_verdict"] | null
         }
         Update: {
+          analysed_at?: string | null
+          analysed_by?: string | null
           analysis?: string | null
+          capa_id?: string | null
+          capa_path?: string | null
+          closed_at?: string | null
+          closed_by?: string | null
           complaint_id?: string
           created_at?: string
           id?: string
           part_id?: string
+          problem?: string | null
           quantity?: number
+          rca_path?: string | null
+          root_cause?: string | null
+          sent_at?: string
+          sent_by?: string | null
           status?: string
           updated_at?: string
           vendor_id?: string | null
           verdict?: Database["public"]["Enums"]["rejection_verdict"] | null
         }
         Relationships: [
+          {
+            foreignKeyName: "customer_complaint_parts_capa_id_fkey"
+            columns: ["capa_id"]
+            isOneToOne: false
+            referencedRelation: "capa"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "customer_complaint_parts_complaint_id_fkey"
             columns: ["complaint_id"]
@@ -733,16 +899,25 @@ export type Database = {
       }
       customer_complaints: {
         Row: {
+          analysed_at: string | null
+          analysed_by: string | null
+          analysis: string | null
           capa_id: string | null
+          cause: string | null
+          closed_by: string | null
           complaint_details: string
           complaint_number: string
           created_at: string
           created_by: string | null
           customer_id: string
+          faulty_part_id: string | null
           id: string
           part_id: string | null
           plant_id: string | null
+          purchase_date: string | null
           quantity: number
+          receipt_id: string | null
+          receipt_item_id: string | null
           received_date: string
           resolution: string | null
           resolved_at: string | null
@@ -751,16 +926,25 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          analysed_at?: string | null
+          analysed_by?: string | null
+          analysis?: string | null
           capa_id?: string | null
+          cause?: string | null
+          closed_by?: string | null
           complaint_details: string
           complaint_number: string
           created_at?: string
           created_by?: string | null
           customer_id: string
+          faulty_part_id?: string | null
           id?: string
           part_id?: string | null
           plant_id?: string | null
+          purchase_date?: string | null
           quantity?: number
+          receipt_id?: string | null
+          receipt_item_id?: string | null
           received_date?: string
           resolution?: string | null
           resolved_at?: string | null
@@ -769,16 +953,25 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          analysed_at?: string | null
+          analysed_by?: string | null
+          analysis?: string | null
           capa_id?: string | null
+          cause?: string | null
+          closed_by?: string | null
           complaint_details?: string
           complaint_number?: string
           created_at?: string
           created_by?: string | null
           customer_id?: string
+          faulty_part_id?: string | null
           id?: string
           part_id?: string | null
           plant_id?: string | null
+          purchase_date?: string | null
           quantity?: number
+          receipt_id?: string | null
+          receipt_item_id?: string | null
           received_date?: string
           resolution?: string | null
           resolved_at?: string | null
@@ -802,6 +995,20 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "customer_complaints_faulty_part_id_fkey"
+            columns: ["faulty_part_id"]
+            isOneToOne: false
+            referencedRelation: "parts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_complaints_faulty_part_id_fkey"
+            columns: ["faulty_part_id"]
+            isOneToOne: false
+            referencedRelation: "store_receiving_variances"
+            referencedColumns: ["part_id"]
+          },
+          {
             foreignKeyName: "customer_complaints_part_id_fkey"
             columns: ["part_id"]
             isOneToOne: false
@@ -820,6 +1027,20 @@ export type Database = {
             columns: ["plant_id"]
             isOneToOne: false
             referencedRelation: "plants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_complaints_receipt_id_fkey"
+            columns: ["receipt_id"]
+            isOneToOne: false
+            referencedRelation: "complaint_receipts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_complaints_receipt_item_id_fkey"
+            columns: ["receipt_item_id"]
+            isOneToOne: false
+            referencedRelation: "complaint_receipt_items"
             referencedColumns: ["id"]
           },
         ]
@@ -5634,6 +5855,10 @@ export type Database = {
       can_edit_customers: { Args: never; Returns: boolean }
       can_edit_masters: { Args: never; Returns: boolean }
       can_edit_plm: { Args: never; Returns: boolean }
+      complaint_receipt_create: {
+        Args: { p_items: Json; p_receipt: Json }
+        Returns: Json
+      }
       customer_brand_names_refresh: {
         Args: { p_customer: string }
         Returns: undefined

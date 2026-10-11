@@ -1,28 +1,31 @@
-import { useState } from "react";
-
+import { useSearchParams } from "react-router-dom";
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { TabBar } from "@/components/shell/TabBar";
-import BatchReceiptEntry from "@/components/quality/BatchReceiptEntry";
-import IndividualComplaintsManagement from "@/components/quality/IndividualComplaintsManagement";
+import { ComplaintReceiptForm } from "@/components/complaints/ComplaintReceiptForm";
+import { ComplaintReceiptsList, ComplaintsList } from "@/components/complaints/ComplaintsList";
+import { useCanHandleComplaints } from "@/hooks/useComplaints";
 
-const complaintTabs = [
-  { id: "receipt", label: "Receipt Entry" },
-  { id: "management", label: "Individual Complaints" },
-];
-
+/**
+ * Customer complaints: received one at a time or as a batch, each unit then
+ * analysed by OQC, its faulty parts by IQC, and closed with a resolution.
+ */
 const CustomerComplaints = () => {
-  const [activeTab, setActiveTab] = useState("receipt");
+  const [params, setParams] = useSearchParams();
+  const canReceive = useCanHandleComplaints();
+  const tab = params.get("tab") ?? (canReceive ? "receive" : "complaints");
 
   return (
     <DashboardLayout>
-      <PageHeader
-        title="Customer Complaints"
+      <PageHeader title="Customer Complaints" />
+      <TabBar
+        tabs={[...(canReceive ? [{ id: "receive", label: "Receive" }] : []), { id: "complaints", label: "Complaints" }, { id: "receipts", label: "Receipts" }]}
+        value={tab} onChange={(t) => setParams((x) => { x.set("tab", t); return x; })} syncToUrl={false}
       />
-      <TabBar tabs={complaintTabs} value={activeTab} onChange={setActiveTab} />
       <div className="space-y-6 pt-4">
-        {activeTab === "receipt" && <BatchReceiptEntry />}
-        {activeTab === "management" && <IndividualComplaintsManagement />}
+        {tab === "receive" && canReceive && <ComplaintReceiptForm />}
+        {tab === "complaints" && <ComplaintsList />}
+        {tab === "receipts" && <ComplaintReceiptsList />}
       </div>
     </DashboardLayout>
   );

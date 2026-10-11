@@ -15,14 +15,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { format, startOfMonth, endOfMonth } from "date-fns";
 import LineRejectionManager from "@/components/quality/LineRejectionManager";
 import IQCInspectionDialog from "@/components/quality/IQCInspectionDialog";
-import PartAnalysis from "@/components/quality/PartAnalysis";
+import { ComplaintPartsIqc } from "@/components/complaints/ComplaintPartsIqc";
 import { IQCReportViewer } from "@/components/quality/IQCReportViewer";
 
 const iqcTabs = [
   { id: "pending", label: "Pending IQC" },
   { id: "completed", label: "Completed IQC" },
   { id: "line-rejection", label: "Line Rejection" },
-  { id: "part-analysis", label: "Part Analysis" },
+  { id: "part-analysis", label: "Complaint Parts" },
   { id: "analytics", label: "Analytics" },
 ];
 
@@ -464,7 +464,7 @@ const IQC = () => {
           
           {selectedTab === "part-analysis" && (
 <div>
-            <PartAnalysis />
+            <ComplaintPartsIqc />
           </div>
 )}
           

@@ -14,7 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { attachParentVouchers } from "@/utils/voucherLinks";
 import ProductionDetailsDialog from "@/components/Production/ProductionDetailsDialog";
-import CustomerComplaintHandling from "@/components/quality/CustomerComplaintHandling";
+import { ComplaintsList } from "@/components/complaints/ComplaintsList";
 
 
 const isSubAssembly = (order: any) => order?.parts?.source_type === "ASSEMBLED_STOCKED";
@@ -326,7 +326,7 @@ const OQC = () => {
           
           {selectedTab === "complaints" && (
 <div>
-            <CustomerComplaintHandling />
+            <ComplaintsList />
           </div>
 )}
           
