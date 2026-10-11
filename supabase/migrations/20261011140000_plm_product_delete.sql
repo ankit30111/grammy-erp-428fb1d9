@@ -27,7 +27,7 @@ BEGIN
       RAISE EXCEPTION '% has brand codes (%). Delete those under Parts first.', p.product_code, v_codes;
     END IF;
     -- The model's own records go with it.
-    DELETE FROM public.model_software WHERE model_id = v_model.id;
+    DELETE FROM public.software_releases WHERE model_id = v_model.id;
     DELETE FROM public.part_brands WHERE part_id = v_model.id;
     DELETE FROM public.bom_brand_lines WHERE parent_part_id = v_model.id;
     DELETE FROM public.brand_sync_issues WHERE part_id = v_model.id;

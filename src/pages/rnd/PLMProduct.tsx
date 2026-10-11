@@ -31,6 +31,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ModelWorkspace } from "@/pages/models/ModelDetail";
 import { CrsTab } from "@/components/PLM/CrsTab";
+import { SoftwareTab } from "@/components/PLM/SoftwareTab";
 
 const sel = "h-9 rounded-md border border-input bg-background px-2 text-sm";
 const HOW: Record<string, string> = {
@@ -171,6 +172,7 @@ const PLMProduct = () => {
             ...(data.model ? [{ id: "versions", label: "Versions & brands" }] : []),
             { id: "tests", label: "Tests", count: data.tests.length },
             { id: "issues", label: "Issues", count: data.issues.filter((i: any) => i.status === "OPEN").length },
+            { id: "software", label: "Software" },
             { id: "crs", label: "CRS" },
             { id: "details", label: "Details" },
           ]}
@@ -185,6 +187,7 @@ const PLMProduct = () => {
         {tab === "versions" && data.model && <ModelWorkspace code={data.model.part_code} fromRnd />}
         {tab === "tests" && <TestsView data={data} canEdit={canEdit} upload={upload} m={m} products={products} />}
         {tab === "issues" && <IssuesView data={data} canEdit={canEdit} m={m} />}
+        {tab === "software" && <SoftwareTab model={data.model} canEdit={canEdit} />}
         {tab === "crs" && <CrsTab data={data} canEdit={canEdit} />}
         {tab === "details" && <DetailsView data={data} canEdit={canEdit} m={m} products={products} />}
       </div>
@@ -250,13 +253,11 @@ function StageView({ stage, data, canEdit, canApprove, upload, plantId, m }: any
           {(stage === 1 || stage === 2) && <FinishedGoods data={data} canEdit={canEdit} m={m} />}
           {stage === 3 && <BisPanel data={data} canEdit={canEdit} upload={upload} m={m} />}
           {stage === 4 && (
-            <div className="flex flex-wrap items-end gap-2">
-              <div className="space-y-1">
-                <Label htmlFor="plm-fw">Firmware version (frozen)</Label>
-                <Input id="plm-fw" className="w-56" defaultValue={p.firmware_version ?? ""} disabled={!canEdit}
-                       onBlur={(e) => e.target.value !== (p.firmware_version ?? "") && m.updateProduct.mutate({ id: p.id, firmware_version: e.target.value || null })} />
-              </div>
-            </div>
+            <p className="text-sm">
+              <span className="text-muted-foreground">Software in production: </span>
+              {p.firmware_version ? <span className="font-mono font-medium">v{p.firmware_version}</span> : <span className="text-muted-foreground">none approved yet</span>}
+              <Link className="ml-2 text-sm underline-offset-2 hover:underline" to={`?tab=software`}>Software testing and release</Link>
+            </p>
           )}
           {stage === 5 && <PilotPanel data={data} canEdit={canEdit} plantId={plantId} m={m} />}
           {(stage === 3 || stage === 4) && (stage === 3 ? evt : svt).length === 0 && (

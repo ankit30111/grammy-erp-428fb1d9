@@ -2674,95 +2674,6 @@ export type Database = {
           },
         ]
       }
-      model_software: {
-        Row: {
-          created_at: string
-          created_by: string | null
-          id: string
-          model_id: string
-          name: string
-          notes: string | null
-        }
-        Insert: {
-          created_at?: string
-          created_by?: string | null
-          id?: string
-          model_id: string
-          name: string
-          notes?: string | null
-        }
-        Update: {
-          created_at?: string
-          created_by?: string | null
-          id?: string
-          model_id?: string
-          name?: string
-          notes?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "model_software_model_id_fkey"
-            columns: ["model_id"]
-            isOneToOne: false
-            referencedRelation: "parts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "model_software_model_id_fkey"
-            columns: ["model_id"]
-            isOneToOne: false
-            referencedRelation: "store_receiving_variances"
-            referencedColumns: ["part_id"]
-          },
-        ]
-      }
-      model_software_versions: {
-        Row: {
-          created_at: string
-          created_by: string | null
-          details: string | null
-          file_path: string | null
-          id: string
-          released_on: string
-          software_id: string
-          updated_at: string
-          updated_by: string | null
-          version: string
-        }
-        Insert: {
-          created_at?: string
-          created_by?: string | null
-          details?: string | null
-          file_path?: string | null
-          id?: string
-          released_on?: string
-          software_id: string
-          updated_at?: string
-          updated_by?: string | null
-          version: string
-        }
-        Update: {
-          created_at?: string
-          created_by?: string | null
-          details?: string | null
-          file_path?: string | null
-          id?: string
-          released_on?: string
-          software_id?: string
-          updated_at?: string
-          updated_by?: string | null
-          version?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "model_software_versions_software_id_fkey"
-            columns: ["software_id"]
-            isOneToOne: false
-            referencedRelation: "model_software"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       part_brands: {
         Row: {
           brand: string
@@ -4780,6 +4691,84 @@ export type Database = {
         }
         Relationships: []
       }
+      software_releases: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          decided_at: string | null
+          decided_by: string | null
+          decision_note: string | null
+          details: string | null
+          file_name: string
+          file_path: string
+          id: string
+          issue_list_name: string | null
+          issue_list_path: string | null
+          model_id: string
+          status: string
+          test_report_name: string | null
+          test_report_path: string | null
+          updated_at: string
+          updated_by: string | null
+          version: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_note?: string | null
+          details?: string | null
+          file_name: string
+          file_path: string
+          id?: string
+          issue_list_name?: string | null
+          issue_list_path?: string | null
+          model_id: string
+          status?: string
+          test_report_name?: string | null
+          test_report_path?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          version: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_note?: string | null
+          details?: string | null
+          file_name?: string
+          file_path?: string
+          id?: string
+          issue_list_name?: string | null
+          issue_list_path?: string | null
+          model_id?: string
+          status?: string
+          test_report_name?: string | null
+          test_report_path?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          version?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "software_releases_model_id_fkey"
+            columns: ["model_id"]
+            isOneToOne: false
+            referencedRelation: "parts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "software_releases_model_id_fkey"
+            columns: ["model_id"]
+            isOneToOne: false
+            referencedRelation: "store_receiving_variances"
+            referencedColumns: ["part_id"]
+          },
+        ]
+      }
       spare_order_items: {
         Row: {
           created_at: string
@@ -5692,47 +5681,6 @@ export type Database = {
         }
         Relationships: []
       }
-      model_software_history: {
-        Row: {
-          created_at: string | null
-          created_by: string | null
-          created_by_name: string | null
-          details: string | null
-          file_path: string | null
-          id: string | null
-          model_id: string | null
-          released_on: string | null
-          software_id: string | null
-          software_name: string | null
-          updated_at: string | null
-          updated_by: string | null
-          updated_by_name: string | null
-          version: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "model_software_model_id_fkey"
-            columns: ["model_id"]
-            isOneToOne: false
-            referencedRelation: "parts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "model_software_model_id_fkey"
-            columns: ["model_id"]
-            isOneToOne: false
-            referencedRelation: "store_receiving_variances"
-            referencedColumns: ["part_id"]
-          },
-          {
-            foreignKeyName: "model_software_versions_software_id_fkey"
-            columns: ["software_id"]
-            isOneToOne: false
-            referencedRelation: "model_software"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       plm_bom_progress: {
         Row: {
           lines: number | null
@@ -5752,6 +5700,49 @@ export type Database = {
           vouchers: string | null
         }
         Relationships: []
+      }
+      software_release_history: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          created_by_name: string | null
+          decided_at: string | null
+          decided_by: string | null
+          decided_by_name: string | null
+          decision_note: string | null
+          details: string | null
+          file_name: string | null
+          file_path: string | null
+          id: string | null
+          in_production: boolean | null
+          issue_list_name: string | null
+          issue_list_path: string | null
+          model_code: string | null
+          model_id: string | null
+          status: string | null
+          test_report_name: string | null
+          test_report_path: string | null
+          updated_at: string | null
+          updated_by: string | null
+          updated_by_name: string | null
+          version: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "software_releases_model_id_fkey"
+            columns: ["model_id"]
+            isOneToOne: false
+            referencedRelation: "parts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "software_releases_model_id_fkey"
+            columns: ["model_id"]
+            isOneToOne: false
+            referencedRelation: "store_receiving_variances"
+            referencedColumns: ["part_id"]
+          },
+        ]
       }
       store_receiving_variances: {
         Row: {
@@ -6175,6 +6166,10 @@ export type Database = {
         Returns: number
       }
       plm_product_codes: { Args: { p_product: string }; Returns: string[] }
+      plm_product_delete: {
+        Args: { p_password: string; p_product: string }
+        Returns: Json
+      }
       plm_refresh: { Args: { p_product: string }; Returns: number }
       plm_refresh_all: { Args: never; Returns: number }
       plm_release_first_version: {
