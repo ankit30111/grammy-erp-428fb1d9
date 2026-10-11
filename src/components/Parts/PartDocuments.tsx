@@ -283,7 +283,7 @@ export function PartDocViewer({ path, open, onOpenChange, title, fileName }: {
 }
 
 /** The documents this kind of part needs, as compact buttons; each opens on this page. Missing ones say so. */
-export function PartDocButtons({ tier, part }: { tier: PartTier; part: Record<string, any> }) {
+export function PartDocButtons({ tier, part, extra }: { tier: PartTier; part: Record<string, any>; extra?: React.ReactNode }) {
   const [openKey, setOpenKey] = useState<PartDocKey | null>(null);
   const keys = DOCS_FOR_TIER[tier];
   const SHORT: Record<PartDocKey, string> = { spec: "Spec Sheet", iqc: "IQC Checklist", cir: "CIR Sheet", pqc: "PQC Checklist", oqc: "OQC Checklist" };
@@ -303,6 +303,7 @@ export function PartDocButtons({ tier, part }: { tier: PartTier; part: Record<st
             </span>
           );
         })}
+        {extra}
       </div>
       {openKey && (
         <PartDocViewer path={part[PART_DOCS[openKey].column]} open={!!openKey} onOpenChange={(o) => !o && setOpenKey(null)}

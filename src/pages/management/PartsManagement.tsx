@@ -51,6 +51,8 @@ import { PartBranding, BrandIssuesBanner } from "@/components/Parts/PartBranding
 import { usePermissions } from "@/hooks/usePermissions";
 import { ApprovalBadge } from "@/components/Approvals/ApprovalBadge";
 import { PartDocButtons, PartDocumentInputs, PartPhotoPanel, docFilesToInput, type DocFiles } from "@/components/Parts/PartDocuments";
+import { PartCrsButton } from "@/components/Parts/ModelCrs";
+import { ModelSoftwarePanel } from "@/components/Parts/ModelSoftware";
 
 
 // The categories are no longer a list in this file. They live in
@@ -128,6 +130,11 @@ const RawMaterialsManagement = () => {
   const editIsFinishedTier = editTier === "FINISHED";
   const editIsPurchaseLetter = partTier(newMaterial.category) === "PURCHASE";
   const viewTier = tierOfPart(viewMaterial);
+  // A finished good's software and CRS are kept on its model (JA-006 for JA-006-PH).
+  const viewModelId: string | null = viewMaterial
+    ? ((viewMaterial as any).source_type === "MODEL" ? viewMaterial.id : (viewMaterial as any).model_id ?? null) : null;
+  const viewModelCode = viewMaterial
+    ? ((viewMaterial as any).source_type === "MODEL" ? viewMaterial.part_code : String(viewMaterial.part_code).replace(/-[A-Z]{2}$/, "")) : "";
   const [editDocs, setEditDocs] = useState<DocFiles>({});
   const [bomParentId, setBomParentId] = useState<string | undefined>();
   const [editUnits, setEditUnits] = useState<UnitValue>(unitValueFromPart(null));
@@ -781,12 +788,23 @@ const RawMaterialsManagement = () => {
                   {/* Right: the photo and the documents */}
                   <div className="grid gap-4 min-w-0">
                     <PartPhotoPanel path={(viewMaterial as any).image_url} code={viewMaterial.part_code} name={viewMaterial.name} />
-                    <div className="rounded-lg border divide-y">
-                      <div className="space-y-1.5 p-4">
-                        <Label className="text-sm font-medium text-muted-foreground">Documents</Label>
-                        <PartDocButtons tier={viewTier} part={viewMaterial} />
+                    {viewTier === "FINISHED" ? (
+                      // Software (left) and documents with R&D's CRS (right) belong to the model.
+                      <div className="grid gap-4 rounded-lg border p-4 sm:grid-cols-2 sm:divide-x">
+                        <ModelSoftwarePanel modelId={viewModelId} modelCode={viewModelCode} />
+                        <div className="space-y-1.5 sm:pl-4">
+                          <Label className="text-sm font-medium text-muted-foreground">Documents</Label>
+                          <PartDocButtons tier={viewTier} part={viewMaterial} extra={<PartCrsButton modelId={viewModelId} />} />
+                        </div>
                       </div>
-                    </div>
+                    ) : (
+                      <div className="rounded-lg border divide-y">
+                        <div className="space-y-1.5 p-4">
+                          <Label className="text-sm font-medium text-muted-foreground">Documents</Label>
+                          <PartDocButtons tier={viewTier} part={viewMaterial} />
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 

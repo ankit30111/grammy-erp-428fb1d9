@@ -2453,6 +2453,95 @@ export type Database = {
           },
         ]
       }
+      model_software: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          model_id: string
+          name: string
+          notes: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          model_id: string
+          name: string
+          notes?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          model_id?: string
+          name?: string
+          notes?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "model_software_model_id_fkey"
+            columns: ["model_id"]
+            isOneToOne: false
+            referencedRelation: "parts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "model_software_model_id_fkey"
+            columns: ["model_id"]
+            isOneToOne: false
+            referencedRelation: "store_receiving_variances"
+            referencedColumns: ["part_id"]
+          },
+        ]
+      }
+      model_software_versions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          details: string | null
+          file_path: string | null
+          id: string
+          released_on: string
+          software_id: string
+          updated_at: string
+          updated_by: string | null
+          version: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          details?: string | null
+          file_path?: string | null
+          id?: string
+          released_on?: string
+          software_id: string
+          updated_at?: string
+          updated_by?: string | null
+          version: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          details?: string | null
+          file_path?: string | null
+          id?: string
+          released_on?: string
+          software_id?: string
+          updated_at?: string
+          updated_by?: string | null
+          version?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "model_software_versions_software_id_fkey"
+            columns: ["software_id"]
+            isOneToOne: false
+            referencedRelation: "model_software"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       part_brands: {
         Row: {
           brand: string
@@ -5381,6 +5470,47 @@ export type Database = {
           prefix: string | null
         }
         Relationships: []
+      }
+      model_software_history: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          created_by_name: string | null
+          details: string | null
+          file_path: string | null
+          id: string | null
+          model_id: string | null
+          released_on: string | null
+          software_id: string | null
+          software_name: string | null
+          updated_at: string | null
+          updated_by: string | null
+          updated_by_name: string | null
+          version: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "model_software_model_id_fkey"
+            columns: ["model_id"]
+            isOneToOne: false
+            referencedRelation: "parts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "model_software_model_id_fkey"
+            columns: ["model_id"]
+            isOneToOne: false
+            referencedRelation: "store_receiving_variances"
+            referencedColumns: ["part_id"]
+          },
+          {
+            foreignKeyName: "model_software_versions_software_id_fkey"
+            columns: ["software_id"]
+            isOneToOne: false
+            referencedRelation: "model_software"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       plm_bom_progress: {
         Row: {
