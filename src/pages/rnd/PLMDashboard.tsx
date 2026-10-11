@@ -12,6 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { TableEmpty, TableSkeleton } from "@/components/ui/table-state";
 import { STAGES, usePlmProducts } from "@/hooks/usePLM";
 import { NewProductDialog } from "@/components/PLM/NewProductDialog";
+import { DeleteProductButton } from "@/components/PLM/DeleteProductButton";
 import { usePermissions } from "@/hooks/usePermissions";
 import { cn } from "@/lib/utils";
 
@@ -102,11 +103,12 @@ const PLMDashboard = () => {
                       <TableHead className="text-right">Open issues</TableHead>
                       <TableHead>Priority</TableHead>
                       <TableHead>Target launch</TableHead>
+                      {canApprove && <TableHead className="w-10"><span className="sr-only">Delete</span></TableHead>}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {isLoading ? <TableSkeleton columns={8} rows={5} /> : shown.length === 0 ? (
-                      <TableEmpty columns={8} message="No products here" hint={canEdit ? "Add one with New product." : undefined} />
+                    {isLoading ? <TableSkeleton columns={canApprove ? 9 : 8} rows={5} /> : shown.length === 0 ? (
+                      <TableEmpty columns={canApprove ? 9 : 8} message="No products here" hint={canEdit ? "Add one with New product." : undefined} />
                     ) : shown.map((p) => {
                       const pr = data?.progress.get(p.id)?.[p.stage];
                       const base = p.based_on_id ? byCode.get(p.based_on_id) : null;
@@ -129,6 +131,7 @@ const PLMDashboard = () => {
                           <TableCell className="text-right tabular-nums">{issuesBy.get(p.id) ? <span className="text-destructive font-medium">{issuesBy.get(p.id)}</span> : "—"}</TableCell>
                           <TableCell><Badge variant={priorityVariant(p.priority)}>{p.priority.toLowerCase()}</Badge></TableCell>
                           <TableCell className="whitespace-nowrap">{p.target_launch ?? "—"}</TableCell>
+                          {canApprove && <TableCell className="py-1"><DeleteProductButton product={p} /></TableCell>}
                         </TableRow>
                       );
                     })}
