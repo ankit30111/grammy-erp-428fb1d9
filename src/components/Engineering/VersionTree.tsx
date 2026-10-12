@@ -315,6 +315,17 @@ function LineDetails({ line: l, tests, canEdit, m, testM, parts, productId }: an
   return (
     <div className="grid gap-4 lg:grid-cols-2 py-2">
       <div className="space-y-2">
+        {/* A new part's name is R&D's until it gets a part code; then it is the part's name, changed in Parts. */}
+        {!l.part && canEdit && (
+          <label className="block space-y-1 text-xs text-muted-foreground">Part name
+            <Input className="h-8" key={`n${l.description}`} defaultValue={l.description ?? ""}
+                   onBlur={(e) => {
+                     const v = e.target.value.trim();
+                     if (!v) { e.target.value = l.description ?? ""; return; }
+                     if (v !== (l.description ?? "")) m.updateLine.mutate({ id: l.id, description: v });
+                   }} />
+          </label>
+        )}
         {!l.part && canEdit && (
           <div className="space-y-1">
             <div className="text-xs text-muted-foreground">Part code (needed before Release)</div>
