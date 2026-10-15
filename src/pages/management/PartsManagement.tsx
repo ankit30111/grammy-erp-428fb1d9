@@ -53,6 +53,7 @@ import { ApprovalBadge } from "@/components/Approvals/ApprovalBadge";
 import { PartDocButtons, PartDocumentInputs, PartPhotoPanel, docFilesToInput, type DocFiles } from "@/components/Parts/PartDocuments";
 import { PartCrsButton } from "@/components/Parts/ModelCrs";
 import { ModelSoftwarePanel } from "@/components/Parts/ModelSoftware";
+import { DownloadBomButton } from "@/components/BOM/DownloadBomButton";
 
 
 // The categories are no longer a list in this file. They live in
@@ -813,11 +814,14 @@ const RawMaterialsManagement = () => {
                   <div className="space-y-2">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <Label className="text-sm font-medium text-muted-foreground">Bill of Materials</Label>
-                      {canEditMasters && !viewMaterial.branded_from && (
-                        <Button variant="outline" size="sm" onClick={() => openBomFor(viewMaterial.id)}>
-                          <Edit /> Edit Bill of Materials
-                        </Button>
-                      )}
+                      <div className="flex flex-wrap gap-2">
+                        <DownloadBomButton part={viewMaterial as any} />
+                        {canEditMasters && !viewMaterial.branded_from && (
+                          <Button variant="outline" size="sm" onClick={() => openBomFor(viewMaterial.id)}>
+                            <Edit /> Edit Bill of Materials
+                          </Button>
+                        )}
+                      </div>
                     </div>
                     <PartBomView partId={viewMaterial.id} />
                   </div>
