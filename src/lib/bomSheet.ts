@@ -3,9 +3,9 @@ import { strToU8, zipSync } from "fflate";
 /**
  * One product's BOM as one Excel sheet, in Grammy's offline BOM layout:
  *
- *   BOM <code>                                           | VER x.y
- *   S.NO. | PART CODE | ITEM NAME | QPS | LEAD TIME | VENDOR | CONTACT PERSON | CONTACT NO.
- *   1     | B-068     | ...        | 1   |           | ...    | ...            | ...
+ *   BOM <code>                                                 | VER x.y
+ *   S.NO. | PART CODE | ITEM NAME | QPS | UOM | LEAD TIME | VENDOR | CONTACT PERSON | CONTACT NO.
+ *   1     | B-068     | ...        | 1   | PCS |           | ...    | ...            | ...
  *   5     | SA-003    | AMP BOARD  | 1   |   (sub-assembly, opened underneath)
  *   5.1   | E-021     |   └ PCB …  | 2   |   (quantity per product)
  *   ...
@@ -22,6 +22,7 @@ export interface BomSheetLine {
   part_code: string;
   name: string;
   qps: number | null;          // per product; null = issued in bulk
+  uom?: string | null;
   subassembly: boolean;
   vendor?: string | null;
   contact_person?: string | null;
@@ -39,7 +40,8 @@ export interface BomSheetInput {
 const esc = (s: string) =>
   s.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "")
     .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-const COLS = "ABCDEFGH";
+const COLS = "ABCDEFGHI";
+const LAST = COLS.length - 1;
 
 type Edge = "thin" | "medium" | null;
 interface Style { font: number; border: [Edge, Edge, Edge, Edge]; h: "left" | "center"; v?: "center" | "top"; wrap?: boolean }
@@ -88,18 +90,18 @@ export function buildBomSheet(input: BomSheetInput): Uint8Array {
     return `<c r="${ref}" s="${s}" t="inlineStr"><is><t xml:space="preserve">${esc(v)}</t></is></c>`;
   };
   const sideL = (c: number): Edge => (c === 0 ? "medium" : "thin");
-  const sideR = (c: number): Edge => (c === 7 ? "medium" : "thin");
+  const sideR = (c: number): Edge => (c === LAST ? "medium" : "thin");
 
   // ---- 1: title + version ------------------------------------------------------
   {
     const t = style({ font: 1, border: ["medium", "medium", "medium", "medium"], h: "center" });
     const v = style({ font: 2, border: ["medium", "medium", "medium", "medium"], h: "center" });
-    rows.push(`<row r="1" ht="40.25" customHeight="1">${[0, 1, 2, 3, 4, 5].map((c) => cell(`${COLS[c]}1`, t, c === 0 ? input.title : null)).join("")}${cell("G1", v, input.version)}${cell("H1", v)}</row>`);
-    merges.push("A1:F1", "G1:H1");
+    rows.push(`<row r="1" ht="40.25" customHeight="1">${[0, 1, 2, 3, 4, 5, 6].map((c) => cell(`${COLS[c]}1`, t, c === 0 ? input.title : null)).join("")}${cell("H1", v, input.version)}${cell("I1", v)}</row>`);
+    merges.push("A1:G1", "H1:I1");
   }
   // ---- 2: header ---------------------------------------------------------------
   {
-    const head = ["S.NO.", "PART CODE", "ITEM NAME", "QPS", "LEAD TIME", "VENDOR", "CONTACT PERSON", "CONTACT NO."];
+    const head = ["S.NO.", "PART CODE", "ITEM NAME", "QPS", "UOM", "LEAD TIME", "VENDOR", "CONTACT PERSON", "CONTACT NO."];
     rows.push(`<row r="2" ht="17.25" customHeight="1">${head.map((h, c) =>
       cell(`${COLS[c]}2`, style({ font: 3, border: [sideL(c), sideR(c), "medium", "medium"], h: "center", wrap: true }), h)).join("")}</row>`);
   }
@@ -114,7 +116,7 @@ export function buildBomSheet(input: BomSheetInput): Uint8Array {
     let j = i;
     while (v && j + 1 < lines.length && (lines[j + 1].vendor ?? "").trim().toUpperCase() === v) j++;
     runEnd[i] = j;
-    if (j > i) for (const c of "EFGH") merges.push(`${c}${first + i}:${c}${first + j}`);
+    if (j > i) for (const c of "FGHI") merges.push(`${c}${first + i}:${c}${first + j}`);
     i = j + 1;
   }
   let runStart = 0;
@@ -131,10 +133,11 @@ export function buildBomSheet(input: BomSheetInput): Uint8Array {
       cell(`B${r}`, st(1, "center"), l.part_code),
       cell(`C${r}`, st(2, "left"), indent + l.name),
       cell(`D${r}`, st(3, "center"), l.qps),
-      cell(`E${r}`, st(4, "center"), null),
-      cell(`F${r}`, st(5, "left", true), isRunHead ? l.vendor ?? null : null),
-      cell(`G${r}`, st(6, "center", true), isRunHead ? l.contact_person ?? null : null),
-      cell(`H${r}`, st(7, "center"), isRunHead ? l.contact_number ?? null : null),
+      cell(`E${r}`, st(4, "center"), l.uom ?? null),
+      cell(`F${r}`, st(5, "center"), null),
+      cell(`G${r}`, st(6, "left", true), isRunHead ? l.vendor ?? null : null),
+      cell(`H${r}`, st(7, "center", true), isRunHead ? l.contact_person ?? null : null),
+      cell(`I${r}`, st(8, "center"), isRunHead ? l.contact_number ?? null : null),
     ].join("")}</row>`);
   });
 
@@ -145,22 +148,22 @@ export function buildBomSheet(input: BomSheetInput): Uint8Array {
     border: [sideL(c), sideR(c), rr === 0 ? "medium" : "thin", rr === 2 ? "medium" : "thin"],
   });
   const footerText: Record<string, string> = {
-    [`A${f1}`]: `DATE : ${input.date}`, [`C${f1}`]: "PREPARED BY:", [`D${f1}`]: "CHECKED BY:", [`G${f1}`]: "APPROVED BY:", [`A${f1 + 1}`]: "DOC:",
+    [`A${f1}`]: `DATE : ${input.date}`, [`C${f1}`]: "PREPARED BY:", [`D${f1}`]: "CHECKED BY:", [`H${f1}`]: "APPROVED BY:", [`A${f1 + 1}`]: "DOC:",
   };
   for (let rr = 0; rr < 3; rr++) {
     const r = f1 + rr;
     heights[r] = rr === 0 ? 19.25 : 14.25;
-    rows.push(`<row r="${r}" ht="${heights[r]}" customHeight="1">${[0, 1, 2, 3, 4, 5, 6, 7].map((c) =>
+    rows.push(`<row r="${r}" ht="${heights[r]}" customHeight="1">${[0, 1, 2, 3, 4, 5, 6, 7, 8].map((c) =>
       cell(`${COLS[c]}${r}`, fb(c, rr), footerText[`${COLS[c]}${r}`] ?? null)).join("")}</row>`);
   }
-  merges.push(`A${f1}:B${f1}`, `C${f1}:C${f1 + 2}`, `D${f1}:F${f1 + 2}`, `G${f1}:H${f1 + 2}`, `A${f1 + 1}:B${f1 + 2}`);
+  merges.push(`A${f1}:B${f1}`, `C${f1}:C${f1 + 2}`, `D${f1}:G${f1 + 2}`, `H${f1}:I${f1 + 2}`, `A${f1 + 1}:B${f1 + 2}`);
 
   const last = f1 + 2;
-  const widths = [7.5, 14.16, 40, 6.5, 12.5, 24, 19.66, 18.16];
+  const widths = [7.5, 14.16, 40, 6.5, 7.5, 12.5, 24, 19.66, 18.16];
   const sheet = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
 <sheetPr><pageSetUpPr fitToPage="1"/></sheetPr>
-<dimension ref="A1:H${last}"/>
+<dimension ref="A1:I${last}"/>
 <sheetViews><sheetView workbookViewId="0" tabSelected="1"><pane ySplit="2" topLeftCell="A3" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>
 <sheetFormatPr defaultRowHeight="12.5"/>
 <cols>${widths.map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`).join("")}</cols>

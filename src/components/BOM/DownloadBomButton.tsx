@@ -41,7 +41,7 @@ export function DownloadBomButton({ part }: { part: { id: string; part_code: str
           const qps = n.bulk || perParent === null ? null : round(Number(n.quantity) * perParent);
           const sub = n.children.length > 0;
           const v = sub ? null : vendorOf.get(n.part_id);
-          lines.push({ sno, level, part_code: n.part_code, name: n.name, qps, subassembly: sub,
+          lines.push({ sno, level, part_code: n.part_code, name: n.name, qps, uom: n.uom || null, subassembly: sub,
                        vendor: v?.name ?? null, contact_person: v?.contact_person_name ?? null, contact_number: v?.contact_number ?? null });
           if (sub) add(n.children, sno, qps, level + 1);
         });
