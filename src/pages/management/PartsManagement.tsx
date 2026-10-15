@@ -843,7 +843,8 @@ const RawMaterialsManagement = () => {
             <DialogHeader>
               <DialogTitle>Edit {tierLabel(editTier)}: {selectedMaterial?.part_code}</DialogTitle>
             </DialogHeader>
-            <div className="grid gap-4 py-4">
+            {/* One column, top to bottom: a field never squeezes into half a row. */}
+            <div className="flex flex-col gap-4 py-4">
               <div className="space-y-2">
                 <Label htmlFor="edit-name">Part Name</Label>
                 <Input 
@@ -855,7 +856,7 @@ const RawMaterialsManagement = () => {
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="edit-material-code">Material Code</Label>
+                <Label htmlFor="edit-material-code">Part Code</Label>
                 <Input 
                   id="edit-material-code" 
                   value={newMaterial.part_code} 
@@ -1133,9 +1134,7 @@ const RawMaterialsManagement = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <PartDocumentInputs tier={editTier} files={editDocs} onChange={setEditDocs} part={selectedMaterial} />
-              </div>
+              <PartDocumentInputs tier={editTier} files={editDocs} onChange={setEditDocs} part={selectedMaterial} />
 
               {selectedMaterial && <PartBranding editable part={selectedMaterial} allParts={rawMaterials} />}
 

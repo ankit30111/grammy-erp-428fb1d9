@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
-import { Download, ExternalLink, FileText, ImageOff, Maximize2, Trash2 } from "lucide-react";
+import { Download, ExternalLink, FileText, ImageOff, Maximize2, Trash2, Upload } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useSignedStorageUrl } from "@/hooks/useSignedStorageUrl";
@@ -54,8 +53,11 @@ const download = async (path: string, name: string) => {
   URL.revokeObjectURL(url);
 };
 
-/** File pickers for the documents this kind of part needs. On an existing part
- *  each says whether one is already on file; a new file replaces it. */
+/**
+ * The part's files, one per line: photo first, then the documents this kind of
+ * part needs. Each line says what is on file and offers Upload / Replace (and
+ * Remove for the photo); nothing changes until the form is saved.
+ */
 export const PartDocumentInputs = ({
   tier, files, onChange, part,
 }: {
@@ -64,29 +66,63 @@ export const PartDocumentInputs = ({
   onChange: (files: DocFiles) => void;
   part?: Record<string, any> | null;
 }) => (
-  <>
-    {DOCS_FOR_TIER[tier].map((k) => {
-      const onFile = part?.[PART_DOCS[k].column];
-      return (
-        <div key={k} className="space-y-2">
-          <Label>
-            {PART_DOCS[k].label} (PDF) *
-            {part && (
-              <span className={onFile ? "ml-2 text-xs text-muted-foreground" : "ml-2 text-xs text-destructive"}>
-                {onFile ? "on file" : "missing"}
-              </span>
-            )}
-          </Label>
-          <Input type="file" accept=".pdf"
-                 onChange={(e) => onChange({ ...files, [k]: e.target.files?.[0] ?? null })} />
-        </div>
-      );
-    })}
-    <PartPhotoInput files={files} onChange={onChange} current={part?.image_url} />
-  </>
+  <div className="space-y-2 sm:col-span-2">
+    <Label>Image and documents</Label>
+    <div className="divide-y rounded-md border">
+      <PartPhotoInput files={files} onChange={onChange} current={part?.image_url} />
+      {DOCS_FOR_TIER[tier].map((k) => (
+        <DocRow key={k} label={PART_DOCS[k].label} onFile={part ? part[PART_DOCS[k].column] : undefined} isEdit={!!part}
+                picked={files[k] ?? null} onPick={(f) => onChange({ ...files, [k]: f })} />
+      ))}
+    </div>
+  </div>
 );
 
-/** Photo picker: shows the photo on file (or the one just picked) and lets it be replaced or removed. */
+/** A picker that looks like a button. */
+function PickButton({ label, accept, onPick }: { label: string; accept: string; onPick: (f: File) => void }) {
+  return (
+    <Button asChild type="button" variant="outline" size="sm" className="h-8 cursor-pointer">
+      <label>
+        <Upload className="h-4 w-4" /> {label}
+        <input type="file" accept={accept} className="sr-only"
+               onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) onPick(f); }} />
+      </label>
+    </Button>
+  );
+}
+
+function DocRow({ label, onFile, isEdit, picked, onPick }: {
+  label: string; onFile?: string | null; isEdit: boolean; picked: File | null; onPick: (f: File | null) => void;
+}) {
+  const [viewing, setViewing] = useState(false);
+  return (
+    <div className="flex flex-wrap items-center gap-3 px-3 py-2.5">
+      <FileText className="h-5 w-5 shrink-0 text-muted-foreground" />
+      <div className="min-w-0 flex-1">
+        <div className="text-sm font-medium">{label} <span className="font-normal text-muted-foreground">(PDF)</span></div>
+        <div className="truncate text-xs">
+          {picked ? <span className="text-primary">{picked.name} · saved when you press {isEdit ? "Update" : "Create"}</span>
+            : onFile ? <span className="text-muted-foreground">On file</span>
+            : <span className="text-destructive">{isEdit ? "Missing" : "Not added yet"}</span>}
+        </div>
+      </div>
+      <div className="flex flex-wrap items-center gap-1.5">
+        {onFile && !picked && (
+          <Button type="button" variant="ghost" size="sm" className="h-8" onClick={() => setViewing(true)}>View</Button>
+        )}
+        {picked
+          ? <Button type="button" variant="ghost" size="sm" className="h-8" onClick={() => onPick(null)}>Undo</Button>
+          : <PickButton label={onFile ? "Replace" : "Upload"} accept=".pdf,application/pdf"
+                        onPick={(f) => (f.type && f.type !== "application/pdf" && !/\.pdf$/i.test(f.name) ? toast.error("Choose a PDF file") : onPick(f))} />}
+      </div>
+      {onFile && viewing && (
+        <PartDocViewer path={onFile} open={viewing} onOpenChange={setViewing} title={label} fileName={`${label}.pdf`} />
+      )}
+    </div>
+  );
+}
+
+/** The photo line: the photo on file (or the one just picked), Replace and Remove. */
 function PartPhotoInput({ files, onChange, current }: {
   files: DocFiles; onChange: (files: DocFiles) => void; current?: string | null;
 }) {
@@ -98,33 +134,41 @@ function PartPhotoInput({ files, onChange, current }: {
     return () => URL.revokeObjectURL(url);
   }, [files.image]);
   const showCurrent = !!current && !files.image && !files.removeImage;
+  const pick = (f: File) => {
+    if (!f.type.startsWith("image/")) return toast.error("Choose an image file (JPG or PNG)");
+    if (f.size > MAX_IMAGE_MB * 1024 * 1024) return toast.error(`The photo is larger than ${MAX_IMAGE_MB} MB. Choose a smaller one.`);
+    onChange({ ...files, image: f, removeImage: false });
+  };
   return (
-    <div className="space-y-2">
-      <Label htmlFor="part-photo">
-        Part photo (JPG / PNG, optional)
-        {current && <span className="ml-2 text-xs text-muted-foreground">{files.removeImage ? "will be removed" : "on file"}</span>}
-      </Label>
-      <div className="flex items-center gap-3">
-        {preview ? (
-          <img src={preview} alt="Selected part photo" className="aspect-[4/3] w-24 rounded-md border bg-muted object-contain" />
-        ) : showCurrent ? (
-          <PartPhoto path={current} size={96} />
-        ) : null}
-        <div className="flex-1 space-y-1.5">
-          <Input id="part-photo" type="file" accept="image/*"
-                 onChange={(e) => {
-                   const f = e.target.files?.[0] ?? null;
-                   if (f && !f.type.startsWith("image/")) { toast.error("Choose an image file (JPG or PNG)"); e.target.value = ""; return; }
-                   if (f && f.size > MAX_IMAGE_MB * 1024 * 1024) { toast.error(`The photo is larger than ${MAX_IMAGE_MB} MB. Choose a smaller one.`); e.target.value = ""; return; }
-                   onChange({ ...files, image: f, removeImage: false });
-                 }} />
-          {showCurrent && (
-            <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-destructive"
-                    onClick={() => onChange({ ...files, image: null, removeImage: true })}>
-              <Trash2 /> Remove photo
-            </Button>
-          )}
+    <div className="flex flex-wrap items-center gap-3 px-3 py-2.5">
+      {preview ? (
+        <img src={preview} alt="New photo" className={cn(PHOTO_RATIO, "w-28 shrink-0 rounded-md border bg-muted object-contain")} />
+      ) : showCurrent ? (
+        <PartPhoto path={current} size={112} />
+      ) : (
+        <div className={cn(PHOTO_RATIO, "flex w-28 shrink-0 items-center justify-center rounded-md border border-dashed text-muted-foreground")}>
+          <ImageOff className="h-5 w-5" />
         </div>
+      )}
+      <div className="min-w-0 flex-1">
+        <div className="text-sm font-medium">Product image <span className="font-normal text-muted-foreground">(JPG / PNG)</span></div>
+        <div className="truncate text-xs">
+          {files.image ? <span className="text-primary">{files.image.name} · saved when you press Update / Create</span>
+            : files.removeImage ? <span className="text-destructive">Will be removed when you press Update</span>
+            : current ? <span className="text-muted-foreground">On file</span>
+            : <span className="text-muted-foreground">No image</span>}
+        </div>
+      </div>
+      <div className="flex flex-wrap items-center gap-1.5">
+        {(files.image || files.removeImage)
+          ? <Button type="button" variant="ghost" size="sm" className="h-8" onClick={() => onChange({ ...files, image: null, removeImage: false })}>Undo</Button>
+          : <PickButton label={current ? "Replace" : "Upload"} accept="image/*" onPick={pick} />}
+        {showCurrent && (
+          <Button type="button" variant="ghost" size="sm" className="h-8 text-destructive"
+                  onClick={() => onChange({ ...files, image: null, removeImage: true })}>
+            <Trash2 className="h-4 w-4" /> Remove
+          </Button>
+        )}
       </div>
     </div>
   );
