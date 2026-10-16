@@ -131,11 +131,9 @@ const RawMaterialsManagement = () => {
   const editIsFinishedTier = editTier === "FINISHED";
   const editIsPurchaseLetter = partTier(newMaterial.category) === "PURCHASE";
   const viewTier = tierOfPart(viewMaterial);
-  // A finished good's software and CRS are kept on its model (JA-006 for JA-006-PH).
+  // A finished good's CRS is kept on its model (JA-006 for JA-006-PH); its software on the brand code itself.
   const viewModelId: string | null = viewMaterial
     ? ((viewMaterial as any).source_type === "MODEL" ? viewMaterial.id : (viewMaterial as any).model_id ?? null) : null;
-  const viewModelCode = viewMaterial
-    ? ((viewMaterial as any).source_type === "MODEL" ? viewMaterial.part_code : String(viewMaterial.part_code).replace(/-[A-Z]{2}$/, "")) : "";
   const [editDocs, setEditDocs] = useState<DocFiles>({});
   const [bomParentId, setBomParentId] = useState<string | undefined>();
   const [editUnits, setEditUnits] = useState<UnitValue>(unitValueFromPart(null));
@@ -792,7 +790,7 @@ const RawMaterialsManagement = () => {
                     {viewTier === "FINISHED" ? (
                       // Software (left) and documents with R&D's CRS (right) belong to the model.
                       <div className="grid gap-4 rounded-lg border p-4 sm:grid-cols-2 sm:divide-x">
-                        <ModelSoftwarePanel modelId={viewModelId} modelCode={viewModelCode} />
+                        <ModelSoftwarePanel partId={viewMaterial.id} isModel={(viewMaterial as any).source_type === "MODEL"} />
                         <div className="space-y-1.5 sm:pl-4">
                           <Label className="text-sm font-medium text-muted-foreground">Documents</Label>
                           <PartDocButtons tier={viewTier} part={viewMaterial} extra={<PartCrsButton modelId={viewModelId} />} />

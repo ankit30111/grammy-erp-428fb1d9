@@ -37,7 +37,7 @@ const ProductionLineManager = ({ productionOrderId }: ProductionLineManagerProps
     queryFn: async () => {
       console.log("🔍 Fetching production data for line management:", productionOrderId);
       
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("production_orders")
         .select(`
           *,

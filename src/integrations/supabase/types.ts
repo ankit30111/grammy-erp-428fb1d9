@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "12.2.3 (519615d)"
+    PostgrestVersion: "12.2.3"
   }
   public: {
     Tables: {
@@ -4693,18 +4693,23 @@ export type Database = {
       }
       software_releases: {
         Row: {
+          activated_at: string | null
+          approved_at: string | null
+          approved_by: string | null
           created_at: string
           created_by: string | null
-          decided_at: string | null
-          decided_by: string | null
           decision_note: string | null
           details: string | null
           file_name: string
           file_path: string
+          file_size: number | null
           id: string
           issue_list_name: string | null
           issue_list_path: string | null
-          model_id: string
+          part_id: string
+          rd_checked_at: string | null
+          rd_checked_by: string | null
+          sha256: string | null
           status: string
           test_report_name: string | null
           test_report_path: string | null
@@ -4713,18 +4718,23 @@ export type Database = {
           version: string
         }
         Insert: {
+          activated_at?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
           created_at?: string
           created_by?: string | null
-          decided_at?: string | null
-          decided_by?: string | null
           decision_note?: string | null
           details?: string | null
           file_name: string
           file_path: string
+          file_size?: number | null
           id?: string
           issue_list_name?: string | null
           issue_list_path?: string | null
-          model_id: string
+          part_id: string
+          rd_checked_at?: string | null
+          rd_checked_by?: string | null
+          sha256?: string | null
           status?: string
           test_report_name?: string | null
           test_report_path?: string | null
@@ -4733,18 +4743,23 @@ export type Database = {
           version: string
         }
         Update: {
+          activated_at?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
           created_at?: string
           created_by?: string | null
-          decided_at?: string | null
-          decided_by?: string | null
           decision_note?: string | null
           details?: string | null
           file_name?: string
           file_path?: string
+          file_size?: number | null
           id?: string
           issue_list_name?: string | null
           issue_list_path?: string | null
-          model_id?: string
+          part_id?: string
+          rd_checked_at?: string | null
+          rd_checked_by?: string | null
+          sha256?: string | null
           status?: string
           test_report_name?: string | null
           test_report_path?: string | null
@@ -4754,15 +4769,15 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "software_releases_model_id_fkey"
-            columns: ["model_id"]
+            foreignKeyName: "software_releases_part_id_fkey"
+            columns: ["part_id"]
             isOneToOne: false
             referencedRelation: "parts"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "software_releases_model_id_fkey"
-            columns: ["model_id"]
+            foreignKeyName: "software_releases_part_id_fkey"
+            columns: ["part_id"]
             isOneToOne: false
             referencedRelation: "store_receiving_variances"
             referencedColumns: ["part_id"]
@@ -5701,43 +5716,98 @@ export type Database = {
         }
         Relationships: []
       }
+      software_in_production: {
+        Row: {
+          activated_at: string | null
+          approved_at: string | null
+          file_size: number | null
+          part_id: string | null
+          sha256: string | null
+          version: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "software_releases_part_id_fkey"
+            columns: ["part_id"]
+            isOneToOne: false
+            referencedRelation: "parts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "software_releases_part_id_fkey"
+            columns: ["part_id"]
+            isOneToOne: false
+            referencedRelation: "store_receiving_variances"
+            referencedColumns: ["part_id"]
+          },
+        ]
+      }
       software_release_history: {
         Row: {
+          activated_at: string | null
+          approved_at: string | null
+          approved_by: string | null
+          approved_by_name: string | null
+          brand: string | null
           created_at: string | null
           created_by: string | null
           created_by_name: string | null
-          decided_at: string | null
-          decided_by: string | null
-          decided_by_name: string | null
           decision_note: string | null
           details: string | null
           file_name: string | null
           file_path: string | null
+          file_size: number | null
           id: string | null
           in_production: boolean | null
           issue_list_name: string | null
           issue_list_path: string | null
-          model_code: string | null
           model_id: string | null
+          part_code: string | null
+          part_id: string | null
+          part_name: string | null
+          rd_checked_at: string | null
+          rd_checked_by: string | null
+          rd_checked_by_name: string | null
+          sha256: string | null
           status: string | null
           test_report_name: string | null
           test_report_path: string | null
           updated_at: string | null
           updated_by: string | null
-          updated_by_name: string | null
           version: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "software_releases_model_id_fkey"
+            foreignKeyName: "parts_brand_fkey"
+            columns: ["brand"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["letter"]
+          },
+          {
+            foreignKeyName: "parts_model_id_fkey"
             columns: ["model_id"]
             isOneToOne: false
             referencedRelation: "parts"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "software_releases_model_id_fkey"
+            foreignKeyName: "parts_model_id_fkey"
             columns: ["model_id"]
+            isOneToOne: false
+            referencedRelation: "store_receiving_variances"
+            referencedColumns: ["part_id"]
+          },
+          {
+            foreignKeyName: "software_releases_part_id_fkey"
+            columns: ["part_id"]
+            isOneToOne: false
+            referencedRelation: "parts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "software_releases_part_id_fkey"
+            columns: ["part_id"]
             isOneToOne: false
             referencedRelation: "store_receiving_variances"
             referencedColumns: ["part_id"]
@@ -6342,6 +6412,10 @@ export type Database = {
       }
       set_user_plants: {
         Args: { p_plant_ids: string[]; p_user_id: string }
+        Returns: undefined
+      }
+      software_release_reactivate: {
+        Args: { p_reason: string; p_release: string }
         Returns: undefined
       }
       standard_terms: { Args: { p: string }; Returns: string }

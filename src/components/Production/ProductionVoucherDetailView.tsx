@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { VoucherSoftware } from "@/components/Parts/ModelSoftware";
 import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -343,10 +344,14 @@ const ProductionVoucherDetailView = ({ production, isOpen, onClose }: Production
           {/* Voucher Information */}
           <Card>
             <CardContent className="pt-6">
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-4 gap-4">
                 <div>
                   <span className="text-sm text-muted-foreground">Product:</span>
                   <p className="font-medium">{production?.parts?.name}</p>
+                </div>
+                <div>
+                  <span className="text-sm text-muted-foreground">Software to load:</span>
+                  <VoucherSoftware partId={production?.part_id} />
                 </div>
                 <div>
                   <span className="text-sm text-muted-foreground">Production Quantity:</span>
