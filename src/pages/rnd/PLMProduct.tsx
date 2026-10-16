@@ -31,7 +31,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ModelWorkspace } from "@/pages/models/ModelDetail";
 import { CrsTab } from "@/components/PLM/CrsTab";
-import { SoftwareTab } from "@/components/PLM/SoftwareTab";
 
 const sel = "h-9 rounded-md border border-input bg-background px-2 text-sm";
 const HOW: Record<string, string> = {
@@ -82,7 +81,8 @@ const PLMProduct = () => {
   const canEdit = canEditMasters || canApprove;
   const m = usePlmMutations();
   const plantId = usePlantId();
-  const tab = params.get("tab") ?? "stages";
+  // Software now lives under Versions & brands (old links: ?tab=software)
+  const tab = params.get("tab") === "software" ? "versions" : params.get("tab") ?? "stages";
   const [viewStage, setViewStage] = useState<number | null>(null);
 
   if (isLoading) return <DashboardLayout><p className="text-muted-foreground">Loading…</p></DashboardLayout>;
@@ -172,7 +172,6 @@ const PLMProduct = () => {
             ...(data.model ? [{ id: "versions", label: "Versions & brands" }] : []),
             { id: "tests", label: "Tests", count: data.tests.length },
             { id: "issues", label: "Issues", count: data.issues.filter((i: any) => i.status === "OPEN").length },
-            { id: "software", label: "Software" },
             { id: "crs", label: "CRS" },
             { id: "details", label: "Details" },
           ]}
@@ -187,7 +186,6 @@ const PLMProduct = () => {
         {tab === "versions" && data.model && <ModelWorkspace code={data.model.part_code} fromRnd />}
         {tab === "tests" && <TestsView data={data} canEdit={canEdit} upload={upload} m={m} products={products} />}
         {tab === "issues" && <IssuesView data={data} canEdit={canEdit} m={m} />}
-        {tab === "software" && <SoftwareTab model={data.model} canEdit={canEdit} />}
         {tab === "crs" && <CrsTab data={data} canEdit={canEdit} />}
         {tab === "details" && <DetailsView data={data} canEdit={canEdit} m={m} products={products} />}
       </div>
@@ -255,8 +253,8 @@ function StageView({ stage, data, canEdit, canApprove, upload, plantId, m }: any
           {stage === 4 && (
             <p className="text-sm">
               <span className="text-muted-foreground">Software in production: </span>
-              {p.firmware_version ? <span className="font-mono font-medium">v{p.firmware_version}</span> : <span className="text-muted-foreground">none approved yet</span>}
-              <Link className="ml-2 text-sm underline-offset-2 hover:underline" to={`?tab=software`}>Software testing and release</Link>
+              {p.firmware_version ? <span className="font-mono font-medium">{p.firmware_version}</span> : <span className="text-muted-foreground">none approved yet</span>}
+              <Link className="ml-2 text-sm underline-offset-2 hover:underline" to={`?tab=versions`}>Software in Versions &amp; brands</Link>
             </p>
           )}
           {stage === 5 && <PilotPanel data={data} canEdit={canEdit} plantId={plantId} m={m} />}

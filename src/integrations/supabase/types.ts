@@ -4696,17 +4696,23 @@ export type Database = {
           activated_at: string | null
           approved_at: string | null
           approved_by: string | null
+          base_release_id: string | null
+          bom_version_id: string | null
+          bt_name: string | null
           created_at: string
           created_by: string | null
           decision_note: string | null
           details: string | null
+          eq_profile: string | null
           file_name: string
           file_path: string
           file_size: number | null
           id: string
           issue_list_name: string | null
           issue_list_path: string | null
-          part_id: string
+          kind: string
+          model_id: string | null
+          part_id: string | null
           rd_checked_at: string | null
           rd_checked_by: string | null
           sha256: string | null
@@ -4716,22 +4722,29 @@ export type Database = {
           updated_at: string
           updated_by: string | null
           version: string
+          voice_prompt: string | null
         }
         Insert: {
           activated_at?: string | null
           approved_at?: string | null
           approved_by?: string | null
+          base_release_id?: string | null
+          bom_version_id?: string | null
+          bt_name?: string | null
           created_at?: string
           created_by?: string | null
           decision_note?: string | null
           details?: string | null
+          eq_profile?: string | null
           file_name: string
           file_path: string
           file_size?: number | null
           id?: string
           issue_list_name?: string | null
           issue_list_path?: string | null
-          part_id: string
+          kind?: string
+          model_id?: string | null
+          part_id?: string | null
           rd_checked_at?: string | null
           rd_checked_by?: string | null
           sha256?: string | null
@@ -4741,22 +4754,29 @@ export type Database = {
           updated_at?: string
           updated_by?: string | null
           version: string
+          voice_prompt?: string | null
         }
         Update: {
           activated_at?: string | null
           approved_at?: string | null
           approved_by?: string | null
+          base_release_id?: string | null
+          bom_version_id?: string | null
+          bt_name?: string | null
           created_at?: string
           created_by?: string | null
           decision_note?: string | null
           details?: string | null
+          eq_profile?: string | null
           file_name?: string
           file_path?: string
           file_size?: number | null
           id?: string
           issue_list_name?: string | null
           issue_list_path?: string | null
-          part_id?: string
+          kind?: string
+          model_id?: string | null
+          part_id?: string | null
           rd_checked_at?: string | null
           rd_checked_by?: string | null
           sha256?: string | null
@@ -4766,8 +4786,44 @@ export type Database = {
           updated_at?: string
           updated_by?: string | null
           version?: string
+          voice_prompt?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "software_releases_base_release_id_fkey"
+            columns: ["base_release_id"]
+            isOneToOne: false
+            referencedRelation: "software_release_history"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "software_releases_base_release_id_fkey"
+            columns: ["base_release_id"]
+            isOneToOne: false
+            referencedRelation: "software_releases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "software_releases_bom_version_id_fkey"
+            columns: ["bom_version_id"]
+            isOneToOne: false
+            referencedRelation: "item_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "software_releases_model_id_fkey"
+            columns: ["model_id"]
+            isOneToOne: false
+            referencedRelation: "parts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "software_releases_model_id_fkey"
+            columns: ["model_id"]
+            isOneToOne: false
+            referencedRelation: "store_receiving_variances"
+            referencedColumns: ["part_id"]
+          },
           {
             foreignKeyName: "software_releases_part_id_fkey"
             columns: ["part_id"]
@@ -5720,6 +5776,7 @@ export type Database = {
         Row: {
           activated_at: string | null
           approved_at: string | null
+          bom_version: string | null
           file_size: number | null
           part_id: string | null
           sha256: string | null
@@ -5748,12 +5805,19 @@ export type Database = {
           approved_at: string | null
           approved_by: string | null
           approved_by_name: string | null
+          base_release_id: string | null
+          base_version: string | null
+          bom_version: string | null
+          bom_version_id: string | null
           brand: string | null
+          brand_bom_version: string | null
+          bt_name: string | null
           created_at: string | null
           created_by: string | null
           created_by_name: string | null
           decision_note: string | null
           details: string | null
+          eq_profile: string | null
           file_name: string | null
           file_path: string | null
           file_size: number | null
@@ -5761,10 +5825,10 @@ export type Database = {
           in_production: boolean | null
           issue_list_name: string | null
           issue_list_path: string | null
+          kind: string | null
           model_id: string | null
           part_code: string | null
           part_id: string | null
-          part_name: string | null
           rd_checked_at: string | null
           rd_checked_by: string | null
           rd_checked_by_name: string | null
@@ -5775,6 +5839,7 @@ export type Database = {
           updated_at: string | null
           updated_by: string | null
           version: string | null
+          voice_prompt: string | null
         }
         Relationships: [
           {
@@ -5785,14 +5850,35 @@ export type Database = {
             referencedColumns: ["letter"]
           },
           {
-            foreignKeyName: "parts_model_id_fkey"
+            foreignKeyName: "software_releases_base_release_id_fkey"
+            columns: ["base_release_id"]
+            isOneToOne: false
+            referencedRelation: "software_release_history"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "software_releases_base_release_id_fkey"
+            columns: ["base_release_id"]
+            isOneToOne: false
+            referencedRelation: "software_releases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "software_releases_bom_version_id_fkey"
+            columns: ["bom_version_id"]
+            isOneToOne: false
+            referencedRelation: "item_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "software_releases_model_id_fkey"
             columns: ["model_id"]
             isOneToOne: false
             referencedRelation: "parts"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "parts_model_id_fkey"
+            foreignKeyName: "software_releases_model_id_fkey"
             columns: ["model_id"]
             isOneToOne: false
             referencedRelation: "store_receiving_variances"

@@ -3,13 +3,14 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
 /**
- * Software of a brand code (JA-006-PH), released from R&D:
- *   1 file · 2 version · 3 testing report · 4 issue list
- *   5 R&D check (another R&D person, never the uploader) · 6 Management approval
- * The approved version activated last is the one in production. Management can
- * put an older approved version back; the newer ones are then withdrawn.
- * Files are in a private bucket only R&D, Management and Admin can open;
- * everyone else sees the version, date and checksum.
+ * Software, run from R&D (Versions & brands):
+ *   Base software  on the model, no brand, internal:   B0.1, B0.2 … B1.0
+ *   Brand software on each brand code, what is flashed: 1.0, 1.1 … 2.0 — built on a
+ *                  base, made for a BOM version, with its EQ / BT name / voice prompt.
+ * Steps: file · version · testing report · issue list · R&D check · Management approval.
+ * No locks yet: files can be replaced at any step; documents are reminders.
+ * The approved brand version activated last is in production; Management can
+ * put an older one back. Files: R&D, Management and Admin only.
  */
 
 const db = supabase as any;
@@ -17,7 +18,9 @@ export const SOFTWARE_BUCKET = "software-releases";
 
 export type ReleaseStatus = "TESTING" | "RD_CHECKED" | "APPROVED" | "REJECTED" | "WITHDRAWN";
 export interface SoftwareRelease {
-  id: string; part_id: string; part_code: string; brand: string | null; model_id: string | null; version: string;
+  id: string; kind: "BASE" | "BRAND"; part_id: string | null; part_code: string | null; brand: string | null; model_id: string; version: string;
+  base_release_id: string | null; base_version: string | null; bom_version_id: string | null; bom_version: string | null;
+  brand_bom_version: string | null; eq_profile: string | null; bt_name: string | null; voice_prompt: string | null;
   file_path: string; file_name: string; file_size: number | null; sha256: string | null;
   test_report_path: string | null; test_report_name: string | null;
   issue_list_path: string | null; issue_list_name: string | null;
@@ -27,7 +30,7 @@ export interface SoftwareRelease {
   created_by: string | null; created_by_name: string | null; created_at: string; updated_at: string;
   in_production: boolean | null;
 }
-export interface BrandCode { id: string; part_code: string; name: string; brand: string | null }
+export interface BrandCode { id: string; part_code: string; name: string; brand: string | null; model_version?: string | null }
 
 export const fmtDay = (iso?: string | null) => (iso ? iso.slice(0, 10).split("-").reverse().join("-") : "");
 export const shortSum = (s?: string | null) => (s ? `${s.slice(0, 8)}…${s.slice(-4)}` : "");
@@ -43,7 +46,7 @@ export function useModelSoftware(modelId?: string | null) {
     enabled: !!modelId,
     queryFn: async () => {
       const [codes, rel] = await Promise.all([
-        db.from("parts").select("id, part_code, name, brand").eq("model_id", modelId).eq("is_active", true).order("part_code"),
+        db.from("parts").select("id, part_code, name, brand, model_version").eq("model_id", modelId).eq("is_active", true).order("part_code"),
         db.from("software_release_history").select("*").eq("model_id", modelId),
       ]);
       if (codes.error) throw codes.error;
@@ -61,7 +64,7 @@ export function useSoftwareInProduction(partIds: string[]) {
     queryFn: async () => {
       const { data, error } = await db.from("software_in_production").select("*").in("part_id", partIds);
       if (error) throw error;
-      return new Map<string, { version: string; activated_at: string; sha256: string | null; file_size: number | null }>(
+      return new Map<string, { version: string; activated_at: string; sha256: string | null; file_size: number | null; bom_version: string | null }>(
         (data ?? []).map((r: any) => [r.part_id, r]));
     },
   });
@@ -72,8 +75,8 @@ async function sha256Hex(file: File) {
   return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 const clean = (s: string) => s.replace(/[^\w.-]+/g, "_");
-async function upload(partCode: string, version: string, kind: string, file: File) {
-  const path = `${clean(partCode)}/${clean(version)}/${kind}_${Date.now()}_${clean(file.name)}`;
+async function upload(folder: string, version: string, kind: string, file: File) {
+  const path = `${folder.split("/").map(clean).join("/")}/${clean(version)}/${kind}_${Date.now()}_${clean(file.name)}`;
   const { error } = await supabase.storage.from(SOFTWARE_BUCKET).upload(path, file);
   if (error) throw error;
   return path;
@@ -98,17 +101,27 @@ export function useSoftwareMutations(modelId: string) {
   const fail = (e: any) => toast.error(e?.code === "23505" ? "That version is already there for this brand code" : e?.message ?? "Could not save");
 
   const create = useMutation({
-    mutationFn: async (f: { code: BrandCode; version: string; file: File; testReport?: File | null; issueList?: File | null; details: string }) => {
-      const version = f.version.trim().replace(/^v(?=\d)/i, "");
+    mutationFn: async (f: {
+      kind: "BASE" | "BRAND"; modelCode: string; code?: BrandCode | null; version: string; file: File;
+      testReport?: File | null; issueList?: File | null; details: string;
+      base_release_id?: string | null; bom_version_id?: string | null; eq_profile?: string; bt_name?: string; voice_prompt?: string;
+    }) => {
+      const version = f.version.trim().replace(/^[vVbB]\s*(?=\d)/, "");
+      const folder = f.kind === "BASE" ? `${f.modelCode}/BASE` : f.code!.part_code;
       const sha256 = await sha256Hex(f.file);
-      const file_path = await upload(f.code.part_code, version, "software", f.file);
-      const test_report_path = f.testReport ? await upload(f.code.part_code, version, "test-report", f.testReport) : null;
-      const issue_list_path = f.issueList ? await upload(f.code.part_code, version, "issue-list", f.issueList) : null;
+      const file_path = await upload(folder, version, "software", f.file);
+      const test_report_path = f.testReport ? await upload(folder, version, "test-report", f.testReport) : null;
+      const issue_list_path = f.issueList ? await upload(folder, version, "issue-list", f.issueList) : null;
       const { error } = await db.from("software_releases").insert({
-        part_id: f.code.id, version, file_path, file_name: f.file.name, file_size: f.file.size, sha256,
+        kind: f.kind, model_id: modelId, part_id: f.kind === "BRAND" ? f.code!.id : null,
+        version, file_path, file_name: f.file.name, file_size: f.file.size, sha256,
         test_report_path, test_report_name: f.testReport?.name ?? null,
         issue_list_path, issue_list_name: f.issueList?.name ?? null,
         details: f.details.trim() || null,
+        ...(f.kind === "BRAND" ? {
+          base_release_id: f.base_release_id || null, bom_version_id: f.bom_version_id || null,
+          eq_profile: f.eq_profile?.trim() || null, bt_name: f.bt_name?.trim() || null, voice_prompt: f.voice_prompt?.trim() || null,
+        } : {}),
       });
       if (error) throw error;
     },
@@ -116,9 +129,21 @@ export function useSoftwareMutations(modelId: string) {
     onError: fail,
   });
 
+  const replaceFile = useMutation({
+    mutationFn: async ({ r, file, modelCode }: { r: SoftwareRelease; file: File; modelCode: string }) => {
+      const folder = r.kind === "BASE" ? `${modelCode}/BASE` : r.part_code!;
+      const sha256 = await sha256Hex(file);
+      const path = await upload(folder, r.version, "software", file);
+      const { error } = await db.from("software_releases").update({ file_path: path, file_name: file.name, file_size: file.size, sha256 }).eq("id", r.id);
+      if (error) throw error;
+    },
+    onSuccess: () => { refresh(); toast.success("Software file replaced"); },
+    onError: fail,
+  });
+
   const attach = useMutation({
-    mutationFn: async ({ r, kind, file }: { r: SoftwareRelease; kind: DocKind; file: File }) => {
-      const path = await upload(r.part_code, r.version, kind.replace("_", "-"), file);
+    mutationFn: async ({ r, kind, file, modelCode }: { r: SoftwareRelease; kind: DocKind; file: File; modelCode: string }) => {
+      const path = await upload(r.kind === "BASE" ? `${modelCode}/BASE` : r.part_code!, r.version, kind.replace("_", "-"), file);
       const { error } = await db.from("software_releases").update({ [`${kind}_path`]: path, [`${kind}_name`]: file.name }).eq("id", r.id);
       if (error) throw error;
     },
@@ -158,5 +183,14 @@ export function useSoftwareMutations(modelId: string) {
     onError: fail,
   });
 
-  return { create, attach, update, reactivate, remove };
+  return { create, replaceFile, attach, update, reactivate, remove };
 }
+
+/** Next number: base starts at 0.1, a brand at 1.0; then the minor goes up. */
+export function nextVersion(existing: string[], kind: "BASE" | "BRAND") {
+  const nums = existing.map((v) => v.match(/^(\d+)\.(\d+)/)).filter(Boolean).map((m) => [Number(m![1]), Number(m![2])] as const);
+  if (!nums.length) return kind === "BASE" ? "0.1" : "1.0";
+  const [maj, min] = nums.sort((a, b) => b[0] - a[0] || b[1] - a[1])[0];
+  return `${maj}.${min + 1}`;
+}
+export const showVersion = (r: { kind: string; version: string }) => (r.kind === "BASE" ? `B${r.version}` : `v${r.version}`);

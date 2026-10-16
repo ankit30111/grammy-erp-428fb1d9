@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { TableEmpty } from "@/components/ui/table-state";
 import { VersionTree } from "@/components/Engineering/VersionTree";
+import { BaseSoftwareCard, BrandSoftwarePanel, BrandSoftwareSummary } from "@/components/PLM/Software";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useBrands } from "@/hooks/usePartCategories";
 import { type BrandRow, type ModelVersionRow, latestReleased, useModel, useModelMutations, versionCmp } from "@/hooks/useModels";
@@ -135,6 +136,8 @@ export function ModelWorkspace({ code, fromRnd }: { code: string; fromRnd?: bool
         </CardContent>
       </Card>
 
+      {fromRnd && <BaseSoftwareCard model={model} canEdit={canEdit} />}
+
       <Card>
         <CardHeader className="pb-2">
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -145,9 +148,9 @@ export function ModelWorkspace({ code, fromRnd }: { code: string; fromRnd?: bool
         <CardContent className="space-y-2">
           <p className="text-xs text-muted-foreground">
             A brand code's production BOM is the version's lines that are for every brand plus those marked for its brand.
-            Moving it to a newer version rebuilds its BOM from that version.
+            Moving it to a newer version rebuilds its BOM from that version.{fromRnd && " Its software stays tied to the BOM version it was made for until R&D changes it."}
           </p>
-          <Brands brands={brands} versions={versions} canApprove={canApprove} m={m} />
+          <Brands brands={brands} versions={versions} canApprove={canApprove} m={m} software={fromRnd ? { model, canEdit } : undefined} />
         </CardContent>
       </Card>
 
@@ -158,27 +161,38 @@ export function ModelWorkspace({ code, fromRnd }: { code: string; fromRnd?: bool
   );
 }
 
-function Brands({ brands, versions, canApprove, m }: {
+function Brands({ brands, versions, canApprove, m, software }: {
   brands: BrandRow[]; versions: ModelVersionRow[]; canApprove: boolean; m: ReturnType<typeof useModelMutations>;
+  software?: { model: { id: string; part_code: string }; canEdit: boolean };
 }) {
   const rel = latestReleased(versions);
+  const [open, setOpen] = useState<string | null>(null);
   if (brands.length === 0) return <p className="text-sm text-muted-foreground">No brand codes on this model yet.</p>;
+  const cols = software ? 4 : 3;
   return (
     <Table>
       <TableHeader>
-        <TableRow><TableHead>Brand code</TableHead><TableHead>Built on</TableHead><TableHead /></TableRow>
+        <TableRow><TableHead>Brand code</TableHead><TableHead>Built on</TableHead>{software && <TableHead>Software</TableHead>}<TableHead /></TableRow>
       </TableHeader>
       <TableBody>
         {brands.map((b) => {
           const behind = rel && versionCmp(b.model_version, rel.version) < 0;
+          const isOpen = open === b.id;
           return (
-            <TableRow key={b.id} className={cn(!b.is_active && "opacity-60")}>
-              <TableCell><div className="font-mono font-medium">{b.part_code}</div><div className="text-sm">{b.name}</div></TableCell>
+            <Fragment key={b.id}>
+            <TableRow className={cn(!b.is_active && "opacity-60", software && "cursor-pointer")} onClick={() => software && setOpen(isOpen ? null : b.id)}>
+              <TableCell>
+                <div className="flex items-start gap-1.5">
+                  {software && (isOpen ? <ChevronDown className="mt-0.5 h-4 w-4 shrink-0" /> : <ChevronRight className="mt-0.5 h-4 w-4 shrink-0" />)}
+                  <div><div className="font-mono font-medium">{b.part_code}</div><div className="text-sm">{b.name}</div></div>
+                </div>
+              </TableCell>
               <TableCell className="whitespace-nowrap">
                 v{b.model_version ?? "?"}
                 {behind && <Badge variant="warning" className="ml-2">v{rel!.version} out</Badge>}
               </TableCell>
-              <TableCell className="text-right">
+              {software && <TableCell><BrandSoftwareSummary modelId={software.model.id} code={b} /></TableCell>}
+              <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                 {canApprove && behind && (
                   <Button size="sm" variant="outline" disabled={m.moveBrand.isPending}
                           onClick={() => window.confirm(`Rebuild ${b.part_code}'s BOM from v${rel!.version}?`) && m.moveBrand.mutate({ brand: b.id, version: rel!.id })}>
@@ -187,6 +201,14 @@ function Brands({ brands, versions, canApprove, m }: {
                 )}
               </TableCell>
             </TableRow>
+            {software && isOpen && (
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={cols}>
+                  <BrandSoftwarePanel model={software.model} code={b} versions={versions} canEdit={software.canEdit} />
+                </TableCell>
+              </TableRow>
+            )}
+            </Fragment>
           );
         })}
       </TableBody>

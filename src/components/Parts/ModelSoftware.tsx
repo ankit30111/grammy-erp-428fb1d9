@@ -42,7 +42,7 @@ export function ModelSoftwarePanel({ partId, isModel }: { partId?: string | null
                 {s ? (
                   <>
                     <span className="block font-mono font-medium">v{s.version}</span>
-                    <span className="block text-xs text-muted-foreground" title={s.sha256 ?? ""}>approved {fmtDay(s.activated_at)}{s.sha256 ? ` · ${shortSum(s.sha256)}` : ""}</span>
+                    <span className="block text-xs text-muted-foreground" title={s.sha256 ?? ""}>approved {fmtDay(s.activated_at)}{s.bom_version ? ` · BOM v${s.bom_version}` : ""}{s.sha256 ? ` · ${shortSum(s.sha256)}` : ""}</span>
                   </>
                 ) : <span className={cn("block text-destructive")}>No approved software</span>}
               </span>
@@ -62,7 +62,7 @@ export function VoucherSoftware({ partId }: { partId?: string | null }) {
   return s ? (
     <p className="font-medium">
       <span className="font-mono">v{s.version}</span>
-      <span className="ml-1 text-xs font-normal text-muted-foreground" title={s.sha256 ?? ""}>approved {fmtDay(s.activated_at)}{s.sha256 ? ` · ${shortSum(s.sha256)}` : ""}</span>
+      <span className="ml-1 text-xs font-normal text-muted-foreground" title={s.sha256 ?? ""}>approved {fmtDay(s.activated_at)}{s.bom_version ? ` · made for BOM v${s.bom_version}` : ""}{s.sha256 ? ` · ${shortSum(s.sha256)}` : ""}</span>
     </p>
   ) : <p className="font-medium text-destructive">No approved software. Check with R&amp;D before loading.</p>;
 }
