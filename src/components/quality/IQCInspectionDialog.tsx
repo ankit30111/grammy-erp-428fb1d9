@@ -15,6 +15,7 @@ import { SignedStorageLink } from "@/components/ui/signed-storage-link";
 import { PartPhoto } from "@/components/Parts/PartDocuments";
 import { useState } from "react";
 import { IQC_OUTCOME, type IqcVerdict } from "@/constants/iqcOutcome";
+import { DOC_ACCEPT } from "@/lib/uploads";
 
 interface IQCInspectionDialogProps {
   grn: any;
@@ -281,7 +282,7 @@ const IQCInspectionDialog = ({ grn, isOpen, onClose }: IQCInspectionDialogProps)
                             id={`iqc-report-${item.id}`}
                             className="hidden"
                             onChange={(e) => handleFileChange(item.id, e)}
-                            accept=".pdf,.jpg,.png"
+                            accept={DOC_ACCEPT}
                           />
                            <Input
                              readOnly

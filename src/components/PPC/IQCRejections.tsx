@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
+import { DOC_ACCEPT } from "@/lib/uploads";
 
 const IQCRejections = () => {
   const [selectedRejection, setSelectedRejection] = useState<any>(null);
@@ -252,7 +253,7 @@ const IQCRejections = () => {
               
               <div>
                 <Label>Upload Vendor CAPA</Label>
-                <Input type="file" accept=".pdf,.doc,.docx" />
+                <Input type="file" accept={`${DOC_ACCEPT},.doc,.docx`} />
               </div>
               
               <div>

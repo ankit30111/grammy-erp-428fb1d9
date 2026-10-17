@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useSignedStorageUrl } from "@/hooks/useSignedStorageUrl";
 import { cn } from "@/lib/utils";
+import { DOC_ACCEPT, DOC_FORMATS, docFileProblem, extOf, isPdfPath } from "@/lib/uploads";
 import { DOCS_FOR_TIER, PART_DOCS, type PartDocKey, type PartTier } from "@/hooks/usePartCategories";
 import type { PartInput } from "@/hooks/useParts";
 
@@ -16,8 +17,6 @@ export type DocFiles = Partial<Record<PartDocKey, File | null>> & {
   /** Clear the photo on file (edit only). */
   removeImage?: boolean;
 };
-
-const MAX_IMAGE_MB = 5;
 
 const INPUT_FIELD: Record<PartDocKey, keyof PartInput> = {
   spec: "specificationFile",
@@ -99,7 +98,7 @@ function DocRow({ label, onFile, isEdit, picked, onPick }: {
     <div className="flex flex-wrap items-center gap-3 px-3 py-2.5">
       <FileText className="h-5 w-5 shrink-0 text-muted-foreground" />
       <div className="min-w-0 flex-1">
-        <div className="text-sm font-medium">{label} <span className="font-normal text-muted-foreground">(PDF)</span></div>
+        <div className="text-sm font-medium">{label} <span className="font-normal text-muted-foreground">({DOC_FORMATS})</span></div>
         <div className="truncate text-xs">
           {picked ? <span className="text-primary">{picked.name} · saved when you press {isEdit ? "Update" : "Create"}</span>
             : onFile ? <span className="text-muted-foreground">On file</span>
@@ -112,11 +111,11 @@ function DocRow({ label, onFile, isEdit, picked, onPick }: {
         )}
         {picked
           ? <Button type="button" variant="ghost" size="sm" className="h-8" onClick={() => onPick(null)}>Undo</Button>
-          : <PickButton label={onFile ? "Replace" : "Upload"} accept=".pdf,application/pdf"
-                        onPick={(f) => (f.type && f.type !== "application/pdf" && !/\.pdf$/i.test(f.name) ? toast.error("Choose a PDF file") : onPick(f))} />}
+          : <PickButton label={onFile ? "Replace" : "Upload"} accept={DOC_ACCEPT}
+                        onPick={(f) => { const bad = docFileProblem(f); return bad ? toast.error(bad) : onPick(f); }} />}
       </div>
       {onFile && viewing && (
-        <PartDocViewer path={onFile} open={viewing} onOpenChange={setViewing} title={label} fileName={`${label}.pdf`} />
+        <PartDocViewer path={onFile} open={viewing} onOpenChange={setViewing} title={label} fileName={`${label}${extOf(onFile)}`} />
       )}
     </div>
   );
@@ -135,13 +134,15 @@ function PartPhotoInput({ files, onChange, current }: {
   }, [files.image]);
   const showCurrent = !!current && !files.image && !files.removeImage;
   const pick = (f: File) => {
-    if (!f.type.startsWith("image/")) return toast.error("Choose an image file (JPG or PNG)");
-    if (f.size > MAX_IMAGE_MB * 1024 * 1024) return toast.error(`The photo is larger than ${MAX_IMAGE_MB} MB. Choose a smaller one.`);
+    const bad = docFileProblem(f);
+    if (bad) return toast.error(bad);
     onChange({ ...files, image: f, removeImage: false });
   };
   return (
     <div className="flex flex-wrap items-center gap-3 px-3 py-2.5">
-      {preview ? (
+      {preview && files.image && isPdfPath(files.image.name) ? (
+        <PdfTile className="w-28" />
+      ) : preview ? (
         <img src={preview} alt="New photo" className={cn(PHOTO_RATIO, "w-28 shrink-0 rounded-md border bg-muted object-contain")} />
       ) : showCurrent ? (
         <PartPhoto path={current} size={112} />
@@ -151,7 +152,7 @@ function PartPhotoInput({ files, onChange, current }: {
         </div>
       )}
       <div className="min-w-0 flex-1">
-        <div className="text-sm font-medium">Product image <span className="font-normal text-muted-foreground">(JPG / PNG)</span></div>
+        <div className="text-sm font-medium">Product image <span className="font-normal text-muted-foreground">({DOC_FORMATS})</span></div>
         <div className="truncate text-xs">
           {files.image ? <span className="text-primary">{files.image.name} · saved when you press Update / Create</span>
             : files.removeImage ? <span className="text-destructive">Will be removed when you press Update</span>
@@ -162,7 +163,7 @@ function PartPhotoInput({ files, onChange, current }: {
       <div className="flex flex-wrap items-center gap-1.5">
         {(files.image || files.removeImage)
           ? <Button type="button" variant="ghost" size="sm" className="h-8" onClick={() => onChange({ ...files, image: null, removeImage: false })}>Undo</Button>
-          : <PickButton label={current ? "Replace" : "Upload"} accept="image/*" onPick={pick} />}
+          : <PickButton label={current ? "Replace" : "Upload"} accept={DOC_ACCEPT} onPick={pick} />}
         {showCurrent && (
           <Button type="button" variant="ghost" size="sm" className="h-8 text-destructive"
                   onClick={() => onChange({ ...files, image: null, removeImage: true })}>
@@ -184,7 +185,9 @@ export const PHOTO_RATIO = "aspect-[4/3]";
 export function PartPhotoViewer({ path, open, onOpenChange, code, name }: {
   path?: string | null; open: boolean; onOpenChange: (o: boolean) => void; code?: string | null; name?: string | null;
 }) {
-  const { data: url } = useSignedStorageUrl(BUCKET, open ? path ?? null : null);
+  const pdf = isPdfPath(path);
+  const { data: url } = useSignedStorageUrl(BUCKET, open && !pdf ? path ?? null : null);
+  if (pdf) return <PartDocViewer path={path} open={open} onOpenChange={onOpenChange} title={`${code ?? "Part"} · Product image`} fileName={`${code ?? "part"} image.pdf`} />;
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[min(94vw,1100px)] max-w-none gap-3 p-4 sm:p-6">
@@ -220,7 +223,7 @@ export function PartPhoto({ path, size = 64, label, name, className }: {
     <>
       <button type="button" onClick={() => setViewing(true)} title="Open photo" style={box}
               className={cn(PHOTO_RATIO, "shrink-0 overflow-hidden rounded-md border bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", className)}>
-        {url && <img src={url} alt={label ? `Photo of ${label}` : "Part photo"} className="h-full w-full object-contain" />}
+        {isPdfPath(path) ? <PdfTile bare /> : url && <img src={url} alt={label ? `Photo of ${label}` : "Part photo"} className="h-full w-full object-contain" />}
       </button>
       <PartPhotoViewer path={path} open={viewing} onOpenChange={setViewing} code={label} name={name} />
     </>
@@ -246,13 +249,23 @@ export function PartPhotoPanel({ path, code, name, className }: {
     <>
       <button type="button" onClick={() => setViewing(true)} aria-label={`Open the photo of ${code ?? "this part"}`}
               className={cn(PHOTO_RATIO, "group relative w-full overflow-hidden rounded-lg border bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", className)}>
-        {url && <img src={url} alt={code ? `Photo of ${code}` : "Part photo"} className="h-full w-full object-contain" />}
+        {isPdfPath(path) ? <PdfTile bare /> : url && <img src={url} alt={code ? `Photo of ${code}` : "Part photo"} className="h-full w-full object-contain" />}
         <span className="absolute bottom-2 right-2 inline-flex items-center gap-1 rounded-md bg-background/90 px-2 py-1 text-xs font-medium shadow-sm opacity-90 group-hover:opacity-100">
           <Maximize2 className="h-3.5 w-3.5" /> Click to enlarge
         </span>
       </button>
       <PartPhotoViewer path={path} open={viewing} onOpenChange={setViewing} code={code} name={name} />
     </>
+  );
+}
+
+/** Stands in for a photo that was uploaded as a PDF. */
+function PdfTile({ className, bare }: { className?: string; bare?: boolean }) {
+  return (
+    <div className={cn(bare ? "h-full w-full" : cn(PHOTO_RATIO, "shrink-0 rounded-md border"), "flex flex-col items-center justify-center gap-1 bg-muted text-muted-foreground", className)}>
+      <FileText className="h-1/3 max-h-10 w-auto" />
+      <span className="text-xs font-medium">PDF</span>
+    </div>
   );
 }
 
@@ -268,7 +281,7 @@ export const PartDocumentList = ({ tier, part }: { tier: PartTier; part: Record<
             <div className="flex gap-1.5">
               <Button variant="outline" size="sm" onClick={() => open(path)}><ExternalLink /> View</Button>
               <Button variant="outline" size="sm"
-                      onClick={() => download(path, `${part.part_code} ${PART_DOCS[k].label}.pdf`)}>
+                      onClick={() => download(path, `${part.part_code} ${PART_DOCS[k].label}${extOf(path)}`)}>
                 <Download /> Download
               </Button>
             </div>
@@ -281,7 +294,7 @@ export const PartDocumentList = ({ tier, part }: { tier: PartTier; part: Record<
   </div>
 );
 
-/** A part document (PDF) shown on this page in a dialog. Esc goes back. */
+/** A part document (PDF, JPG or PNG) shown on this page in a dialog. Esc goes back. */
 export function PartDocViewer({ path, open, onOpenChange, title, fileName }: {
   path?: string | null; open: boolean; onOpenChange: (o: boolean) => void; title: string; fileName: string;
 }) {
@@ -318,7 +331,9 @@ export function PartDocViewer({ path, open, onOpenChange, title, fileName }: {
           </div>
         </DialogHeader>
         <div className="min-h-0 flex-1 overflow-hidden rounded-md border bg-muted">
-          {url ? <iframe src={url} title={title} className="h-full w-full" />
+          {url ? (/\.(jpe?g|png)$/i.test(path ?? "")
+            ? <img src={url} alt={title} className="h-full w-full object-contain" />
+            : <iframe src={url} title={title} className="h-full w-full" />)
             : <div className="flex h-full items-center justify-center text-sm text-muted-foreground">{isError ? "Could not open the document" : "Loading…"}</div>}
         </div>
       </DialogContent>
@@ -352,7 +367,7 @@ export function PartDocButtons({ tier, part, extra }: { tier: PartTier; part: Re
       {openKey && (
         <PartDocViewer path={part[PART_DOCS[openKey].column]} open={!!openKey} onOpenChange={(o) => !o && setOpenKey(null)}
                        title={`${part.part_code} · ${PART_DOCS[openKey].label}`}
-                       fileName={`${part.part_code} ${PART_DOCS[openKey].label}.pdf`} />
+                       fileName={`${part.part_code} ${PART_DOCS[openKey].label}${extOf(part[PART_DOCS[openKey].column])}`} />
       )}
     </>
   );

@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Upload, FileText, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { DOC_ACCEPT, STORAGE_MAX_MB } from "@/lib/uploads";
 
 interface CAPAUploadDialogProps {
   isOpen: boolean;
@@ -35,23 +36,23 @@ const CAPAUploadDialog = ({
     const file = event.target.files?.[0];
     if (file) {
       // Validate file type
-      const allowedTypes = ['.pdf', '.doc', '.docx', '.xls', '.xlsx'];
+      const allowedTypes = ['.pdf', '.jpg', '.jpeg', '.png', '.doc', '.docx', '.xls', '.xlsx'];
       const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase();
       
       if (!allowedTypes.includes(fileExtension)) {
         toast({
           title: "Invalid File Type",
-          description: "Please upload PDF, DOC, DOCX, XLS, or XLSX files only",
+          description: "Please upload PDF, JPG, PNG, DOC, DOCX, XLS or XLSX files only",
           variant: "destructive"
         });
         return;
       }
 
-      // Validate file size (max 10MB)
-      if (file.size > 10 * 1024 * 1024) {
+      // No limit of our own; the storage plan caps one file at 50 MB
+      if (file.size > STORAGE_MAX_MB * 1024 * 1024) {
         toast({
           title: "File Too Large",
-          description: "Please upload files smaller than 10MB",
+          description: `One file can be up to ${STORAGE_MAX_MB} MB on the current storage plan`,
           variant: "destructive"
         });
         return;
@@ -227,12 +228,12 @@ const CAPAUploadDialog = ({
                     Click to upload or drag and drop
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    PDF, DOC, DOCX, XLS, XLSX (max 10MB)
+                    PDF, JPG, PNG, DOC, DOCX, XLS, XLSX
                   </div>
                   <Input
                     id="capa-file"
                     type="file"
-                    accept=".pdf,.doc,.docx,.xls,.xlsx"
+                    accept={`${DOC_ACCEPT},.doc,.docx,.xls,.xlsx`}
                     onChange={handleFileSelect}
                     className="hidden"
                   />

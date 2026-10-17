@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, X } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
+import { DOC_ACCEPT } from "@/lib/uploads";
 import {
   useVendors, useVendorFinance, useVendorContacts, type VendorContact,
 } from "@/hooks/useVendors";
@@ -188,12 +189,12 @@ export const VendorForm = ({ onSuccess, editingVendor, onCancel }: VendorFormPro
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-1.5">
-          <Label htmlFor="gst_cert">GST certificate (PDF)</Label>
-          <Input id="gst_cert" type="file" accept=".pdf" onChange={(e) => setCerts((c) => ({ ...c, gst: e.target.files?.[0] }))} />
+          <Label htmlFor="gst_cert">GST certificate (PDF / JPG / PNG)</Label>
+          <Input id="gst_cert" type="file" accept={DOC_ACCEPT} onChange={(e) => setCerts((c) => ({ ...c, gst: e.target.files?.[0] }))} />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="msme_cert">MSME / Udyam certificate (PDF)</Label>
-          <Input id="msme_cert" type="file" accept=".pdf" onChange={(e) => setCerts((c) => ({ ...c, msme: e.target.files?.[0] }))} />
+          <Label htmlFor="msme_cert">MSME / Udyam certificate (PDF / JPG / PNG)</Label>
+          <Input id="msme_cert" type="file" accept={DOC_ACCEPT} onChange={(e) => setCerts((c) => ({ ...c, msme: e.target.files?.[0] }))} />
         </div>
       </div>
 

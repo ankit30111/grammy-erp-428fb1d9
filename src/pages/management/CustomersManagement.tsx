@@ -17,6 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useCustomerForm } from "@/hooks/useCustomerForm";
 import { CustomerBrandPicker } from "@/components/Customers/CustomerBrandPicker";
 import { useBrands } from "@/hooks/usePartCategories";
+import { DOC_ACCEPT } from "@/lib/uploads";
 
 interface Customer {
   id: string;
@@ -369,12 +370,12 @@ const CustomersManagement = () => {
 
       <div className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="gst_certificate">GST Certificate (PDF)</Label>
+          <Label htmlFor="gst_certificate">GST Certificate (PDF / JPG / PNG)</Label>
           <div className="flex items-center space-x-2">
             <Input
               id="gst_certificate"
               type="file"
-              accept=".pdf"
+              accept={DOC_ACCEPT}
               onChange={(e) => updateFormField('gst_certificate', e.target.files?.[0] || null)}
             />
             <Upload className="h-4 w-4" />
@@ -382,12 +383,12 @@ const CustomersManagement = () => {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="msme_certificate">MSME/UDYAM Certificate (PDF)</Label>
+          <Label htmlFor="msme_certificate">MSME/UDYAM Certificate (PDF / JPG / PNG)</Label>
           <div className="flex items-center space-x-2">
             <Input
               id="msme_certificate"
               type="file"
-              accept=".pdf"
+              accept={DOC_ACCEPT}
               onChange={(e) => updateFormField('msme_certificate', e.target.files?.[0] || null)}
             />
             <Upload className="h-4 w-4" />
@@ -395,12 +396,12 @@ const CustomersManagement = () => {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="brand_authorization">Brand Authorization Letter (PDF)</Label>
+          <Label htmlFor="brand_authorization">Brand Authorization Letter (PDF / JPG / PNG)</Label>
           <div className="flex items-center space-x-2">
             <Input
               id="brand_authorization"
               type="file"
-              accept=".pdf"
+              accept={DOC_ACCEPT}
               onChange={(e) => updateFormField('brand_authorization', e.target.files?.[0] || null)}
             />
             <Upload className="h-4 w-4" />

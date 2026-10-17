@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { extOf } from "@/lib/uploads";
 
 interface CustomerFormData {
   name: string;
@@ -137,17 +138,17 @@ export const useCustomerForm = () => {
 
       // Upload files if provided
       if (formData.gst_certificate) {
-        const gstPath = `${customerCode}/gst_certificate.pdf`;
+        const gstPath = `${customerCode}/gst_certificate${extOf(formData.gst_certificate.name)}`;
         customerData.gst_certificate_url = await uploadFile(formData.gst_certificate, 'customer-documents', gstPath);
       }
 
       if (formData.msme_certificate) {
-        const msmePath = `${customerCode}/msme_certificate.pdf`;
+        const msmePath = `${customerCode}/msme_certificate${extOf(formData.msme_certificate.name)}`;
         customerData.msme_certificate_url = await uploadFile(formData.msme_certificate, 'customer-documents', msmePath);
       }
 
       if (formData.brand_authorization) {
-        const brandPath = `${customerCode}/brand_authorization.pdf`;
+        const brandPath = `${customerCode}/brand_authorization${extOf(formData.brand_authorization.name)}`;
         customerData.brand_authorization_url = await uploadFile(formData.brand_authorization, 'customer-documents', brandPath);
       }
 

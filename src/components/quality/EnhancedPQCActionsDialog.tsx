@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { FileUp, Upload, AlertTriangle } from "lucide-react";
+import { DOC_ACCEPT } from "@/lib/uploads";
 
 interface EnhancedPQCActionsDialogProps {
   productionOrderId: string;
@@ -267,11 +268,11 @@ const EnhancedPQCActionsDialog = ({ productionOrderId, isOpen, onClose }: Enhanc
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <Label htmlFor="report-file">Report File (PDF)</Label>
+                  <Label htmlFor="report-file">Report File (PDF / JPG / PNG)</Label>
                   <Input
                     id="report-file"
                     type="file"
-                    accept=".pdf"
+                    accept={DOC_ACCEPT}
                     onChange={(e) => setReportFile(e.target.files?.[0] || null)}
                     disabled={todayReportsCount >= 2}
                   />
