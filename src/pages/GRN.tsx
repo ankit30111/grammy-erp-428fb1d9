@@ -11,13 +11,12 @@ import { Badge } from "@/components/ui/badge";
 import { useGRN, useDeleteGRN } from "@/hooks/useGRN";
 import GRNForm from "@/components/PPC/GRNForm";
 import { NonPOGRNForm } from "@/components/PPC/NonPOGRNForm";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
 import { Switch } from "@/components/ui/switch";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { GRNEditDialog } from "@/components/Store/GRNEditDialog";
+import { useAuth } from "@/contexts/AuthContext";
+import { usePermissions } from "@/hooks/usePermissions";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 const grnTabs = [
@@ -29,9 +28,7 @@ const GRN = () => {
   const [activeTab, setActiveTab] = useState("create");
 
   const [selectedGRN, setSelectedGRN] = useState<string | null>(null);
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingGRN, setEditingGRN] = useState<any>(null);
-  const [editQuantities, setEditQuantities] = useState<Record<string, number>>({});
   const [searchQuery, setSearchQuery] = useState("");
   const [useNonPOMode, setUseNonPOMode] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -39,50 +36,10 @@ const GRN = () => {
   
   const { data: existingGRNs, isLoading: grnLoading, refetch } = useGRN();
   const deleteGRNMutation = useDeleteGRN();
-  const { toast } = useToast();
 
-  const handleEditGRN = (grn: any) => {
-    setEditingGRN(grn);
-    const quantities: Record<string, number> = {};
-    grn.grn_items?.forEach((item: any) => {
-      quantities[item.id] = item.received_quantity;
-    });
-    setEditQuantities(quantities);
-    setEditDialogOpen(true);
-  };
-
-  const handleSaveEdit = async () => {
-    if (!editingGRN) return;
-
-    try {
-      // Update each GRN item with new quantities
-      const updates = Object.entries(editQuantities).map(([itemId, quantity]) => {
-        return supabase
-          .from('grn_items')
-          .update({ received_quantity: quantity })
-          .eq('id', itemId);
-      });
-
-      await Promise.all(updates);
-
-      toast({
-        title: "GRN Updated",
-        description: "GRN quantities have been updated successfully",
-      });
-
-      setEditDialogOpen(false);
-      setEditingGRN(null);
-      setEditQuantities({});
-      refetch();
-    } catch (error) {
-      console.error('Error updating GRN:', error);
-      toast({
-        title: "Error",
-        description: "Failed to update GRN",
-        variant: "destructive",
-      });
-    }
-  };
+  const { canAccessModule } = useAuth() as any;
+  const { canApprove } = usePermissions();
+  const canEdit = canAccessModule("store") || canApprove;
 
   const handleDeleteGRN = (grn: any) => {
     setGrnToDelete(grn);
@@ -200,7 +157,7 @@ const GRN = () => {
                       <TableBody>
                         {filteredGRNs.map((grn) => (
                           <TableRow key={grn.id}>
-                            <TableCell className="font-medium">{grn.grn_number}</TableCell>
+                            <TableCell className="whitespace-nowrap font-mono font-medium">{grn.grn_number}</TableCell>
                             <TableCell>{new Date(grn.received_date).toLocaleDateString()}</TableCell>
                             <TableCell>{grn.vendors?.name || 'N/A'}</TableCell>
                             <TableCell className="text-primary font-medium">
@@ -210,7 +167,7 @@ const GRN = () => {
                             </TableCell>
                             <TableCell>{grn.grn_items?.length || 0}</TableCell>
                             <TableCell>{getStatusBadge(grn.status)}</TableCell>
-                            <TableCell className="space-x-2">
+                            <TableCell><div className="flex flex-nowrap items-center gap-2">
                               <Button 
                                 variant="outline" 
                                 size="sm"
@@ -218,18 +175,18 @@ const GRN = () => {
                               >
                                 {selectedGRN === grn.id ? "Hide Details" : "View Details"}
                               </Button>
-                              {grn.status === 'DRAFT' && (
+                              {canEdit && (
                                 <Button 
                                   variant="outline" 
                                   size="sm"
-                                  onClick={() => handleEditGRN(grn)}
+                                  onClick={() => setEditingGRN(grn)}
                                   className="gap-1"
                                 >
                                   <Edit className="h-4 w-4" />
                                   Edit
                                 </Button>
                               )}
-                              {canDeleteGRN(grn) && (
+                              {canEdit && canDeleteGRN(grn) && (
                                 <Button 
                                   variant="outline" 
                                   size="sm"
@@ -240,7 +197,7 @@ const GRN = () => {
                                   Delete
                                 </Button>
                               )}
-                            </TableCell>
+                            </div></TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
@@ -271,9 +228,10 @@ const GRN = () => {
                             </p>
                           </div>
                           <div>
-                            <span className="text-sm text-muted-foreground">Invoice Info</span>
+                            <span className="text-sm text-muted-foreground">Invoice</span>
                             <p className="font-medium">
-                              {filteredGRNs.find(grn => grn.id === selectedGRN)?.notes || 'N/A'}
+                              {(() => { const g: any = filteredGRNs.find(grn => grn.id === selectedGRN);
+                                return g?.invoice_number ? `${g.invoice_number}${g.invoice_date ? ` · ${new Date(g.invoice_date).toLocaleDateString()}` : ''}` : g?.notes || 'N/A'; })()}
                             </p>
                           </div>
                         </div>
@@ -327,60 +285,7 @@ const GRN = () => {
           )}
 
 
-        {/* Edit GRN Dialog */}
-        <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-          <DialogContent className="max-w-4xl max-h-[90vh]">
-            <DialogHeader>
-              <DialogTitle>Edit GRN: {editingGRN?.grn_number}</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              {editingGRN?.grn_items && (
-                <ScrollArea className="h-[60vh]">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Material Code</TableHead>
-                        <TableHead>Material Name</TableHead>
-                        <TableHead>Expected/PO Quantity</TableHead>
-                        <TableHead>Received Quantity</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {editingGRN.grn_items.map((item: any) => (
-                        <TableRow key={item.id}>
-                          <TableCell className="font-mono">{item.parts?.part_code}</TableCell>
-                          <TableCell>{item.parts?.name}</TableCell>
-                          <TableCell>{item.po_quantity}</TableCell>
-                          <TableCell>
-                            <Input
-                              type="number"
-                              min="0"
-                              max={item.po_quantity}
-                              value={editQuantities[item.id] || 0}
-                              onChange={(e) => setEditQuantities(prev => ({
-                                ...prev,
-                                [item.id]: parseInt(e.target.value) || 0
-                              }))}
-                              className="w-24"
-                            />
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </ScrollArea>
-              )}
-              <div className="flex justify-end gap-2 pt-4">
-                <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
-                  Cancel
-                </Button>
-                <Button onClick={handleSaveEdit}>
-                  Save Changes
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
+        {editingGRN && <GRNEditDialog grn={editingGRN} onClose={() => { setEditingGRN(null); refetch(); }} />}
 
         {/* Delete Confirmation Dialog */}
         <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
@@ -388,8 +293,7 @@ const GRN = () => {
             <AlertDialogHeader>
               <AlertDialogTitle>Delete GRN</AlertDialogTitle>
               <AlertDialogDescription>
-                Are you sure you want to delete GRN {grnToDelete?.grn_number}? This action cannot be undone.
-                All related GRN items will also be deleted.
+                Delete GRN {grnToDelete?.grn_number}? Its lines go too, and the stock it put into quarantine is taken back out. This can't be undone.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>

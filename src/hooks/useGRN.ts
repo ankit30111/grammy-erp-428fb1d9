@@ -29,7 +29,10 @@ export const useGRN = () => {
             parts (
               id,
               name,
-              part_code
+              part_code,
+              uom,
+              purchase_uom,
+              purchase_factor
             )
           )
         `)
@@ -67,7 +70,9 @@ export const useCreateGRN = () => {
             // DRAFT, and the trigger corrects it the moment items are inserted.
             // (The old code wrote 'RECEIVED', which is a po_status value and not a
             // member of grn_status at all, so every GRN insert was rejected.)
-            notes: grnData.notes,
+            invoice_number: grnData.invoice_number ?? null,
+            invoice_date: grnData.invoice_date ?? null,
+            notes: grnData.notes ?? null,
             received_date: grnData.received_date || new Date().toISOString().split('T')[0],
             plant_id: plantId,
           })
@@ -193,22 +198,10 @@ export const useDeleteGRN = () => {
   const { toast } = useToast();
 
   return useMutation({
+    // grn_delete also takes the GRN's quarantine stock back out of the ledger
     mutationFn: async (grnId: string) => {
-      // First delete all GRN items
-      const { error: itemsError } = await supabase
-        .from('grn_items')
-        .delete()
-        .eq('grn_id', grnId);
-
-      if (itemsError) throw itemsError;
-
-      // Then delete the GRN record
-      const { error: grnError } = await supabase
-        .from('grn')
-        .delete()
-        .eq('id', grnId);
-
-      if (grnError) throw grnError;
+      const { error } = await (supabase as any).rpc("grn_delete", { p_grn: grnId });
+      if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['grn'] });
@@ -217,11 +210,11 @@ export const useDeleteGRN = () => {
         description: "GRN deleted successfully",
       });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       console.error('Delete GRN error:', error);
       toast({
-        title: "Error",
-        description: "Failed to delete GRN",
+        title: "Could not delete the GRN",
+        description: error?.message ?? "Failed to delete GRN",
         variant: "destructive",
       });
     },

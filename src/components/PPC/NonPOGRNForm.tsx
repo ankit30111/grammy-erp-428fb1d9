@@ -125,7 +125,7 @@ export const NonPOGRNForm = () => {
     const grnData = {
       vendor_id: vendorId,
       received_date: receivedDate,
-      notes: `Invoice Number: ${invoiceNumber} (Non-PO GRN)`,
+      invoice_number: invoiceNumber.trim(),
       // Stock is always posted in the part's own unit; what the bill said is kept too.
       items: items.filter(item => item.received_quantity > 0).map(item => {
         const part = getMaterialInfo(item.part_id) ?? {};

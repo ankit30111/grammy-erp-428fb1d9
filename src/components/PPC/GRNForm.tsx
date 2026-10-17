@@ -106,7 +106,7 @@ const GRNForm = () => {
         purchase_order_id: selectedPO,
         vendor_id: selectedPOData?.vendor_id || '',
         received_date: receivedDate,
-        notes: `Invoice Number: ${invoiceNumber}`,
+        invoice_number: invoiceNumber.trim(),
         items: grnItems.filter(item => item.received_quantity > 0).map(item => ({
           purchase_order_item_id: item.purchase_order_item_id,
           part_id: item.part_id,
