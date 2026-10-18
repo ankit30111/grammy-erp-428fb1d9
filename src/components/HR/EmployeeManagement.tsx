@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -9,7 +9,10 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Edit, Eye } from "lucide-react";
+import { Plus, Edit, Eye, IdCard, ImageOff, Trash2, Upload } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { useSignedStorageUrl } from "@/hooks/useSignedStorageUrl";
+import { PHOTO_BUCKET, makeIdCards, preparePhoto } from "@/lib/employeeIdCard";
 
 /** Today in India, as YYYY-MM-DD (leaving dates are compared with it). */
 const todayIso = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
@@ -21,7 +24,7 @@ async function loadSensitive(id: string) {
 }
 
 /** Everything on file for one employee, read only. */
-function EmployeeDetails({ employee: e, onClose, onEdit }: { employee: any; onClose: () => void; onEdit: () => void }) {
+function EmployeeDetails({ employee: e, onClose, onEdit, onCard }: { employee: any; onClose: () => void; onEdit: () => void; onCard: (layout: 'card' | 'a4') => void }) {
   const { data, isLoading } = useQuery({
     queryKey: ['employee-sensitive', e.id],
     queryFn: () => loadSensitive(e.id),
@@ -32,7 +35,9 @@ function EmployeeDetails({ employee: e, onClose, onEdit }: { employee: any; onCl
               ['Joining date', e.hire_date && fmtDate(e.hire_date)], ['Leaving date', e.leaving_date && fmtDate(e.leaving_date)],
               ['Leaving reason', e.leaving_reason], ['Status', e.status?.replace('_', ' ')]]],
     ['Contact', [['Email', e.email], ['Phone', s.phone_number], ['Date of birth', s.date_of_birth && fmtDate(s.date_of_birth)],
-                 ['Address', e.address], ['City', e.city], ['State', e.state], ['Pincode', e.pincode]]],
+                 ['Emergency contact', [e.emergency_contact_name, e.emergency_contact_phone].filter(Boolean).join(' · ')]]],
+    ['Current address', [['Address', e.address], ['City', e.city], ['State', e.state], ['Pincode', e.pincode]]],
+    ['Permanent address', [['Address', e.permanent_address], ['City', e.permanent_city], ['State', e.permanent_state], ['Pincode', e.permanent_pincode]]],
     ['Government IDs', [['Aadhaar', s.aadhar_number], ['PAN', s.pan_number], ['ESIC', s.esic_number]]],
     ['Bank and pay', [['Bank', s.bank_name], ['Account number', s.bank_account_number], ['IFSC', s.ifsc_code],
                       ['Salary', s.salary != null ? `₹${Number(s.salary).toLocaleString('en-IN')}` : null]]],
@@ -41,8 +46,13 @@ function EmployeeDetails({ employee: e, onClose, onEdit }: { employee: any; onCl
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{[e.first_name, e.last_name].filter(Boolean).join(' ')}</DialogTitle>
-          <DialogDescription>{e.employee_code}</DialogDescription>
+          <div className="flex items-center gap-4 pr-8">
+            <EmployeePhoto path={e.photo_path} className="h-24 w-[4.9rem]" />
+            <div>
+              <DialogTitle>{[e.first_name, e.last_name].filter(Boolean).join(' ')}</DialogTitle>
+              <DialogDescription>{e.employee_code}{e.position ? ` · ${e.position}` : ''}{e.department ? ` · ${e.department}` : ''}</DialogDescription>
+            </div>
+          </div>
         </DialogHeader>
         {data && !data.ok && <p className="text-sm text-destructive">IDs, bank details, phone and salary are shown to HR and Admin only.</p>}
         <div className="grid gap-4 sm:grid-cols-2">
@@ -60,10 +70,55 @@ function EmployeeDetails({ employee: e, onClose, onEdit }: { employee: any; onCl
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Close</Button>
+          <Button variant="outline" onClick={() => onCard('card')}><IdCard className="h-4 w-4 mr-2" /> ID card</Button>
+          <Button variant="outline" onClick={() => onCard('a4')}><IdCard className="h-4 w-4 mr-2" /> ID card on A4</Button>
           <Button onClick={onEdit}><Edit className="h-4 w-4 mr-2" /> Edit</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/** The employee's photo (ID-card shape), or a placeholder. */
+function EmployeePhoto({ path, className }: { path?: string | null; className?: string }) {
+  const { data: url } = useSignedStorageUrl(PHOTO_BUCKET, path ?? null);
+  return url
+    ? <img src={url} alt="Employee photo" className={`shrink-0 rounded-md border object-cover ${className ?? ''}`} />
+    : <div className={`flex shrink-0 items-center justify-center rounded-md border border-dashed text-muted-foreground ${className ?? ''}`}><ImageOff className="h-5 w-5" /></div>;
+}
+
+function PhotoPicker({ current, file, changed, onPick, onRemove, onUndo }: {
+  current: string | null; file: File | null; changed: boolean;
+  onPick: (f: File) => void; onRemove: () => void; onUndo: () => void;
+}) {
+  const [preview, setPreview] = useState<string | null>(null);
+  useEffect(() => {
+    if (!file) { setPreview(null); return; }
+    const u = URL.createObjectURL(file); setPreview(u); return () => URL.revokeObjectURL(u);
+  }, [file]);
+  return (
+    <div className="flex flex-wrap items-center gap-4 rounded-md border p-3">
+      {preview ? <img src={preview} alt="New photo" className="h-28 w-[5.7rem] rounded-md border object-cover" />
+        : <EmployeePhoto path={current} className="h-28 w-[5.7rem]" />}
+      <div className="min-w-0 flex-1">
+        <div className="text-sm font-medium">Photo <span className="font-normal text-muted-foreground">(JPG / PNG, passport style; printed on the ID card)</span></div>
+        <div className="text-xs text-muted-foreground">{file ? `${file.name} · saved when you press Create / Update` : changed ? 'Will be removed when you press Update' : current ? 'On file' : 'No photo yet'}</div>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {changed ? <Button type="button" variant="ghost" size="sm" onClick={onUndo}>Undo</Button> : (
+          <Button asChild type="button" variant="outline" size="sm" className="cursor-pointer">
+            <label>
+              <Upload className="h-4 w-4 mr-1" /> {current ? 'Replace' : 'Upload'}
+              <input type="file" accept="image/jpeg,image/png,.jpg,.jpeg,.png" className="sr-only"
+                     onChange={(ev) => { const f = ev.target.files?.[0]; ev.target.value = ''; if (f) onPick(f); }} />
+            </label>
+          </Button>
+        )}
+        {current && !changed && (
+          <Button type="button" variant="ghost" size="sm" className="text-destructive" onClick={onRemove}><Trash2 className="h-4 w-4 mr-1" /> Remove</Button>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -75,6 +130,35 @@ export function EmployeeManagement() {
   // If they could not be loaded, saving leaves them as they are instead of blanking them.
   const [sensitiveLoaded, setSensitiveLoaded] = useState(true);
   const [viewing, setViewing] = useState<any>(null);
+  const [photo, setPhoto] = useState<{ file: File | null; remove: boolean }>({ file: null, remove: false });
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [printing, setPrinting] = useState(false);
+
+  /** Upload the picked photo (or clear it) after the employee row is saved. */
+  const savePhoto = async (id: string, code: string, oldPath: string | null) => {
+    if (!photo.file && !photo.remove) return;
+    let path: string | null = null;
+    if (photo.file) {
+      const blob = await preparePhoto(photo.file);
+      path = `${String(code).replace(/[^\w.-]+/g, '_')}/${id}_${Date.now()}.jpg`;
+      const { error } = await supabase.storage.from(PHOTO_BUCKET).upload(path, blob, { contentType: 'image/jpeg' });
+      if (error) throw new Error(`Saved, but the photo did not upload: ${error.message}`);
+    }
+    const { error } = await (supabase as any).from('employees').update({ photo_path: path }).eq('id', id);
+    if (error) throw error;
+    if (oldPath && oldPath !== path) await supabase.storage.from(PHOTO_BUCKET).remove([oldPath]);
+  };
+
+  const printCards = async (list: any[], layout: 'card' | 'a4') => {
+    if (!list.length) return;
+    setPrinting(true);
+    try {
+      const missing = await makeIdCards(list, layout);
+      toast({ title: `ID card${list.length > 1 ? 's' : ''} ready`, description: missing ? `${missing} without a photo; upload it in Edit and print again.` : undefined });
+    } catch (e: any) {
+      toast({ title: "Could not make the ID cards", description: e?.message, variant: "destructive" });
+    } finally { setPrinting(false); }
+  };
   const [formData, setFormData] = useState({
     employee_code: "",
     first_name: "",
@@ -95,6 +179,12 @@ export function EmployeeManagement() {
     city: "",
     state: "",
     pincode: "",
+    permanent_address: "",
+    permanent_city: "",
+    permanent_state: "",
+    permanent_pincode: "",
+    emergency_contact_name: "",
+    emergency_contact_phone: "",
     hire_date: "",
     leaving_date: "",
     leaving_reason: "",
@@ -122,6 +212,13 @@ export function EmployeeManagement() {
           city,
           state,
           pincode,
+          permanent_address,
+          permanent_city,
+          permanent_state,
+          permanent_pincode,
+          emergency_contact_name,
+          emergency_contact_phone,
+          photo_path,
           status,
           hire_date,
           leaving_date,
@@ -137,7 +234,7 @@ export function EmployeeManagement() {
 
   const createEmployeeMutation = useMutation({
     mutationFn: async (data: any) => {
-      const { error } = await (supabase as any)
+      const { data: created, error } = await (supabase as any)
         .from('employees')
         .insert([{
           employee_code: data.employee_code,
@@ -159,12 +256,19 @@ export function EmployeeManagement() {
           city: data.city || null,
           state: data.state || null,
           pincode: data.pincode || null,
+          permanent_address: data.permanent_address?.trim() || null,
+          permanent_city: data.permanent_city?.trim() || null,
+          permanent_state: data.permanent_state?.trim() || null,
+          permanent_pincode: data.permanent_pincode?.trim() || null,
+          emergency_contact_name: data.emergency_contact_name?.trim() || null,
+          emergency_contact_phone: data.emergency_contact_phone?.trim() || null,
           ...(data.hire_date ? { hire_date: data.hire_date } : {}),
           leaving_date: data.leaving_date || null,
           leaving_reason: data.leaving_date ? data.leaving_reason || null : null,
-        }]);
+        }]).select('id').single();
       
       if (error) throw error;
+      await savePhoto(created.id, data.employee_code, null);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['employees'] });
@@ -203,6 +307,12 @@ export function EmployeeManagement() {
           city: data.city?.trim() || null,
           state: data.state?.trim() || null,
           pincode: data.pincode?.trim() || null,
+          permanent_address: data.permanent_address?.trim() || null,
+          permanent_city: data.permanent_city?.trim() || null,
+          permanent_state: data.permanent_state?.trim() || null,
+          permanent_pincode: data.permanent_pincode?.trim() || null,
+          emergency_contact_name: data.emergency_contact_name?.trim() || null,
+          emergency_contact_phone: data.emergency_contact_phone?.trim() || null,
           ...(data.hire_date ? { hire_date: data.hire_date } : {}),
           leaving_date: data.leaving_date || null,
           leaving_reason: data.leaving_date ? data.leaving_reason || null : null,
@@ -210,10 +320,12 @@ export function EmployeeManagement() {
         .eq('id', id);
       
       if (error) throw error;
+      await savePhoto(id, data.employee_code, editingEmployee?.photo_path ?? null);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['employees'] });
       queryClient.invalidateQueries({ queryKey: ['employee-sensitive'] });
+      queryClient.invalidateQueries({ queryKey: ['employee-photo'] });
       toast({ title: "Employee updated successfully" });
       setIsDialogOpen(false);
       setEditingEmployee(null);
@@ -245,6 +357,12 @@ export function EmployeeManagement() {
       city: "",
       state: "",
       pincode: "",
+      permanent_address: "",
+      permanent_city: "",
+      permanent_state: "",
+      permanent_pincode: "",
+      emergency_contact_name: "",
+      emergency_contact_phone: "",
       hire_date: "",
       leaving_date: "",
       leaving_reason: "",
@@ -267,6 +385,7 @@ export function EmployeeManagement() {
 
   const handleEdit = async (employee: any) => {
     setEditingEmployee(employee);
+    setPhoto({ file: null, remove: false });
     const { sensitive, ok } = await loadSensitive(employee.id);
     setSensitiveLoaded(ok);
     if (!ok) toast({ title: "IDs and bank details could not be loaded", description: "They will be kept as they are when you save.", variant: "destructive" });
@@ -293,6 +412,12 @@ export function EmployeeManagement() {
       city: employee.city || "",
       state: employee.state || "",
       pincode: employee.pincode || "",
+      permanent_address: employee.permanent_address || "",
+      permanent_city: employee.permanent_city || "",
+      permanent_state: employee.permanent_state || "",
+      permanent_pincode: employee.permanent_pincode || "",
+      emergency_contact_name: employee.emergency_contact_name || "",
+      emergency_contact_phone: employee.emergency_contact_phone || "",
     });
     setIsDialogOpen(true);
   };
@@ -300,9 +425,12 @@ export function EmployeeManagement() {
   const handleAddNew = () => {
     setEditingEmployee(null);
     setSensitiveLoaded(true);
+    setPhoto({ file: null, remove: false });
     resetForm();
     setIsDialogOpen(true);
   };
+
+  const shown = (employees ?? []).filter((e: any) => view === 'all' || (view === 'left') === !!(e.leaving_date && e.status !== 'active' && e.status !== 'on_leave' && e.leaving_date <= todayIso()));
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -328,6 +456,10 @@ export function EmployeeManagement() {
             </DialogHeader>
             
             <form onSubmit={handleSubmit} className="space-y-6">
+              <PhotoPicker current={photo.remove ? null : editingEmployee?.photo_path ?? null} file={photo.file}
+                           onPick={(file) => setPhoto({ file, remove: false })}
+                           onRemove={() => setPhoto({ file: null, remove: true })}
+                           onUndo={() => setPhoto({ file: null, remove: false })} changed={!!photo.file || photo.remove} />
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="employee_code">Employee Code *</Label>
@@ -521,43 +653,65 @@ export function EmployeeManagement() {
                 </div>
               </div>
 
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium">Address</h3>
+              <div className="space-y-3">
+                <h3 className="text-lg font-medium">Current Address</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="md:col-span-2">
                     <Label htmlFor="address">Address</Label>
-                    <Input
-                      id="address"
-                      value={formData.address}
-                      onChange={(e) => handleInputChange('address', e.target.value)}
-                    />
+                    <Input id="address" value={formData.address} onChange={(e) => handleInputChange('address', e.target.value)} />
                   </div>
-                  
                   <div>
                     <Label htmlFor="city">City</Label>
-                    <Input
-                      id="city"
-                      value={formData.city}
-                      onChange={(e) => handleInputChange('city', e.target.value)}
-                    />
+                    <Input id="city" value={formData.city} onChange={(e) => handleInputChange('city', e.target.value)} />
                   </div>
-                  
                   <div>
                     <Label htmlFor="state">State</Label>
-                    <Input
-                      id="state"
-                      value={formData.state}
-                      onChange={(e) => handleInputChange('state', e.target.value)}
-                    />
+                    <Input id="state" value={formData.state} onChange={(e) => handleInputChange('state', e.target.value)} />
                   </div>
-                  
                   <div>
                     <Label htmlFor="pincode">Pincode</Label>
-                    <Input
-                      id="pincode"
-                      value={formData.pincode}
-                      onChange={(e) => handleInputChange('pincode', e.target.value)}
-                    />
+                    <Input id="pincode" inputMode="numeric" value={formData.pincode} onChange={(e) => handleInputChange('pincode', e.target.value)} />
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h3 className="text-lg font-medium">Permanent Address</h3>
+                  <Button type="button" variant="outline" size="sm" onClick={() => setFormData((f) => ({ ...f, permanent_address: f.address, permanent_city: f.city, permanent_state: f.state, permanent_pincode: f.pincode }))}>
+                    Same as current address
+                  </Button>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="md:col-span-2">
+                    <Label htmlFor="permanent_address">Address</Label>
+                    <Input id="permanent_address" value={formData.permanent_address} onChange={(e) => handleInputChange('permanent_address', e.target.value)} />
+                  </div>
+                  <div>
+                    <Label htmlFor="permanent_city">City</Label>
+                    <Input id="permanent_city" value={formData.permanent_city} onChange={(e) => handleInputChange('permanent_city', e.target.value)} />
+                  </div>
+                  <div>
+                    <Label htmlFor="permanent_state">State</Label>
+                    <Input id="permanent_state" value={formData.permanent_state} onChange={(e) => handleInputChange('permanent_state', e.target.value)} />
+                  </div>
+                  <div>
+                    <Label htmlFor="permanent_pincode">Pincode</Label>
+                    <Input id="permanent_pincode" inputMode="numeric" value={formData.permanent_pincode} onChange={(e) => handleInputChange('permanent_pincode', e.target.value)} />
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <h3 className="text-lg font-medium">Emergency Contact</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="emergency_contact_name">Name and relation</Label>
+                    <Input id="emergency_contact_name" placeholder="e.g. Ramesh Kumar (father)" value={formData.emergency_contact_name} onChange={(e) => handleInputChange('emergency_contact_name', e.target.value)} />
+                  </div>
+                  <div>
+                    <Label htmlFor="emergency_contact_phone">Phone</Label>
+                    <Input id="emergency_contact_phone" inputMode="tel" value={formData.emergency_contact_phone} onChange={(e) => handleInputChange('emergency_contact_phone', e.target.value)} />
                   </div>
                 </div>
               </div>
@@ -579,11 +733,25 @@ export function EmployeeManagement() {
               <CardTitle>Employees</CardTitle>
               <CardDescription>Manage employee information and details</CardDescription>
             </div>
+            <div className="flex flex-wrap items-center gap-2">
+            {selected.size > 0 && (
+              <>
+                <span className="text-sm text-muted-foreground">{selected.size} selected</span>
+                <Button size="sm" variant="outline" disabled={printing} onClick={() => printCards((employees ?? []).filter((e: any) => selected.has(e.id)), 'card')}>
+                  <IdCard className="h-4 w-4 mr-1" /> ID cards
+                </Button>
+                <Button size="sm" variant="outline" disabled={printing} onClick={() => printCards((employees ?? []).filter((e: any) => selected.has(e.id)), 'a4')}>
+                  <IdCard className="h-4 w-4 mr-1" /> ID cards on A4
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>Clear</Button>
+              </>
+            )}
             <div className="flex rounded-md border p-0.5 text-sm">
               {([['working', 'Working'], ['left', 'Left'], ['all', 'All']] as const).map(([k, l]) => (
                 <button key={k} type="button" onClick={() => setView(k)}
                         className={`rounded px-3 py-1 ${view === k ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`}>{l}</button>
               ))}
+            </div>
             </div>
           </div>
         </CardHeader>
@@ -594,6 +762,12 @@ export function EmployeeManagement() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-10">
+                    <Checkbox aria-label="Select all shown"
+                              checked={shown.length > 0 && shown.every((e: any) => selected.has(e.id))}
+                              onCheckedChange={(v) => setSelected(v ? new Set(shown.map((e: any) => e.id)) : new Set())} />
+                  </TableHead>
+                  <TableHead className="w-14">Photo</TableHead>
                   <TableHead>Employee Code</TableHead>
                   <TableHead>Name</TableHead>
                   <TableHead>Email</TableHead>
@@ -604,8 +778,13 @@ export function EmployeeManagement() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {employees?.filter((e: any) => view === 'all' || (view === 'left') === !!(e.leaving_date && e.status !== 'active' && e.status !== 'on_leave' && e.leaving_date <= todayIso())).map((employee: any) => (
+                {shown.map((employee: any) => (
                   <TableRow key={employee.id}>
+                    <TableCell>
+                      <Checkbox aria-label={`Select ${employee.employee_code}`} checked={selected.has(employee.id)}
+                                onCheckedChange={(v) => setSelected((cur) => { const n = new Set(cur); v ? n.add(employee.id) : n.delete(employee.id); return n; })} />
+                    </TableCell>
+                    <TableCell><EmployeePhoto path={employee.photo_path} className="h-10 w-8" /></TableCell>
                     <TableCell>{employee.employee_code}</TableCell>
                     <TableCell>{[employee.first_name, employee.last_name].filter(Boolean).join(' ')}</TableCell>
                     <TableCell>{employee.email}</TableCell>
@@ -638,7 +817,8 @@ export function EmployeeManagement() {
           )}
         </CardContent>
       </Card>
-      {viewing && <EmployeeDetails employee={viewing} onClose={() => setViewing(null)} onEdit={() => { const e = viewing; setViewing(null); handleEdit(e); }} />}
+      {viewing && <EmployeeDetails employee={viewing} onClose={() => setViewing(null)} onEdit={() => { const e = viewing; setViewing(null); handleEdit(e); }}
+                                   onCard={(layout) => printCards([viewing], layout)} />}
     </div>
   );
 }
