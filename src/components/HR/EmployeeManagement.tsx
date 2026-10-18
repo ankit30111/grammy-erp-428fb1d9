@@ -5,87 +5,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Edit, Eye, IdCard, ImageOff, Trash2, Upload } from "lucide-react";
+import { Plus, Edit, Eye, IdCard, Search, Trash2, Upload } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useSignedStorageUrl } from "@/hooks/useSignedStorageUrl";
 import { PHOTO_BUCKET, makeIdCards, preparePhoto } from "@/lib/employeeIdCard";
+import { EmployeePhoto, EmployeeProfile, employeeName, loadSensitive } from "./EmployeeProfile";
 
 /** Today in India, as YYYY-MM-DD (leaving dates are compared with it). */
 const todayIso = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
 const fmtDate = (iso: string) => iso.split('-').reverse().join('-');
-
-async function loadSensitive(id: string) {
-  const { data, error } = await (supabase as any).rpc('get_employee_sensitive', { p_employee_id: id });
-  return { ok: !error, sensitive: (Array.isArray(data) ? data[0] : data) ?? {} };
-}
-
-/** Everything on file for one employee, read only. */
-function EmployeeDetails({ employee: e, onClose, onEdit, onCard }: { employee: any; onClose: () => void; onEdit: () => void; onCard: (layout: 'card' | 'a4') => void }) {
-  const { data, isLoading } = useQuery({
-    queryKey: ['employee-sensitive', e.id],
-    queryFn: () => loadSensitive(e.id),
-  });
-  const s = data?.sensitive ?? {};
-  const rows: [string, [string, any][]][] = [
-    ['Work', [['Employee code', e.employee_code], ['Position', e.position], ['Department', e.department],
-              ['Joining date', e.hire_date && fmtDate(e.hire_date)], ['Leaving date', e.leaving_date && fmtDate(e.leaving_date)],
-              ['Leaving reason', e.leaving_reason], ['Status', e.status?.replace('_', ' ')]]],
-    ['Contact', [['Email', e.email], ['Phone', s.phone_number], ['Date of birth', s.date_of_birth && fmtDate(s.date_of_birth)],
-                 ['Emergency contact', [e.emergency_contact_name, e.emergency_contact_phone].filter(Boolean).join(' · ')]]],
-    ['Current address', [['Address', e.address], ['City', e.city], ['State', e.state], ['Pincode', e.pincode]]],
-    ['Permanent address', [['Address', e.permanent_address], ['City', e.permanent_city], ['State', e.permanent_state], ['Pincode', e.permanent_pincode]]],
-    ['Government IDs', [['Aadhaar', s.aadhar_number], ['PAN', s.pan_number], ['ESIC', s.esic_number]]],
-    ['Bank and pay', [['Bank', s.bank_name], ['Account number', s.bank_account_number], ['IFSC', s.ifsc_code],
-                      ['Salary', s.salary != null ? `₹${Number(s.salary).toLocaleString('en-IN')}` : null]]],
-  ];
-  return (
-    <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <div className="flex items-center gap-4 pr-8">
-            <EmployeePhoto path={e.photo_path} className="h-24 w-[4.9rem]" />
-            <div>
-              <DialogTitle>{[e.first_name, e.last_name].filter(Boolean).join(' ')}</DialogTitle>
-              <DialogDescription>{e.employee_code}{e.position ? ` · ${e.position}` : ''}{e.department ? ` · ${e.department}` : ''}</DialogDescription>
-            </div>
-          </div>
-        </DialogHeader>
-        {data && !data.ok && <p className="text-sm text-destructive">IDs, bank details, phone and salary are shown to HR and Admin only.</p>}
-        <div className="grid gap-4 sm:grid-cols-2">
-          {rows.map(([title, fields]) => (
-            <div key={title} className="space-y-1.5 rounded-md border p-3">
-              <div className="text-sm font-semibold">{title}</div>
-              {fields.map(([label, value]) => (
-                <div key={label} className="grid grid-cols-[8.5rem_minmax(0,1fr)] gap-2 text-sm">
-                  <span className="text-muted-foreground">{label}</span>
-                  <span className="break-words">{isLoading && !value ? '…' : value || <span className="text-muted-foreground">—</span>}</span>
-                </div>
-              ))}
-            </div>
-          ))}
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Close</Button>
-          <Button variant="outline" onClick={() => onCard('card')}><IdCard className="h-4 w-4 mr-2" /> ID card</Button>
-          <Button variant="outline" onClick={() => onCard('a4')}><IdCard className="h-4 w-4 mr-2" /> ID card on A4</Button>
-          <Button onClick={onEdit}><Edit className="h-4 w-4 mr-2" /> Edit</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-/** The employee's photo (ID-card shape), or a placeholder. */
-function EmployeePhoto({ path, className }: { path?: string | null; className?: string }) {
-  const { data: url } = useSignedStorageUrl(PHOTO_BUCKET, path ?? null);
-  return url
-    ? <img src={url} alt="Employee photo" className={`shrink-0 rounded-md border object-cover ${className ?? ''}`} />
-    : <div className={`flex shrink-0 items-center justify-center rounded-md border border-dashed text-muted-foreground ${className ?? ''}`}><ImageOff className="h-5 w-5" /></div>;
-}
 
 function PhotoPicker({ current, file, changed, onPick, onRemove, onUndo }: {
   current: string | null; file: File | null; changed: boolean;
@@ -98,8 +29,8 @@ function PhotoPicker({ current, file, changed, onPick, onRemove, onUndo }: {
   }, [file]);
   return (
     <div className="flex flex-wrap items-center gap-4 rounded-md border p-3">
-      {preview ? <img src={preview} alt="New photo" className="h-28 w-[5.7rem] rounded-md border object-cover" />
-        : <EmployeePhoto path={current} className="h-28 w-[5.7rem]" />}
+      {preview ? <img src={preview} alt="New photo" className="aspect-[3/4] w-[5.7rem] rounded-md border object-cover" />
+        : <EmployeePhoto path={current} className="w-[5.7rem]" />}
       <div className="min-w-0 flex-1">
         <div className="text-sm font-medium">Photo <span className="font-normal text-muted-foreground">(JPG / PNG, passport style; printed on the ID card)</span></div>
         <div className="text-xs text-muted-foreground">{file ? `${file.name} · saved when you press Create / Update` : changed ? 'Will be removed when you press Update' : current ? 'On file' : 'No photo yet'}</div>
@@ -133,6 +64,7 @@ export function EmployeeManagement() {
   const [photo, setPhoto] = useState<{ file: File | null; remove: boolean }>({ file: null, remove: false });
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [printing, setPrinting] = useState(false);
+  const [search, setSearch] = useState('');
 
   /** Upload the picked photo (or clear it) after the employee row is saved. */
   const savePhoto = async (id: string, code: string, oldPath: string | null) => {
@@ -430,7 +362,11 @@ export function EmployeeManagement() {
     setIsDialogOpen(true);
   };
 
-  const shown = (employees ?? []).filter((e: any) => view === 'all' || (view === 'left') === !!(e.leaving_date && e.status !== 'active' && e.status !== 'on_leave' && e.leaving_date <= todayIso()));
+  const q = search.trim().toLowerCase();
+  const shown = (employees ?? [])
+    .filter((e: any) => view === 'all' || (view === 'left') === !!(e.leaving_date && e.status !== 'active' && e.status !== 'on_leave' && e.leaving_date <= todayIso()))
+    .filter((e: any) => !q || [e.employee_code, e.first_name, e.last_name, e.position, e.department, e.email, e.city]
+      .some((v) => String(v ?? '').toLowerCase().includes(q)));
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -438,15 +374,7 @@ export function EmployeeManagement() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold">Employee Management</h2>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={handleAddNew}>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Employee
-            </Button>
-          </DialogTrigger>
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{editingEmployee ? 'Edit Employee' : 'Add New Employee'}</DialogTitle>
@@ -724,41 +652,45 @@ export function EmployeeManagement() {
             </form>
           </DialogContent>
         </Dialog>
-      </div>
 
       <Card>
-        <CardHeader>
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <CardTitle>Employees</CardTitle>
-              <CardDescription>Manage employee information and details</CardDescription>
+        <CardContent className="space-y-4 p-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative min-w-[16rem] flex-1">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input className="pl-9" placeholder="Search code, name, position, department, phone…" value={search} onChange={(e) => setSearch(e.target.value)} />
             </div>
-            <div className="flex flex-wrap items-center gap-2">
-            {selected.size > 0 && (
-              <>
-                <span className="text-sm text-muted-foreground">{selected.size} selected</span>
-                <Button size="sm" variant="outline" disabled={printing} onClick={() => printCards((employees ?? []).filter((e: any) => selected.has(e.id)), 'card')}>
-                  <IdCard className="h-4 w-4 mr-1" /> ID cards
-                </Button>
-                <Button size="sm" variant="outline" disabled={printing} onClick={() => printCards((employees ?? []).filter((e: any) => selected.has(e.id)), 'a4')}>
-                  <IdCard className="h-4 w-4 mr-1" /> ID cards on A4
-                </Button>
-                <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>Clear</Button>
-              </>
-            )}
             <div className="flex rounded-md border p-0.5 text-sm">
               {([['working', 'Working'], ['left', 'Left'], ['all', 'All']] as const).map(([k, l]) => (
                 <button key={k} type="button" onClick={() => setView(k)}
-                        className={`rounded px-3 py-1 ${view === k ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`}>{l}</button>
+                        className={`rounded px-3 py-1.5 ${view === k ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`}>{l}</button>
               ))}
             </div>
-            </div>
+            <Button onClick={handleAddNew}><Plus className="h-4 w-4 mr-1" /> Add employee</Button>
           </div>
-        </CardHeader>
-        <CardContent>
+
+          <div className="flex min-h-9 flex-wrap items-center justify-between gap-2 text-sm">
+            <span className="text-muted-foreground">{shown.length} employee{shown.length === 1 ? '' : 's'}{search ? ' found' : ''}</span>
+            {selected.size > 0 ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-medium">{selected.size} selected</span>
+                <Button size="sm" variant="outline" disabled={printing} onClick={() => printCards((employees ?? []).filter((e: any) => selected.has(e.id)), 'card')}>
+                  <IdCard className="h-4 w-4 mr-1" /> ID cards (card size)
+                </Button>
+                <Button size="sm" variant="outline" disabled={printing} onClick={() => printCards((employees ?? []).filter((e: any) => selected.has(e.id)), 'a4')}>
+                  <IdCard className="h-4 w-4 mr-1" /> ID cards (A4 sheet)
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>Clear</Button>
+              </div>
+            ) : <span className="text-xs text-muted-foreground">Tick employees to print several ID cards at once</span>}
+          </div>
+
           {isLoading ? (
-            <div>Loading employees...</div>
+            <p className="py-10 text-center text-sm text-muted-foreground">Loading employees…</p>
+          ) : !shown.length ? (
+            <p className="py-10 text-center text-sm text-muted-foreground">{search ? 'No employee matches the search.' : 'No employees here.'}</p>
           ) : (
+            <div className="overflow-x-auto rounded-md border">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -767,57 +699,61 @@ export function EmployeeManagement() {
                               checked={shown.length > 0 && shown.every((e: any) => selected.has(e.id))}
                               onCheckedChange={(v) => setSelected(v ? new Set(shown.map((e: any) => e.id)) : new Set())} />
                   </TableHead>
-                  <TableHead className="w-14">Photo</TableHead>
-                  <TableHead>Employee Code</TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
+                  <TableHead>Employee</TableHead>
                   <TableHead>Position</TableHead>
                   <TableHead>Department</TableHead>
+                  <TableHead className="whitespace-nowrap">Joined</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Actions</TableHead>
+                  <TableHead className="w-[8.5rem] text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {shown.map((employee: any) => (
-                  <TableRow key={employee.id}>
-                    <TableCell>
+                {shown.map((employee: any) => {
+                  const left = employee.leaving_date && employee.leaving_date <= todayIso();
+                  return (
+                  <TableRow key={employee.id} className="cursor-pointer" onClick={() => setViewing(employee)}>
+                    <TableCell onClick={(ev) => ev.stopPropagation()}>
                       <Checkbox aria-label={`Select ${employee.employee_code}`} checked={selected.has(employee.id)}
                                 onCheckedChange={(v) => setSelected((cur) => { const n = new Set(cur); v ? n.add(employee.id) : n.delete(employee.id); return n; })} />
                     </TableCell>
-                    <TableCell><EmployeePhoto path={employee.photo_path} className="h-10 w-8" /></TableCell>
-                    <TableCell>{employee.employee_code}</TableCell>
-                    <TableCell>{[employee.first_name, employee.last_name].filter(Boolean).join(' ')}</TableCell>
-                    <TableCell>{employee.email}</TableCell>
-                    <TableCell>{employee.position}</TableCell>
-                    <TableCell>{employee.department}</TableCell>
                     <TableCell>
-                      <Badge variant={employee.status === 'active' ? 'default' : 'secondary'}>
-                        {employee.status.replace('_', ' ')}
-                      </Badge>
+                      <div className="flex items-center gap-3">
+                        <EmployeePhoto path={employee.photo_path} className="w-9" />
+                        <div className="min-w-0">
+                          <div className="truncate font-medium">{employeeName(employee)}</div>
+                          <div className="font-mono text-xs text-muted-foreground">{employee.employee_code}</div>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap">{employee.position}</TableCell>
+                    <TableCell className="whitespace-nowrap">{employee.department}</TableCell>
+                    <TableCell className="whitespace-nowrap tabular-nums">{employee.hire_date ? fmtDate(employee.hire_date) : '—'}</TableCell>
+                    <TableCell className="whitespace-nowrap">
+                      <Badge variant={employee.status === 'active' ? 'default' : 'secondary'}>{employee.status.replace('_', ' ')}</Badge>
                       {employee.leaving_date && (
                         <div className="mt-1 text-xs text-muted-foreground" title={employee.leaving_reason ?? undefined}>
-                          {employee.leaving_date <= todayIso() ? 'Left' : 'Leaving'} {fmtDate(employee.leaving_date)}
+                          {left ? 'Left' : 'Leaving'} {fmtDate(employee.leaving_date)}
                         </div>
                       )}
                     </TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        <Button variant="outline" size="sm" title="View details" onClick={() => setViewing(employee)}>
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button variant="outline" size="sm" title="Edit" onClick={() => handleEdit(employee)}>
-                          <Edit className="h-4 w-4" />
-                        </Button>
+                    <TableCell className="text-right" onClick={(ev) => ev.stopPropagation()}>
+                      <div className="flex justify-end gap-1">
+                        <Button variant="ghost" size="icon" className="h-8 w-8" title="View details and ID card" onClick={() => setViewing(employee)}><Eye className="h-4 w-4" /></Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8" title="Print ID card" disabled={printing} onClick={() => printCards([employee], 'card')}><IdCard className="h-4 w-4" /></Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8" title="Edit" onClick={() => handleEdit(employee)}><Edit className="h-4 w-4" /></Button>
                       </div>
                     </TableCell>
                   </TableRow>
-                ))}
+                  );
+                })}
               </TableBody>
             </Table>
+            </div>
           )}
         </CardContent>
       </Card>
-      {viewing && <EmployeeDetails employee={viewing} onClose={() => setViewing(null)} onEdit={() => { const e = viewing; setViewing(null); handleEdit(e); }}
+      {viewing && <EmployeeProfile employee={viewing} printing={printing} onClose={() => setViewing(null)}
+                                   onEdit={() => { const e = viewing; setViewing(null); handleEdit(e); }}
                                    onCard={(layout) => printCards([viewing], layout)} />}
     </div>
   );
