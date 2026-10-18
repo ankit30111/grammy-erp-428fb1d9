@@ -9,18 +9,72 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/contexts/AuthContext";
-import { Plus, Edit } from "lucide-react";
+import { Plus, Edit, Eye } from "lucide-react";
 
 /** Today in India, as YYYY-MM-DD (leaving dates are compared with it). */
 const todayIso = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
 const fmtDate = (iso: string) => iso.split('-').reverse().join('-');
 
+async function loadSensitive(id: string) {
+  const { data, error } = await (supabase as any).rpc('get_employee_sensitive', { p_employee_id: id });
+  return { ok: !error, sensitive: (Array.isArray(data) ? data[0] : data) ?? {} };
+}
+
+/** Everything on file for one employee, read only. */
+function EmployeeDetails({ employee: e, onClose, onEdit }: { employee: any; onClose: () => void; onEdit: () => void }) {
+  const { data, isLoading } = useQuery({
+    queryKey: ['employee-sensitive', e.id],
+    queryFn: () => loadSensitive(e.id),
+  });
+  const s = data?.sensitive ?? {};
+  const rows: [string, [string, any][]][] = [
+    ['Work', [['Employee code', e.employee_code], ['Position', e.position], ['Department', e.department],
+              ['Joining date', e.hire_date && fmtDate(e.hire_date)], ['Leaving date', e.leaving_date && fmtDate(e.leaving_date)],
+              ['Leaving reason', e.leaving_reason], ['Status', e.status?.replace('_', ' ')]]],
+    ['Contact', [['Email', e.email], ['Phone', s.phone_number], ['Date of birth', s.date_of_birth && fmtDate(s.date_of_birth)],
+                 ['Address', e.address], ['City', e.city], ['State', e.state], ['Pincode', e.pincode]]],
+    ['Government IDs', [['Aadhaar', s.aadhar_number], ['PAN', s.pan_number], ['ESIC', s.esic_number]]],
+    ['Bank and pay', [['Bank', s.bank_name], ['Account number', s.bank_account_number], ['IFSC', s.ifsc_code],
+                      ['Salary', s.salary != null ? `₹${Number(s.salary).toLocaleString('en-IN')}` : null]]],
+  ];
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{[e.first_name, e.last_name].filter(Boolean).join(' ')}</DialogTitle>
+          <DialogDescription>{e.employee_code}</DialogDescription>
+        </DialogHeader>
+        {data && !data.ok && <p className="text-sm text-destructive">IDs, bank details, phone and salary are shown to HR and Admin only.</p>}
+        <div className="grid gap-4 sm:grid-cols-2">
+          {rows.map(([title, fields]) => (
+            <div key={title} className="space-y-1.5 rounded-md border p-3">
+              <div className="text-sm font-semibold">{title}</div>
+              {fields.map(([label, value]) => (
+                <div key={label} className="grid grid-cols-[8.5rem_minmax(0,1fr)] gap-2 text-sm">
+                  <span className="text-muted-foreground">{label}</span>
+                  <span className="break-words">{isLoading && !value ? '…' : value || <span className="text-muted-foreground">—</span>}</span>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Close</Button>
+          <Button onClick={onEdit}><Edit className="h-4 w-4 mr-2" /> Edit</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export function EmployeeManagement() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<any>(null);
   const [view, setView] = useState<'working' | 'left' | 'all'>('working');
-  const { isAdmin } = useAuth();
+  // IDs, bank, phone, DOB and salary come from get_employee_sensitive (HR and Admin).
+  // If they could not be loaded, saving leaves them as they are instead of blanking them.
+  const [sensitiveLoaded, setSensitiveLoaded] = useState(true);
+  const [viewing, setViewing] = useState<any>(null);
   const [formData, setFormData] = useState({
     employee_code: "",
     first_name: "",
@@ -132,21 +186,23 @@ export function EmployeeManagement() {
           first_name: data.first_name,
           last_name: data.last_name,
           email: data.email || null,
-          phone_number: data.phone_number,
-          date_of_birth: data.date_of_birth || null,
           position: data.position,
           department: data.department,
-          salary: data.salary ? parseFloat(data.salary) : null,
-          aadhar_number: data.aadhar_number || null,
-          pan_number: data.pan_number || null,
-          esic_number: data.esic_number || null,
-          bank_name: data.bank_name || null,
-          bank_account_number: data.bank_account_number || null,
-          ifsc_code: data.ifsc_code || null,
-          address: data.address || null,
-          city: data.city || null,
-          state: data.state || null,
-          pincode: data.pincode || null,
+          ...(sensitiveLoaded ? {
+            phone_number: data.phone_number,
+            date_of_birth: data.date_of_birth || null,
+            salary: data.salary ? parseFloat(data.salary) : null,
+            aadhar_number: data.aadhar_number?.trim() || null,
+            pan_number: data.pan_number?.trim().toUpperCase() || null,
+            esic_number: data.esic_number?.trim() || null,
+            bank_name: data.bank_name?.trim() || null,
+            bank_account_number: data.bank_account_number?.trim() || null,
+            ifsc_code: data.ifsc_code?.trim().toUpperCase() || null,
+          } : {}),
+          address: data.address?.trim() || null,
+          city: data.city?.trim() || null,
+          state: data.state?.trim() || null,
+          pincode: data.pincode?.trim() || null,
           ...(data.hire_date ? { hire_date: data.hire_date } : {}),
           leaving_date: data.leaving_date || null,
           leaving_reason: data.leaving_date ? data.leaving_reason || null : null,
@@ -157,6 +213,7 @@ export function EmployeeManagement() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['employees'] });
+      queryClient.invalidateQueries({ queryKey: ['employee-sensitive'] });
       toast({ title: "Employee updated successfully" });
       setIsDialogOpen(false);
       setEditingEmployee(null);
@@ -196,7 +253,7 @@ export function EmployeeManagement() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.employee_code || !formData.first_name || !formData.last_name || !formData.phone_number || !formData.position || !formData.department) {
+    if (!formData.employee_code || !formData.first_name || !formData.last_name || (sensitiveLoaded && !formData.phone_number) || !formData.position || !formData.department) {
       toast({ title: "Please fill all required fields", variant: "destructive" });
       return;
     }
@@ -210,16 +267,9 @@ export function EmployeeManagement() {
 
   const handleEdit = async (employee: any) => {
     setEditingEmployee(employee);
-    // Sensitive fields (salary, Aadhar, PAN, bank, DOB, phone) are admin-only.
-    let sensitive: any = {};
-    if (isAdmin) {
-      const { data, error } = await supabase.rpc('get_employee_sensitive', {
-        p_employee_id: employee.id,
-      });
-      if (!error) {
-        sensitive = Array.isArray(data) ? (data[0] ?? {}) : (data ?? {});
-      }
-    }
+    const { sensitive, ok } = await loadSensitive(employee.id);
+    setSensitiveLoaded(ok);
+    if (!ok) toast({ title: "IDs and bank details could not be loaded", description: "They will be kept as they are when you save.", variant: "destructive" });
     setFormData({
       employee_code: employee.employee_code,
       first_name: employee.first_name,
@@ -249,6 +299,7 @@ export function EmployeeManagement() {
 
   const handleAddNew = () => {
     setEditingEmployee(null);
+    setSensitiveLoaded(true);
     resetForm();
     setIsDialogOpen(true);
   };
@@ -321,7 +372,7 @@ export function EmployeeManagement() {
                 <div>
                   <Label htmlFor="phone_number">Phone Number *</Label>
                   <Input
-                    id="phone_number"
+                    id="phone_number" disabled={!sensitiveLoaded}
                     value={formData.phone_number}
                     onChange={(e) => handleInputChange('phone_number', e.target.value)}
                     required
@@ -331,7 +382,7 @@ export function EmployeeManagement() {
                 <div>
                   <Label htmlFor="date_of_birth">Date of Birth</Label>
                   <Input
-                    id="date_of_birth"
+                    id="date_of_birth" disabled={!sensitiveLoaded}
                     type="date"
                     value={formData.date_of_birth}
                     onChange={(e) => handleInputChange('date_of_birth', e.target.value)}
@@ -397,7 +448,7 @@ export function EmployeeManagement() {
                 <div>
                   <Label htmlFor="salary">Salary</Label>
                   <Input
-                    id="salary"
+                    id="salary" disabled={!sensitiveLoaded}
                     type="number"
                     step="0.01"
                     value={formData.salary}
@@ -412,7 +463,7 @@ export function EmployeeManagement() {
                   <div>
                     <Label htmlFor="aadhar_number">Aadhar Number</Label>
                     <Input
-                      id="aadhar_number"
+                      id="aadhar_number" disabled={!sensitiveLoaded}
                       value={formData.aadhar_number}
                       onChange={(e) => handleInputChange('aadhar_number', e.target.value)}
                     />
@@ -421,7 +472,7 @@ export function EmployeeManagement() {
                   <div>
                     <Label htmlFor="pan_number">PAN Number</Label>
                     <Input
-                      id="pan_number"
+                      id="pan_number" disabled={!sensitiveLoaded}
                       value={formData.pan_number}
                       onChange={(e) => handleInputChange('pan_number', e.target.value)}
                     />
@@ -430,7 +481,7 @@ export function EmployeeManagement() {
                   <div>
                     <Label htmlFor="esic_number">ESIC Number</Label>
                     <Input
-                      id="esic_number"
+                      id="esic_number" disabled={!sensitiveLoaded}
                       value={formData.esic_number}
                       onChange={(e) => handleInputChange('esic_number', e.target.value)}
                     />
@@ -444,7 +495,7 @@ export function EmployeeManagement() {
                   <div>
                     <Label htmlFor="bank_name">Bank Name</Label>
                     <Input
-                      id="bank_name"
+                      id="bank_name" disabled={!sensitiveLoaded}
                       value={formData.bank_name}
                       onChange={(e) => handleInputChange('bank_name', e.target.value)}
                     />
@@ -453,7 +504,7 @@ export function EmployeeManagement() {
                   <div>
                     <Label htmlFor="bank_account_number">Account Number</Label>
                     <Input
-                      id="bank_account_number"
+                      id="bank_account_number" disabled={!sensitiveLoaded}
                       value={formData.bank_account_number}
                       onChange={(e) => handleInputChange('bank_account_number', e.target.value)}
                     />
@@ -462,7 +513,7 @@ export function EmployeeManagement() {
                   <div>
                     <Label htmlFor="ifsc_code">IFSC Code</Label>
                     <Input
-                      id="ifsc_code"
+                      id="ifsc_code" disabled={!sensitiveLoaded}
                       value={formData.ifsc_code}
                       onChange={(e) => handleInputChange('ifsc_code', e.target.value)}
                     />
@@ -571,13 +622,14 @@ export function EmployeeManagement() {
                       )}
                     </TableCell>
                     <TableCell>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleEdit(employee)}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button variant="outline" size="sm" title="View details" onClick={() => setViewing(employee)}>
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button variant="outline" size="sm" title="Edit" onClick={() => handleEdit(employee)}>
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -586,6 +638,7 @@ export function EmployeeManagement() {
           )}
         </CardContent>
       </Card>
+      {viewing && <EmployeeDetails employee={viewing} onClose={() => setViewing(null)} onEdit={() => { const e = viewing; setViewing(null); handleEdit(e); }} />}
     </div>
   );
 }
