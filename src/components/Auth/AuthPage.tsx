@@ -31,10 +31,10 @@ export function AuthPage() {
           <img
             className="mx-auto h-12 w-auto"
             src="https://grammyelectronics.com/wp-content/uploads/2021/04/grammy-logo@2x-1-1.png"
-            alt="Grammy Electronics"
+            alt="Grammy Group of Companies"
           />
           <h2 className="mt-6 text-3xl font-extrabold text-foreground">
-            Welcome to Grammy Electronics
+            Welcome to Grammy Group of Companies
           </h2>
           <p className="mt-2 text-sm text-muted-foreground">
             Manufacturing Management System
