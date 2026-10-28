@@ -134,7 +134,7 @@ export const usePlmProduct = (code?: string) =>
         ? await db.from("parts").select("id, part_code, name, brand, model_version").eq("model_id", model.id).eq("is_active", true).order("part_code")
         : { data: [] };
       const working = bom.data
-        ? (await db.from("item_versions").select("id, item_id, version, major, minor, kind, status, ecn_id, note, based_on, created_at, released_at, item:parts!item_versions_item_id_fkey ( id, part_code, name, source_type ), ecn:ecns ( id, ecn_no, title, reason, status )")
+        ? (await db.from("item_versions").select("id, item_id, version, major, minor, kind, status, ecn_id, note, based_on, created_at, released_at, item:parts!item_versions_item_id_fkey ( id, part_code, name, source_type ), ecn:ecns ( id, ecn_no, title, reason, status, returned_note )")
             .eq("id", bom.data).maybeSingle()).data
         : null;
       const { data: workingLines = [] } = working ? await db.rpc("plm_working_lines", { p_product: product.id }) : { data: [] };

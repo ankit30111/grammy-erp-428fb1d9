@@ -4,6 +4,7 @@ import { Plus, Search } from "lucide-react";
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { TabBar } from "@/components/shell/TabBar";
+import { EcnCenter } from "@/components/Engineering/EcnCenter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -73,9 +74,12 @@ const PLMDashboard = () => {
 
         <TabBar
           tabs={[{ id: "pipeline", label: "Products", count: shown.length }, { id: "issues", label: "Open issues", count: openIssues.length },
-                 { id: "catchup", label: "Built before release", count: data?.catchUp.length ?? 0 }]}
+                 { id: "catchup", label: "Built before release", count: data?.catchUp.length ?? 0 },
+                 { id: "ecns", label: "ECNs" }]}
           value={tab} onChange={setTab}
         />
+
+        {tab === "ecns" && <EcnCenter />}
 
         {tab === "pipeline" && (
           <Card>

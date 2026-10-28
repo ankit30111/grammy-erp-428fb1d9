@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { TabBar } from "@/components/shell/TabBar";
+import { useEcnMutations } from "@/hooks/useEcns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -710,6 +711,7 @@ function DetailsView({ data, canEdit, m, products }: any) {
 function BomTab({ data, canEdit, m }: any) {
   const { product: p, metrics: mx } = data;
   const dev = mx.dev_bom ?? {};
+  const ecnM = useEcnMutations();
   const wv: IVersion | null = data.working;
   const { canApprove } = usePermissions();
   const em = useEngineeringMutations();
@@ -761,6 +763,7 @@ function BomTab({ data, canEdit, m }: any) {
               <span className="font-mono font-semibold">{data.model.part_code} v{wv.version}</span>
               {isDraft ? <Badge variant="warning">draft</Badge> : <Badge variant="secondary">released</Badge>}
               {wv.ecn && <span className="font-mono text-sm">{wv.ecn.ecn_no}</span>}
+              {(wv.ecn as any)?.status === "SUBMITTED" && <Badge variant="warning">waiting for Management</Badge>}
             </div>
             <p className="text-sm">
               {wv.ecn ? <>{wv.ecn.title}{wv.ecn.reason ? <span className="text-muted-foreground"> · {wv.ecn.reason}</span> : null}</>
@@ -771,14 +774,22 @@ function BomTab({ data, canEdit, m }: any) {
           <div className="flex flex-wrap gap-2">
             {!isDraft && canEdit && <Button size="sm" onClick={() => setRaising(true)}>Raise ECN</Button>}
             {wv.ecn && isDraft && canEdit && <Button size="sm" variant="outline" onClick={() => setEditEcn(true)}>Edit ECN</Button>}
+            {wv.ecn && isDraft && canEdit && !canApprove && (wv.ecn as any).status === "DRAFT" && (
+              <Button size="sm" disabled={ecnM.submit.isPending} onClick={() => ecnM.submit.mutate(wv.ecn!.id)}>Send to Management</Button>
+            )}
             {wv.ecn && isDraft && canEdit && (
               <Button size="sm" variant="ghost" disabled={em.cancelEcn.isPending}
                       onClick={() => window.confirm(`Cancel ${wv.ecn!.ecn_no}? Its drafts are discarded.`) && em.cancelEcn.mutate(wv.ecn!.id)}>Cancel ECN</Button>
             )}
-            {isDraft && canApprove && !empty && <Button size="sm" onClick={() => setReleasing(true)}>Release{wv.ecn ? ` ${wv.ecn.ecn_no}` : ` v${wv.version}`}…</Button>}
+            {isDraft && canApprove && !empty && <Button size="sm" onClick={() => setReleasing(true)}>{wv.ecn ? `Approve & release ${wv.ecn.ecn_no}` : `Release v${wv.version}`}…</Button>}
           </div>
         </div>
 
+        {(wv.ecn as any)?.status === "DRAFT" && (wv.ecn as any)?.returned_note && (
+          <div className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm">
+            <span className="font-medium">Sent back by Management:</span> {(wv.ecn as any).returned_note}
+          </div>
+        )}
         <div className="flex flex-wrap items-start gap-4">
           <Metric label="BOM progress" value={`${dev.pct ?? 0}%`} hint="Design, Sample, Approval, Release: 25% each when Closed" />
           <Metric label="Material cost" value={`₹${Number(dev.cost ?? 0).toLocaleString("en-IN")}`}

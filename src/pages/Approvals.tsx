@@ -7,9 +7,11 @@ import PurchaseOrderApprovalsEnhanced from "@/components/Approvals/PurchaseOrder
 import CAPAApprovalsTab from "@/components/Approvals/CAPAApprovalsTab";
 import CAPATrackingTab from "@/components/Approvals/CAPATrackingTab";
 import MasterApprovalsTab from "@/components/Approvals/MasterApprovalsTab";
+import { EcnCenter } from "@/components/Engineering/EcnCenter";
 
 const tabs = [
   { id: "masters", label: "Parts, BOMs & Vendors" },
+  { id: "ecns", label: "ECN Approvals" },
   { id: "purchase-orders", label: "Purchase Order Approvals" },
   { id: "capa-approvals", label: "CAPA Approvals" },
   { id: "capa-tracking", label: "CAPA Tracking" },
@@ -24,6 +26,7 @@ const Approvals = () => {
       <TabBar tabs={tabs} value={activeTab} onChange={setActiveTab} />
       <div className="pt-4">
         {activeTab === "masters" && <MasterApprovalsTab />}
+        {activeTab === "ecns" && <EcnCenter onlyWaiting />}
         {activeTab === "purchase-orders" && <PurchaseOrderApprovalsEnhanced />}
         {activeTab === "capa-approvals" && <CAPAApprovalsTab />}
         {activeTab === "capa-tracking" && <CAPATrackingTab />}
