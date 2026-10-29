@@ -28,7 +28,8 @@ const PartChip = ({ p }: { p: { part_code: string; name: string } | null }) =>
   p ? <span className="whitespace-nowrap"><span className="font-mono font-medium">{p.part_code}</span> <span className="text-muted-foreground">{p.name}</span></span> : <span>—</span>;
 
 /** R&D → ECNs (all of them), and Approvals → ECNs waiting for Management (onlyWaiting). */
-export function EcnCenter({ onlyWaiting }: { onlyWaiting?: boolean }) {
+export function EcnCenter({ queue }: { queue?: "management" | "rnd" }) {
+  const onlyWaiting = !!queue;
   const { data = [], isLoading } = useEcns();
   const { canApprove } = usePermissions();
   const { canAccessModule } = useAuth() as any;
@@ -37,13 +38,14 @@ export function EcnCenter({ onlyWaiting }: { onlyWaiting?: boolean }) {
   const [raising, setRaising] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
 
-  const shown = data.filter((e) => onlyWaiting ? e.status === "SUBMITTED"
+  const shown = data.filter((e) => queue === "management" ? ["SUBMITTED", "APPROVED"].includes(e.status)
+    : queue === "rnd" ? e.status === "DRAFT"
     : filter === "all" || ["DRAFT", "SUBMITTED", "APPROVED"].includes(e.status));
   const open = data.find((e) => e.id === openId) ?? null;
 
   return (
     <Card>
-      <CardContent className="space-y-4 p-4">
+      <CardContent className={onlyWaiting ? "p-0" : "space-y-4 p-4"}>
         {!onlyWaiting && (
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex rounded-md border p-0.5 text-sm">
@@ -55,11 +57,10 @@ export function EcnCenter({ onlyWaiting }: { onlyWaiting?: boolean }) {
             {canEdit && <Button onClick={() => setRaising(true)}><Plus className="h-4 w-4 mr-1" /> Replace or correct a part</Button>}
           </div>
         )}
-        <p className="text-xs text-muted-foreground">
-          {onlyWaiting ? "Engineering changes R&D has sent. Approving releases them: from then on all production uses the new part."
-            : "A part replacement or code correction changes every product that uses the part in one ECN. To change one product's BOM, raise an ECN on its BOM tab."}
-        </p>
-        <div className="overflow-x-auto rounded-md border">
+        {!onlyWaiting && (
+          <p className="text-xs text-muted-foreground">A part replacement or code correction changes every product that uses the part in one ECN. To change one product's BOM, raise an ECN on its BOM tab.</p>
+        )}
+        <div className={cn("overflow-x-auto", !onlyWaiting && "rounded-md border")}>
           <Table>
             <TableHeader>
               <TableRow>
@@ -69,7 +70,7 @@ export function EcnCenter({ onlyWaiting }: { onlyWaiting?: boolean }) {
             </TableHeader>
             <TableBody>
               {isLoading ? <TableRow><TableCell colSpan={7} className="py-8 text-center text-sm text-muted-foreground">Loading…</TableCell></TableRow>
-                : !shown.length ? <TableRow><TableCell colSpan={7} className="py-8 text-center text-sm text-muted-foreground">{onlyWaiting ? "Nothing waiting for approval." : "No ECNs here."}</TableCell></TableRow>
+                : !shown.length ? <TableRow><TableCell colSpan={7} className="py-8 text-center text-sm text-muted-foreground">{onlyWaiting ? "Nothing waiting." : "No ECNs here."}</TableCell></TableRow>
                 : shown.map((e) => (
                   <TableRow key={e.id} className="cursor-pointer" onClick={() => setOpenId(e.id)}>
                     <TableCell className="whitespace-nowrap font-mono font-medium">{e.ecn_no}</TableCell>
