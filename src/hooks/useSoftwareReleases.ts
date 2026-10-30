@@ -64,7 +64,7 @@ export function useSoftwareInProduction(partIds: string[]) {
     queryFn: async () => {
       const { data, error } = await db.from("software_in_production").select("*").in("part_id", partIds);
       if (error) throw error;
-      return new Map<string, { version: string; activated_at: string; sha256: string | null; file_size: number | null; bom_version: string | null }>(
+      return new Map<string, { version: string; activated_at: string; sha256: string | null; file_size: number | null; bom_version: string | null; file_path: string | null; file_name: string | null }>(
         (data ?? []).map((r: any) => [r.part_id, r]));
     },
   });

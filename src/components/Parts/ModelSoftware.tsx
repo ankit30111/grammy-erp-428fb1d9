@@ -1,8 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Cpu, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { usePermissions } from "@/hooks/usePermissions";
-import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { downloadSoftwareFile, fmtDay, fmtSize, shortSum, useSoftwareInProduction } from "@/hooks/useSoftwareReleases";
 
@@ -29,19 +27,6 @@ export function ModelSoftwarePanel({ partId, isModel }: { partId?: string | null
     },
   });
   const { data: sw, isLoading } = useSoftwareInProduction(codes.map((c: any) => c.id));
-  const { canApprove } = usePermissions();
-  const { canAccessModule } = useAuth() as any;
-  const canDownload = canApprove || !!canAccessModule?.("rnd");
-  const { data: files } = useQuery({
-    queryKey: ["software-in-production-files", codes.map((c: any) => c.id).join(",")],
-    enabled: canDownload && codes.length > 0,
-    queryFn: async () => {
-      const { data, error } = await db.from("software_release_history").select("part_id, file_path, file_name, file_size")
-        .eq("in_production", true).in("part_id", codes.map((c: any) => c.id));
-      if (error) throw error;
-      return new Map<string, { file_path: string; file_name: string; file_size: number | null }>((data ?? []).map((r: any) => [r.part_id, r]));
-    },
-  });
   if (!partId) return null;
   return (
     <div className="space-y-1.5">
@@ -58,9 +43,9 @@ export function ModelSoftwarePanel({ partId, isModel }: { partId?: string | null
                   {isModel && <span className="mr-2 font-mono text-xs text-muted-foreground">{c.part_code}</span>}
                   {s ? <span className="font-mono font-medium">v{s.version}</span> : <span className="text-destructive">No approved software</span>}
                 </span>
-                {s && files?.get(c.id) && (
-                  <Button type="button" size="sm" variant="outline" className="h-7 shrink-0 px-2" title={`${files.get(c.id)!.file_name} · ${fmtSize(files.get(c.id)!.file_size)}`}
-                          onClick={() => downloadSoftwareFile(files.get(c.id)!.file_path, files.get(c.id)!.file_name)}>
+                {s?.file_path && (
+                  <Button type="button" size="sm" variant="outline" className="h-7 shrink-0 px-2" title={`${s.file_name} · ${fmtSize(s.file_size)}`}
+                          onClick={() => downloadSoftwareFile(s.file_path!, s.file_name ?? "software")}>
                     <Download className="h-3.5 w-3.5 mr-1" /> Download
                   </Button>
                 )}
@@ -73,7 +58,7 @@ export function ModelSoftwarePanel({ partId, isModel }: { partId?: string | null
             </div>
           );
         })}
-      <p className="text-xs text-muted-foreground">{canDownload ? "Downloads the version in production. Older versions and testing are in R&D." : "Files are kept in R&D."}</p>
+      <p className="text-xs text-muted-foreground">Downloads the version in production. Older versions and testing are in R&D.</p>
     </div>
   );
 }
