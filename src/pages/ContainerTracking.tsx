@@ -1,106 +1,161 @@
-import { useState } from "react";
-import { Plus } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import { Plus, Ship } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { useContainers } from "@/hooks/useContainers";
-import ContainerGanttChart from "@/components/Container/ContainerGanttChart";
-import ContainersList from "@/components/Container/ContainersList";
-import ContainerModelsView from "@/components/Container/ContainerModelsView";
-import CreateContainerDialog from "@/components/Container/CreateContainerDialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { TabBar } from "@/components/shell/TabBar";
+import { useAuth } from "@/contexts/AuthContext";
+import { ContainerDialog, StageTrack } from "@/components/Container/ContainerDialog";
+import { ImportContainer, ImportPoLine, STAGES, stageIndex, useImportContainers, useImportPoLines } from "@/hooks/useImports";
 
-const containerTabs = [
-  { id: "gantt", label: "Gantt View" },
-  { id: "list", label: "List View" },
-  { id: "models", label: "Model View" },
-];
+const fmtDate = (iso?: string | null) => (iso ? iso.slice(0, 10).split("-").reverse().join("-") : "");
+const num = (v: number | null | undefined) => (v == null ? "" : Number(v).toLocaleString("en-IN"));
 
-
-const statusColors = {
-  ORDERED: "bg-warning",
-  LOADING: "bg-warning", 
-  LOADED: "bg-primary",
-  CHINA_CUSTOM: "bg-purple-500",
-  SHIPPED: "bg-cyan-500",
-  IN_TRANSIT: "bg-primary",
-  INDIAN_DOCK: "bg-success",
-  IN_TRAIN: "bg-teal-500",
-  INDIA_CUSTOM: "bg-warning",
-  DISPATCHED: "bg-lime-500",
-  ARRIVED: "bg-success"
-};
-
+/**
+ * Import tracking. An import purchase starts as a PO ticked "Imported purchase".
+ * Approved import POs are listed here; their lines are loaded into containers,
+ * and each container is followed until it reaches the factory.
+ */
 export default function ContainerTracking() {
-  const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState("gantt");
-  const { data: containers = [], isLoading } = useContainers();
+  const { canAccessModule, isAdmin } = useAuth() as any;
+  const canEdit = isAdmin || !!canAccessModule?.("purchase");
+  const [tab, setTab] = useState("pos");
+  const { data: lines = [], isLoading: loadingLines } = useImportPoLines();
+  const { data: containers = [], isLoading: loadingContainers } = useImportContainers();
+  const [dialog, setDialog] = useState<{ container: ImportContainer | null; poId?: string | null } | null>(null);
 
+  const pos = useMemo(() => {
+    const byPo = new Map<string, ImportPoLine[]>();
+    for (const l of lines) byPo.set(l.purchase_order_id, [...(byPo.get(l.purchase_order_id) ?? []), l]);
+    return [...byPo.values()];
+  }, [lines]);
 
-  const getStatusCounts = () => {
-    const counts = containers.reduce((acc, container) => {
-      acc[container.current_status] = (acc[container.current_status] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
-    return counts;
-  };
-
-  const statusCounts = getStatusCounts();
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-lg">Loading containers...</div>
-      </div>
-    );
-  }
+  const onTheWay = containers.filter((c) => c.current_status !== "AT_FACTORY");
+  const tabs = [
+    { id: "pos", label: "Import POs", count: pos.length },
+    { id: "containers", label: "Containers", count: onTheWay.length },
+  ];
 
   return (
     <DashboardLayout>
       <PageHeader
-        title="Container Tracking"
-        actions={
-          <Button onClick={() => setCreateDialogOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Container
+        title="Import Tracking"
+        actions={canEdit && (
+          <Button onClick={() => setDialog({ container: null })} disabled={!lines.some((l) => l.to_load > 0)}>
+            <Plus className="mr-2 h-4 w-4" /> New container
           </Button>
-        }
+        )}
       />
-      <TabBar tabs={containerTabs} value={activeTab} onChange={setActiveTab} />
-      <div className="space-y-6 pt-4">
-        {/* Status Overview Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-          {Object.entries(statusCounts).map(([status, count]) => (
-            <Card key={status}>
-              <CardContent className="p-4">
-                <div className="flex items-center space-x-2">
-                  <div
-                    className={`w-3 h-3 rounded-full ${statusColors[status as keyof typeof statusColors] || 'bg-gray-500'}`}
-                  />
-                  <div>
-                    <p className="text-sm font-medium">
-                      {status.replace('_', ' ')}
-                    </p>
-                    <p className="text-2xl font-bold">{count}</p>
+      <TabBar tabs={tabs} value={tab} onChange={setTab} />
+
+      <div className="space-y-4 pt-4">
+        {tab === "pos" && (loadingLines ? <p className="py-10 text-center text-sm text-muted-foreground">Loading…</p>
+          : !pos.length ? (
+            <Card><CardContent className="space-y-2 py-10 text-center">
+              <Ship className="mx-auto h-8 w-8 text-muted-foreground" />
+              <p className="font-medium">No approved import PO yet</p>
+              <p className="mx-auto max-w-md text-sm text-muted-foreground">
+                Create a PO in <Link className="underline underline-offset-2" to="/purchase?tab=create-po">Purchase</Link> and tick
+                "Imported purchase". Once it is approved it appears here, ready to be loaded into a container.
+              </p>
+            </CardContent></Card>
+          ) : pos.map((po) => {
+            const h = po[0], left = po.reduce((n, l) => n + l.to_load, 0);
+            return (
+              <Card key={h.purchase_order_id}>
+                <CardContent className="space-y-3 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                        <span className="font-mono text-base font-semibold">{h.po_number}</span>
+                        <span>{h.vendor_name}</span>
+                        {h.origin_country && <Badge variant="outline">{h.origin_country}</Badge>}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        PO date {fmtDate(h.po_date)}{h.promised_loading_date ? ` · promised loading ${fmtDate(h.promised_loading_date)}` : ""}
+                        {h.promised_delivery_date ? ` · promised delivery ${fmtDate(h.promised_delivery_date)}` : ""}
+                      </p>
+                    </div>
+                    {left > 0 ? (canEdit && <Button size="sm" variant="outline" onClick={() => setDialog({ container: null, poId: h.purchase_order_id })}>Load into a container</Button>)
+                      : <Badge variant="secondary">Fully loaded</Badge>}
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                  <div className="overflow-x-auto rounded-md border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Part</TableHead><TableHead className="text-right">Ordered</TableHead>
+                          <TableHead className="text-right">Not loaded yet</TableHead><TableHead className="text-right">On the way</TableHead>
+                          <TableHead className="text-right">Received (GRN)</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {po.map((l) => (
+                          <TableRow key={l.po_item_id}>
+                            <TableCell className="text-sm"><span className="font-mono">{l.part_code}</span> <span className="text-muted-foreground">{l.part_name}</span></TableCell>
+                            <TableCell className="text-right tabular-nums">{num(l.ordered)} <span className="text-xs text-muted-foreground">{l.uom ?? ""}</span></TableCell>
+                            <TableCell className="text-right tabular-nums">{l.to_load > 0 ? num(l.to_load) : "—"}</TableCell>
+                            <TableCell className="text-right tabular-nums">{l.on_the_way > 0 ? num(l.on_the_way) : "—"}</TableCell>
+                            <TableCell className="text-right tabular-nums">{l.received > 0 ? num(l.received) : "—"}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          }))}
 
-        {activeTab === "gantt" && <ContainerGanttChart containers={containers} />}
-
-        {activeTab === "list" && <ContainersList containers={containers} />}
-
-        {activeTab === "models" && <ContainerModelsView containers={containers} />}
-
-        <CreateContainerDialog
-          open={createDialogOpen}
-          onOpenChange={setCreateDialogOpen}
-        />
+        {tab === "containers" && (
+          <Card>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Container</TableHead><TableHead>PO</TableHead><TableHead>Stage</TableHead>
+                      <TableHead>Expected at factory</TableHead><TableHead className="text-right">Freight</TableHead>
+                      <TableHead className="text-right">Invoice</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {loadingContainers ? <TableRow><TableCell colSpan={6} className="py-8 text-center text-sm text-muted-foreground">Loading…</TableCell></TableRow>
+                      : !containers.length ? <TableRow><TableCell colSpan={6} className="py-8 text-center text-sm text-muted-foreground">No container yet. Load an import PO into one from the Import POs tab.</TableCell></TableRow>
+                      : containers.map((c) => {
+                        const at = stageIndex(c.current_status), s = STAGES[at];
+                        const poNos = [...new Set(c.lines.map((l) => l.po_item?.purchase_order?.po_number).filter(Boolean))];
+                        return (
+                          <TableRow key={c.id} className="cursor-pointer" onClick={() => setDialog({ container: c })}>
+                            <TableCell>
+                              <div className="font-mono font-medium">{c.container_number}</div>
+                              <div className="text-xs text-muted-foreground">{[c.shipping_line, c.vessel_name].filter(Boolean).join(" · ") || "—"}</div>
+                            </TableCell>
+                            <TableCell className="text-sm"><span className="font-mono">{poNos.join(", ") || "—"}</span>
+                              <div className="text-xs text-muted-foreground">{c.lines.length} line(s)</div></TableCell>
+                            <TableCell>
+                              <div className="text-sm font-medium">{s.label}{(c as any)[s.dateField] ? <span className="ml-2 font-normal text-muted-foreground">{fmtDate((c as any)[s.dateField])}</span> : null}</div>
+                              <div className="mt-1.5"><StageTrack container={c} compact /></div>
+                            </TableCell>
+                            <TableCell className="whitespace-nowrap text-sm">{fmtDate(c.planned_factory) || "—"}</TableCell>
+                            <TableCell className="text-right tabular-nums">{num(c.freight_cost) || "—"}</TableCell>
+                            <TableCell className="text-right text-sm tabular-nums">{c.invoice_amount != null ? `${c.currency ?? ""} ${num(c.invoice_amount)}`.trim() : "—"}</TableCell>
+                          </TableRow>
+                        );
+                      })}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
+
+      {dialog && <ContainerDialog key={dialog.container?.id ?? dialog.poId ?? "new"} container={dialog.container} presetPoId={dialog.poId}
+                                  poLines={lines} canEdit={canEdit} onClose={() => setDialog(null)} />}
     </DashboardLayout>
   );
 }

@@ -29,7 +29,7 @@ export const navigationItems: NavigationItem[] = [
   { to: "/purchase", icon: <FileText size={18} />, label: "Purchase", group: "COMMERCE", module: "commerce" },
   { to: "/sales", icon: <DollarSign size={18} />, label: "Sales", group: "COMMERCE", module: "commerce" },
   { to: "/spare-orders", icon: <Wrench size={18} />, label: "Spare Orders", group: "COMMERCE", module: "commerce" },
-  { to: "/container-tracking", icon: <Container size={18} />, label: "Container Tracking", group: "COMMERCE", module: "commerce" },
+  { to: "/container-tracking", icon: <Container size={18} />, label: "Import Tracking", group: "COMMERCE", module: "commerce" },
   // Store
   { to: "/store", icon: <Package size={18} />, label: "Store", group: "STORE", module: "store" },
   // Production
