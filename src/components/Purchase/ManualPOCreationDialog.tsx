@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Plus, X, ShoppingCart } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -27,6 +28,10 @@ export const ManualPOCreationDialog = () => {
   const [selectedMaterials, setSelectedMaterials] = useState<SelectedMaterial[]>([]);
   const [deliveryDate, setDeliveryDate] = useState("");
   const [notes, setNotes] = useState("");
+  const [isImport, setIsImport] = useState(false);
+  const [originCountry, setOriginCountry] = useState("");
+  const [loadingDate, setLoadingDate] = useState("");
+  const [currency, setCurrency] = useState("USD");
   const [materialSearchTerm, setMaterialSearchTerm] = useState("");
   
   const createPO = useCreatePurchaseOrder();
@@ -123,6 +128,10 @@ export const ManualPOCreationDialog = () => {
         items,
         notes: notes || 'Manual PO Creation',
         promised_delivery_date: deliveryDate,
+        is_import: isImport,
+        origin_country: isImport ? originCountry || null : null,
+        promised_loading_date: isImport ? loadingDate || null : null,
+        ...(isImport ? { currency: currency.trim().toUpperCase() || "USD" } : {}),
       });
 
       // Reset form
@@ -132,6 +141,9 @@ export const ManualPOCreationDialog = () => {
       setDeliveryDate("");
       setNotes("");
       setMaterialSearchTerm("");
+      setIsImport(false);
+      setOriginCountry("");
+      setLoadingDate("");
     } catch (error) {
       console.error('Error creating manual PO:', error);
     }
@@ -190,6 +202,31 @@ export const ManualPOCreationDialog = () => {
                 onChange={(e) => setDeliveryDate(e.target.value)}
               />
             </div>
+          </div>
+
+          {/* Import purchase: tracked under Import Tracking once approved */}
+          <div className="space-y-3 rounded-md border p-3">
+            <div className="flex items-center gap-2">
+              <Checkbox id="manual-po-import" checked={isImport} onCheckedChange={(c) => setIsImport(c === true)} />
+              <Label htmlFor="manual-po-import">Imported purchase</Label>
+              <span className="text-xs text-muted-foreground">Appears under Import Tracking once approved.</span>
+            </div>
+            {isImport && (
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                <div>
+                  <Label htmlFor="manual-po-origin">Country of origin</Label>
+                  <Input id="manual-po-origin" value={originCountry} onChange={(e) => setOriginCountry(e.target.value)} placeholder="e.g. China" />
+                </div>
+                <div>
+                  <Label htmlFor="manual-po-loading">Promised loading date</Label>
+                  <Input id="manual-po-loading" type="date" value={loadingDate} onChange={(e) => setLoadingDate(e.target.value)} />
+                </div>
+                <div>
+                  <Label htmlFor="manual-po-currency">Currency</Label>
+                  <Input id="manual-po-currency" value={currency} onChange={(e) => setCurrency(e.target.value)} placeholder="USD" />
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Material Search and Selection */}
