@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { cn } from "@/lib/utils";
 import { LDBService } from "@/utils/LDBService";
 import {
-  ContainerForm, ContainerStage, ImportContainer, ImportPoLine, STAGES, stageIndex, useImportMutations,
+  ContainerForm, ContainerStage, ImportContainer, ImportPoLine, STAGES, stageIndex, useContainerEvents, useImportMutations,
 } from "@/hooks/useImports";
 
 const fmtDate = (iso?: string | null) => (iso ? iso.slice(0, 10).split("-").reverse().join("-") : "");
@@ -95,16 +95,18 @@ export function ContainerDialog({ container, presetPoId, poLines, canEdit, onClo
     return start;
   });
 
-  // Lines that can still be loaded, plus the ones already in this container.
+  // Every line of a PO that is not fully received yet, plus what this container
+  // already carries. "left" is what the PO still expects; a container may carry
+  // more than that (import shipments are filled for efficiency).
   const rows = useMemo(() => poLines
-    .map((l) => ({ ...l, max: l.to_load + Number(inThis.get(l.po_item_id)?.quantity ?? 0) }))
-    .filter((l) => l.max > 0)
+    .map((l) => ({ ...l, left: Math.max(l.ordered - (l.loaded - Number(inThis.get(l.po_item_id)?.quantity ?? 0)), 0) }))
+    .filter((l) => l.left > 0 || l.received < l.ordered || inThis.has(l.po_item_id))
     .sort((a, b) => Number(b.purchase_order_id === presetPoId) - Number(a.purchase_order_id === presetPoId)
       || a.po_number.localeCompare(b.po_number) || a.part_code.localeCompare(b.part_code)), [poLines, inThis, presetPoId]);
 
   const picked = rows.filter((r) => Number(qty[r.po_item_id]) > 0);
-  const over = picked.find((r) => Number(qty[r.po_item_id]) > r.max);
-  const canSave = canEdit && form.container_number.trim().length > 0 && (locked || picked.length > 0) && !over && !m.save.isPending;
+  const over = picked.filter((r) => Number(qty[r.po_item_id]) > r.left);
+  const canSave = canEdit && form.container_number.trim().length > 0 && (locked || picked.length > 0) && !m.save.isPending;
 
   const save = () => m.save.mutate({
     id: container?.id ?? null, header: form,
@@ -124,7 +126,12 @@ export function ContainerDialog({ container, presetPoId, poLines, canEdit, onClo
     setLdb({ loading: true });
     const r = await LDBService.fetchContainerStatus(form.container_number);
     setLdb({ loading: false, text: r.success ? [r.status, r.location, r.lastUpdate].filter(Boolean).join(" · ") || "No status returned" : r.error || "Could not read LDB" });
+    // Every reading is kept in the container's history.
+    if (r.success && container && (r.status || r.location)) {
+      m.addTracking.mutate({ id: container.id, location: r.location ?? "", detail: [r.status, r.lastUpdate].filter(Boolean).join(" · "), source: "LDB" });
+    }
   };
+  const { data: events = [] } = useContainerEvents(container?.id);
 
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
@@ -178,6 +185,35 @@ export function ContainerDialog({ container, presetPoId, poLines, canEdit, onClo
           </section>
         )}
 
+        {container && (container.last_location || events.length > 0) && (
+          <section className="grid gap-3 rounded-md border p-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)]">
+            <div className="space-y-1 text-sm">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Where it is</h3>
+              <p className="font-medium">{container.last_location || "No tracking reading yet"}</p>
+              <p className="text-xs text-muted-foreground">
+                {container.last_tracked_at ? `Checked ${fmtDate(container.last_tracked_at)}` : "Use Check LDB status once it is in India."}
+                {container.eta ? ` · expected ${fmtDate(container.eta)}` : ""}
+              </p>
+            </div>
+            <div className="space-y-1 text-sm">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">History</h3>
+              <ul className="max-h-36 space-y-1 overflow-y-auto pr-1">
+                {events.map((e) => (
+                  <li key={e.id} className="flex gap-2">
+                    <span className="w-24 shrink-0 whitespace-nowrap tabular-nums text-muted-foreground">{fmtDate(e.event_date ?? e.created_at)}</span>
+                    <span className="min-w-0">
+                      {e.kind === "STAGE" ? (e.detail?.startsWith("Undone") ? e.detail : `${STAGES[stageIndex(e.stage as ContainerStage)]?.label ?? e.stage}${e.detail ? ` (${e.detail})` : ""}`)
+                        : e.kind === "GRN" ? e.detail
+                        : [e.location, e.detail].filter(Boolean).join(" · ")}
+                      {e.kind === "TRACKING" && <span className="ml-1 text-xs text-muted-foreground">{e.source}</span>}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </section>
+        )}
+
         <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {FIELDS.map((f) => (
             <div key={f.key} className="space-y-1">
@@ -205,24 +241,26 @@ export function ContainerDialog({ container, presetPoId, poLines, canEdit, onClo
               <TableHeader>
                 <TableRow>
                   <TableHead>PO</TableHead><TableHead>Part</TableHead><TableHead className="text-right">Ordered</TableHead>
-                  <TableHead className="text-right">Can load</TableHead><TableHead className="w-32 text-right">In this container</TableHead>
+                  <TableHead className="text-right">Left on PO</TableHead><TableHead className="w-32 text-right">In this container</TableHead>
                   <TableHead className="w-28 text-right">CBM</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {!rows.length ? (
-                  <TableRow><TableCell colSpan={6} className="py-6 text-center text-sm text-muted-foreground">No import PO line is waiting to be loaded.</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={6} className="py-6 text-center text-sm text-muted-foreground">No approved import PO is open.</TableCell></TableRow>
                 ) : rows.map((r) => {
                   const q = Number(qty[r.po_item_id] ?? 0);
+                  const received = !!inThis.get(r.po_item_id)?.grn_item_id;
                   return (
                     <TableRow key={r.po_item_id} className={q > 0 ? "bg-primary/5" : undefined}>
                       <TableCell className="whitespace-nowrap text-sm"><div className="font-mono">{r.po_number}</div><div className="text-xs text-muted-foreground">{r.vendor_name}</div></TableCell>
                       <TableCell className="text-sm"><span className="font-mono">{r.part_code}</span> <span className="text-muted-foreground">{r.part_name}</span></TableCell>
                       <TableCell className="text-right tabular-nums">{num(r.ordered)}</TableCell>
-                      <TableCell className="text-right tabular-nums">{num(r.max)} <span className="text-xs text-muted-foreground">{r.uom ?? ""}</span></TableCell>
+                      <TableCell className="text-right tabular-nums">{num(r.left)} <span className="text-xs text-muted-foreground">{r.uom ?? ""}</span></TableCell>
                       <TableCell className="text-right">
-                        <Input type="number" min={0} max={r.max} step="any" disabled={!canEdit || locked} aria-label={`Quantity of ${r.part_code}`}
-                               className={cn("h-8 text-right tabular-nums", q > r.max && "border-destructive")}
+                        <Input type="number" min={0} step="any" disabled={!canEdit || locked || received} aria-label={`Quantity of ${r.part_code}`}
+                               title={received ? "Received on a GRN" : undefined}
+                               className={cn("h-8 text-right tabular-nums", q > r.left && "border-amber-500")}
                                value={qty[r.po_item_id] ?? ""} onChange={(e) => setQty({ ...qty, [r.po_item_id]: e.target.value })} />
                       </TableCell>
                       <TableCell className="text-right">
@@ -235,7 +273,11 @@ export function ContainerDialog({ container, presetPoId, poLines, canEdit, onClo
               </TableBody>
             </Table>
           </div>
-          {over && <p className="text-sm text-destructive">{over.part_code}: only {num(over.max)} can be loaded.</p>}
+          {over.length > 0 && (
+            <p className="text-sm text-amber-700 dark:text-amber-400">
+              More than ordered: {over.map((r) => `${r.part_code} (+${num(Number(qty[r.po_item_id]) - r.left)})`).join(", ")}. This is allowed; the extra will show on the GRN.
+            </p>
+          )}
         </section>
 
         <DialogFooter className="gap-2 sm:justify-between">

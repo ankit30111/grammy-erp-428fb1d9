@@ -61,17 +61,15 @@ const Purchase = () => {
     },
   });
 
-  // Shortage lines that are short and not already covered by a purchase order item.
-  const availableMaterialsForPO = shortages.filter(
-    (line) => line.shortage > 0 && !line.purchase_order_item_id,
-  );
+  // Parts that still have to be ordered: short, and not covered by purchase orders already placed.
+  const availableMaterialsForPO = shortages.filter((line) => line.to_order > 0);
 
   const handleMaterialSelect = (partId: string, checked: boolean) => {
     if (checked) {
       setSelectedMaterials([...selectedMaterials, partId]);
       const line = availableMaterialsForPO.find((m) => m.part_id === partId);
       if (line) {
-        setEditableQuantities((prev) => ({ ...prev, [partId]: line.shortage }));
+        setEditableQuantities((prev) => ({ ...prev, [partId]: line.to_order }));
       }
     } else {
       setSelectedMaterials(selectedMaterials.filter((id) => id !== partId));
@@ -100,9 +98,8 @@ const Purchase = () => {
     const lines = availableMaterialsForPO.filter((m) => selectedMaterials.includes(m.part_id));
     const items = lines.map((line) => ({
       part_id: line.part_id,
-      quantity: editableQuantities[line.part_id] || line.shortage,
+      quantity: editableQuantities[line.part_id] || line.to_order,
       unit_price: Number(line.unit_price || 0),
-      shortage_id: line.shortage_id,
     }));
 
     try {
@@ -229,7 +226,7 @@ const Purchase = () => {
                               <TableRow>
                                 <TableHead>Part Code</TableHead>
                                 <TableHead>Part Name</TableHead>
-                                <TableHead>Shortage Qty</TableHead>
+                                <TableHead>To order</TableHead>
                                 <TableHead>Order Qty</TableHead>
                               </TableRow>
                             </TableHeader>
@@ -241,12 +238,12 @@ const Purchase = () => {
                                   <TableRow key={partId}>
                                     <TableCell className="font-mono">{line.part_code}</TableCell>
                                     <TableCell>{line.name}</TableCell>
-                                    <TableCell>{line.shortage.toLocaleString()}</TableCell>
+                                    <TableCell>{line.to_order.toLocaleString()}</TableCell>
                                     <TableCell>
                                       <Input
                                         type="number"
                                         min="1"
-                                        value={editableQuantities[partId] ?? line.shortage}
+                                        value={editableQuantities[partId] ?? line.to_order}
                                         onChange={(e) =>
                                           handleQuantityChange(partId, parseFloat(e.target.value) || 0)
                                         }
@@ -290,7 +287,7 @@ const Purchase = () => {
                 <CardHeader>
                   <CardTitle>
                     {vendor}
-                    <Badge variant="destructive">{vendorMaterials.length} shortages</Badge>
+                    <Badge variant="destructive">{vendorMaterials.length} to order</Badge>
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -300,10 +297,9 @@ const Purchase = () => {
                         <TableHead className="w-12">Select</TableHead>
                         <TableHead>Part Code</TableHead>
                         <TableHead>Part Name</TableHead>
-                        <TableHead>Required</TableHead>
-                        <TableHead>Available</TableHead>
-                        <TableHead>Hold</TableHead>
-                        <TableHead>Balance</TableHead>
+                        <TableHead className="text-right">Shortage</TableHead>
+                        <TableHead className="text-right">On order</TableHead>
+                        <TableHead className="text-right">To order</TableHead>
                         <TableHead>Needed On</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -320,13 +316,10 @@ const Purchase = () => {
                           </TableCell>
                           <TableCell className="font-medium font-mono">{line.part_code}</TableCell>
                           <TableCell>{line.name}</TableCell>
-                          <TableCell>{line.required.toLocaleString()}</TableCell>
-                          <TableCell>{line.available.toLocaleString()}</TableCell>
-                          <TableCell>{line.hold.toLocaleString()}</TableCell>
-                          <TableCell>
-                            <Badge variant={line.balance < 0 ? "destructive" : "secondary"}>
-                              {line.balance.toLocaleString()}
-                            </Badge>
+                          <TableCell className="text-right tabular-nums">{line.shortage.toLocaleString("en-IN")}</TableCell>
+                          <TableCell className="text-right tabular-nums">{line.on_order ? line.on_order.toLocaleString("en-IN") : "—"}</TableCell>
+                          <TableCell className="text-right tabular-nums">
+                            <Badge variant="destructive">{line.to_order.toLocaleString("en-IN")}</Badge>
                           </TableCell>
                           <TableCell>{line.needed_on || "—"}</TableCell>
                         </TableRow>
@@ -342,7 +335,7 @@ const Purchase = () => {
                 <CardContent className="text-center py-8">
                   <h3 className="text-lg font-medium mb-2">No parts need a purchase order</h3>
                   <p className="text-muted-foreground">
-                    Every short part is already covered by a purchase order.
+                    Nothing is short, or every short part is already on a purchase order.
                   </p>
                 </CardContent>
               </Card>

@@ -2,7 +2,6 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { usePlantId } from "@/hooks/usePlantId";
-import { markShortagesCovered } from "@/utils/materialShortageCalculator";
 
 export type PoStatus =
   | "DRAFT"
@@ -27,8 +26,6 @@ export interface NewPurchaseOrder {
     part_id: string;
     quantity: number;
     unit_price: number;
-    /** shortage row this line covers, if any */
-    shortage_id?: string | null;
   }[];
 }
 
@@ -113,18 +110,6 @@ export const useCreatePurchaseOrder = () => {
         .select("id, part_id");
 
       if (itemsError) throw itemsError;
-
-      // Report the shortage lines as covered.
-      const covers = orderData.items
-        .filter((item) => item.shortage_id)
-        .map((item) => {
-          const match = (insertedItems || []).find((i) => i.part_id === item.part_id);
-          return match ? { shortage_id: item.shortage_id!, purchase_order_item_id: match.id } : null;
-        })
-        .filter(Boolean) as { shortage_id: string; purchase_order_item_id: string }[];
-
-      if (covers.length > 0) await markShortagesCovered(covers);
-
       return poData;
     },
     onSuccess: (poData: any) => {

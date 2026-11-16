@@ -30,14 +30,12 @@ export const InventoryWidget = () => {
   const { data: shortages } = useRealTimeQuery({
     queryKey: ['material-shortages-count', scopeKey],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('shortages')
-        .select('shortage_quantity')
-        .gt('shortage_quantity', 0);
+      // Counted in the database, on the same rule as the shortage list.
+      const { data, error } = await (supabase as any).rpc('shortage_count', { p_plant: scopePlantId ?? null });
       if (error) throw error;
-      return data?.length || 0;
+      return Number(data || 0);
     },
-    tableName: 'shortages',
+    tableName: 'stock_ledger',
   });
 
   // Open POs with real-time updates

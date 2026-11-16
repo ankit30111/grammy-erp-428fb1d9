@@ -31,7 +31,7 @@ const PPCDashboard = () => {
     
     try {
       const calculatedShortages = await calculateMaterialShortages(projections.map(p => p.id));
-      setShortages(calculatedShortages);
+      setShortages(calculatedShortages.filter((line) => line.shortage > 0));
     } catch (error) {
       console.error('Error calculating shortages:', error);
     }
@@ -177,7 +177,7 @@ const PPCDashboard = () => {
                     <div>
                       <div className="font-medium">{shortage.part_code} - {shortage.material_name}</div>
                       <div className="text-sm text-muted-foreground">
-                        Required: {shortage.shortage_quantity + shortage.available_quantity} | 
+                        Required: {shortage.total_required} | 
                         Available: {shortage.available_quantity} | 
                         Short: {shortage.shortage_quantity}
                       </div>

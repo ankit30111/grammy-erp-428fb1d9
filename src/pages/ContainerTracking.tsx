@@ -10,7 +10,7 @@ import { PageHeader } from "@/components/shell/PageHeader";
 import { TabBar } from "@/components/shell/TabBar";
 import { useAuth } from "@/contexts/AuthContext";
 import { ContainerDialog, StageTrack } from "@/components/Container/ContainerDialog";
-import { ImportContainer, ImportPoLine, STAGES, stageIndex, useImportContainers, useImportPoLines } from "@/hooks/useImports";
+import { ImportContainer, ImportPoLine, STAGES, stageIndex, useContainerTimes, useImportContainers, useImportPoLines } from "@/hooks/useImports";
 
 const fmtDate = (iso?: string | null) => (iso ? iso.slice(0, 10).split("-").reverse().join("-") : "");
 const num = (v: number | null | undefined) => (v == null ? "" : Number(v).toLocaleString("en-IN"));
@@ -35,6 +35,16 @@ export default function ContainerTracking() {
   }, [lines]);
 
   const onTheWay = containers.filter((c) => c.current_status !== "AT_FACTORY");
+  const { data: times = [] } = useContainerTimes();
+  // Average days per leg, from containers that have completed that leg.
+  const avg = (key: "days_to_load" | "days_at_sea" | "days_port_to_factory" | "days_loaded_to_factory" | "days_late") => {
+    const v = times.map((t) => t[key]).filter((d): d is number => d != null);
+    return v.length ? { days: Math.round((v.reduce((a, b) => a + b, 0) / v.length) * 10) / 10, n: v.length } : null;
+  };
+  const legs: [string, ReturnType<typeof avg>][] = [
+    ["Order to loading", avg("days_to_load")], ["At sea", avg("days_at_sea")], ["Port to factory", avg("days_port_to_factory")],
+    ["Loading to factory", avg("days_loaded_to_factory")], ["Later than expected", avg("days_late")],
+  ];
   const tabs = [
     { id: "pos", label: "Import POs", count: pos.length },
     { id: "containers", label: "Containers", count: onTheWay.length },
@@ -45,7 +55,7 @@ export default function ContainerTracking() {
       <PageHeader
         title="Import Tracking"
         actions={canEdit && (
-          <Button onClick={() => setDialog({ container: null })} disabled={!lines.some((l) => l.to_load > 0)}>
+          <Button onClick={() => setDialog({ container: null })} disabled={!lines.some((l) => l.received < l.ordered)}>
             <Plus className="mr-2 h-4 w-4" /> New container
           </Button>
         )}
@@ -111,6 +121,18 @@ export default function ContainerTracking() {
           }))}
 
         {tab === "containers" && (
+          <div className="grid grid-cols-2 gap-px overflow-hidden rounded-md border bg-border md:grid-cols-5">
+            {legs.map(([label, a]) => (
+              <div key={label} className="bg-card px-3 py-2">
+                <div className="text-xs text-muted-foreground">{label}</div>
+                <div className="text-lg font-semibold tabular-nums">{a ? `${a.days} days` : "—"}</div>
+                <div className="text-[11px] text-muted-foreground">{a ? `average of ${a.n} container${a.n === 1 ? "" : "s"}` : "no container yet"}</div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {tab === "containers" && (
           <Card>
             <CardContent className="p-0">
               <div className="overflow-x-auto">
@@ -118,13 +140,13 @@ export default function ContainerTracking() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Container</TableHead><TableHead>PO</TableHead><TableHead>Stage</TableHead>
-                      <TableHead>Expected at factory</TableHead><TableHead className="text-right">Freight</TableHead>
+                      <TableHead>Where it is</TableHead><TableHead>Expected at factory</TableHead><TableHead className="text-right">Freight</TableHead>
                       <TableHead className="text-right">Invoice</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {loadingContainers ? <TableRow><TableCell colSpan={6} className="py-8 text-center text-sm text-muted-foreground">Loading…</TableCell></TableRow>
-                      : !containers.length ? <TableRow><TableCell colSpan={6} className="py-8 text-center text-sm text-muted-foreground">No container yet. Load an import PO into one from the Import POs tab.</TableCell></TableRow>
+                    {loadingContainers ? <TableRow><TableCell colSpan={7} className="py-8 text-center text-sm text-muted-foreground">Loading…</TableCell></TableRow>
+                      : !containers.length ? <TableRow><TableCell colSpan={7} className="py-8 text-center text-sm text-muted-foreground">No container yet. Load an import PO into one from the Import POs tab.</TableCell></TableRow>
                       : containers.map((c) => {
                         const at = stageIndex(c.current_status), s = STAGES[at];
                         const poNos = [...new Set(c.lines.map((l) => l.po_item?.purchase_order?.po_number).filter(Boolean))];
@@ -140,7 +162,11 @@ export default function ContainerTracking() {
                               <div className="text-sm font-medium">{s.label}{(c as any)[s.dateField] ? <span className="ml-2 font-normal text-muted-foreground">{fmtDate((c as any)[s.dateField])}</span> : null}</div>
                               <div className="mt-1.5"><StageTrack container={c} compact /></div>
                             </TableCell>
-                            <TableCell className="whitespace-nowrap text-sm">{fmtDate(c.planned_factory) || "—"}</TableCell>
+                            <TableCell className="max-w-[14rem] text-sm">
+                              <div className="truncate">{c.last_location || "—"}</div>
+                              {c.last_tracked_at && <div className="text-xs text-muted-foreground">checked {fmtDate(c.last_tracked_at)}</div>}
+                            </TableCell>
+                            <TableCell className="whitespace-nowrap text-sm">{fmtDate(c.eta ?? c.planned_factory) || "—"}</TableCell>
                             <TableCell className="text-right tabular-nums">{num(c.freight_cost) || "—"}</TableCell>
                             <TableCell className="text-right text-sm tabular-nums">{c.invoice_amount != null ? `${c.currency ?? ""} ${num(c.invoice_amount)}`.trim() : "—"}</TableCell>
                           </TableRow>

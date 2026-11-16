@@ -12,14 +12,14 @@ export const usePPCDashboardData = () => {
       if (scopePlantId) schedulesQ = schedulesQ.eq('plant_id', scopePlantId);
       const [projectionsData, shortagesData, schedulesData] = await Promise.all([
         supabase.from('projections').select('*').gte('created_at', new Date(new Date().setDate(1)).toISOString()),
-        supabase.from('shortages').select('*').gt('shortage_quantity', 0),
+        (supabase as any).rpc('shortage_count', { p_plant: scopePlantId ?? null }),
         schedulesQ
       ]);
 
       return {
         totalProjections: projectionsData.data?.length || 0,
         pendingProjections: projectionsData.data?.filter(p => p.status === 'New').length || 0,
-        materialShortages: shortagesData.data?.length || 0,
+        materialShortages: Number(shortagesData.data || 0),
         scheduledProduction: schedulesData.data?.filter(s => s.status === 'PLANNED').length || 0
       };
     }

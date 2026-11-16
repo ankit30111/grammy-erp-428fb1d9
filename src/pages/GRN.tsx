@@ -11,9 +11,8 @@ import { Badge } from "@/components/ui/badge";
 import { useGRN, useDeleteGRN } from "@/hooks/useGRN";
 import GRNForm from "@/components/PPC/GRNForm";
 import { NonPOGRNForm } from "@/components/PPC/NonPOGRNForm";
+import { ContainerGRNForm } from "@/components/PPC/ContainerGRNForm";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { GRNEditDialog } from "@/components/Store/GRNEditDialog";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -30,7 +29,7 @@ const GRN = () => {
   const [selectedGRN, setSelectedGRN] = useState<string | null>(null);
   const [editingGRN, setEditingGRN] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [useNonPOMode, setUseNonPOMode] = useState(false);
+  const [grnMode, setGrnMode] = useState<"po" | "container" | "none">("po");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [grnToDelete, setGrnToDelete] = useState<any>(null);
   
@@ -93,25 +92,21 @@ const GRN = () => {
       <div className="grid gap-4 pt-4 md:gap-6">
           {activeTab === "create" && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between gap-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <p className="text-sm text-muted-foreground">
-                  {useNonPOMode
-                    ? "Create GRN for direct material receipts without a purchase order"
-                    : "Create GRN based on approved purchase orders"}
+                  {grnMode === "po" ? "Receive against an approved purchase order."
+                    : grnMode === "container" ? "Receive an import container from its packing list."
+                    : "Receive material that has no purchase order."}
                 </p>
-                <div className="flex items-center space-x-2">
-                  <Label htmlFor="grn-mode" className="text-sm font-medium">
-                    {useNonPOMode ? "Without PO" : "With PO"}
-                  </Label>
-                  <Switch
-                    id="grn-mode"
-                    checked={useNonPOMode}
-                    onCheckedChange={setUseNonPOMode}
-                  />
+                <div className="inline-flex rounded-md border p-0.5" role="group" aria-label="How to receive">
+                  {([["po", "Against a PO"], ["container", "From a packing list"], ["none", "Without a PO"]] as const).map(([id, label]) => (
+                    <Button key={id} type="button" size="sm" variant={grnMode === id ? "default" : "ghost"} className="h-8"
+                            aria-pressed={grnMode === id} onClick={() => setGrnMode(id)}>{label}</Button>
+                  ))}
                 </div>
               </div>
 
-              {useNonPOMode ? <NonPOGRNForm /> : <GRNForm />}
+              {grnMode === "po" ? <GRNForm /> : grnMode === "container" ? <ContainerGRNForm /> : <NonPOGRNForm />}
             </div>
 
           )}

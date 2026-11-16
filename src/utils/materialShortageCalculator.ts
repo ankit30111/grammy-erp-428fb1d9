@@ -1,23 +1,16 @@
 import { supabase } from "@/integrations/supabase/client";
 
 /**
- * Shortage engine.
+ * Shortage list.
  *
- * Demand comes from projections (whatever is not produced yet). Each finished good is
- * exploded RECURSIVELY through the bom table:
- *   - PURCHASED child           -> a purchase requirement
- *   - ASSEMBLED_INLINE child    -> explode straight through it
- *   - ASSEMBLED_STOCKED child   -> consume its own stock first, explode the remainder
- *   - FINISHED_GOOD child       -> explode through it
- * Only PURCHASED parts ever reach the shortage output, so Purchase only sees buyable parts.
+ * The sum is done in the database (shortage_lines), so every user at every
+ * location reads the same figures:
  *
- * Nothing is counted twice:
- *   - a projection only adds demand for what is NOT on a voucher yet; vouchered
- *     sets are already represented by their holds (or, after the kit, by stock
- *     that has left the store);
- *   - an open sub-assembly voucher is incoming stock of that sub-assembly, so a
- *     finished good that needs it does not also ask for its cells again - those
- *     are held (or were issued) by the sub-assembly voucher itself.
+ *   still to issue = what open vouchers still need from the store
+ *                    (required - issued + returned, never below zero)
+ *   shortage       = still to issue + demand not yet on a voucher
+ *                    - in store - waiting for IQC
+ *   to order       = shortage - purchase orders already placed
  */
 
 export interface DemandSource {
@@ -27,24 +20,46 @@ export interface DemandSource {
   needed_on: string | null;
 }
 
+export interface PendingPo {
+  po_number: string;
+  status: string;
+  vendor: string | null;
+  is_import: boolean;
+  pending: number;
+  expected: string | null;
+  on_the_way: number;
+}
+
 export interface ShortageLine {
   part_id: string;
   part_code: string;
   name: string;
   category: string | null;
   uom: string;
+  /** Demand of projections that are not on a voucher yet. */
   required: number;
+  /** In the main store, usable. */
   available: number;
+  /** Still to issue to open vouchers. */
   hold: number;
+  /** Received and waiting for IQC. */
+  at_iqc: number;
+  /** On purchase orders already approved, not yet received. */
+  on_order: number;
+  /** in store + waiting for IQC - still to issue - projections. */
   balance: number;
+  /** What is missing before counting purchase orders. */
   shortage: number;
+  /** What still has to be ordered. */
+  to_order: number;
   needed_on: string | null;
   vendor_id: string | null;
   vendor_name: string | null;
   unit_price: number | null;
   currency: string | null;
   sources: DemandSource[];
-  /* legacy field names still read by some dashboards */
+  pending_pos: PendingPo[];
+  /* names still read by the PPC dashboard */
   material_name: string;
   total_required: number;
   available_quantity: number;
@@ -52,288 +67,44 @@ export interface ShortageLine {
   vendor_info: { vendor_name: string; vendor_code?: string } | null;
 }
 
-interface PartRow {
-  id: string;
-  part_code: string;
-  name: string;
-  category: string | null;
-  uom: string | null;
-  source_type: string;
-  unit_price: number | null;
-  currency: string | null;
-  part_vendors?: { vendor_id: string; is_primary: boolean; vendors?: { id: string; name: string } | null }[];
-}
-
-interface BomRow {
-  parent_part_id: string;
-  child_part_id: string;
-  quantity: number;
-}
-
-const earlier = (a: string | null, b: string | null) => {
-  if (!a) return b;
-  if (!b) return a;
-  return a < b ? a : b;
-};
-
-export const explodeDemand = (
-  partId: string,
-  quantity: number,
-  bomByParent: Map<string, BomRow[]>,
-  partsById: Map<string, PartRow>,
-  stockLeft: Map<string, number>,
-  requirements: Map<string, number>,
-  seen: Set<string> = new Set(),
-) => {
-  if (quantity <= 0 || seen.has(partId)) return;
-  const nextSeen = new Set(seen).add(partId);
-  const children = bomByParent.get(partId) || [];
-
-  for (const line of children) {
-    const child = partsById.get(line.child_part_id);
-    if (!child) continue;
-    const needed = quantity * Number(line.quantity || 0);
-    if (needed <= 0) continue;
-
-    if (child.source_type === "PURCHASED") {
-      requirements.set(child.id, (requirements.get(child.id) || 0) + needed);
-      continue;
-    }
-
-    if (child.source_type === "ASSEMBLED_STOCKED") {
-      const onHand = stockLeft.get(child.id) || 0;
-      const used = Math.min(onHand, needed);
-      stockLeft.set(child.id, onHand - used);
-      const remainder = needed - used;
-      if (remainder > 0) {
-        explodeDemand(child.id, remainder, bomByParent, partsById, stockLeft, requirements, nextSeen);
-      }
-      continue;
-    }
-
-    // ASSEMBLED_INLINE and FINISHED_GOOD: explode straight through.
-    explodeDemand(child.id, needed, bomByParent, partsById, stockLeft, requirements, nextSeen);
-  }
-};
-
 export const calculateShortages = async (plantId?: string | null): Promise<ShortageLine[]> => {
-  const [partsRes, bomRes, projRes] = await Promise.all([
-    supabase
-      .from("parts")
-      .select(
-        `id, part_code, name, category, uom, source_type, unit_price, currency,
-         part_vendors ( vendor_id, is_primary, vendors ( id, name ) )`,
-      ),
-    supabase.from("bom").select("parent_part_id, child_part_id, quantity").eq("is_active", true),
-    supabase
-      .from("projections")
-      .select(`id, part_id, quantity, vouchered_quantity, produced_quantity, month, customers!customer_id ( name ), parts!part_id ( part_code, name )`),
-  ]);
+  const { data, error } = await (supabase as any).rpc("shortage_lines", { p_plant: plantId ?? null });
+  if (error) throw error;
 
-  if (partsRes.error) throw partsRes.error;
-  if (bomRes.error) throw bomRes.error;
-  if (projRes.error) throw projRes.error;
-
-  let stockQuery = supabase
-    .from("stock_balance")
-    .select("part_id, quantity, plant_id, stock_locations!location_id ( location_type )");
-  if (plantId) stockQuery = stockQuery.eq("plant_id", plantId);
-  const stockRes = await stockQuery;
-  if (stockRes.error) throw stockRes.error;
-
-  let holdQuery = supabase.from("stock_holds").select("part_id, quantity, plant_id, status").eq("status", "ACTIVE");
-  if (plantId) holdQuery = holdQuery.eq("plant_id", plantId);
-  const holdRes = await holdQuery;
-  if (holdRes.error) throw holdRes.error;
-
-  // Open vouchers: a stock-build sub-assembly voucher not through OQC is stock on
-  // its way into the store. One built for a finished-good voucher is not: it goes
-  // to that voucher's line, and that voucher does not hold it from the store.
-  let openQuery = supabase
-    .from("production_orders")
-    .select("part_id, quantity, status, plant_id, parent_order_id")
-    .not("status", "in", "(OQC_PASSED,OQC_FAILED,CANCELLED)");
-  if (plantId) openQuery = openQuery.eq("plant_id", plantId);
-  const openRes = await openQuery;
-  if (openRes.error) throw openRes.error;
-
-  const partsById = new Map<string, PartRow>((partsRes.data || []).map((p: any) => [p.id, p]));
-  const bomByParent = new Map<string, BomRow[]>();
-  for (const line of bomRes.data || []) {
-    const list = bomByParent.get(line.parent_part_id) || [];
-    list.push(line as BomRow);
-    bomByParent.set(line.parent_part_id, list);
-  }
-
-  const available = new Map<string, number>();
-  for (const row of stockRes.data || []) {
-    const type = (row as any).stock_locations?.location_type;
-    if (type && type !== "STORE") continue; // quarantine and reject stock is not available
-    available.set(row.part_id, (available.get(row.part_id) || 0) + Number(row.quantity || 0));
-  }
-
-  const holds = new Map<string, number>();
-  for (const row of holdRes.data || []) {
-    holds.set(row.part_id, (holds.get(row.part_id) || 0) + Number(row.quantity || 0));
-  }
-
-  const stockLeft = new Map(available);
-  const requirements = new Map<string, number>();
-  const sources = new Map<string, DemandSource[]>();
-  const neededOn = new Map<string, string | null>();
-
-  const addSources = (before: Map<string, number>, source: Omit<DemandSource, "quantity">) => {
-    for (const [partId, total] of requirements) {
-      const delta = total - (before.get(partId) || 0);
-      if (delta <= 0) continue;
-      const list = sources.get(partId) || [];
-      list.push({ ...source, quantity: delta });
-      sources.set(partId, list);
-      neededOn.set(partId, earlier(neededOn.get(partId) ?? null, source.needed_on));
-    }
-  };
-
-  // Sub-assemblies: what is free = in store + being built - held by vouchers.
-  // Held beyond that must still be built, so its parts are real demand.
-  const incoming = new Map<string, number>();
-  for (const o of openRes.data || []) {
-    if (partsById.get(o.part_id)?.source_type !== "ASSEMBLED_STOCKED" || (o as any).parent_order_id) continue;
-    incoming.set(o.part_id, (incoming.get(o.part_id) || 0) + Number(o.quantity || 0));
-  }
-  for (const part of partsById.values()) {
-    if (part.source_type !== "ASSEMBLED_STOCKED") continue;
-    const free = (available.get(part.id) || 0) + (incoming.get(part.id) || 0) - (holds.get(part.id) || 0);
-    stockLeft.set(part.id, Math.max(0, free));
-    if (free < 0) {
-      const before = new Map(requirements);
-      explodeDemand(part.id, -free, bomByParent, partsById, stockLeft, requirements);
-      addSources(before, { label: `${part.part_code} ${part.name}`.trim(), customer: "Held by open vouchers", needed_on: null });
-    }
-  }
-
-  for (const projection of projRes.data || []) {
-    // Only what is not on a voucher yet: vouchered sets already hold their parts.
-    const covered = Math.max(Number((projection as any).vouchered_quantity || 0), Number(projection.produced_quantity || 0));
-    const outstanding = Number(projection.quantity || 0) - covered;
-    if (outstanding <= 0) continue;
-
-    const before = new Map(requirements);
-    explodeDemand(projection.part_id, outstanding, bomByParent, partsById, stockLeft, requirements);
-
-    addSources(before, {
-      label: `${(projection as any).parts?.part_code || ""} ${(projection as any).parts?.name || ""}`.trim(),
-      customer: (projection as any).customers?.name ?? null,
-      needed_on: projection.month,
-    });
-  }
-
-  // A part held by open vouchers is a line even when no projection adds to it.
-  for (const partId of holds.keys()) {
-    if (requirements.has(partId) || partsById.get(partId)?.source_type !== "PURCHASED") continue;
-    requirements.set(partId, 0);
-  }
-
-  const lines: ShortageLine[] = [];
-  for (const [partId, required] of requirements) {
-    const part = partsById.get(partId);
-    if (!part || part.source_type !== "PURCHASED") continue;
-    const av = available.get(partId) || 0;
-    const hold = holds.get(partId) || 0;
-    const balance = av - hold - required;
-    const primaryVendor =
-      part.part_vendors?.find((v) => v.is_primary) || part.part_vendors?.[0] || null;
-
-    lines.push({
-      part_id: partId,
-      part_code: part.part_code,
-      name: part.name,
-      category: part.category,
-      uom: part.uom || "PCS",
+  return ((data ?? []) as any[]).map((r) => {
+    const hold = Number(r.for_vouchers || 0);
+    const required = Number(r.for_projections || 0);
+    const available = Number(r.in_store || 0);
+    const atIqc = Number(r.at_iqc || 0);
+    const shortage = Number(r.shortage || 0);
+    return {
+      part_id: r.part_id,
+      part_code: r.part_code,
+      name: r.name,
+      category: r.category,
+      uom: r.uom || "PCS",
       required,
-      available: av,
+      available,
       hold,
-      balance,
-      shortage: Math.max(0, -balance),
-      needed_on: neededOn.get(partId) ?? null,
-      vendor_id: primaryVendor?.vendor_id ?? null,
-      vendor_name: primaryVendor?.vendors?.name ?? null,
-      unit_price: part.unit_price,
-      currency: part.currency,
-      sources: sources.get(partId) || [],
-      material_name: part.name,
-      total_required: required,
-      available_quantity: av,
-      shortage_quantity: Math.max(0, -balance),
-      vendor_info: primaryVendor?.vendors?.name ? { vendor_name: primaryVendor.vendors.name } : null,
-    });
-  }
-
-  return lines.sort((a, b) => b.shortage - a.shortage || a.part_code.localeCompare(b.part_code));
-};
-
-/**
- * Writes the computed shortages into the shortages table so Purchase and the
- * dashboards read one shared list. Rows already covered by a purchase order item,
- * or tied to a production order or schedule, are left untouched.
- */
-export const persistShortages = async (plantId: string, lines: ShortageLine[]) => {
-  const { error: deleteError } = await supabase
-    .from("shortages")
-    .delete()
-    .eq("plant_id", plantId)
-    .is("purchase_order_item_id", null)
-    .is("production_order_id", null)
-    .is("production_schedule_id", null);
-  if (deleteError) throw deleteError;
-
-  const rows = lines
-    .filter((line) => line.shortage > 0)
-    .map((line) => ({
-      plant_id: plantId,
-      part_id: line.part_id,
-      required_quantity: line.required,
-      available_quantity: line.available,
-      shortage_quantity: line.shortage,
-      needed_on: line.needed_on,
-      status: "OPEN",
-    }));
-
-  if (rows.length === 0) return 0;
-
-  const { error } = await supabase.from("shortages").insert(rows);
-  if (error) throw error;
-  return rows.length;
-};
-
-/** Reads the shortages table, enriched with part and vendor detail. */
-export const fetchShortageRows = async (plantId?: string | null) => {
-  let query = supabase
-    .from("shortages")
-    .select(
-      `id, plant_id, part_id, required_quantity, available_quantity, shortage_quantity, needed_on,
-       purchase_order_item_id, status, created_at,
-       parts!part_id ( id, part_code, name, category, uom, source_type, unit_price, currency,
-         part_vendors ( vendor_id, is_primary, vendors ( id, name ) ) )`,
-    )
-    .order("needed_on", { ascending: true, nullsFirst: false });
-  if (plantId) query = query.eq("plant_id", plantId);
-
-  const { data, error } = await query;
-  if (error) throw error;
-  return data || [];
-};
-
-/** Links a shortage row to the purchase order item that covers it. */
-export const markShortagesCovered = async (
-  covers: { shortage_id: string; purchase_order_item_id: string }[],
-) => {
-  for (const cover of covers) {
-    const { error } = await supabase
-      .from("shortages")
-      .update({ purchase_order_item_id: cover.purchase_order_item_id, status: "COVERED" })
-      .eq("id", cover.shortage_id);
-    if (error) throw error;
-  }
+      at_iqc: atIqc,
+      on_order: Number(r.on_order || 0),
+      balance: available + atIqc - hold - required,
+      shortage,
+      to_order: Number(r.to_order || 0),
+      needed_on: r.needed_on,
+      vendor_id: r.vendor_id,
+      vendor_name: r.vendor_name,
+      unit_price: r.unit_price,
+      currency: r.currency,
+      sources: ((r.sources ?? []) as any[]).map((s) => ({ ...s, quantity: Number(s.quantity || 0) })),
+      pending_pos: ((r.pending_pos ?? []) as any[]).map((p) => ({ ...p, pending: Number(p.pending || 0), on_the_way: Number(p.on_the_way || 0) })),
+      material_name: r.name,
+      total_required: required + hold,
+      available_quantity: available,
+      shortage_quantity: shortage,
+      vendor_info: r.vendor_name ? { vendor_name: r.vendor_name } : null,
+    };
+  });
 };
 
 /* ---- names kept for screens that already import them ---- */
