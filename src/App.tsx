@@ -16,7 +16,6 @@ import PQC from "./pages/quality/PQC";
 import OQC from "./pages/quality/OQC";
 import CAPA from "./pages/quality/CAPA";
 import Production from "./pages/Production";
-import Planning from "./pages/Planning";
 import PlanningEnhanced from "./pages/PlanningEnhanced";
 import Store from "./pages/Store";
 import Sales from "./pages/Sales";
