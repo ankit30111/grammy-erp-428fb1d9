@@ -30,6 +30,32 @@ const json = (body: unknown, status = 200) =>
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
+  if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405)
+
+  const authorization = req.headers.get('Authorization')
+  const token = authorization?.match(/^Bearer\s+(.+)$/i)?.[1]
+  if (!token) return json({ error: 'Unauthorized' }, 401)
+
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')
+  const anonKey = Deno.env.get('SUPABASE_ANON_KEY')
+  if (!supabaseUrl || !anonKey) return json({ error: 'Service unavailable' }, 503)
+
+  const authClient = createClient(supabaseUrl, anonKey, {
+    global: { headers: { Authorization: `Bearer ${token}` } },
+    auth: { persistSession: false, autoRefreshToken: false },
+  })
+  const { data: authData, error: authError } = await authClient.auth.getUser()
+  if (authError || !authData.user) return json({ error: 'Unauthorized' }, 401)
+
+  // Sending claims is limited to signed-in users who can access the store or
+  // quality workflows that create and review these vendor notifications.
+  const [storeAccess, qualityAccess] = await Promise.all([
+    authClient.rpc('auth_user_can_access_module', { module_name: 'store' }),
+    authClient.rpc('auth_user_can_access_module', { module_name: 'quality' }),
+  ])
+  if (storeAccess.error || qualityAccess.error) return json({ error: 'Forbidden' }, 403)
+  if (!storeAccess.data && !qualityAccess.data) return json({ error: 'Forbidden' }, 403)
+
   const apiKey = Deno.env.get('RESEND_API_KEY')
   const from = Deno.env.get('VENDOR_MAIL_FROM')
 
@@ -46,7 +72,7 @@ Deno.serve(async (req) => {
   }
 
   const supabase = createClient(
-    Deno.env.get('SUPABASE_URL')!,
+    supabaseUrl,
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
   )
 

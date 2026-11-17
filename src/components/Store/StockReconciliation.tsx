@@ -51,7 +51,10 @@ const hasBuyUnit = (p: PartRow) => !!p.purchase_uom && Number(p.purchase_factor 
 
 // --- CSV (opens in Excel; no extra library) ------------------------------
 const csvCell = (v: unknown) => {
-  const s = v == null ? "" : String(v);
+  let s = v == null ? "" : String(v);
+  // Spreadsheet programs interpret cells beginning with formula operators.
+  // Prefix text values before CSV quoting so downloaded sheets open safely.
+  if (typeof v === "string" && /^[\u0000-\u0020]*[=+\-@]/.test(s)) s = `'${s}`;
   return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 };
 const parseCsv = (text: string): string[][] => {
