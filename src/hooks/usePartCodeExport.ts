@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import type { PartTier } from "@/hooks/usePartCategories";
 import { buildPartCodeWorkbook, type PartCodeRow, type PartCodeSheet } from "@/lib/partCodeExport";
+import { downloadBytes } from "@/lib/xlsxLite";
 import manifest from "@/lib/partCodeExport.manifest.json";
 
 const db = supabase as any;
@@ -123,11 +124,7 @@ export function usePartCodeExport() {
       const bytes = buildPartCodeWorkbook(new Uint8Array(await tpl.data.arrayBuffer()), {
         sheets, keepReferenceSheets: tier === "PURCHASE", date: new Date(),
       });
-      const blob = new Blob([bytes], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-      const url = URL.createObjectURL(blob);
-      const a = Object.assign(document.createElement("a"), { href: url, download: `${TIER_FILE[tier]} ${ddmmyyyy(new Date())}.xlsx` });
-      document.body.appendChild(a); a.click(); a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 10_000);
+      downloadBytes(bytes, `${TIER_FILE[tier]} ${ddmmyyyy(new Date())}.xlsx`);
       const n = sheets.reduce((s, x) => s + x.rows.length, 0);
       toast.success(`${TIER_FILE[tier]}: ${n} part codes in ${sheets.length} sheet${sheets.length === 1 ? "" : "s"}`);
     } catch (e: any) {

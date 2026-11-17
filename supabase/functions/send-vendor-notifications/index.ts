@@ -44,7 +44,7 @@ Deno.serve(async (req) => {
     global: { headers: { Authorization: `Bearer ${token}` } },
     auth: { persistSession: false, autoRefreshToken: false },
   })
-  const { data: authData, error: authError } = await authClient.auth.getUser()
+  const { data: authData, error: authError } = await authClient.auth.getUser(token)
   if (authError || !authData.user) return json({ error: 'Unauthorized' }, 401)
 
   // Sending claims is limited to signed-in users who can access the store or

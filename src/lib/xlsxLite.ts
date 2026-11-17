@@ -201,7 +201,9 @@ export async function readSpreadsheetFile(file: File, sheetName?: string): Promi
 }
 
 export function downloadBytes(bytes: Uint8Array, fileName: string) {
-  const blob = new Blob([bytes], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+  const buffer = new ArrayBuffer(bytes.byteLength);
+  new Uint8Array(buffer).set(bytes);
+  const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url; a.download = fileName;
