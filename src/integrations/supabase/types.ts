@@ -682,11 +682,13 @@ export type Database = {
           cbm_occupied: number | null
           container_id: string
           created_at: string
+          grn_item_id: string | null
           id: string
           material_description: string | null
           model: string | null
           notes: string | null
           part_id: string | null
+          purchase_order_item_id: string | null
           quantity: number
           status: string
           unit_cost_allocation: number | null
@@ -697,11 +699,13 @@ export type Database = {
           cbm_occupied?: number | null
           container_id: string
           created_at?: string
+          grn_item_id?: string | null
           id?: string
           material_description?: string | null
           model?: string | null
           notes?: string | null
           part_id?: string | null
+          purchase_order_item_id?: string | null
           quantity: number
           status?: string
           unit_cost_allocation?: number | null
@@ -712,11 +716,13 @@ export type Database = {
           cbm_occupied?: number | null
           container_id?: string
           created_at?: string
+          grn_item_id?: string | null
           id?: string
           material_description?: string | null
           model?: string | null
           notes?: string | null
           part_id?: string | null
+          purchase_order_item_id?: string | null
           quantity?: number
           status?: string
           unit_cost_allocation?: number | null
@@ -727,8 +733,29 @@ export type Database = {
             foreignKeyName: "container_materials_container_id_fkey"
             columns: ["container_id"]
             isOneToOne: false
+            referencedRelation: "import_container_times"
+            referencedColumns: ["container_id"]
+          },
+          {
+            foreignKeyName: "container_materials_container_id_fkey"
+            columns: ["container_id"]
+            isOneToOne: false
             referencedRelation: "import_containers"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "container_materials_grn_item_id_fkey"
+            columns: ["grn_item_id"]
+            isOneToOne: false
+            referencedRelation: "grn_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "container_materials_grn_item_id_fkey"
+            columns: ["grn_item_id"]
+            isOneToOne: false
+            referencedRelation: "store_receiving_variances"
+            referencedColumns: ["grn_item_id"]
           },
           {
             foreignKeyName: "container_materials_part_id_fkey"
@@ -743,6 +770,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "store_receiving_variances"
             referencedColumns: ["part_id"]
+          },
+          {
+            foreignKeyName: "container_materials_purchase_order_item_id_fkey"
+            columns: ["purchase_order_item_id"]
+            isOneToOne: false
+            referencedRelation: "import_po_lines"
+            referencedColumns: ["po_item_id"]
+          },
+          {
+            foreignKeyName: "container_materials_purchase_order_item_id_fkey"
+            columns: ["purchase_order_item_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_order_items"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -1344,41 +1385,158 @@ export type Database = {
         }
         Relationships: []
       }
+      ecn_bom_swaps: {
+        Row: {
+          ecn_id: string
+          parent_part_id: string
+        }
+        Insert: {
+          ecn_id: string
+          parent_part_id: string
+        }
+        Update: {
+          ecn_id?: string
+          parent_part_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ecn_bom_swaps_ecn_id_fkey"
+            columns: ["ecn_id"]
+            isOneToOne: false
+            referencedRelation: "ecns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ecn_bom_swaps_parent_part_id_fkey"
+            columns: ["parent_part_id"]
+            isOneToOne: false
+            referencedRelation: "parts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ecn_bom_swaps_parent_part_id_fkey"
+            columns: ["parent_part_id"]
+            isOneToOne: false
+            referencedRelation: "store_receiving_variances"
+            referencedColumns: ["part_id"]
+          },
+        ]
+      }
       ecns: {
         Row: {
+          approved_at: string | null
+          approved_by: string | null
+          change_type: string
           created_at: string
           created_by: string | null
           ecn_no: string
+          effective_from: string | null
           id: string
+          new_part_created: boolean
+          new_part_id: string | null
+          new_quantity: number | null
+          old_part_id: string | null
+          old_stock_action: string | null
+          old_stock_note: string | null
           reason: string | null
+          release_brands: string[] | null
           released_at: string | null
           released_by: string | null
+          returned_at: string | null
+          returned_by: string | null
+          returned_note: string | null
           status: string
+          submitted_at: string | null
+          submitted_by: string | null
           title: string
+          use_old_stock: boolean
         }
         Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          change_type?: string
           created_at?: string
           created_by?: string | null
           ecn_no?: string
+          effective_from?: string | null
           id?: string
+          new_part_created?: boolean
+          new_part_id?: string | null
+          new_quantity?: number | null
+          old_part_id?: string | null
+          old_stock_action?: string | null
+          old_stock_note?: string | null
           reason?: string | null
+          release_brands?: string[] | null
           released_at?: string | null
           released_by?: string | null
+          returned_at?: string | null
+          returned_by?: string | null
+          returned_note?: string | null
           status?: string
+          submitted_at?: string | null
+          submitted_by?: string | null
           title: string
+          use_old_stock?: boolean
         }
         Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          change_type?: string
           created_at?: string
           created_by?: string | null
           ecn_no?: string
+          effective_from?: string | null
           id?: string
+          new_part_created?: boolean
+          new_part_id?: string | null
+          new_quantity?: number | null
+          old_part_id?: string | null
+          old_stock_action?: string | null
+          old_stock_note?: string | null
           reason?: string | null
+          release_brands?: string[] | null
           released_at?: string | null
           released_by?: string | null
+          returned_at?: string | null
+          returned_by?: string | null
+          returned_note?: string | null
           status?: string
+          submitted_at?: string | null
+          submitted_by?: string | null
           title?: string
+          use_old_stock?: boolean
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "ecns_new_part_id_fkey"
+            columns: ["new_part_id"]
+            isOneToOne: false
+            referencedRelation: "parts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ecns_new_part_id_fkey"
+            columns: ["new_part_id"]
+            isOneToOne: false
+            referencedRelation: "store_receiving_variances"
+            referencedColumns: ["part_id"]
+          },
+          {
+            foreignKeyName: "ecns_old_part_id_fkey"
+            columns: ["old_part_id"]
+            isOneToOne: false
+            referencedRelation: "parts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ecns_old_part_id_fkey"
+            columns: ["old_part_id"]
+            isOneToOne: false
+            referencedRelation: "store_receiving_variances"
+            referencedColumns: ["part_id"]
+          },
+        ]
       }
       employee_skills: {
         Row: {
@@ -1485,6 +1643,8 @@ export type Database = {
           date_of_birth: string | null
           department: string
           email: string | null
+          emergency_contact_name: string | null
+          emergency_contact_phone: string | null
           employee_code: string
           esic_number: string | null
           first_name: string
@@ -1495,7 +1655,12 @@ export type Database = {
           leaving_date: string | null
           leaving_reason: string | null
           pan_number: string | null
+          permanent_address: string | null
+          permanent_city: string | null
+          permanent_pincode: string | null
+          permanent_state: string | null
           phone_number: string
+          photo_path: string | null
           pincode: string | null
           position: string
           salary: number | null
@@ -1514,6 +1679,8 @@ export type Database = {
           date_of_birth?: string | null
           department: string
           email?: string | null
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
           employee_code: string
           esic_number?: string | null
           first_name: string
@@ -1524,7 +1691,12 @@ export type Database = {
           leaving_date?: string | null
           leaving_reason?: string | null
           pan_number?: string | null
+          permanent_address?: string | null
+          permanent_city?: string | null
+          permanent_pincode?: string | null
+          permanent_state?: string | null
           phone_number: string
+          photo_path?: string | null
           pincode?: string | null
           position: string
           salary?: number | null
@@ -1543,6 +1715,8 @@ export type Database = {
           date_of_birth?: string | null
           department?: string
           email?: string | null
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
           employee_code?: string
           esic_number?: string | null
           first_name?: string
@@ -1553,7 +1727,12 @@ export type Database = {
           leaving_date?: string | null
           leaving_reason?: string | null
           pan_number?: string | null
+          permanent_address?: string | null
+          permanent_city?: string | null
+          permanent_pincode?: string | null
+          permanent_state?: string | null
           phone_number?: string
+          photo_path?: string | null
           pincode?: string | null
           position?: string
           salary?: number | null
@@ -1688,6 +1867,13 @@ export type Database = {
             foreignKeyName: "grn_import_container_id_fkey"
             columns: ["import_container_id"]
             isOneToOne: false
+            referencedRelation: "import_container_times"
+            referencedColumns: ["container_id"]
+          },
+          {
+            foreignKeyName: "grn_import_container_id_fkey"
+            columns: ["import_container_id"]
+            isOneToOne: false
             referencedRelation: "import_containers"
             referencedColumns: ["id"]
           },
@@ -1697,6 +1883,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "plants"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "grn_purchase_order_id_fkey"
+            columns: ["purchase_order_id"]
+            isOneToOne: false
+            referencedRelation: "import_po_lines"
+            referencedColumns: ["purchase_order_id"]
           },
           {
             foreignKeyName: "grn_purchase_order_id_fkey"
@@ -1820,6 +2013,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "store_receiving_variances"
             referencedColumns: ["part_id"]
+          },
+          {
+            foreignKeyName: "grn_items_purchase_order_item_id_fkey"
+            columns: ["purchase_order_item_id"]
+            isOneToOne: false
+            referencedRelation: "import_po_lines"
+            referencedColumns: ["po_item_id"]
           },
           {
             foreignKeyName: "grn_items_purchase_order_item_id_fkey"
@@ -1973,20 +2173,85 @@ export type Database = {
           },
         ]
       }
+      import_container_events: {
+        Row: {
+          container_id: string
+          created_at: string
+          created_by: string | null
+          detail: string | null
+          eta: string | null
+          event_date: string | null
+          id: string
+          kind: string
+          location: string | null
+          source: string
+          stage: Database["public"]["Enums"]["container_status"] | null
+        }
+        Insert: {
+          container_id: string
+          created_at?: string
+          created_by?: string | null
+          detail?: string | null
+          eta?: string | null
+          event_date?: string | null
+          id?: string
+          kind: string
+          location?: string | null
+          source?: string
+          stage?: Database["public"]["Enums"]["container_status"] | null
+        }
+        Update: {
+          container_id?: string
+          created_at?: string
+          created_by?: string | null
+          detail?: string | null
+          eta?: string | null
+          event_date?: string | null
+          id?: string
+          kind?: string
+          location?: string | null
+          source?: string
+          stage?: Database["public"]["Enums"]["container_status"] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "import_container_events_container_id_fkey"
+            columns: ["container_id"]
+            isOneToOne: false
+            referencedRelation: "import_container_times"
+            referencedColumns: ["container_id"]
+          },
+          {
+            foreignKeyName: "import_container_events_container_id_fkey"
+            columns: ["container_id"]
+            isOneToOne: false
+            referencedRelation: "import_containers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       import_containers: {
         Row: {
           arrived_date: string | null
+          bl_number: string | null
           china_custom_date: string | null
           container_number: string
           created_at: string
           created_by: string | null
+          currency: string | null
           current_status: Database["public"]["Enums"]["container_status"]
           duty_cost: number | null
+          eta: string | null
           factory_arrival_date: string | null
           freight_cost: number | null
           id: string
+          in_transit_date: string | null
           india_custom_date: string | null
           indian_dock_date: string | null
+          invoice_amount: number | null
+          invoice_number: string | null
+          last_location: string | null
+          last_tracked_at: string | null
           loaded_date: string | null
           notes: string | null
           ordered_date: string | null
@@ -1997,6 +2262,7 @@ export type Database = {
           planned_shipped: string | null
           purchase_order_id: string | null
           shipped_date: string | null
+          shipping_line: string | null
           supplier_info: string | null
           total_cbm: number | null
           updated_at: string
@@ -2004,17 +2270,25 @@ export type Database = {
         }
         Insert: {
           arrived_date?: string | null
+          bl_number?: string | null
           china_custom_date?: string | null
           container_number: string
           created_at?: string
           created_by?: string | null
+          currency?: string | null
           current_status?: Database["public"]["Enums"]["container_status"]
           duty_cost?: number | null
+          eta?: string | null
           factory_arrival_date?: string | null
           freight_cost?: number | null
           id?: string
+          in_transit_date?: string | null
           india_custom_date?: string | null
           indian_dock_date?: string | null
+          invoice_amount?: number | null
+          invoice_number?: string | null
+          last_location?: string | null
+          last_tracked_at?: string | null
           loaded_date?: string | null
           notes?: string | null
           ordered_date?: string | null
@@ -2025,6 +2299,7 @@ export type Database = {
           planned_shipped?: string | null
           purchase_order_id?: string | null
           shipped_date?: string | null
+          shipping_line?: string | null
           supplier_info?: string | null
           total_cbm?: number | null
           updated_at?: string
@@ -2032,17 +2307,25 @@ export type Database = {
         }
         Update: {
           arrived_date?: string | null
+          bl_number?: string | null
           china_custom_date?: string | null
           container_number?: string
           created_at?: string
           created_by?: string | null
+          currency?: string | null
           current_status?: Database["public"]["Enums"]["container_status"]
           duty_cost?: number | null
+          eta?: string | null
           factory_arrival_date?: string | null
           freight_cost?: number | null
           id?: string
+          in_transit_date?: string | null
           india_custom_date?: string | null
           indian_dock_date?: string | null
+          invoice_amount?: number | null
+          invoice_number?: string | null
+          last_location?: string | null
+          last_tracked_at?: string | null
           loaded_date?: string | null
           notes?: string | null
           ordered_date?: string | null
@@ -2053,12 +2336,20 @@ export type Database = {
           planned_shipped?: string | null
           purchase_order_id?: string | null
           shipped_date?: string | null
+          shipping_line?: string | null
           supplier_info?: string | null
           total_cbm?: number | null
           updated_at?: string
           vessel_name?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "import_containers_purchase_order_id_fkey"
+            columns: ["purchase_order_id"]
+            isOneToOne: false
+            referencedRelation: "import_po_lines"
+            referencedColumns: ["purchase_order_id"]
+          },
           {
             foreignKeyName: "import_containers_purchase_order_id_fkey"
             columns: ["purchase_order_id"]
@@ -2381,6 +2672,7 @@ export type Database = {
       }
       kit_returns: {
         Row: {
+          counted_quantity: number | null
           created_at: string
           id: string
           kit_item_id: string
@@ -2390,9 +2682,11 @@ export type Database = {
           returned_by: string | null
           updated_at: string
           verdict: Database["public"]["Enums"]["rejection_verdict"]
+          verified_at: string | null
           verified_by: string | null
         }
         Insert: {
+          counted_quantity?: number | null
           created_at?: string
           id?: string
           kit_item_id: string
@@ -2402,9 +2696,11 @@ export type Database = {
           returned_by?: string | null
           updated_at?: string
           verdict: Database["public"]["Enums"]["rejection_verdict"]
+          verified_at?: string | null
           verified_by?: string | null
         }
         Update: {
+          counted_quantity?: number | null
           created_at?: string
           id?: string
           kit_item_id?: string
@@ -2414,6 +2710,7 @@ export type Database = {
           returned_by?: string | null
           updated_at?: string
           verdict?: Database["public"]["Enums"]["rejection_verdict"]
+          verified_at?: string | null
           verified_by?: string | null
         }
         Relationships: [
@@ -2869,6 +3166,7 @@ export type Database = {
           iqc_checklist_url: string | null
           is_active: boolean
           last_price_update: string | null
+          lifecycle: string
           made_in_house: boolean
           model_id: string | null
           model_version: string | null
@@ -2882,6 +3180,8 @@ export type Database = {
           purchase_uom: string | null
           rejection_reason: string | null
           remarks: string | null
+          replaced_by: string | null
+          replaced_by_ecn: string | null
           reviewed_at: string | null
           reviewed_by: string | null
           source_type: Database["public"]["Enums"]["part_source_type"]
@@ -2913,6 +3213,7 @@ export type Database = {
           iqc_checklist_url?: string | null
           is_active?: boolean
           last_price_update?: string | null
+          lifecycle?: string
           made_in_house?: boolean
           model_id?: string | null
           model_version?: string | null
@@ -2926,6 +3227,8 @@ export type Database = {
           purchase_uom?: string | null
           rejection_reason?: string | null
           remarks?: string | null
+          replaced_by?: string | null
+          replaced_by_ecn?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           source_type?: Database["public"]["Enums"]["part_source_type"]
@@ -2957,6 +3260,7 @@ export type Database = {
           iqc_checklist_url?: string | null
           is_active?: boolean
           last_price_update?: string | null
+          lifecycle?: string
           made_in_house?: boolean
           model_id?: string | null
           model_version?: string | null
@@ -2970,6 +3274,8 @@ export type Database = {
           purchase_uom?: string | null
           rejection_reason?: string | null
           remarks?: string | null
+          replaced_by?: string | null
+          replaced_by_ecn?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           source_type?: Database["public"]["Enums"]["part_source_type"]
@@ -3047,6 +3353,27 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "plm_products"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "parts_replaced_by_ecn_fkey"
+            columns: ["replaced_by_ecn"]
+            isOneToOne: false
+            referencedRelation: "ecns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "parts_replaced_by_fkey"
+            columns: ["replaced_by"]
+            isOneToOne: false
+            referencedRelation: "parts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "parts_replaced_by_fkey"
+            columns: ["replaced_by"]
+            isOneToOne: false
+            referencedRelation: "store_receiving_variances"
+            referencedColumns: ["part_id"]
           },
         ]
       }
@@ -4332,6 +4659,13 @@ export type Database = {
             foreignKeyName: "purchase_order_items_purchase_order_id_fkey"
             columns: ["purchase_order_id"]
             isOneToOne: false
+            referencedRelation: "import_po_lines"
+            referencedColumns: ["purchase_order_id"]
+          },
+          {
+            foreignKeyName: "purchase_order_items_purchase_order_id_fkey"
+            columns: ["purchase_order_id"]
+            isOneToOne: false
             referencedRelation: "purchase_orders"
             referencedColumns: ["id"]
           },
@@ -4643,6 +4977,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "plants"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shortages_po_item_fkey"
+            columns: ["purchase_order_item_id"]
+            isOneToOne: false
+            referencedRelation: "import_po_lines"
+            referencedColumns: ["po_item_id"]
           },
           {
             foreignKeyName: "shortages_po_item_fkey"
@@ -5752,6 +6093,129 @@ export type Database = {
         }
         Relationships: []
       }
+      import_container_times: {
+        Row: {
+          arrived_date: string | null
+          container_id: string | null
+          container_number: string | null
+          current_status: Database["public"]["Enums"]["container_status"] | null
+          days_at_sea: number | null
+          days_late: number | null
+          days_loaded_to_factory: number | null
+          days_port_to_factory: number | null
+          days_to_load: number | null
+          factory_arrival_date: string | null
+          india_custom_date: string | null
+          loaded_date: string | null
+          ordered_date: string | null
+          planned_factory: string | null
+          shipped_date: string | null
+          shipping_line: string | null
+        }
+        Insert: {
+          arrived_date?: string | null
+          container_id?: string | null
+          container_number?: string | null
+          current_status?:
+            | Database["public"]["Enums"]["container_status"]
+            | null
+          days_at_sea?: never
+          days_late?: never
+          days_loaded_to_factory?: never
+          days_port_to_factory?: never
+          days_to_load?: never
+          factory_arrival_date?: string | null
+          india_custom_date?: string | null
+          loaded_date?: string | null
+          ordered_date?: string | null
+          planned_factory?: string | null
+          shipped_date?: string | null
+          shipping_line?: string | null
+        }
+        Update: {
+          arrived_date?: string | null
+          container_id?: string | null
+          container_number?: string | null
+          current_status?:
+            | Database["public"]["Enums"]["container_status"]
+            | null
+          days_at_sea?: never
+          days_late?: never
+          days_loaded_to_factory?: never
+          days_port_to_factory?: never
+          days_to_load?: never
+          factory_arrival_date?: string | null
+          india_custom_date?: string | null
+          loaded_date?: string | null
+          ordered_date?: string | null
+          planned_factory?: string | null
+          shipped_date?: string | null
+          shipping_line?: string | null
+        }
+        Relationships: []
+      }
+      import_po_lines: {
+        Row: {
+          currency: string | null
+          loaded: number | null
+          on_the_way: number | null
+          ordered: number | null
+          origin_country: string | null
+          part_code: string | null
+          part_id: string | null
+          part_name: string | null
+          plant_id: string | null
+          po_date: string | null
+          po_item_id: string | null
+          po_number: string | null
+          po_status: string | null
+          promised_delivery_date: string | null
+          promised_loading_date: string | null
+          purchase_order_id: string | null
+          received: number | null
+          to_load: number | null
+          uom: string | null
+          vendor_id: string | null
+          vendor_name: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_order_items_part_id_fkey"
+            columns: ["part_id"]
+            isOneToOne: false
+            referencedRelation: "parts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_order_items_part_id_fkey"
+            columns: ["part_id"]
+            isOneToOne: false
+            referencedRelation: "store_receiving_variances"
+            referencedColumns: ["part_id"]
+          },
+          {
+            foreignKeyName: "purchase_orders_plant_id_fkey"
+            columns: ["plant_id"]
+            isOneToOne: false
+            referencedRelation: "plants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_orders_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "store_receiving_variances"
+            referencedColumns: ["vendor_id"]
+          },
+          {
+            foreignKeyName: "purchase_orders_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       plm_bom_progress: {
         Row: {
           lines: number | null
@@ -5777,6 +6241,8 @@ export type Database = {
           activated_at: string | null
           approved_at: string | null
           bom_version: string | null
+          file_name: string | null
+          file_path: string | null
           file_size: number | null
           part_id: string | null
           sha256: string | null
@@ -6006,6 +6472,41 @@ export type Database = {
         Args: { p_items: Json; p_receipt: Json }
         Returns: Json
       }
+      container_add_tracking: {
+        Args: {
+          p_detail: string
+          p_eta?: string
+          p_id: string
+          p_location: string
+          p_source?: string
+        }
+        Returns: string
+      }
+      container_log: {
+        Args: {
+          p_container: string
+          p_date: string
+          p_detail: string
+          p_eta: string
+          p_kind: string
+          p_location: string
+          p_source: string
+          p_stage: Database["public"]["Enums"]["container_status"]
+        }
+        Returns: string
+      }
+      container_save: {
+        Args: { p_header: Json; p_id: string; p_lines: Json }
+        Returns: string
+      }
+      container_set_stage: {
+        Args: {
+          p_date?: string
+          p_id: string
+          p_stage: Database["public"]["Enums"]["container_status"]
+        }
+        Returns: Database["public"]["Enums"]["container_status"]
+      }
       customer_brand_names_refresh: {
         Args: { p_customer: string }
         Returns: undefined
@@ -6018,6 +6519,11 @@ export type Database = {
       delete_production_schedule_cascade: {
         Args: { p_schedule_id: string }
         Returns: undefined
+      }
+      ecn_apply: { Args: { p_brands: string[]; p_ecn: string }; Returns: Json }
+      ecn_approve: {
+        Args: { p_brands: string[]; p_ecn: string }
+        Returns: Json
       }
       ecn_bump_users: {
         Args: {
@@ -6037,6 +6543,22 @@ export type Database = {
         Args: { p_ecn: string; p_item: string; p_major?: boolean }
         Returns: string
       }
+      ecn_part_copy: { Args: { p_name: string; p_old: string }; Returns: Json }
+      ecn_part_impact: { Args: { p_part: string }; Returns: Json }
+      ecn_part_where_used: {
+        Args: { p_part: string }
+        Returns: {
+          brand_codes: string
+          busy_in: string
+          item_id: string
+          kind: string
+          name: string
+          part_code: string
+          source_type: string
+          usage: string
+          version: string
+        }[]
+      }
       ecn_raise: {
         Args: {
           p_item: string
@@ -6046,10 +6568,40 @@ export type Database = {
         }
         Returns: string
       }
+      ecn_raise_part_change: {
+        Args: {
+          p_items: string[]
+          p_new: string
+          p_new_created: boolean
+          p_old: string
+          p_production: string[]
+          p_qty: number
+          p_reason: string
+          p_title: string
+          p_type: string
+        }
+        Returns: string
+      }
       ecn_release: {
         Args: { p_brands?: string[]; p_ecn: string }
         Returns: Json
       }
+      ecn_release_due: { Args: never; Returns: number }
+      ecn_send_back: {
+        Args: { p_ecn: string; p_note: string }
+        Returns: undefined
+      }
+      ecn_set_old_stock: {
+        Args: {
+          p_action: string
+          p_ecn: string
+          p_from: string
+          p_note: string
+          p_use_old: boolean
+        }
+        Returns: undefined
+      }
+      ecn_submit: { Args: { p_ecn: string }; Returns: undefined }
       ecn_update: {
         Args: { p_ecn: string; p_reason: string; p_title: string }
         Returns: undefined
@@ -6150,6 +6702,15 @@ export type Database = {
           pan_number: string
         }[]
       }
+      grn_delete: { Args: { p_grn: string }; Returns: undefined }
+      grn_edit: {
+        Args: { p_grn: string; p_header: Json; p_lines: Json }
+        Returns: Json
+      }
+      grn_from_container: {
+        Args: { p_container: string; p_lines?: Json; p_received_date?: string }
+        Returns: Json
+      }
       has_role: { Args: { _module?: string }; Returns: boolean }
       in_department: { Args: { p_names: string[] }; Returns: boolean }
       in_plant: { Args: { _plant_id: string }; Returns: boolean }
@@ -6173,6 +6734,31 @@ export type Database = {
       item_version_for: {
         Args: { p_ecn: string; p_item: string }
         Returns: string
+      }
+      kit_return_confirm: {
+        Args: { p_counted: number; p_return: string }
+        Returns: number
+      }
+      kit_return_lines: {
+        Args: { p_order: string }
+        Returns: {
+          expected_back: number
+          issued: number
+          kit_item_id: string
+          part_code: string
+          part_id: string
+          part_name: string
+          per_set: number
+          produced: number
+          rejected: number
+          returned: number
+          uom: string
+          waiting: number
+        }[]
+      }
+      kit_return_raise: {
+        Args: { p_lines: Json; p_order: string }
+        Returns: number
       }
       linked_cover: {
         Args: { p_order_id: string; p_part_id: string }
@@ -6260,6 +6846,17 @@ export type Database = {
       }
       model_next_code: { Args: { p_category: string }; Returns: string }
       my_permissions: { Args: never; Returns: Json }
+      my_tasks: {
+        Args: never
+        Returns: {
+          area: string
+          key: string
+          link: string
+          oldest: string
+          title: string
+          waiting: number
+        }[]
+      }
       next_doc_number: {
         Args: { _prefix: string; _seq: unknown }
         Returns: string
@@ -6500,6 +7097,35 @@ export type Database = {
         Args: { p_plant_ids: string[]; p_user_id: string }
         Returns: undefined
       }
+      shortage_count: { Args: { p_plant?: string }; Returns: number }
+      shortage_lines: {
+        Args: { p_plant?: string }
+        Returns: {
+          at_iqc: number
+          category: string
+          currency: string
+          for_projections: number
+          for_vouchers: number
+          in_store: number
+          name: string
+          needed_on: string
+          on_order: number
+          part_code: string
+          part_id: string
+          pending_pos: Json
+          shortage: number
+          sources: Json
+          to_order: number
+          unit_price: number
+          uom: string
+          vendor_id: string
+          vendor_name: string
+        }[]
+      }
+      software_file_in_production: {
+        Args: { p_name: string }
+        Returns: boolean
+      }
       software_release_reactivate: {
         Args: { p_reason: string; p_release: string }
         Returns: undefined
@@ -6520,6 +7146,17 @@ export type Database = {
           status: string
         }[]
       }
+      system_link_check: {
+        Args: never
+        Returns: {
+          area: string
+          detail: string
+          records: number
+          rule: string
+          status: string
+        }[]
+      }
+      system_map: { Args: never; Returns: Json }
       unit_factor: { Args: { p_from: string; p_to: string }; Returns: number }
       version_copy_lines: {
         Args: { p_from: string; p_to: string }
@@ -6532,6 +7169,10 @@ export type Database = {
       versions_release: {
         Args: { p_brands: string[]; p_set: string[] }
         Returns: Json
+      }
+      voucher_net_issued: {
+        Args: { p_order: string; p_part: string }
+        Returns: number
       }
     }
     Enums: {
