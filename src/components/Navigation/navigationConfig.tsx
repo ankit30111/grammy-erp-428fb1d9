@@ -54,5 +54,5 @@ export const managementItems: NavigationItem[] = [
   { to: "/management/plants", icon: <Building2 size={18} />, label: "Plants", adminOnly: true },
   { to: "/management/hr", icon: <Users size={18} />, label: "Human Resources", module: "hr" },
   { to: "/management/access-control", icon: <ShieldCheck size={18} />, label: "Users & Access", adminOnly: true },
-  { to: "/management/system-check", icon: <CheckSquare size={18} />, label: "System Check", adminOnly: true },
+  { to: "/management/system-check", icon: <CheckSquare size={18} />, label: "System Map", adminOnly: true },
 ];

@@ -14,6 +14,7 @@ const MaterialRequestsTab = lazy(() => import("@/components/Store/MaterialReques
 const LogBook = lazy(() => import("@/components/Store/LogBook"));
 const InventoryManagement = lazy(() => import("@/components/Store/InventoryManagement"));
 const ProductionFeedbackTab = lazy(() => import("@/components/Store/ProductionFeedbackTab"));
+const ReturnsTab = lazy(() => import("@/components/Store/ReturnsTab"));
 const StockReconciliation = lazy(() => import("@/components/Store/StockReconciliation"));
 
 // Loading component for tab content
@@ -50,6 +51,7 @@ const StoreDashboard = () => {
     { id: "grn-receiving", label: "GRN Receiving" },
     { id: "production-feedback", label: "Production Feedback", count: pendingFeedbackCount },
     { id: "material-requests", label: "Material Requests" },
+    { id: "returns", label: "Returns" },
     { id: "inventory", label: "Inventory" },
     { id: "stock-reconciliation", label: "Stock Reconciliation" },
     { id: "logbook", label: "LogBook" },
@@ -93,6 +95,12 @@ const StoreDashboard = () => {
         {activeTab === "production-feedback" && (
           <Suspense fallback={<TabLoader />}>
             <ProductionFeedbackTab />
+          </Suspense>
+        )}
+
+        {activeTab === "returns" && (
+          <Suspense fallback={<TabLoader />}>
+            <ReturnsTab />
           </Suspense>
         )}
 

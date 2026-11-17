@@ -5,13 +5,15 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Search, CheckCircle, Calendar, Package, FileText } from "lucide-react";
+import { Search, CheckCircle, Calendar, Package, Undo2 } from "lucide-react";
+import { ReturnToStoreDialog } from "@/components/Production/ReturnToStoreDialog";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 
 const CompletedProduction = () => {
   const [searchTerm, setSearchTerm] = useState("");
+  const [returning, setReturning] = useState<any>(null);
 
   // Fetch completed production orders
   const { data: completedProduction = [], isLoading } = useQuery({
@@ -146,9 +148,9 @@ const CompletedProduction = () => {
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <Button variant="outline" size="sm" className="gap-2">
-                      <FileText className="h-4 w-4" />
-                      View Details
+                    <Button variant="outline" size="sm" className="gap-2" onClick={() => setReturning(order)}>
+                      <Undo2 className="h-4 w-4" />
+                      Return material
                     </Button>
                   </TableCell>
                 </TableRow>
@@ -157,6 +159,7 @@ const CompletedProduction = () => {
           </Table>
         )}
       </CardContent>
+      {returning && <ReturnToStoreDialog order={returning} onClose={() => setReturning(null)} />}
     </Card>
   );
 };

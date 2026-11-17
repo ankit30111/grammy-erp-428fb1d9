@@ -8,6 +8,7 @@ import { QualityMetricsWidget } from "@/components/Dashboard/QualityMetricsWidge
 import { VendorPerformanceWidget } from "@/components/Dashboard/VendorPerformanceWidget";
 import { ProductionStatusWidget } from "@/components/Dashboard/ProductionStatusWidget";
 import { PendingApprovalsWidget } from "@/components/Dashboard/PendingApprovalsWidget";
+import { MyTasks } from "@/components/Dashboard/MyTasks";
 import { useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 const Index = () => {
@@ -48,6 +49,7 @@ const Index = () => {
         }
       />
       <div className="grid gap-6">
+        <MyTasks />
         <PendingApprovalsWidget />
         {[
           { title: "Order & Fulfillment", node: <OrderFulfillmentWidget /> },
