@@ -124,6 +124,10 @@
     @apply bg-background text-foreground antialiased;
     font-feature-settings: "tnum" 1, "cv11" 1, "ss01" 1;
     letter-spacing: -0.006em;
+    /* A long unbroken value (serial number, part code, email, file name) wraps inside its own
+       column instead of running over the next one. It only breaks a word that would otherwise
+       overflow, so table columns and badges keep their widths. */
+    overflow-wrap: break-word;
   }
 
   .font-mono,

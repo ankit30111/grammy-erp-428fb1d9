@@ -75,14 +75,16 @@ export function ComplaintDialog({ id, onClose }: { id: string; onClose: () => vo
             {/* 2. OQC analysis */}
             <section className="space-y-2">
               <h3 className="text-sm font-semibold">OQC analysis</h3>
-              <div className="grid gap-3 rounded-md border p-3 sm:grid-cols-[12rem_14rem_minmax(0,1fr)]">
-                <div className="space-y-1">
+              {/* Columns share the width instead of fixed 12rem/14rem: a 26-character serial number
+                  used to run out of its column and print over Cause. */}
+              <div className="grid gap-3 rounded-md border p-3 sm:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,1.7fr)]">
+                <div className="min-w-0 space-y-1">
                   <Label className="text-xs text-muted-foreground">Serial number</Label>
-                  {edit ? <Input key={`s${c.serial_number}`} defaultValue={c.serial_number ?? ""} className="font-mono"
+                  {edit ? <Input key={`s${c.serial_number}`} defaultValue={c.serial_number ?? ""} className="font-mono" title={c.serial_number ?? ""}
                                  onBlur={(e) => e.target.value.trim() !== (c.serial_number ?? "") && m.updateComplaint.mutate({ id, serial_number: e.target.value.trim() || null })} />
-                    : <div className="font-mono text-sm">{c.serial_number ?? "—"}</div>}
+                    : <div className="break-all font-mono text-sm">{c.serial_number ?? "—"}</div>}
                 </div>
-                <div className="space-y-1">
+                <div className="min-w-0 space-y-1">
                   <Label className="text-xs text-muted-foreground">Cause</Label>
                   {edit ? (
                     <select className={sel} value={c.cause ?? ""} onChange={(e) => m.updateComplaint.mutate({ id, cause: e.target.value || null })}>
@@ -91,7 +93,7 @@ export function ComplaintDialog({ id, onClose }: { id: string; onClose: () => vo
                     </select>
                   ) : <div className="text-sm">{CAUSES.find((x) => x.value === c.cause)?.label ?? "—"}</div>}
                 </div>
-                <div className="space-y-1">
+                <div className="min-w-0 space-y-1">
                   <Label className="text-xs text-muted-foreground">Findings</Label>
                   {edit ? <Textarea key={`a${c.analysis}`} rows={2} defaultValue={c.analysis ?? ""} placeholder="What was checked and found"
                                     onBlur={(e) => e.target.value.trim() !== (c.analysis ?? "") && m.updateComplaint.mutate({ id, analysis: e.target.value.trim() || null })} />
