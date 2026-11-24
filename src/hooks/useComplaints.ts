@@ -66,7 +66,8 @@ const COMPLAINT_SELECT = `
   product:parts!customer_complaints_part_id_fkey ( id, part_code, name ),
   faulty:parts!customer_complaints_faulty_part_id_fkey ( id, part_code, name ),
   receipt:complaint_receipts ( id, receipt_number, receipt_type, customer_reference, receipt_date ),
-  parts:customer_complaint_parts ( id, status )`;
+  parts:customer_complaint_parts ( id, status, quantity, problem, verdict, root_cause, analysis, rca_path, capa_path, closed_at,
+    part:parts ( id, part_code, name ), vendor:vendors ( id, name ) )`;
 
 export function useComplaints() {
   return useQuery({

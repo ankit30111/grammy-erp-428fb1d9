@@ -152,22 +152,22 @@ function PartAnalysisDialog({ part: p, onClose }: { part: any; onClose: () => vo
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2">
-          <label className="space-y-1 text-xs text-muted-foreground">Verdict
+          <label className="grid gap-1.5 text-xs text-muted-foreground">Verdict
             <select className={sel} disabled={!canEdit} value={f.verdict} onChange={(e) => setF({ ...f, verdict: e.target.value })}>
               <option value="">Choose…</option>
               {VERDICTS.map((v) => <option key={v.value} value={v.value}>{v.label}</option>)}
             </select>
           </label>
-          <label className="space-y-1 text-xs text-muted-foreground">Vendor of this part
+          <label className="grid gap-1.5 text-xs text-muted-foreground">Vendor of this part
             <select className={sel} disabled={!canEdit} value={f.vendor_id} onChange={(e) => setF({ ...f, vendor_id: e.target.value })}>
               <option value="">Not a vendor issue / unknown</option>
               {ordered.map((v: any) => <option key={v.id} value={v.id}>{vendorIds.includes(v.id) ? "★ " : ""}{v.name}</option>)}
             </select>
           </label>
-          <label className="space-y-1 text-xs text-muted-foreground sm:col-span-2">Root cause
+          <label className="grid gap-1.5 text-xs text-muted-foreground sm:col-span-2">Root cause
             <Textarea rows={2} disabled={!canEdit} value={f.root_cause} onChange={(e) => setF({ ...f, root_cause: e.target.value })} />
           </label>
-          <label className="space-y-1 text-xs text-muted-foreground sm:col-span-2">Analysis / tests done
+          <label className="grid gap-1.5 text-xs text-muted-foreground sm:col-span-2">Analysis / tests done
             <Textarea rows={3} disabled={!canEdit} value={f.analysis} onChange={(e) => setF({ ...f, analysis: e.target.value })} />
           </label>
         </div>
