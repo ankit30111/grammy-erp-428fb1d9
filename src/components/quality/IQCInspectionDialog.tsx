@@ -16,6 +16,8 @@ import { PartPhoto } from "@/components/Parts/PartDocuments";
 import { useState } from "react";
 import { IQC_OUTCOME, type IqcVerdict } from "@/constants/iqcOutcome";
 import { DOC_ACCEPT } from "@/lib/uploads";
+import { useGrnPlans } from "@/hooks/useInspectionFlags";
+import { SamplePlanBox } from "./SamplePlanBox";
 
 interface IQCInspectionDialogProps {
   grn: any;
@@ -32,6 +34,8 @@ const IQCInspectionDialog = ({ grn, isOpen, onClose }: IQCInspectionDialogProps)
   } = useIQCInspection(grn);
 
   const { fetchRelevantCAPAs, submitCAPAChecks } = useCAPATracking();
+  // Level, sample size and accept / reject numbers per line, worked out in the database.
+  const { data: plans } = useGrnPlans(isOpen ? grn?.id : null);
   const [capaChecks, setCAPAChecks] = useState<CAPAImplementationCheck[]>([]);
 
   // Handle file upload
@@ -205,6 +209,7 @@ const IQCInspectionDialog = ({ grn, isOpen, onClose }: IQCInspectionDialogProps)
                   </div>
                   
                   <div className="p-4 space-y-4">
+                    <SamplePlanBox entry={plans?.[item.id]} />
                     <div>
                       <Label>Inspection Outcome</Label>
                       <RadioGroup

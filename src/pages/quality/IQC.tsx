@@ -15,6 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { format, startOfMonth, endOfMonth } from "date-fns";
 import LineRejectionManager from "@/components/quality/LineRejectionManager";
 import IQCInspectionDialog from "@/components/quality/IQCInspectionDialog";
+import { levelLabel, usePendingFlags } from "@/hooks/useInspectionFlags";
 import { ComplaintPartsIqc } from "@/components/complaints/ComplaintPartsIqc";
 import { IQCReportViewer } from "@/components/quality/IQCReportViewer";
 
@@ -27,6 +28,12 @@ const iqcTabs = [
 ];
 
 const IQC = () => {
+  // GRNs holding a flagged part (CAPA awaited): IQC inspects them at a raised level.
+  const { data: pendingFlags = [] } = usePendingFlags();
+  const flaggedByGrn = pendingFlags.reduce((m: Record<string, string>, f) => {
+    const t = `${f.part_code} at ${levelLabel(f.level)}`;
+    return { ...m, [f.grn_id]: m[f.grn_id] ? `${m[f.grn_id]}, ${t}` : t };
+  }, {});
   const [selectedTab, setSelectedTab] = useState("pending");
 
   const [selectedGRN, setSelectedGRN] = useState<any>(null);
@@ -279,7 +286,14 @@ const IQC = () => {
                           <TableCell>{grn.vendors?.name}</TableCell>
                           <TableCell>{new Date(grn.received_date).toLocaleDateString()}</TableCell>
                           <TableCell>{grn.grn_items?.length || 0}</TableCell>
-                          <TableCell>{getStatusBadge(grn)}</TableCell>
+                          <TableCell>
+                            {getStatusBadge(grn)}
+                            {flaggedByGrn[grn.id] && (
+                              <div className="mt-1 text-xs font-medium text-warning" title="Inspect at the raised level shown in the inspection window">
+                                Raised inspection: {flaggedByGrn[grn.id]}
+                              </div>
+                            )}
+                          </TableCell>
                           <TableCell>
                             <Button 
                               size="sm" 

@@ -17,7 +17,8 @@ import {
 import { cn } from "@/lib/utils";
 
 const db = supabase as any;
-const sel = "h-9 w-full rounded-md border border-input bg-background px-2 text-sm";
+// A closed part is read-only but must stay easy to read, so disabled fields keep full contrast.
+const sel = "h-9 w-full rounded-md border border-input bg-background px-2 text-sm disabled:cursor-default disabled:opacity-100";
 
 /**
  * IQC's side of a complaint: each faulty part OQC sent is checked here —
@@ -80,7 +81,7 @@ export function ComplaintPartsIqc() {
   );
 }
 
-function PartAnalysisDialog({ part: p, onClose }: { part: any; onClose: () => void }) {
+export function PartAnalysisDialog({ part: p, onClose }: { part: any; onClose: () => void }) {
   const canEdit = useCanHandleComplaints() && p.status !== "CLOSED";
   const m = useComplaintMutations();
   const primaryVendor = (p.part?.part_vendors ?? []).find((v: any) => v.is_primary)?.vendor_id ?? null;
@@ -165,10 +166,10 @@ function PartAnalysisDialog({ part: p, onClose }: { part: any; onClose: () => vo
             </select>
           </label>
           <label className="grid gap-1.5 text-xs text-muted-foreground sm:col-span-2">Root cause
-            <Textarea rows={2} disabled={!canEdit} value={f.root_cause} onChange={(e) => setF({ ...f, root_cause: e.target.value })} />
+            <Textarea rows={2} className="disabled:cursor-default disabled:opacity-100" disabled={!canEdit} value={f.root_cause} onChange={(e) => setF({ ...f, root_cause: e.target.value })} />
           </label>
           <label className="grid gap-1.5 text-xs text-muted-foreground sm:col-span-2">Analysis / tests done
-            <Textarea rows={3} disabled={!canEdit} value={f.analysis} onChange={(e) => setF({ ...f, analysis: e.target.value })} />
+            <Textarea rows={3} className="disabled:cursor-default disabled:opacity-100" disabled={!canEdit} value={f.analysis} onChange={(e) => setF({ ...f, analysis: e.target.value })} />
           </label>
         </div>
 

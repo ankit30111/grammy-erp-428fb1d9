@@ -14,12 +14,14 @@ import { format } from "date-fns";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import CAPAUploadDialog from "@/components/quality/CAPAUploadDialog";
+import { PartAnalysisCapasTab, RaisedInspectionTab } from "@/components/quality/CapaComplaintTabs";
 import { SignedStorageLink } from "@/components/ui/signed-storage-link";
 
 const capaTabs = [
   { id: "vendor", label: "Vendor CAPAs" },
   { id: "line-rejection", label: "Line Rejection CAPAs" },
   { id: "part-analysis", label: "Part Analysis CAPAs" },
+  { id: "raised", label: "Raised Inspection" },
   { id: "production", label: "Production CAPAs" },
 ];
 
@@ -187,9 +189,9 @@ const CAPA = () => {
     },
     partAnalysis: {
       total: partAnalysisCapas.length,
-      pending: partAnalysisCapas.filter(c => c.status === 'PENDING').length,
-      inProgress: partAnalysisCapas.filter(c => c.status === 'IN_PROGRESS').length,
-      capaReceived: partAnalysisCapas.filter(c => c.status === 'CAPA_RECEIVED').length,
+      pending: partAnalysisCapas.filter(c => c.status === 'UNDER_ANALYSIS').length,
+      inProgress: partAnalysisCapas.filter(c => c.status === 'ANALYSED').length,
+      capaReceived: partAnalysisCapas.filter((c: any) => !!c.capa_path).length,
       closed: partAnalysisCapas.filter(c => c.status === 'CLOSED').length,
     },
     production: {
@@ -545,84 +547,9 @@ const CAPA = () => {
           </div>
 )}
 
-          {selectedTab === "part-analysis" && (
-<div className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Part Analysis CAPAs</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {partAnalysisCapas.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    No part analysis CAPAs found
-                  </div>
-                ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Complaint ID</TableHead>
-                        <TableHead>Customer</TableHead>
-                        <TableHead>Material</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Analysis Date</TableHead>
-                        <TableHead>Documents</TableHead>
-                        <TableHead>Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {partAnalysisCapas.map((part) => (
-                        <TableRow key={part.id}>
-                          <TableCell className="font-medium">
-                            #{part.customer_complaints?.id?.slice(-6)}
-                          </TableCell>
-                          <TableCell>{part.customer_complaints?.customers?.name}</TableCell>
-                          <TableCell>
-                            <div className="flex flex-col">
-                              <span className="font-medium">{part.parts?.name}</span>
-                              <span className="text-sm text-muted-foreground">
-                                {part.parts?.part_code}
-                              </span>
-                            </div>
-                          </TableCell>
-                          <TableCell>{getStatusBadge(part.status, 'part')}</TableCell>
-                          <TableCell>
-                            {part.created_at ? format(new Date(part.created_at), "dd/MM/yyyy") : '-'}
-                          </TableCell>
-                          <TableCell>
-                            <span className="text-xs text-muted-foreground">
-                              Not available after rebuild
-                            </span>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex gap-1">
-                              {(part.status === 'IN_PROGRESS' || part.status === 'PENDING') && (
-                                <Button 
-                                  variant="outline" 
-                                  size="sm"
-                                  onClick={() => handleCAPAUpload(part.id, 'part_analysis', {
-                                    complaintId: part.customer_complaints?.id?.slice(-6),
-                                    materialName: part.parts?.name
-                                  })}
-                                  className="gap-1"
-                                >
-                                  <Upload className="h-3 w-3" />
-                                  Upload CAPA
-                                </Button>
-                              )}
-                              <Button variant="outline" size="sm">
-                                View Details
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-)}
+          {selectedTab === "part-analysis" && <PartAnalysisCapasTab />}
+
+          {selectedTab === "raised" && <RaisedInspectionTab />}
 
           {selectedTab === "production" && (
 <div className="space-y-4">
